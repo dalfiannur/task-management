@@ -1,7 +1,7 @@
-import { useMemo } from "react";
 import { useAuth } from "react-oidc-context";
 import {
   History,
+  MessageSquare,
   Plus,
   ArrowRight,
   Loader2,
@@ -21,12 +21,7 @@ import {
   type TaskStatus,
   type TaskPriority,
 } from "@/types/task";
-import type { Comment } from "@/types/comment";
 import type { Activity, FieldChange } from "@/types/activity";
-
-type TimelineItem =
-  | { type: "comment"; data: Comment; createdAt: string }
-  | { type: "activity"; data: Activity; createdAt: string };
 
 interface TaskActivityTimelineProps {
   taskId: string;
@@ -46,73 +41,82 @@ export function TaskActivityTimeline({
   const { data: users = [] } = useUsers();
   const { data: labels = [] } = useLabels(projectId);
 
-  const timeline = useMemo(() => {
-    const items: TimelineItem[] = [
-      ...comments.map(
-        (c): TimelineItem => ({
-          type: "comment",
-          data: c,
-          createdAt: c.commentInfo.createdAt,
-        }),
-      ),
-      ...activities.map(
-        (a): TimelineItem => ({
-          type: "activity",
-          data: a,
-          createdAt: a.activityInfo.createdAt,
-        }),
-      ),
-    ];
-    items.sort(
-      (a, b) =>
-        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
-    );
-    return items;
-  }, [comments, activities]);
+  const sortedComments = [...comments].sort(
+    (a, b) =>
+      new Date(a.commentInfo.createdAt).getTime() -
+      new Date(b.commentInfo.createdAt).getTime(),
+  );
 
-  const isLoading = commentsLoading || activitiesLoading;
+  const sortedActivities = [...activities].sort(
+    (a, b) =>
+      new Date(a.activityInfo.createdAt).getTime() -
+      new Date(b.activityInfo.createdAt).getTime(),
+  );
 
   return (
-    <div className="space-y-3">
-      <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50 flex items-center gap-1.5">
-        <History className="size-3.5" />
-        Activity ({timeline.length})
-      </p>
+    <div className="space-y-6">
+      {/* Comments Section */}
+      <div className="space-y-3">
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50 flex items-center gap-1.5">
+          <MessageSquare className="size-3.5" />
+          Comments ({comments.length})
+        </p>
 
-      {isLoading ? (
-        <div className="flex items-center gap-2 text-xs text-muted-foreground py-4">
-          <Loader2 className="size-3.5 animate-spin" />
-          Loading activity...
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {timeline.map((item) => {
-            if (item.type === "comment") {
-              return (
-                <CommentItem
-                  key={`comment-${item.data.id}`}
-                  comment={item.data}
-                  isAuthor={
-                    item.data.commentInfo.authorId === currentUserId
-                  }
-                  taskId={taskId}
-                  users={users}
-                />
-              );
-            }
-            return (
+        {commentsLoading ? (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground py-4">
+            <Loader2 className="size-3.5 animate-spin" />
+            Loading comments...
+          </div>
+        ) : sortedComments.length === 0 ? (
+          <p className="text-xs text-muted-foreground/60 py-2">
+            No comments yet
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {sortedComments.map((comment) => (
+              <CommentItem
+                key={comment.id}
+                comment={comment}
+                isAuthor={comment.commentInfo.authorId === currentUserId}
+                taskId={taskId}
+                users={users}
+              />
+            ))}
+          </div>
+        )}
+
+        <AddCommentForm taskId={taskId} />
+      </div>
+
+      {/* Activity Section */}
+      <div className="space-y-3">
+        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50 flex items-center gap-1.5">
+          <History className="size-3.5" />
+          Activity ({activities.length})
+        </p>
+
+        {activitiesLoading ? (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground py-4">
+            <Loader2 className="size-3.5 animate-spin" />
+            Loading activity...
+          </div>
+        ) : sortedActivities.length === 0 ? (
+          <p className="text-xs text-muted-foreground/60 py-2">
+            No activity yet
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {sortedActivities.map((activity) => (
               <ActivityItem
-                key={`activity-${item.data.id}`}
-                activity={item.data}
+                key={activity.id}
+                activity={activity}
                 users={users}
                 labels={labels}
               />
-            );
-          })}
-        </div>
-      )}
-
-      <AddCommentForm taskId={taskId} />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
