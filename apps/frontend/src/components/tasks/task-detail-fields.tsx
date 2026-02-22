@@ -290,7 +290,7 @@ export function StatusSelect({ taskId, value, startDate, updateTask }: StatusSel
           );
         }}
       >
-        <SelectTrigger className="h-7 text-xs border-0 shadow-none bg-transparent hover:bg-muted/50 transition-colors px-2 w-auto gap-1.5 [&>svg:last-child]:size-3">
+        <SelectTrigger className="h-7 w-full text-xs border-0 shadow-none bg-transparent hover:bg-muted/50 transition-colors px-2 gap-1.5 [&>svg:last-child]:size-3">
           <span
             className={cn(
               "size-2 rounded-full shrink-0",
@@ -343,7 +343,7 @@ export function PrioritySelect({
           );
         }}
       >
-        <SelectTrigger className="h-7 text-xs border-0 shadow-none bg-transparent hover:bg-muted/50 transition-colors px-2 w-auto gap-1.5 [&>svg:last-child]:size-3">
+        <SelectTrigger className="h-7 text-xs border-0 shadow-none bg-transparent hover:bg-muted/50 transition-colors px-2 w-full gap-1.5 [&>svg:last-child]:size-3">
           <span
             className={cn(
               "size-2 rounded-full shrink-0",

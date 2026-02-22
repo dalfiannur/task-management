@@ -93,7 +93,7 @@ export function TaskDetail({
 
   return (
     <Dialog open onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="sm:max-w-4xl max-h-[85vh] overflow-y-auto p-0">
+      <DialogContent className="sm:max-w-6xl max-h-[85vh] overflow-y-auto p-0">
         {isLoading ? (
           <div className="p-6 space-y-4">
             <Skeleton className="h-8 w-3/4" />
@@ -105,7 +105,7 @@ export function TaskDetail({
             Task not found
           </div>
         ) : (
-          <div className="flex flex-col sm:flex-row">
+          <div className="flex flex-col sm:flex-row overflow-x-clip">
             {/* Left panel — main content */}
             <div className="flex-1 p-6 sm:border-r min-w-0">
               <DialogHeader className="mb-5">
@@ -207,7 +207,7 @@ export function TaskDetail({
                         {Math.ceil(
                           (parsedDueDate.getTime() -
                             parsedStartDate.getTime()) /
-                            (1000 * 60 * 60 * 24),
+                          (1000 * 60 * 60 * 24),
                         )}{" "}
                         days
                       </span>
