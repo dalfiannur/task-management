@@ -1,9 +1,8 @@
 import { BaseService } from "bunsane/service";
 import { GraphQLOperation } from "bunsane/gql";
-import { Entity } from "bunsane/core/Entity";
 import { Query } from "bunsane/query";
 import { z } from "zod";
-import { ProjectMembershipTag, ProjectMembershipData } from "~/components/ProjectMembership";
+import { ProjectMembershipData } from "~/components/ProjectMembership";
 import { ProjectMembershipArcheTypeClass } from "~/archetypes/ProjectMembershipArcheType";
 import { ProjectPicIdComponent } from "~/components/ProjectComponents";
 import { AuthPlugin } from "~/plugins/AuthPlugin";
@@ -28,7 +27,6 @@ export default class MembershipService extends BaseService {
    */
   async ensureMembership(projectId: string, userId: string) {
     const existing = await new Query()
-      .with(ProjectMembershipTag)
       .with(ProjectMembershipData, {
         filters: [
           Query.typedFilter(ProjectMembershipData, "projectId", "=", projectId),
@@ -38,10 +36,11 @@ export default class MembershipService extends BaseService {
       .exec();
     if (existing.length > 0) return;
 
-    const entity = Entity.Create()
-      .add(ProjectMembershipTag, {})
-      .add(ProjectMembershipData, { projectId, userId });
-    await entity.save();
+    const archetype = new ProjectMembershipArcheTypeClass();
+    archetype.fill({
+      membership: { projectId, userId },
+    });
+    await archetype.createAndSaveEntity();
   }
 
   @GraphQLOperation({
@@ -51,7 +50,6 @@ export default class MembershipService extends BaseService {
   })
   async listProjectMembers(input: { projectId: string }) {
     const entities = await new Query()
-      .with(ProjectMembershipTag)
       .with(ProjectMembershipData, {
         filters: [
           Query.typedFilter(ProjectMembershipData, "projectId", "=", input.projectId),
@@ -59,7 +57,12 @@ export default class MembershipService extends BaseService {
       })
       .populate()
       .exec();
-    return entities;
+    return await Promise.all(
+      entities.map(async (e: any) => {
+        const data = await e.get(ProjectMembershipData);
+        return { id: e.id, membership: data };
+      }),
+    );
   }
 
   @GraphQLOperation({
@@ -88,7 +91,6 @@ export default class MembershipService extends BaseService {
     await this.requireManagerOrPic(context, input.projectId);
 
     const entities = await new Query()
-      .with(ProjectMembershipTag)
       .with(ProjectMembershipData, {
         filters: [
           Query.typedFilter(ProjectMembershipData, "projectId", "=", input.projectId),

@@ -19,7 +19,7 @@ import {
   ModuleProjectRefComponent,
   ModuleTag,
 } from "~/components/ModuleComponents";
-import { ProjectMembershipTag, ProjectMembershipData } from "~/components/ProjectMembership";
+import { ProjectMembershipData } from "~/components/ProjectMembership";
 import { AuthPlugin } from "~/plugins/AuthPlugin";
 import { getUserRole, requireManager } from "./UserService";
 import MembershipService from "./MembershipService";
@@ -292,7 +292,6 @@ export default class ProjectService extends BaseService {
   /** Get set of project IDs the user is a member of. */
   private async getMemberProjectIds(userId: string): Promise<Set<string>> {
     const memberships = await new Query()
-      .with(ProjectMembershipTag)
       .with(ProjectMembershipData, {
         filters: [Query.typedFilter(ProjectMembershipData, "userId", "=", userId)],
       })
