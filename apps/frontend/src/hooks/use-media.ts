@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { graphqlClient } from "@/lib/graphql-client";
+import { graphqlClient, getAuthToken } from "@/lib/graphql-client";
 import { gql } from "graphql-request";
 import type { MediaFile } from "@/types/media";
 
@@ -111,9 +111,11 @@ export function useUploadMedia() {
       formData.append("projectId", projectId);
       if (taskId) formData.append("taskId", taskId);
 
+      const token = getAuthToken();
       const res = await fetch(`${API_BASE}/api/media/upload`, {
         method: "POST",
         body: formData,
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
 
       if (!res.ok) {
