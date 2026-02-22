@@ -36,6 +36,7 @@ import type { User } from "@/types/task";
 import type { UseMutationResult } from "@tanstack/react-query";
 import type { Task, UpdateTaskInput } from "@/types/task";
 import { useLabels } from "@/hooks/use-labels";
+import { LabelCombobox } from "@/components/shared/label-combobox";
 import { cn } from "@/lib/utils";
 
 type UpdateTaskMutation = UseMutationResult<
@@ -580,111 +581,24 @@ export function LabelSelect({
   value,
   updateTask,
 }: LabelSelectProps) {
-  const [open, setOpen] = useState(false);
   const { saved, flash } = useSaveIndicator();
   const { data: labels = [] } = useLabels(projectId);
-  const selectedLabels = labels.filter((l) => value.includes(l.id));
 
-  const handleToggle = (labelId: string) => {
-    const newIds = value.includes(labelId)
-      ? value.filter((id) => id !== labelId)
-      : [...value, labelId];
+  const handleChange = (newIds: string[]) => {
     updateTask.mutate(
       { id: taskId, input: { labelIds: newIds } },
       { onSuccess: () => flash() },
     );
   };
 
-  const handleClear = () => {
-    updateTask.mutate(
-      { id: taskId, input: { labelIds: [] } },
-      { onSuccess: () => flash() },
-    );
-  };
-
   return (
     <div className="flex items-center gap-1">
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            role="combobox"
-            aria-expanded={open}
-            className="inline-flex items-center gap-1.5 rounded-md px-2 h-7 text-xs hover:bg-muted/50 transition-colors w-full"
-          >
-            {selectedLabels.length > 0 ? (
-              <>
-                <div className="flex items-center gap-1 flex-1 min-w-0 flex-wrap">
-                  {selectedLabels.slice(0, 3).map((label) => (
-                    <span
-                      key={label.id}
-                      className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-muted"
-                    >
-                      <span
-                        className="size-1.5 rounded-full shrink-0"
-                        style={{ backgroundColor: label.color }}
-                      />
-                      <span className="truncate max-w-[60px]">{label.name}</span>
-                    </span>
-                  ))}
-                  {selectedLabels.length > 3 && (
-                    <span className="text-[10px] text-muted-foreground">
-                      +{selectedLabels.length - 3}
-                    </span>
-                  )}
-                </div>
-                <X
-                  className="size-3 ml-auto text-muted-foreground/50 hover:text-foreground shrink-0"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleClear();
-                  }}
-                />
-              </>
-            ) : (
-              <>
-                <span className="text-muted-foreground">None</span>
-                <ChevronsUpDown className="size-3 ml-auto text-muted-foreground/40 shrink-0" />
-              </>
-            )}
-          </button>
-        </PopoverTrigger>
-        <PopoverContent className="w-[200px] p-0" align="start">
-          <Command>
-            <CommandInput placeholder="Search labels..." className="h-8 text-xs" />
-            <CommandList>
-              <CommandEmpty className="py-3 text-xs text-center">
-                No labels found.
-              </CommandEmpty>
-              <CommandGroup>
-                {labels.map((label) => {
-                  const isSelected = value.includes(label.id);
-                  return (
-                    <CommandItem
-                      key={label.id}
-                      value={label.name}
-                      onSelect={() => handleToggle(label.id)}
-                      className="text-xs"
-                    >
-                      <span
-                        className="size-2.5 rounded-full shrink-0 mr-1.5"
-                        style={{ backgroundColor: label.color }}
-                      />
-                      {label.name}
-                      <Check
-                        className={cn(
-                          "ml-auto size-3.5",
-                          isSelected ? "opacity-100" : "opacity-0",
-                        )}
-                      />
-                    </CommandItem>
-                  );
-                })}
-              </CommandGroup>
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
+      <LabelCombobox
+        value={value}
+        labels={labels}
+        onChange={handleChange}
+        projectId={projectId}
+      />
       <SaveIndicator visible={saved} />
     </div>
   );

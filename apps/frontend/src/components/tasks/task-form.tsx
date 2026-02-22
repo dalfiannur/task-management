@@ -54,6 +54,7 @@ import {
   type TaskPriority,
 } from "@/types/task";
 import { Tag } from "lucide-react";
+import { LabelCombobox } from "@/components/shared/label-combobox";
 
 interface TaskFormProps {
   open: boolean;
@@ -343,6 +344,7 @@ export function TaskForm({ open, onOpenChange, task, moduleId, projectId }: Task
                     value={labelIds}
                     labels={labels}
                     onChange={setLabelIds}
+                    projectId={projectId}
                   />
                 </PropertyRow>
 
@@ -563,109 +565,6 @@ function AssigneeCombobox({
                       </AvatarFallback>
                     </Avatar>
                     {user.name}
-                    <Check
-                      className={cn(
-                        "ml-auto size-3.5",
-                        isSelected ? "opacity-100" : "opacity-0",
-                      )}
-                    />
-                  </CommandItem>
-                );
-              })}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
-function LabelCombobox({
-  value,
-  labels,
-  onChange,
-}: {
-  value: string[];
-  labels: { id: string; name: string; color: string }[];
-  onChange: (labelIds: string[]) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const selectedLabels = labels.filter((l) => value.includes(l.id));
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          role="combobox"
-          aria-expanded={open}
-          className="inline-flex items-center gap-1.5 rounded-md px-2 h-7 text-xs hover:bg-muted/50 transition-colors w-full"
-        >
-          {selectedLabels.length > 0 ? (
-            <>
-              <div className="flex items-center gap-1 flex-1 min-w-0 flex-wrap">
-                {selectedLabels.slice(0, 3).map((label) => (
-                  <span
-                    key={label.id}
-                    className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-muted"
-                  >
-                    <span
-                      className="size-1.5 rounded-full shrink-0"
-                      style={{ backgroundColor: label.color }}
-                    />
-                    <span className="truncate max-w-[60px]">{label.name}</span>
-                  </span>
-                ))}
-                {selectedLabels.length > 3 && (
-                  <span className="text-[10px] text-muted-foreground">
-                    +{selectedLabels.length - 3}
-                  </span>
-                )}
-              </div>
-              <X
-                className="size-3 ml-auto text-muted-foreground/50 hover:text-foreground shrink-0"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onChange([]);
-                }}
-              />
-            </>
-          ) : (
-            <>
-              <span className="text-muted-foreground">None</span>
-              <ChevronsUpDown className="size-3 ml-auto text-muted-foreground/40 shrink-0" />
-            </>
-          )}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[200px] p-0" align="start">
-        <Command>
-          <CommandInput placeholder="Search labels..." className="h-8 text-xs" />
-          <CommandList>
-            <CommandEmpty className="py-3 text-xs text-center">
-              No labels found.
-            </CommandEmpty>
-            <CommandGroup>
-              {labels.map((label) => {
-                const isSelected = value.includes(label.id);
-                return (
-                  <CommandItem
-                    key={label.id}
-                    value={label.name}
-                    onSelect={() => {
-                      onChange(
-                        isSelected
-                          ? value.filter((id) => id !== label.id)
-                          : [...value, label.id],
-                      );
-                    }}
-                    className="text-xs"
-                  >
-                    <span
-                      className="size-2.5 rounded-full shrink-0 mr-1.5"
-                      style={{ backgroundColor: label.color }}
-                    />
-                    {label.name}
                     <Check
                       className={cn(
                         "ml-auto size-3.5",
