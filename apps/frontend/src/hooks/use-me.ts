@@ -1,6 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
-import { gql } from "graphql-request";
-import { oidcGraphClient } from "@/lib/graphql-client";
+import { useQuery, gql, oidcClient } from "@/lib/graphql-client";
 
 const ME_QUERY = gql`
   query Me {
@@ -31,19 +29,26 @@ interface MeResponse {
 }
 
 export function useMe() {
-  return useQuery({
-    queryKey: ["me"],
-    queryFn: async (): Promise<MeData | null> => {
-      const data = await oidcGraphClient.request<MeResponse>(ME_QUERY);
-      console.log({ data })
-      if (!data.me) return null;
-      return {
+  const { data, loading, error } = useQuery<MeResponse>(ME_QUERY, {
+    client: oidcClient,
+  });
+
+  const meData: MeData | null = data?.me
+    ? {
         id: data.me.id,
         profile: data.me.profile,
         role: "manager",
-      };
-    },
-  });
+      }
+    : data === undefined
+      ? (undefined as unknown as null)
+      : null;
+
+  return {
+    data: meData,
+    isLoading: loading,
+    isPending: loading,
+    error: error ?? null,
+  };
 }
 
 export function useIsManager(): boolean {

@@ -1,6 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { graphqlClient } from "@/lib/graphql-client";
-import { gql } from "graphql-request";
+import { useQuery, useMutation, gql } from "@/lib/graphql-client";
 import type { Module } from "@/types/task";
 
 // --- GraphQL operations ---
@@ -58,108 +56,138 @@ const DELETE_MODULE = gql`
   }
 `;
 
-// --- Response type from Bunsane ---
-
-interface ModuleResponse {
-  id: string;
-  moduleInfo: {
-    name: string;
-    description: string;
-    projectId: string;
-  };
-}
-
 // --- Hooks ---
 
 export function useModules(projectId?: string) {
-  return useQuery({
-    queryKey: ["modules", { projectId }],
-    queryFn: async (): Promise<Module[]> => {
-      if (!projectId) return [];
-      const data = await graphqlClient.request<{
-        listModules: Module[];
-      }>(LIST_MODULES, { input: { projectId } });
-      return data.listModules
+  const { data, loading, error } = useQuery<{ listModules: Module[] }>(
+    LIST_MODULES,
+    {
+      variables: { input: { projectId } },
+      skip: !projectId,
     },
-    enabled: !!projectId,
-  });
+  );
+
+  return {
+    data: data?.listModules,
+    isLoading: loading,
+    isPending: loading,
+    error: error ?? null,
+  };
 }
 
 export function useModule(id: string) {
-  return useQuery({
-    queryKey: ["modules", id],
-    queryFn: async (): Promise<Module | null> => {
-      const data = await graphqlClient.request<{
-        getModule: Module | null;
-      }>(GET_MODULE, { input: { id } });
-      return data.getModule;
-    },
-    enabled: !!id,
+  const { data, loading, error } = useQuery<{
+    getModule: Module | null;
+  }>(GET_MODULE, {
+    variables: { input: { id } },
+    skip: !id,
   });
+
+  return {
+    data: data?.getModule ?? null,
+    isLoading: loading,
+    isPending: loading,
+    error: error ?? null,
+  };
 }
 
 export function useCreateModule() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (input: {
+  const [exec, { loading }] = useMutation<{ createModule: Module }>(
+    CREATE_MODULE,
+  );
+
+  return {
+    mutate: (
+      input: { name: string; description?: string; projectId: string },
+      opts?: { onSuccess?: (data: Module) => void },
+    ) => {
+      exec({
+        variables: {
+          input: {
+            name: input.name,
+            description: input.description,
+            projectId: input.projectId,
+          },
+        },
+      }).then((res) => {
+        if (res.data) opts?.onSuccess?.(res.data.createModule);
+      });
+    },
+    mutateAsync: async (input: {
       name: string;
       description?: string;
       projectId: string;
     }): Promise<Module> => {
-      const data = await graphqlClient.request<{
-        createModule: Module;
-      }>(CREATE_MODULE, {
-        input: {
-          name: input.name,
-          description: input.description,
-          projectId: input.projectId,
+      const res = await exec({
+        variables: {
+          input: {
+            name: input.name,
+            description: input.description,
+            projectId: input.projectId,
+          },
         },
       });
-      return data.createModule;
+      return res.data!.createModule;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["modules"] });
-    },
-  });
+    isPending: loading,
+  };
 }
 
 export function useUpdateModule() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({
-      id,
-      input,
-    }: {
+  const [exec, { loading }] = useMutation<{ updateModule: Module }>(
+    UPDATE_MODULE,
+  );
+
+  return {
+    mutate: (
+      vars: { id: string; input: { name?: string; description?: string } },
+      opts?: { onSuccess?: (data: Module) => void },
+    ) => {
+      exec({
+        variables: {
+          input: {
+            id: vars.id,
+            name: vars.input.name,
+            description: vars.input.description,
+          },
+        },
+      }).then((res) => {
+        if (res.data) opts?.onSuccess?.(res.data.updateModule);
+      });
+    },
+    mutateAsync: async (vars: {
       id: string;
       input: { name?: string; description?: string };
     }): Promise<Module> => {
-      const data = await graphqlClient.request<{
-        updateModule: Module;
-      }>(UPDATE_MODULE, {
-        input: {
-          id,
-          name: input.name,
-          description: input.description,
+      const res = await exec({
+        variables: {
+          input: {
+            id: vars.id,
+            name: vars.input.name,
+            description: vars.input.description,
+          },
         },
       });
-      return data.updateModule;
+      return res.data!.updateModule;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["modules"] });
-    },
-  });
+    isPending: loading,
+  };
 }
 
 export function useDeleteModule() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: string): Promise<void> => {
-      await graphqlClient.request<{ deleteModule: boolean }>(DELETE_MODULE, {
-        input: { id },
+  const [exec, { loading }] = useMutation<{ deleteModule: boolean }>(
+    DELETE_MODULE,
+  );
+
+  return {
+    mutate: (id: string, opts?: { onSuccess?: () => void }) => {
+      exec({ variables: { input: { id } } }).then(() => {
+        opts?.onSuccess?.();
       });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["modules"] });
+    mutateAsync: async (id: string): Promise<void> => {
+      await exec({ variables: { input: { id } } });
     },
-  });
+    isPending: loading,
+  };
 }

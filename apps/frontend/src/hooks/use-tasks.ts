@@ -1,6 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { graphqlClient } from "@/lib/graphql-client";
-import { gql } from "graphql-request";
+import { useQuery, useMutation, gql } from "@/lib/graphql-client";
 import type {
   Task,
   CreateTaskInput,
@@ -161,13 +159,10 @@ interface TaskFilters {
 }
 
 export function useTasks(filters: TaskFilters = {}) {
-  return useQuery({
-    queryKey: ["tasks", filters],
-    queryFn: async (): Promise<Task[]> => {
-      if (!filters.moduleId) return [];
-      const data = await graphqlClient.request<{
-        listTasks: TaskResponse[];
-      }>(LIST_TASKS, {
+  const { data, loading, error } = useQuery<{ listTasks: TaskResponse[] }>(
+    LIST_TASKS,
+    {
+      variables: {
         input: {
           moduleId: filters.moduleId,
           status: filters.status,
@@ -177,137 +172,209 @@ export function useTasks(filters: TaskFilters = {}) {
           sort: filters.sort,
           page: filters.page,
         },
-      });
-      return data.listTasks.map(mapTask);
+      },
+      skip: !filters.moduleId,
     },
-    enabled: !!filters.moduleId,
-  });
+  );
+
+  return {
+    data: data?.listTasks.map(mapTask),
+    isLoading: loading,
+    isPending: loading,
+    error: error ?? null,
+  };
 }
 
 export function useTask(taskId: string) {
-  return useQuery({
-    queryKey: ["tasks", taskId],
-    queryFn: async (): Promise<Task | undefined> => {
-      const data = await graphqlClient.request<{
-        getTask: TaskResponse | null;
-      }>(GET_TASK, { input: { id: taskId } });
-      return data.getTask ? mapTask(data.getTask) : undefined;
-    },
-    enabled: !!taskId,
+  const { data, loading, error } = useQuery<{
+    getTask: TaskResponse | null;
+  }>(GET_TASK, {
+    variables: { input: { id: taskId } },
+    skip: !taskId,
   });
+
+  return {
+    data: data?.getTask ? mapTask(data.getTask) : undefined,
+    isLoading: loading,
+    isPending: loading,
+    error: error ?? null,
+  };
 }
 
 export function useCreateTask() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (input: CreateTaskInput): Promise<Task> => {
-      const data = await graphqlClient.request<{
-        createTask: TaskResponse;
-      }>(CREATE_TASK, {
-        input: {
-          title: input.title,
-          description: input.description,
-          status: input.status,
-          priority: input.priority,
-          startDate: input.startDate,
-          dueDate: input.dueDate,
-          assigneeIds: input.assigneeIds,
-          moduleId: input.moduleId,
-          labelIds: input.labelIds,
+  const [exec, { loading }] = useMutation<{ createTask: TaskResponse }>(
+    CREATE_TASK,
+  );
+
+  return {
+    mutate: (
+      input: CreateTaskInput,
+      opts?: { onSuccess?: (data: Task) => void },
+    ) => {
+      exec({
+        variables: {
+          input: {
+            title: input.title,
+            description: input.description,
+            status: input.status,
+            priority: input.priority,
+            startDate: input.startDate,
+            dueDate: input.dueDate,
+            assigneeIds: input.assigneeIds,
+            moduleId: input.moduleId,
+            labelIds: input.labelIds,
+          },
+        },
+      }).then((res) => {
+        if (res.data) opts?.onSuccess?.(mapTask(res.data.createTask));
+      });
+    },
+    mutateAsync: async (input: CreateTaskInput): Promise<Task> => {
+      const res = await exec({
+        variables: {
+          input: {
+            title: input.title,
+            description: input.description,
+            status: input.status,
+            priority: input.priority,
+            startDate: input.startDate,
+            dueDate: input.dueDate,
+            assigneeIds: input.assigneeIds,
+            moduleId: input.moduleId,
+            labelIds: input.labelIds,
+          },
         },
       });
-      return mapTask(data.createTask);
+      return mapTask(res.data!.createTask);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["activities"] });
-    },
-  });
+    isPending: loading,
+  };
 }
 
 export function useUpdateTask() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({
-      id,
-      input,
-    }: {
+  const [exec, { loading }] = useMutation<{ updateTask: TaskResponse }>(
+    UPDATE_TASK,
+  );
+
+  return {
+    mutate: (
+      vars: { id: string; input: UpdateTaskInput },
+      opts?: { onSuccess?: (data: Task) => void },
+    ) => {
+      exec({
+        variables: {
+          input: {
+            id: vars.id,
+            title: vars.input.title,
+            description: vars.input.description,
+            status: vars.input.status,
+            priority: vars.input.priority,
+            startDate: vars.input.startDate,
+            dueDate: vars.input.dueDate,
+            assigneeIds: vars.input.assigneeIds,
+            labelIds: vars.input.labelIds,
+          },
+        },
+      }).then((res) => {
+        if (res.data) opts?.onSuccess?.(mapTask(res.data.updateTask));
+      });
+    },
+    mutateAsync: async (vars: {
       id: string;
       input: UpdateTaskInput;
     }): Promise<Task> => {
-      const data = await graphqlClient.request<{
-        updateTask: TaskResponse;
-      }>(UPDATE_TASK, {
-        input: {
-          id,
-          title: input.title,
-          description: input.description,
-          status: input.status,
-          priority: input.priority,
-          startDate: input.startDate,
-          dueDate: input.dueDate,
-          assigneeIds: input.assigneeIds,
-          labelIds: input.labelIds,
+      const res = await exec({
+        variables: {
+          input: {
+            id: vars.id,
+            title: vars.input.title,
+            description: vars.input.description,
+            status: vars.input.status,
+            priority: vars.input.priority,
+            startDate: vars.input.startDate,
+            dueDate: vars.input.dueDate,
+            assigneeIds: vars.input.assigneeIds,
+            labelIds: vars.input.labelIds,
+          },
         },
       });
-      return mapTask(data.updateTask);
+      return mapTask(res.data!.updateTask);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["activities"] });
-    },
-  });
+    isPending: loading,
+  };
 }
 
 export function useDeleteTask() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: string): Promise<void> => {
-      await graphqlClient.request<{ deleteTask: boolean }>(DELETE_TASK, {
-        input: { id },
+  const [exec, { loading }] = useMutation<{ deleteTask: boolean }>(
+    DELETE_TASK,
+  );
+
+  return {
+    mutate: (id: string, opts?: { onSuccess?: () => void }) => {
+      exec({ variables: { input: { id } } }).then(() => {
+        opts?.onSuccess?.();
       });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    mutateAsync: async (id: string): Promise<void> => {
+      await exec({ variables: { input: { id } } });
     },
-  });
+    isPending: loading,
+  };
 }
 
 export function useReorderTask() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({
-      id,
-      newOrder,
-      newStatus,
-    }: {
+  const [exec, { loading }] = useMutation<{ reorderTask: TaskResponse }>(
+    REORDER_TASK,
+  );
+
+  return {
+    mutate: (
+      vars: { id: string; newOrder: number; newStatus?: TaskStatus },
+      opts?: { onSuccess?: (data: Task) => void },
+    ) => {
+      exec({
+        variables: {
+          input: {
+            id: vars.id,
+            newOrder: vars.newOrder,
+            newStatus: vars.newStatus,
+          },
+        },
+      }).then((res) => {
+        if (res.data) opts?.onSuccess?.(mapTask(res.data.reorderTask));
+      });
+    },
+    mutateAsync: async (vars: {
       id: string;
       newOrder: number;
       newStatus?: TaskStatus;
     }): Promise<Task> => {
-      const data = await graphqlClient.request<{
-        reorderTask: TaskResponse;
-      }>(REORDER_TASK, { input: { id, newOrder, newStatus } });
-      return mapTask(data.reorderTask);
+      const res = await exec({
+        variables: {
+          input: {
+            id: vars.id,
+            newOrder: vars.newOrder,
+            newStatus: vars.newStatus,
+          },
+        },
+      });
+      return mapTask(res.data!.reorderTask);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-    },
-  });
+    isPending: loading,
+  };
 }
 
 export function useAllTasks(filters: { projectId?: string } = {}) {
-  return useQuery({
-    queryKey: ["allTasks", filters],
-    queryFn: async (): Promise<Task[]> => {
-      const data = await graphqlClient.request<{
-        listAllTasks: TaskResponse[];
-      }>(LIST_ALL_TASKS, {
-        input: {
-          projectId: filters.projectId,
-        },
-      });
-      return data.listAllTasks.map(mapTask);
-    },
+  const { data, loading, error } = useQuery<{
+    listAllTasks: TaskResponse[];
+  }>(LIST_ALL_TASKS, {
+    variables: { input: { projectId: filters.projectId } },
   });
+
+  return {
+    data: data?.listAllTasks.map(mapTask),
+    isLoading: loading,
+    isPending: loading,
+    error: error ?? null,
+  };
 }

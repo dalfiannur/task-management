@@ -1,7 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { graphqlClient } from "@/lib/graphql-client";
-import { gql } from "graphql-request";
+import { useQuery, useMutation, gql } from "@/lib/graphql-client";
 import { toast } from "sonner";
 import type { Notification } from "@/types/notification";
 
@@ -51,35 +49,35 @@ const MARK_ALL_READ = gql`
 `;
 
 export function useNotifications(limit = 50) {
-  return useQuery({
-    queryKey: ["notifications", limit],
-    queryFn: async (): Promise<Notification[]> => {
-      const data = await graphqlClient.request<{
-        listNotifications: Notification[];
-      }>(LIST_NOTIFICATIONS, { input: { limit } });
-      return data.listNotifications;
-    },
+  const { data, loading, error } = useQuery<{
+    listNotifications: Notification[];
+  }>(LIST_NOTIFICATIONS, {
+    variables: { input: { limit } },
   });
+
+  return {
+    data: data?.listNotifications,
+    isLoading: loading,
+    isPending: loading,
+    error: error ?? null,
+  };
 }
 
 export function useUnreadNotificationCount() {
   const prevCountRef = useRef<number | null>(null);
 
-  const query = useQuery({
-    queryKey: ["notifications", "unread-count"],
-    queryFn: async (): Promise<number> => {
-      const data = await graphqlClient.request<{
-        unreadNotificationCount: number;
-      }>(UNREAD_COUNT, { input: {} });
-      return data.unreadNotificationCount;
-    },
-    refetchInterval: 30_000,
+  const { data, loading, error } = useQuery<{
+    unreadNotificationCount: number;
+  }>(UNREAD_COUNT, {
+    variables: { input: {} },
+    pollInterval: 30_000,
   });
+
+  const count = data?.unreadNotificationCount;
 
   // Toast on count increase
   useEffect(() => {
-    if (query.data === undefined) return;
-    const count = query.data;
+    if (count === undefined) return;
     const prev = prevCountRef.current;
 
     if (prev !== null && count > prev) {
@@ -91,37 +89,50 @@ export function useUnreadNotificationCount() {
       );
     }
     prevCountRef.current = count;
-  }, [query.data]);
+  }, [count]);
 
-  return query;
+  return {
+    data: count,
+    isLoading: loading,
+    isPending: loading,
+    error: error ?? null,
+  };
 }
 
 export function useMarkNotificationsRead() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (ids: string[]): Promise<boolean> => {
-      const data = await graphqlClient.request<{
-        markNotificationsRead: boolean;
-      }>(MARK_READ, { input: { ids } });
-      return data.markNotificationsRead;
+  const [exec, { loading }] = useMutation<{
+    markNotificationsRead: boolean;
+  }>(MARK_READ);
+
+  return {
+    mutate: (ids: string[], opts?: { onSuccess?: () => void }) => {
+      exec({ variables: { input: { ids } } }).then(() => {
+        opts?.onSuccess?.();
+      });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    mutateAsync: async (ids: string[]): Promise<boolean> => {
+      const res = await exec({ variables: { input: { ids } } });
+      return res.data!.markNotificationsRead;
     },
-  });
+    isPending: loading,
+  };
 }
 
 export function useMarkAllNotificationsRead() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (): Promise<boolean> => {
-      const data = await graphqlClient.request<{
-        markAllNotificationsRead: boolean;
-      }>(MARK_ALL_READ, { input: {} });
-      return data.markAllNotificationsRead;
+  const [exec, { loading }] = useMutation<{
+    markAllNotificationsRead: boolean;
+  }>(MARK_ALL_READ);
+
+  return {
+    mutate: (opts?: { onSuccess?: () => void }) => {
+      exec({ variables: { input: {} } }).then(() => {
+        opts?.onSuccess?.();
+      });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    mutateAsync: async (): Promise<boolean> => {
+      const res = await exec({ variables: { input: {} } });
+      return res.data!.markAllNotificationsRead;
     },
-  });
+    isPending: loading,
+  };
 }

@@ -1,6 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { graphqlClient } from "@/lib/graphql-client";
-import { gql } from "graphql-request";
+import { useQuery, useMutation, gql } from "@/lib/graphql-client";
 import type { Page } from "@/types/page";
 
 const PAGE_FIELDS = gql`
@@ -71,57 +69,87 @@ const REORDER_PAGES = gql`
 `;
 
 export function usePages(projectId: string) {
-  return useQuery({
-    queryKey: ["pages", projectId],
-    queryFn: async (): Promise<Page[]> => {
-      const data = await graphqlClient.request<{
-        listPages: Page[];
-      }>(LIST_PAGES, { input: { projectId } });
-      return data.listPages;
+  const { data, loading, error } = useQuery<{ listPages: Page[] }>(
+    LIST_PAGES,
+    {
+      variables: { input: { projectId } },
+      skip: !projectId,
     },
-    enabled: !!projectId,
-  });
+  );
+
+  return {
+    data: data?.listPages,
+    isLoading: loading,
+    isPending: loading,
+    error: error ?? null,
+  };
 }
 
 export function usePage(id: string) {
-  return useQuery({
-    queryKey: ["page", id],
-    queryFn: async (): Promise<Page> => {
-      const data = await graphqlClient.request<{
-        getPage: Page;
-      }>(GET_PAGE, { input: { id } });
-      return data.getPage;
-    },
-    enabled: !!id,
+  const { data, loading, error } = useQuery<{ getPage: Page }>(GET_PAGE, {
+    variables: { input: { id } },
+    skip: !id,
   });
+
+  return {
+    data: data?.getPage,
+    isLoading: loading,
+    isPending: loading,
+    error: error ?? null,
+  };
 }
 
 export function useCreatePage() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (input: {
+  const [exec, { loading }] = useMutation<{ createPage: Page }>(CREATE_PAGE);
+
+  return {
+    mutate: (
+      input: {
+        projectId: string;
+        title: string;
+        icon?: string;
+        content?: string;
+      },
+      opts?: { onSuccess?: (data: Page) => void },
+    ) => {
+      exec({ variables: { input } }).then((res) => {
+        if (res.data) opts?.onSuccess?.(res.data.createPage);
+      });
+    },
+    mutateAsync: async (input: {
       projectId: string;
       title: string;
       icon?: string;
       content?: string;
     }): Promise<Page> => {
-      const data = await graphqlClient.request<{
-        createPage: Page;
-      }>(CREATE_PAGE, { input });
-      return data.createPage;
+      const res = await exec({ variables: { input } });
+      return res.data!.createPage;
     },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["pages", variables.projectId],
-      });
-    },
-  });
+    isPending: loading,
+  };
 }
 
 export function useUpdatePage() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (input: {
+  const [exec, { loading }] = useMutation<{ updatePage: Page }>(UPDATE_PAGE);
+
+  return {
+    mutate: (
+      input: {
+        id: string;
+        projectId: string;
+        title?: string;
+        icon?: string;
+        content?: string;
+        order?: number;
+      },
+      opts?: { onSuccess?: (data: Page) => void },
+    ) => {
+      const { projectId: _projectId, ...mutationInput } = input;
+      exec({ variables: { input: mutationInput } }).then((res) => {
+        if (res.data) opts?.onSuccess?.(res.data.updatePage);
+      });
+    },
+    mutateAsync: async (input: {
       id: string;
       projectId: string;
       title?: string;
@@ -130,58 +158,59 @@ export function useUpdatePage() {
       order?: number;
     }): Promise<Page> => {
       const { projectId: _projectId, ...mutationInput } = input;
-      const data = await graphqlClient.request<{
-        updatePage: Page;
-      }>(UPDATE_PAGE, { input: mutationInput });
-      return data.updatePage;
+      const res = await exec({ variables: { input: mutationInput } });
+      return res.data!.updatePage;
     },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({
-        queryKey: ["pages", data.pageInfo.projectId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["page", data.id],
-      });
-    },
-  });
+    isPending: loading,
+  };
 }
 
 export function useDeletePage() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (input: {
+  const [exec, { loading }] = useMutation<{ deletePage: boolean }>(
+    DELETE_PAGE,
+  );
+
+  return {
+    mutate: (
+      input: { id: string; projectId: string },
+      opts?: { onSuccess?: () => void },
+    ) => {
+      exec({ variables: { input: { id: input.id } } }).then(() => {
+        opts?.onSuccess?.();
+      });
+    },
+    mutateAsync: async (input: {
       id: string;
       projectId: string;
     }): Promise<boolean> => {
-      const data = await graphqlClient.request<{
-        deletePage: boolean;
-      }>(DELETE_PAGE, { input: { id: input.id } });
-      return data.deletePage;
+      const res = await exec({ variables: { input: { id: input.id } } });
+      return res.data!.deletePage;
     },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["pages", variables.projectId],
-      });
-    },
-  });
+    isPending: loading,
+  };
 }
 
 export function useReorderPages() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (input: {
+  const [exec, { loading }] = useMutation<{ reorderPages: boolean }>(
+    REORDER_PAGES,
+  );
+
+  return {
+    mutate: (
+      input: { projectId: string; pageIds: string[] },
+      opts?: { onSuccess?: () => void },
+    ) => {
+      exec({ variables: { input } }).then(() => {
+        opts?.onSuccess?.();
+      });
+    },
+    mutateAsync: async (input: {
       projectId: string;
       pageIds: string[];
     }): Promise<boolean> => {
-      const data = await graphqlClient.request<{
-        reorderPages: boolean;
-      }>(REORDER_PAGES, { input });
-      return data.reorderPages;
+      const res = await exec({ variables: { input } });
+      return res.data!.reorderPages;
     },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["pages", variables.projectId],
-      });
-    },
-  });
+    isPending: loading,
+  };
 }

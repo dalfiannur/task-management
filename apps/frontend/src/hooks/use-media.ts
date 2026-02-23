@@ -1,6 +1,5 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { graphqlClient, getAuthToken } from "@/lib/graphql-client";
-import { gql } from "graphql-request";
+import { useState, useEffect, useCallback } from "react";
+import { useQuery, useMutation, gql, getAuthToken } from "@/lib/graphql-client";
 import type { MediaFile } from "@/types/media";
 
 const API_BASE =
@@ -57,6 +56,14 @@ const DELETE_MEDIA_FILE = gql`
   }
 `;
 
+// Simple refetch signal for media list
+type RefetchCallback = () => void;
+const mediaRefetchCallbacks = new Set<RefetchCallback>();
+
+function triggerMediaRefetch() {
+  mediaRefetchCallbacks.forEach((cb) => cb());
+}
+
 interface MediaFilters {
   projectId: string;
   taskId?: string;
@@ -64,105 +71,157 @@ interface MediaFilters {
 }
 
 export function useMediaFiles(filters: MediaFilters) {
-  return useQuery({
-    queryKey: ["media", filters],
-    queryFn: async (): Promise<MediaFile[]> => {
-      const data = await graphqlClient.request<{
-        listMediaFiles: MediaFile[];
-      }>(LIST_MEDIA_FILES, {
-        input: {
-          projectId: filters.projectId,
-          taskId: filters.taskId,
-          mimeType: filters.mimeType,
-        },
-      });
-      return data.listMediaFiles;
+  const { data, loading, error, refetch } = useQuery<{
+    listMediaFiles: MediaFile[];
+  }>(LIST_MEDIA_FILES, {
+    variables: {
+      input: {
+        projectId: filters.projectId,
+        taskId: filters.taskId,
+        mimeType: filters.mimeType,
+      },
     },
   });
+
+  const doRefetch = useCallback(() => {
+    refetch();
+  }, [refetch]);
+
+  // Register for refetch signals
+  useEffect(() => {
+    mediaRefetchCallbacks.add(doRefetch);
+    return () => {
+      mediaRefetchCallbacks.delete(doRefetch);
+    };
+  }, [doRefetch]);
+
+  return {
+    data: data?.listMediaFiles,
+    isLoading: loading,
+    isPending: loading,
+    error: error ?? null,
+  };
 }
 
 export function useMediaFile(id: string) {
-  return useQuery({
-    queryKey: ["media", id],
-    queryFn: async (): Promise<MediaFile | null> => {
-      const data = await graphqlClient.request<{
-        getMediaFile: MediaFile | null;
-      }>(GET_MEDIA_FILE, { input: { id } });
-      return data.getMediaFile;
-    },
-    enabled: !!id,
+  const { data, loading, error } = useQuery<{
+    getMediaFile: MediaFile | null;
+  }>(GET_MEDIA_FILE, {
+    variables: { input: { id } },
+    skip: !id,
   });
+
+  return {
+    data: data?.getMediaFile ?? null,
+    isLoading: loading,
+    isPending: loading,
+    error: error ?? null,
+  };
 }
 
 export function useUploadMedia() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({
-      file,
-      projectId,
-      taskId,
-    }: {
+  const [isPending, setIsPending] = useState(false);
+
+  return {
+    mutate: (
+      vars: { file: File; projectId: string; taskId?: string },
+      opts?: { onSuccess?: (data: MediaFile) => void },
+    ) => {
+      setIsPending(true);
+      uploadFile(vars)
+        .then((data) => {
+          triggerMediaRefetch();
+          opts?.onSuccess?.(data);
+        })
+        .finally(() => setIsPending(false));
+    },
+    mutateAsync: async (vars: {
       file: File;
       projectId: string;
       taskId?: string;
     }): Promise<MediaFile> => {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("projectId", projectId);
-      if (taskId) formData.append("taskId", taskId);
-
-      const token = getAuthToken();
-      const res = await fetch(`${API_BASE}/api/media/upload`, {
-        method: "POST",
-        body: formData,
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: "Upload failed" }));
-        throw new Error(err.error ?? "Upload failed");
+      setIsPending(true);
+      try {
+        const result = await uploadFile(vars);
+        triggerMediaRefetch();
+        return result;
+      } finally {
+        setIsPending(false);
       }
+    },
+    isPending,
+  };
+}
 
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["media"] });
-    },
+async function uploadFile(vars: {
+  file: File;
+  projectId: string;
+  taskId?: string;
+}): Promise<MediaFile> {
+  const formData = new FormData();
+  formData.append("file", vars.file);
+  formData.append("projectId", vars.projectId);
+  if (vars.taskId) formData.append("taskId", vars.taskId);
+
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE}/api/media/upload`, {
+    method: "POST",
+    body: formData,
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
   });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: "Upload failed" }));
+    throw new Error(err.error ?? "Upload failed");
+  }
+
+  return res.json();
 }
 
 export function useDeleteMedia() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: string): Promise<boolean> => {
-      const data = await graphqlClient.request<{
-        deleteMediaFile: boolean;
-      }>(DELETE_MEDIA_FILE, { input: { id } });
-      return data.deleteMediaFile;
+  const [exec, { loading }] = useMutation<{ deleteMediaFile: boolean }>(
+    DELETE_MEDIA_FILE,
+  );
+
+  return {
+    mutate: (id: string, opts?: { onSuccess?: () => void }) => {
+      exec({ variables: { input: { id } } }).then(() => {
+        opts?.onSuccess?.();
+      });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["media"] });
+    mutateAsync: async (id: string): Promise<boolean> => {
+      const res = await exec({ variables: { input: { id } } });
+      return res.data!.deleteMediaFile;
     },
-  });
+    isPending: loading,
+  };
 }
 
 export function useUpdateMedia() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({
-      id,
-      taskId,
-    }: {
+  const [exec, { loading }] = useMutation<{ updateMediaFile: MediaFile }>(
+    UPDATE_MEDIA_FILE,
+  );
+
+  return {
+    mutate: (
+      vars: { id: string; taskId?: string },
+      opts?: { onSuccess?: (data: MediaFile) => void },
+    ) => {
+      exec({ variables: { input: { id: vars.id, taskId: vars.taskId } } }).then(
+        (res) => {
+          if (res.data) opts?.onSuccess?.(res.data.updateMediaFile);
+        },
+      );
+    },
+    mutateAsync: async (vars: {
       id: string;
       taskId?: string;
     }): Promise<MediaFile> => {
-      const data = await graphqlClient.request<{
-        updateMediaFile: MediaFile;
-      }>(UPDATE_MEDIA_FILE, { input: { id, taskId } });
-      return data.updateMediaFile;
+      const res = await exec({
+        variables: { input: { id: vars.id, taskId: vars.taskId } },
+      });
+      return res.data!.updateMediaFile;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["media"] });
-    },
-  });
+    isPending: loading,
+  };
 }

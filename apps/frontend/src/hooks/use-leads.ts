@@ -1,11 +1,8 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, gql, coreClient } from "@/lib/graphql-client";
 import type { Project, ProjectCore, ProjectStatus } from "@/types/project";
-import { coreGraphClient } from "@/lib/graphql-client";
-import { gql } from "graphql-request";
-import { queryClient } from "@/lib/query-client";
 
 const LIST_PROJECTS = gql`
-  query ListProjects {
+  query ListLeadProjects {
     listProjects(input: {winStage: pending}) {
       id
       code
@@ -20,7 +17,7 @@ const LIST_PROJECTS = gql`
 `;
 
 const APPROVE_PROJECT = gql`
-  mutation ApproveProject($input: updateProjectInput!) {
+  mutation ApproveLeadProject($input: updateProjectInput!) {
     updateProject(input: $input) {
       id
       code
@@ -47,33 +44,48 @@ function mapCoreProject(p: ProjectCore): ProjectWithCore {
       code: p.code,
       name: { name: p.name.name, description: p.name.description },
       status: p.status,
-      winStage: p.winStage
+      winStage: p.winStage,
     },
   };
 }
 
 export function useNewLeads() {
-  return useQuery({
-    queryKey: ["leads"],
-    queryFn: async (): Promise<ProjectWithCore[]> => {
-      const data = await coreGraphClient.request<{
-        listProjects: ProjectCore[];
-      }>(LIST_PROJECTS);
-      return data.listProjects.map(mapCoreProject);
-    },
+  const { data, loading, error } = useQuery<{
+    listProjects: ProjectCore[];
+  }>(LIST_PROJECTS, {
+    client: coreClient,
   });
+
+  return {
+    data: data?.listProjects.map(mapCoreProject),
+    isLoading: loading,
+    isPending: loading,
+    error: error ?? null,
+  };
 }
 
 export function useApproveLead() {
-  return useMutation({
-    mutationFn: async (input: { id: string; winStage: string; }): Promise<ProjectCore> => {
-      const data = await coreGraphClient.request<{
-        updateProject: ProjectCore;
-      }>(APPROVE_PROJECT, { input });
-      return data.updateProject;
+  const [exec, { loading }] = useMutation<{ updateProject: ProjectCore }>(
+    APPROVE_PROJECT,
+    { client: coreClient },
+  );
+
+  return {
+    mutate: (
+      input: { id: string; winStage: string },
+      opts?: { onSuccess?: (data: ProjectCore) => void },
+    ) => {
+      exec({ variables: { input } }).then((res) => {
+        if (res.data) opts?.onSuccess?.(res.data.updateProject);
+      });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["leads"] });
+    mutateAsync: async (input: {
+      id: string;
+      winStage: string;
+    }): Promise<ProjectCore> => {
+      const res = await exec({ variables: { input } });
+      return res.data!.updateProject;
     },
-  });
+    isPending: loading,
+  };
 }

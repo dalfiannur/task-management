@@ -1,6 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { graphqlClient } from "@/lib/graphql-client";
-import { gql } from "graphql-request";
+import { useQuery, useMutation, gql } from "@/lib/graphql-client";
 import type { Label } from "@/types/task";
 
 // --- GraphQL operations ---
@@ -71,81 +69,118 @@ function mapLabel(l: LabelResponse): Label {
 // --- Hooks ---
 
 export function useLabels(projectId?: string) {
-  return useQuery({
-    queryKey: ["labels", { projectId }],
-    queryFn: async (): Promise<Label[]> => {
-      if (!projectId) return [];
-      const data = await graphqlClient.request<{
-        listLabels: LabelResponse[];
-      }>(LIST_LABELS, { input: { projectId } });
-      return data.listLabels.map(mapLabel);
-    },
-    enabled: !!projectId,
+  const { data, loading, error } = useQuery<{
+    listLabels: LabelResponse[];
+  }>(LIST_LABELS, {
+    variables: { input: { projectId } },
+    skip: !projectId,
   });
+
+  return {
+    data: data?.listLabels.map(mapLabel),
+    isLoading: loading,
+    isPending: loading,
+    error: error ?? null,
+  };
 }
 
 export function useCreateLabel() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (input: {
+  const [exec, { loading }] = useMutation<{ createLabel: LabelResponse }>(
+    CREATE_LABEL,
+  );
+
+  return {
+    mutate: (
+      input: { name: string; color: string; projectId: string },
+      opts?: { onSuccess?: (data: Label) => void },
+    ) => {
+      exec({
+        variables: {
+          input: {
+            name: input.name,
+            color: input.color,
+            projectId: input.projectId,
+          },
+        },
+      }).then((res) => {
+        if (res.data) opts?.onSuccess?.(mapLabel(res.data.createLabel));
+      });
+    },
+    mutateAsync: async (input: {
       name: string;
       color: string;
       projectId: string;
     }): Promise<Label> => {
-      const data = await graphqlClient.request<{
-        createLabel: LabelResponse;
-      }>(CREATE_LABEL, {
-        input: {
-          name: input.name,
-          color: input.color,
-          projectId: input.projectId,
+      const res = await exec({
+        variables: {
+          input: {
+            name: input.name,
+            color: input.color,
+            projectId: input.projectId,
+          },
         },
       });
-      return mapLabel(data.createLabel);
+      return mapLabel(res.data!.createLabel);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["labels"] });
-    },
-  });
+    isPending: loading,
+  };
 }
 
 export function useUpdateLabel() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({
-      id,
-      input,
-    }: {
+  const [exec, { loading }] = useMutation<{ updateLabel: LabelResponse }>(
+    UPDATE_LABEL,
+  );
+
+  return {
+    mutate: (
+      vars: { id: string; input: { name?: string; color?: string } },
+      opts?: { onSuccess?: (data: Label) => void },
+    ) => {
+      exec({
+        variables: {
+          input: {
+            id: vars.id,
+            name: vars.input.name,
+            color: vars.input.color,
+          },
+        },
+      }).then((res) => {
+        if (res.data) opts?.onSuccess?.(mapLabel(res.data.updateLabel));
+      });
+    },
+    mutateAsync: async (vars: {
       id: string;
       input: { name?: string; color?: string };
     }): Promise<Label> => {
-      const data = await graphqlClient.request<{
-        updateLabel: LabelResponse;
-      }>(UPDATE_LABEL, {
-        input: {
-          id,
-          name: input.name,
-          color: input.color,
+      const res = await exec({
+        variables: {
+          input: {
+            id: vars.id,
+            name: vars.input.name,
+            color: vars.input.color,
+          },
         },
       });
-      return mapLabel(data.updateLabel);
+      return mapLabel(res.data!.updateLabel);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["labels"] });
-    },
-  });
+    isPending: loading,
+  };
 }
 
 export function useDeleteLabel() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: string): Promise<void> => {
-      await graphqlClient.request<{ deleteLabel: boolean }>(DELETE_LABEL, {
-        input: { id },
+  const [exec, { loading }] = useMutation<{ deleteLabel: boolean }>(
+    DELETE_LABEL,
+  );
+
+  return {
+    mutate: (id: string, opts?: { onSuccess?: () => void }) => {
+      exec({ variables: { input: { id } } }).then(() => {
+        opts?.onSuccess?.();
       });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["labels"] });
+    mutateAsync: async (id: string): Promise<void> => {
+      await exec({ variables: { input: { id } } });
     },
-  });
+    isPending: loading,
+  };
 }
