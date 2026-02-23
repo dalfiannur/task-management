@@ -1,0 +1,216 @@
+/* ============================================
+   Dialog Overlay
+   ============================================ */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background-color: rgb(0 0 0 / 0.5);
+
+  /* Enter animation */
+  animation: overlayIn 150ms ease forwards;
+}
+
+.overlay[data-state="closed"] {
+  animation: overlayOut 150ms ease forwards;
+}
+
+/* ============================================
+   Dialog Content
+   ============================================ */
+
+.content {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 50;
+  display: grid;
+  width: 100%;
+  max-width: calc(100% - 2rem);
+  transform: translate(-50%, -50%);
+  gap: 1rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background-color: var(--background);
+  padding: 1.5rem;
+  box-shadow:
+    0 10px 15px -3px rgb(0 0 0 / 0.1),
+    0 4px 6px -4px rgb(0 0 0 / 0.1);
+  outline: none;
+
+  /* Enter animation */
+  animation: contentIn 200ms ease forwards;
+}
+
+.content[data-state="closed"] {
+  animation: contentOut 200ms ease forwards;
+}
+
+@media (min-width: 640px) {
+  .content {
+    max-width: 32rem; /* sm:max-w-lg */
+  }
+}
+
+/* ============================================
+   Dialog Close Button
+   ============================================ */
+
+.closeButton {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  border-radius: 2px;
+  opacity: 0.7;
+  transition: opacity 150ms;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+}
+
+.closeButton:hover {
+  opacity: 1;
+}
+
+.closeButton:focus {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--background),
+    0 0 0 4px var(--ring);
+}
+
+.closeButton:disabled {
+  pointer-events: none;
+}
+
+.closeButton[data-state="open"] {
+  background-color: var(--accent);
+  color: var(--muted-foreground);
+}
+
+.closeButton svg {
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+.closeButton svg:not([class*="size-"]) {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* ============================================
+   Dialog Header
+   ============================================ */
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  text-align: center;
+}
+
+@media (min-width: 640px) {
+  .header {
+    text-align: left;
+  }
+}
+
+/* ============================================
+   Dialog Footer
+   ============================================ */
+
+.footer {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 0.5rem;
+}
+
+@media (min-width: 640px) {
+  .footer {
+    flex-direction: row;
+    justify-content: flex-end;
+  }
+}
+
+/* ============================================
+   Dialog Title
+   ============================================ */
+
+.title {
+  font-size: 1.125rem;
+  line-height: 1;
+  font-weight: 600;
+}
+
+/* ============================================
+   Dialog Description
+   ============================================ */
+
+.description {
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+/* ============================================
+   Utility
+   ============================================ */
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* ============================================
+   Keyframes
+   ============================================ */
+
+@keyframes overlayIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes overlayOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes contentIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes contentOut {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.95);
+  }
+}

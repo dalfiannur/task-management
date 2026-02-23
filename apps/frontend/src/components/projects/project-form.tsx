@@ -22,6 +22,7 @@ import { UserCombobox } from "@/components/shared/user-combobox";
 // import { useCreateProject, useUpdateProject } from "@/hooks/use-projects";
 import type { Project, ProjectCore, ProjectStatus } from "@/types/project";
 import { PROJECT_STATUS_CONFIG } from "@/types/project";
+import styles from "./project-form.module.css";
 
 interface ProjectFormProps {
   open: boolean;
@@ -48,15 +49,15 @@ export function ProjectForm({ open, onOpenChange, project }: ProjectFormProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className={styles.dialogContent}>
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>
               {isEditing ? "Edit Project" : "Create Project"}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
+          <div className={styles.fieldGroup}>
+            <div className={styles.field}>
               <Label htmlFor="project-title">Title</Label>
               <Input
                 id="project-title"
@@ -66,7 +67,7 @@ export function ProjectForm({ open, onOpenChange, project }: ProjectFormProps) {
                 autoFocus
               />
             </div>
-            <div className="space-y-2">
+            <div className={styles.field}>
               <Label>Description</Label>
               <RichTextEditor
                 content={description}
@@ -74,11 +75,11 @@ export function ProjectForm({ open, onOpenChange, project }: ProjectFormProps) {
                 placeholder="Describe the project..."
               />
             </div>
-            <div className="space-y-2">
+            <div className={styles.field}>
               <Label>Person In Contact</Label>
               <UserCombobox value={picId} onChange={setPicId} />
             </div>
-            <div className="space-y-2">
+            <div className={styles.field}>
               <Label>Status</Label>
               <Select
                 value={status}

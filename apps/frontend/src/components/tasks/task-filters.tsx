@@ -1,4 +1,4 @@
-import { useNavigate } from "@tanstack/react-router";
+import { useSearchParams } from "react-router";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/select";
 import { X } from "lucide-react";
 import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG } from "@/types/task";
+import styles from "./task-filters.module.css";
 
 interface TaskFiltersProps {
   filters: {
@@ -20,33 +21,33 @@ interface TaskFiltersProps {
 }
 
 export function TaskFilters({ filters }: TaskFiltersProps) {
-  const navigate = useNavigate();
+  const [, setSearchParams] = useSearchParams();
 
   const updateFilter = (key: string, value: string | undefined) => {
-    navigate({
-      search: ((prev: Record<string, unknown>) => ({
-        ...prev,
-        [key]: value,
-        page: 1,
-      })) as never,
+    setSearchParams((prev) => {
+      if (value) {
+        prev.set(key, value);
+      } else {
+        prev.delete(key);
+      }
+      prev.set("page", "1");
+      return prev;
     });
   };
 
   const clearFilters = () => {
-    navigate({
-      search: { sort: "order", page: 1 } as never,
-    });
+    setSearchParams({ sort: "order", page: "1" });
   };
 
   const hasFilters = filters.status || filters.priority || filters.assignee || filters.label;
 
   return (
-    <div className="flex items-center gap-2 flex-wrap">
+    <div className={styles.container}>
       <Select
         value={filters.status ?? "all"}
         onValueChange={(v) => updateFilter("status", v === "all" ? undefined : v)}
       >
-        <SelectTrigger className="w-[140px] h-8">
+        <SelectTrigger className={styles.filterTrigger}>
           <SelectValue placeholder="Status" />
         </SelectTrigger>
         <SelectContent>
@@ -63,7 +64,7 @@ export function TaskFilters({ filters }: TaskFiltersProps) {
         value={filters.priority ?? "all"}
         onValueChange={(v) => updateFilter("priority", v === "all" ? undefined : v)}
       >
-        <SelectTrigger className="w-[140px] h-8">
+        <SelectTrigger className={styles.filterTrigger}>
           <SelectValue placeholder="Priority" />
         </SelectTrigger>
         <SelectContent>
@@ -77,8 +78,8 @@ export function TaskFilters({ filters }: TaskFiltersProps) {
       </Select>
 
       {hasFilters && (
-        <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8">
-          <X className="size-4 mr-1" />
+        <Button variant="ghost" size="sm" onClick={clearFilters} className={styles.clearButton}>
+          <X className={styles.clearIcon} />
           Clear
         </Button>
       )}

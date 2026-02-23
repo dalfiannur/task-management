@@ -1,0 +1,56 @@
+.loadingContainer {
+  padding: 1.5rem;
+}
+
+.loadingContainer > * + * {
+  margin-top: 1rem;
+}
+
+.container {
+  padding: 1.5rem;
+}
+
+.filtersWrapper {
+  margin-bottom: 1rem;
+}
+
+.tableWrapper {
+  border-radius: calc(var(--radius) - 2px);
+  border: 1px solid var(--border);
+}
+
+.cursorPointer {
+  cursor: pointer;
+}
+
+.statusTrigger {
+  height: auto;
+  border-radius: 9999px;
+  border-color: transparent;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 500;
+  width: fit-content;
+  box-shadow: none;
+}
+
+/* Hide the chevron icon inside the select trigger */
+.statusTrigger :global(svg) {
+  display: none;
+}
+
+.fontMedium {
+  font-weight: 500;
+}
+
+.mutedText {
+  color: var(--muted-foreground);
+}
+
+.emptyCell {
+  text-align: center;
+  padding-top: 2rem;
+  padding-bottom: 2rem;
+  color: var(--muted-foreground);
+}

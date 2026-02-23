@@ -1,0 +1,23 @@
+.dialogContent {
+  max-width: 32rem;
+}
+
+@media (min-width: 640px) {
+  .dialogContent {
+    max-width: 32rem;
+  }
+}
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}

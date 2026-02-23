@@ -11,7 +11,7 @@ Sedjiwa Portal Task Management — a project/task management tool with a React S
 ```
 task-management/
 ├── apps/
-│   ├── frontend/   # Vite + React 19 + TanStack Router/Query + Tailwind CSS
+│   ├── frontend/   # Vite + React 19 + React Router v7 + Apollo Client + CSS Modules
 │   └── backend/    # Bun + Bunsane (custom ECS framework) + PostgreSQL
 ```
 
@@ -41,11 +41,11 @@ No test framework is configured in either package.
 
 ### Frontend
 
-**Stack:** React 19, TanStack Router v1 (file-based, auto code-splitting), TanStack Query v5, Zustand, Tailwind CSS, shadcn/ui (Radix primitives), graphql-request.
+**Stack:** React 19, React Router v7, Apollo Client, Zustand, Tailwind CSS + CSS Modules, shadcn/ui (Radix primitives).
 
 **Auth:** OIDC via `react-oidc-context` / `oidc-client-ts`. Token extracted from OIDC provider, set on GraphQL client via `setAuthToken()`. Unauthenticated users redirect to `/callback` which triggers `signinRedirect()`.
 
-**Data flow:** All server data flows through TanStack Query hooks in `src/hooks/` (use-tasks, use-projects, use-modules, use-labels, use-media, use-leads, use-users). Each hook defines its own GraphQL operations inline using `gql` tagged templates and returns query/mutation hooks.
+**Data flow:** All server data flows through Apollo Client hooks in `src/hooks/` (use-tasks, use-projects, use-modules, use-labels, use-media, use-leads, use-users, etc.). Each hook file defines its own GraphQL operations inline using `gql` tagged templates.
 
 **Three GraphQL endpoints** (configured in `src/lib/graphql-client.ts`):
 - `graphqlClient` → `/api-tasks/graphql` (this backend, proxied in dev)
@@ -56,9 +56,79 @@ No test framework is configured in either package.
 
 **Path alias:** `@/*` → `./src/*`
 
-**Route structure:** File-based in `src/routes/`. `_authenticated.tsx` is a layout route that guards all child routes. Key routes: `/dashboard`, `/projects`, `/projects/$projectId` (detail + modules + tasks), `/projects/$projectId/timeline` (Gantt), `/projects/$projectId/media`.
+**Route structure:** File-based in `src/pages/`. Key routes: `/dashboard`, `/projects`, `/projects/$projectId` (detail + modules + tasks), `/projects/$projectId/timeline` (Gantt), `/projects/$projectId/media`, `/projects/$projectId/pages`.
 
 **Components:** `src/components/ui/` contains shadcn/ui primitives. Domain components in `src/components/{dashboard,layout,media,modules,projects,tasks,timeline,shared}/`.
+
+### Frontend Conventions
+
+#### Styling
+
+- **CSS Modules only.** Every component uses `ComponentName.module.css` imported as `styles`. Never use inline Tailwind classes on domain components (Tailwind utility classes are only acceptable inside shadcn/ui primitives in `src/components/ui/`).
+- Import pattern: `import styles from "./component-name.module.css";`
+- CSS variables for theming: `var(--color-*)`, `var(--spacing-*)`, `var(--radius-*)`, etc.
+
+#### Hook Patterns
+
+All data hooks live in `src/hooks/`. Use the factory functions from `src/lib/hook-factories.ts`:
+
+- **Mutation hooks** — use `createMutationHook<TInput, TRaw, TMapped>` for mutations that return data:
+  ```typescript
+  export const useCreateLabel = createMutationHook<
+    { name: string; color: string; projectId: string },
+    LabelResponse,
+    Label
+  >({
+    mutation: CREATE_LABEL,
+    responseKey: "createLabel",
+    mapResponse: mapLabel,
+  });
+  ```
+- **Void mutation hooks** — use `createVoidMutationHook<TInput>` for delete/void mutations:
+  ```typescript
+  export const useDeleteLabel = createVoidMutationHook<string>({
+    mutation: DELETE_LABEL,
+    mapVariables: (id) => ({ input: { id } }),
+  });
+  ```
+- **Query hooks** — write manually (queries vary too much), but normalize the return with `normalizeQueryResult`:
+  ```typescript
+  export function useLabels(projectId?: string) {
+    const result = useQuery<{ listLabels: LabelResponse[] }>(LIST_LABELS, {
+      variables: { input: { projectId } },
+      skip: !projectId,
+    });
+    return normalizeQueryResult(result, (d) => d.listLabels.map(mapLabel));
+  }
+  ```
+- All hooks return `isLoading` (not `isPending`). Apollo's `loading` field is mapped to `isLoading` in factories and `normalizeQueryResult`.
+- For non-default GraphQL endpoints, pass `client` option: `{ client: coreClient }` or `{ client: oidcClient }`.
+
+#### Hook File Structure
+
+Each hook file follows this order:
+1. GraphQL fragment definitions
+2. GraphQL operations (queries, mutations)
+3. Response interfaces (the raw Bunsane archetype shape)
+4. Mapper functions (`mapLabel`, `mapTask`, etc.) that convert Bunsane response → flat frontend type
+5. Exported hooks (queries first, then mutations)
+
+#### Shared Components
+
+Before creating new components, check for existing shared utilities:
+
+| Need | Use | Location |
+|------|-----|----------|
+| User initials from name | `getInitials(name)` | `src/lib/utils.ts` |
+| Icon + label + value row | `<PropertyRow>` | `src/components/shared/property-row.tsx` |
+| Date picker with calendar | `<DatePickerField>` | `src/components/shared/date-picker-field.tsx` |
+| User selector (single) | `<UserCombobox>` | `src/components/shared/user-combobox.tsx` |
+| Label selector | `<LabelCombobox>` | `src/components/shared/label-combobox.tsx` |
+| Cmd/Ctrl+Enter submit | `useFormShortcut(open, selector, canSubmit)` | `src/hooks/use-form-shortcut.ts` |
+
+#### Apollo Client Note
+
+`ApolloClient` is **not generic** in this project's Apollo version. Use `ApolloClient` (not `ApolloClient<unknown>` or `ApolloClient<NormalizedCacheObject>`).
 
 ### Backend
 

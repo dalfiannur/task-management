@@ -6,6 +6,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { TASK_PRIORITY_CONFIG, type TaskPriority } from "@/types/task";
+import styles from "./task-priority-badge.module.css";
 
 const ICONS = {
   Minus,
@@ -24,8 +25,8 @@ export function TaskPriorityBadge({ priority }: TaskPriorityBadgeProps) {
   const Icon = ICONS[config.icon as keyof typeof ICONS];
 
   return (
-    <span className={`inline-flex items-center gap-1 text-sm ${config.color}`}>
-      <Icon className="size-4" />
+    <span className={`${styles.badge} ${config.color}`}>
+      <Icon className={styles.icon} />
       <span>{config.label}</span>
     </span>
   );

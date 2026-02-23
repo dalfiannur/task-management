@@ -24,19 +24,20 @@ import {
 import type { MediaFile } from "@/types/media";
 import { isImage, formatFileSize } from "@/types/media";
 import { useDeleteMedia } from "@/hooks/use-media";
+import styles from "./media-grid.module.css";
 
 function FileIcon({ mimeType }: { mimeType: string }) {
   if (mimeType === "application/pdf")
-    return <FileText className="size-10 text-red-500" />;
+    return <FileText className={styles.fileIconRed} />;
   if (
     mimeType.includes("spreadsheet") ||
     mimeType.includes("excel") ||
     mimeType.includes("csv")
   )
-    return <FileSpreadsheet className="size-10 text-green-600" />;
+    return <FileSpreadsheet className={styles.fileIconGreen} />;
   if (mimeType.includes("word") || mimeType.includes("document"))
-    return <FileText className="size-10 text-blue-500" />;
-  return <File className="size-10 text-muted-foreground" />;
+    return <FileText className={styles.fileIconBlue} />;
+  return <File className={styles.fileIconMuted} />;
 }
 
 interface MediaGridProps {
@@ -49,9 +50,9 @@ export function MediaGrid({ files, isLoading }: MediaGridProps) {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+      <div className={styles.grid}>
         {Array.from({ length: 8 }).map((_, i) => (
-          <Skeleton key={i} className="aspect-square rounded-lg" />
+          <Skeleton key={i} className={styles.skeletonItem} />
         ))}
       </div>
     );
@@ -59,59 +60,59 @@ export function MediaGrid({ files, isLoading }: MediaGridProps) {
 
   if (files.length === 0) {
     return (
-      <div className="text-center py-16 text-muted-foreground">
-        <File className="size-12 mx-auto mb-3 opacity-50" />
-        <p className="text-sm">No files uploaded yet</p>
-        <p className="text-xs">Upload files to get started</p>
+      <div className={styles.emptyState}>
+        <File className={styles.emptyIcon} />
+        <p className={styles.emptyTitle}>No files uploaded yet</p>
+        <p className={styles.emptySubtitle}>Upload files to get started</p>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+    <div className={styles.grid}>
       {files.map((file) => (
-        <Card key={file.id} className="group relative overflow-hidden">
-          <div className="aspect-square flex items-center justify-center bg-muted/50">
+        <Card key={file.id} className={styles.card}>
+          <div className={styles.thumbnail}>
             {isImage(file.mediaFileInfo.mimeType) &&
             file.mediaFileInfo.url ? (
               <img
                 src={file.mediaFileInfo.url}
                 alt={file.mediaFileInfo.originalFileName}
-                className="object-cover w-full h-full"
+                className={styles.image}
               />
             ) : (
               <FileIcon mimeType={file.mediaFileInfo.mimeType} />
             )}
           </div>
-          <div className="p-2 space-y-1">
+          <div className={styles.info}>
             <p
-              className="text-xs font-medium truncate"
+              className={styles.fileName}
               title={file.mediaFileInfo.originalFileName}
             >
               {file.mediaFileInfo.originalFileName}
             </p>
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] text-muted-foreground">
+            <div className={styles.fileMeta}>
+              <span className={styles.fileSize}>
                 {formatFileSize(file.mediaFileInfo.size)}
               </span>
               {file.mediaFileInfo.taskId && (
                 <Badge
                   variant="secondary"
-                  className="text-[10px] px-1 py-0 h-4"
+                  className={styles.linkedBadge}
                 >
-                  <Link2 className="size-2.5 mr-0.5" />
+                  <Link2 className={styles.linkedIcon} />
                   Linked
                 </Badge>
               )}
             </div>
           </div>
           {/* Hover overlay with actions */}
-          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+          <div className={styles.overlay}>
             {file.mediaFileInfo.url && (
               <Button
                 size="icon"
                 variant="secondary"
-                className="size-8"
+                className={styles.actionBtn}
                 asChild
               >
                 <a
@@ -119,14 +120,14 @@ export function MediaGrid({ files, isLoading }: MediaGridProps) {
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  <Download className="size-4" />
+                  <Download className={styles.actionIcon} />
                 </a>
               </Button>
             )}
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button size="icon" variant="destructive" className="size-8">
-                  <Trash2 className="size-4" />
+                <Button size="icon" variant="destructive" className={styles.actionBtn}>
+                  <Trash2 className={styles.actionIcon} />
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>

@@ -1,0 +1,118 @@
+/* ============================================
+   Table Container
+   ============================================ */
+
+.container {
+  position: relative;
+  width: 100%;
+  overflow-x: auto;
+}
+
+/* ============================================
+   Table
+   ============================================ */
+
+.table {
+  width: 100%;
+  caption-side: bottom;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+/* ============================================
+   Table Header
+   ============================================ */
+
+.header tr {
+  border-bottom: 1px solid var(--border);
+}
+
+/* ============================================
+   Table Body
+   ============================================ */
+
+.body tr:last-child {
+  border-bottom: 0;
+}
+
+/* ============================================
+   Table Footer
+   ============================================ */
+
+.footer {
+  background-color: color-mix(in srgb, var(--muted) 50%, transparent);
+  border-top: 1px solid var(--border);
+  font-weight: 500;
+}
+
+.footer > tr:last-child {
+  border-bottom: 0;
+}
+
+/* ============================================
+   Table Row
+   ============================================ */
+
+.row {
+  border-bottom: 1px solid var(--border);
+  transition: background-color 150ms ease;
+}
+
+.row:hover {
+  background-color: color-mix(in srgb, var(--muted) 50%, transparent);
+}
+
+.row[data-state="selected"] {
+  background-color: var(--muted);
+}
+
+/* ============================================
+   Table Head
+   ============================================ */
+
+.head {
+  color: var(--foreground);
+  height: 2.5rem;
+  padding: 0 0.5rem;
+  text-align: left;
+  vertical-align: middle;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.head:has([role="checkbox"]) {
+  padding-right: 0;
+}
+
+.head > [role="checkbox"] {
+  transform: translateY(2px);
+}
+
+/* ============================================
+   Table Cell
+   ============================================ */
+
+.cell {
+  padding: 0.5rem;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.cell:has([role="checkbox"]) {
+  padding-right: 0;
+}
+
+.cell > [role="checkbox"] {
+  transform: translateY(2px);
+}
+
+/* ============================================
+   Table Caption
+   ============================================ */
+
+.caption {
+  color: var(--muted-foreground);
+  margin-top: 1rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}

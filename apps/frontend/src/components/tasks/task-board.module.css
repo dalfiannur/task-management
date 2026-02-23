@@ -1,0 +1,22 @@
+.container {
+  display: flex;
+  gap: 1rem;
+  padding: 1.5rem;
+  overflow-x: auto;
+  height: calc(100vh - 3.5rem);
+}
+
+.loadingContainer {
+  display: flex;
+  gap: 1rem;
+  padding: 1.5rem;
+  overflow-x: auto;
+}
+
+.loadingColumn {
+  width: 18rem;
+}
+
+.loadingColumn > * + * {
+  margin-top: 0.5rem;
+}

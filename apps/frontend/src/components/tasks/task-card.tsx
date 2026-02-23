@@ -4,6 +4,7 @@ import type { Task, Label } from "@/types/task";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
+import styles from "./task-card.module.css";
 
 interface TaskCardProps {
   task: Task;
@@ -32,29 +33,29 @@ export function TaskCard({ task, labels = [], onClick }: TaskCardProps) {
     <Card
       ref={setNodeRef}
       style={style}
-      className="cursor-pointer hover:shadow-md transition-shadow"
+      className={styles.card}
       onClick={onClick}
     >
-      <CardContent className="p-3">
-        <div className="flex items-start gap-2">
+      <CardContent className={styles.cardContent}>
+        <div className={styles.row}>
           <button
-            className="mt-0.5 cursor-grab text-muted-foreground hover:text-foreground"
+            className={styles.dragHandle}
             {...attributes}
             {...listeners}
           >
-            <GripVertical className="size-4" />
+            <GripVertical className={styles.dragIcon} />
           </button>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">{task.title}</p>
-            <div className="flex items-center gap-2 mt-2 flex-wrap">
+          <div className={styles.content}>
+            <p className={styles.title}>{task.title}</p>
+            <div className={styles.meta}>
               <TaskPriorityBadge priority={task.priority} />
               {taskLabels.map((label) => (
                 <span
                   key={label.id}
-                  className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-muted"
+                  className={styles.label}
                 >
                   <span
-                    className="size-1.5 rounded-full shrink-0"
+                    className={styles.labelDot}
                     style={{ backgroundColor: label.color }}
                   />
                   {label.name}

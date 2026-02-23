@@ -1,0 +1,185 @@
+/* ============================================
+   Tabs root
+   ============================================ */
+.tabs {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.tabs[data-orientation="horizontal"] {
+  flex-direction: column;
+}
+
+/* ============================================
+   TabsList
+   ============================================ */
+.tabsList {
+  border-radius: 0.5rem;
+  padding: 3px;
+  color: var(--muted-foreground);
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Horizontal orientation: fixed height */
+.tabs[data-orientation="horizontal"] .tabsList {
+  height: 2.25rem;
+}
+
+/* Vertical orientation: fit height, column layout */
+.tabs[data-orientation="vertical"] .tabsList {
+  height: fit-content;
+  flex-direction: column;
+}
+
+/* variant: default */
+.tabsList[data-variant="default"] {
+  background-color: var(--muted);
+}
+
+/* variant: line */
+.tabsList[data-variant="line"] {
+  gap: 0.25rem;
+  background-color: transparent;
+  border-radius: 0;
+}
+
+/* ============================================
+   TabsTrigger
+   ============================================ */
+.tabsTrigger {
+  position: relative;
+  display: inline-flex;
+  height: calc(100% - 1px);
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: all 150ms ease;
+  color: color-mix(in srgb, var(--foreground) 60%, transparent);
+  outline: none;
+  cursor: pointer;
+  background: transparent;
+}
+
+.tabsTrigger:hover {
+  color: var(--foreground);
+}
+
+.tabsTrigger:disabled {
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+/* SVG children */
+.tabsTrigger svg {
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+.tabsTrigger svg:not([class*="size-"]) {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Focus-visible ring */
+.tabsTrigger:focus-visible {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 50%, transparent);
+  outline: 1px solid var(--ring);
+}
+
+/* Vertical orientation: full width, start-aligned */
+.tabs[data-orientation="vertical"] .tabsTrigger {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+/* ---- Active state (data-state=active) ---- */
+
+.tabsTrigger[data-state="active"] {
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+/* Default variant: shadow on active */
+.tabsList[data-variant="default"] .tabsTrigger[data-state="active"] {
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+/* Line variant: no shadow, transparent bg on active */
+.tabsList[data-variant="line"] .tabsTrigger {
+  background-color: transparent;
+}
+
+.tabsList[data-variant="line"] .tabsTrigger[data-state="active"] {
+  background-color: transparent;
+  box-shadow: none;
+}
+
+/* ---- ::after pseudo-element (line indicator) ---- */
+
+.tabsTrigger::after {
+  content: "";
+  position: absolute;
+  background-color: var(--foreground);
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+/* Horizontal: bottom bar */
+.tabs[data-orientation="horizontal"] .tabsTrigger::after {
+  inset-inline: 0;
+  bottom: -5px;
+  height: 2px;
+}
+
+/* Vertical: right bar */
+.tabs[data-orientation="vertical"] .tabsTrigger::after {
+  inset-block: 0;
+  right: -4px;
+  width: 2px;
+}
+
+/* Line variant active: show the bar */
+.tabsList[data-variant="line"] .tabsTrigger[data-state="active"]::after {
+  opacity: 1;
+}
+
+/* ---- Dark mode ---- */
+
+:global(.dark) .tabsTrigger {
+  color: var(--muted-foreground);
+}
+
+:global(.dark) .tabsTrigger:hover {
+  color: var(--foreground);
+}
+
+:global(.dark) .tabsTrigger[data-state="active"] {
+  color: var(--foreground);
+  border-color: var(--input);
+  background-color: color-mix(in srgb, var(--input) 30%, transparent);
+}
+
+:global(.dark) .tabsList[data-variant="line"] .tabsTrigger[data-state="active"] {
+  border-color: transparent;
+  background-color: transparent;
+}
+
+/* ============================================
+   TabsContent
+   ============================================ */
+.tabsContent {
+  flex: 1;
+  outline: none;
+}

@@ -27,6 +27,12 @@ export interface ProjectCore {
         name: string;
         description: string;
     };
+    clientDetail?: {
+        name: {
+            name: string;
+            legalName: string;
+        };
+    } | null;
     status: string;
     winStage: string;
 }

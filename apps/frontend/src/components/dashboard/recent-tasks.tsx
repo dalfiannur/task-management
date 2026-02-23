@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TaskPriorityBadge } from "@/components/tasks/task-priority-badge";
 import { TaskStatusBadge } from "@/components/tasks/task-status-badge";
 import type { Task } from "@/types/task";
+import styles from "./recent-tasks.module.css";
 
 function formatRelativeTime(dateStr: string): string {
   const now = Date.now();
@@ -31,22 +32,22 @@ export function RecentTasks({ tasks }: RecentTasksProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Recent Tasks</CardTitle>
+        <CardTitle className={styles.cardTitle}>Recent Tasks</CardTitle>
       </CardHeader>
       <CardContent>
         {recentTasks.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No tasks yet.</p>
+          <p className={styles.emptyText}>No tasks yet.</p>
         ) : (
-          <div className="space-y-3">
+          <div className={styles.taskList}>
             {recentTasks.map((task) => (
               <div
                 key={task.id}
-                className="flex items-center gap-3 text-sm"
+                className={styles.taskRow}
               >
                 <TaskPriorityBadge priority={task.priority} />
-                <span className="flex-1 truncate font-medium">{task.title}</span>
+                <span className={styles.taskTitle}>{task.title}</span>
                 <TaskStatusBadge status={task.status} />
-                <span className="shrink-0 text-xs text-muted-foreground">
+                <span className={styles.taskTime}>
                   {formatRelativeTime(task.updatedAt)}
                 </span>
               </div>

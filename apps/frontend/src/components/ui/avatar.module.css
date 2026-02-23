@@ -1,0 +1,168 @@
+/* ============================================
+   Avatar Root
+   ============================================ */
+
+.avatar {
+  position: relative;
+  display: flex;
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 9999px;
+  user-select: none;
+}
+
+.avatar[data-size="sm"] {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.avatar[data-size="lg"] {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+/* ============================================
+   Avatar Image
+   ============================================ */
+
+.image {
+  aspect-ratio: 1 / 1;
+  width: 100%;
+  height: 100%;
+}
+
+/* ============================================
+   Avatar Fallback
+   ============================================ */
+
+.fallback {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background-color: var(--muted);
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+/* When parent avatar has data-size="sm", reduce text size */
+[data-size="sm"] > .fallback {
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
+/* ============================================
+   Avatar Badge
+   ============================================ */
+
+.badge {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: 0 0 0 2px var(--background);
+  user-select: none;
+}
+
+/* Badge sizes based on parent avatar size */
+[data-size="sm"] > .badge {
+  width: 0.5rem;
+  height: 0.5rem;
+}
+
+[data-size="sm"] > .badge > svg {
+  display: none;
+}
+
+[data-size="default"] > .badge {
+  width: 0.625rem;
+  height: 0.625rem;
+}
+
+[data-size="default"] > .badge > svg {
+  width: 0.5rem;
+  height: 0.5rem;
+}
+
+[data-size="lg"] > .badge {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+[data-size="lg"] > .badge > svg {
+  width: 0.5rem;
+  height: 0.5rem;
+}
+
+/* ============================================
+   Avatar Group
+   ============================================ */
+
+.group {
+  display: flex;
+}
+
+.group > [data-slot="avatar"] {
+  box-shadow: 0 0 0 2px var(--background);
+}
+
+.group > [data-slot="avatar"] + [data-slot="avatar"] {
+  margin-left: -0.5rem;
+}
+
+/* ============================================
+   Avatar Group Count
+   ============================================ */
+
+.groupCount {
+  position: relative;
+  display: flex;
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background-color: var(--muted);
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  box-shadow: 0 0 0 2px var(--background);
+}
+
+.groupCount > svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Group count adapts when the group contains a sized avatar */
+.group:has([data-size="sm"]) > .groupCount {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.group:has([data-size="sm"]) > .groupCount > svg {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+.group:has([data-size="lg"]) > .groupCount {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+.group:has([data-size="lg"]) > .groupCount > svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}

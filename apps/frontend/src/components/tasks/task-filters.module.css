@@ -1,0 +1,21 @@
+.container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.filterTrigger {
+  width: 140px;
+  height: 2rem;
+}
+
+.clearButton {
+  height: 2rem;
+}
+
+.clearIcon {
+  width: 1rem;
+  height: 1rem;
+  margin-right: 0.25rem;
+}

@@ -5,6 +5,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { TASK_STATUS_CONFIG, type TaskStatus, type Task } from "@/types/task";
+import styles from "./task-distribution.module.css";
 
 const STATUS_COLORS: Record<TaskStatus, string> = {
   backlog: "#94a3b8",
@@ -36,18 +37,15 @@ export function TaskDistribution({ tasks }: TaskDistributionProps) {
 
   return (
     <Card>
-      <CardHeader className="flex-row items-baseline justify-between space-y-0">
-        <CardTitle className="text-base font-semibold">Task Overview</CardTitle>
-        <span
-          className="text-3xl font-bold font-display tracking-tight"
-          style={{ fontVariantNumeric: "tabular-nums" }}
-        >
+      <CardHeader className={styles.headerRow}>
+        <CardTitle className={styles.cardTitle}>Task Overview</CardTitle>
+        <span className={styles.totalCount}>
           {total}
         </span>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className={styles.contentArea}>
         {total === 0 ? (
-          <p className="text-sm text-muted-foreground py-4 text-center">
+          <p className={styles.emptyText}>
             No tasks yet.
           </p>
         ) : (
@@ -57,37 +55,32 @@ export function TaskDistribution({ tasks }: TaskDistributionProps) {
             const color = STATUS_COLORS[status];
 
             return (
-              <div key={status} className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
+              <div key={status} className={styles.statusGroup}>
+                <div className={styles.statusRow}>
+                  <div className={styles.statusLabel}>
                     <span
-                      className="size-2.5 rounded-full shrink-0"
+                      className={styles.statusDot}
                       style={{ backgroundColor: color }}
                     />
-                    <span className="text-muted-foreground">
+                    <span className={styles.statusLabelText}>
                       {TASK_STATUS_CONFIG[status].label}
                     </span>
                   </div>
-                  <div className="flex items-center gap-2.5">
-                    <span
-                      className="font-semibold font-display"
-                      style={{ fontVariantNumeric: "tabular-nums" }}
-                    >
+                  <div className={styles.statusValues}>
+                    <span className={styles.statusCount}>
                       {count}
                     </span>
-                    <span className="text-xs text-muted-foreground w-8 text-right tabular-nums">
+                    <span className={styles.statusPercent}>
                       {pct}%
                     </span>
                   </div>
                 </div>
-                <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                <div className={styles.progressTrack}>
                   <div
-                    className="h-full rounded-full"
+                    className={styles.progressBar}
                     style={{
                       width: `${pct}%`,
                       backgroundColor: color,
-                      transformOrigin: "left",
-                      animation: "bar-fill 0.8s ease-out both",
                       animationDelay: `${i * 80 + 200}ms`,
                     }}
                   />

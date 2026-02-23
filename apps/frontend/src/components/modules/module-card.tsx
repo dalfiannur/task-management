@@ -1,4 +1,4 @@
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "react-router";
 import {
   Card,
   CardHeader,
@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/card";
 import { Boxes } from "lucide-react";
 import type { Module } from "@/types/task";
+import styles from "./module-card.module.css";
 
 interface ModuleCardProps {
   module: Module;
@@ -18,23 +19,20 @@ export function ModuleCard({ module, projectId }: ModuleCardProps) {
 
   return (
     <Card
-      className="cursor-pointer hover:bg-accent/50 transition-colors"
+      className={styles.card}
       onClick={() =>
-        navigate({
-          to: "/projects/$projectId",
-          params: { projectId },
-        })
+        navigate(`/projects/${projectId}`)
       }
     >
       <CardHeader>
-        <div className="flex items-start justify-between">
-          <div className="space-y-1">
-            <CardTitle className="text-base">{module.name}</CardTitle>
+        <div className={styles.headerRow}>
+          <div className={styles.infoGroup}>
+            <CardTitle className={styles.title}>{module.name}</CardTitle>
             {module.description && (
               <CardDescription>{module.description.replace(/<[^>]*>/g, "")}</CardDescription>
             )}
           </div>
-          <Boxes className="size-5 text-muted-foreground shrink-0" />
+          <Boxes className={styles.icon} />
         </div>
       </CardHeader>
     </Card>

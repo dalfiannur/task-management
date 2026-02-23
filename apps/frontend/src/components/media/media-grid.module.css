@@ -1,0 +1,166 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1280px) {
+  .grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+.skeletonItem {
+  aspect-ratio: 1;
+  border-radius: var(--radius);
+}
+
+.emptyState {
+  text-align: center;
+  padding-top: 4rem;
+  padding-bottom: 4rem;
+  color: var(--muted-foreground);
+}
+
+.emptyIcon {
+  width: 3rem;
+  height: 3rem;
+  margin-left: auto;
+  margin-right: auto;
+  margin-bottom: 0.75rem;
+  opacity: 0.5;
+}
+
+.emptyTitle {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.emptySubtitle {
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
+.card {
+  position: relative;
+  overflow: hidden;
+}
+
+.thumbnail {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: color-mix(in srgb, var(--muted) 50%, transparent);
+}
+
+.image {
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
+}
+
+.fileIcon {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+.fileIconRed {
+  composes: fileIcon;
+  color: #ef4444;
+}
+
+.fileIconGreen {
+  composes: fileIcon;
+  color: #16a34a;
+}
+
+.fileIconBlue {
+  composes: fileIcon;
+  color: #3b82f6;
+}
+
+.fileIconMuted {
+  composes: fileIcon;
+  color: var(--muted-foreground);
+}
+
+.info {
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.fileName {
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fileMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.fileSize {
+  font-size: 10px;
+  color: var(--muted-foreground);
+}
+
+.linkedBadge {
+  font-size: 10px;
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
+  padding-top: 0;
+  padding-bottom: 0;
+  height: 1rem;
+}
+
+.linkedIcon {
+  width: 0.625rem;
+  height: 0.625rem;
+  margin-right: 0.125rem;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transition: opacity 150ms;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.card:hover .overlay {
+  opacity: 1;
+}
+
+.actionBtn {
+  width: 2rem;
+  height: 2rem;
+}
+
+.actionIcon {
+  width: 1rem;
+  height: 1rem;
+}

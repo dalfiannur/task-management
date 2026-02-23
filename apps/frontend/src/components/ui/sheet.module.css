@@ -1,0 +1,322 @@
+/* ============================================
+   Sheet Overlay
+   ============================================ */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background-color: rgb(0 0 0 / 0.5);
+
+  /* Enter animation */
+  animation: overlayIn 150ms ease forwards;
+}
+
+.overlay[data-state="closed"] {
+  animation: overlayOut 150ms ease forwards;
+}
+
+/* ============================================
+   Sheet Content (base)
+   ============================================ */
+
+.content {
+  position: fixed;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  background-color: var(--background);
+  box-shadow:
+    0 10px 15px -3px rgb(0 0 0 / 0.1),
+    0 4px 6px -4px rgb(0 0 0 / 0.1);
+  transition: transform ease-in-out;
+}
+
+/* Open: 500ms duration */
+.content[data-state="open"] {
+  animation-duration: 500ms;
+  animation-timing-function: ease-in-out;
+  animation-fill-mode: forwards;
+}
+
+/* Closed: 300ms duration */
+.content[data-state="closed"] {
+  animation-duration: 300ms;
+  animation-timing-function: ease-in-out;
+  animation-fill-mode: forwards;
+}
+
+/* --- Side: right --- */
+.content[data-side="right"] {
+  inset-block: 0;
+  right: 0;
+  height: 100%;
+  width: 75%;
+  border-left: 1px solid var(--border);
+}
+
+.content[data-side="right"][data-state="open"] {
+  animation-name: slideInFromRight;
+}
+
+.content[data-side="right"][data-state="closed"] {
+  animation-name: slideOutToRight;
+}
+
+@media (min-width: 640px) {
+  .content[data-side="right"] {
+    max-width: 24rem; /* sm:max-w-sm */
+  }
+}
+
+/* --- Side: left --- */
+.content[data-side="left"] {
+  inset-block: 0;
+  left: 0;
+  height: 100%;
+  width: 75%;
+  border-right: 1px solid var(--border);
+}
+
+.content[data-side="left"][data-state="open"] {
+  animation-name: slideInFromLeft;
+}
+
+.content[data-side="left"][data-state="closed"] {
+  animation-name: slideOutToLeft;
+}
+
+@media (min-width: 640px) {
+  .content[data-side="left"] {
+    max-width: 24rem; /* sm:max-w-sm */
+  }
+}
+
+/* --- Side: top --- */
+.content[data-side="top"] {
+  inset-inline: 0;
+  top: 0;
+  height: auto;
+  border-bottom: 1px solid var(--border);
+}
+
+.content[data-side="top"][data-state="open"] {
+  animation-name: slideInFromTop;
+}
+
+.content[data-side="top"][data-state="closed"] {
+  animation-name: slideOutToTop;
+}
+
+/* --- Side: bottom --- */
+.content[data-side="bottom"] {
+  inset-inline: 0;
+  bottom: 0;
+  height: auto;
+  border-top: 1px solid var(--border);
+}
+
+.content[data-side="bottom"][data-state="open"] {
+  animation-name: slideInFromBottom;
+}
+
+.content[data-side="bottom"][data-state="closed"] {
+  animation-name: slideOutToBottom;
+}
+
+/* ============================================
+   Sheet Close Button
+   ============================================ */
+
+.closeButton {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  border-radius: 2px;
+  opacity: 0.7;
+  transition: opacity 150ms;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+}
+
+.closeButton:hover {
+  opacity: 1;
+}
+
+.closeButton:focus {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--background),
+    0 0 0 4px var(--ring);
+}
+
+.closeButton:disabled {
+  pointer-events: none;
+}
+
+.closeButton[data-state="open"] {
+  background-color: var(--secondary);
+}
+
+.closeIcon {
+  width: 1rem;
+  height: 1rem;
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+/* ============================================
+   Sheet Header
+   ============================================ */
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding: 1rem;
+}
+
+/* ============================================
+   Sheet Footer
+   ============================================ */
+
+.footer {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+}
+
+/* ============================================
+   Sheet Title
+   ============================================ */
+
+.title {
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+/* ============================================
+   Sheet Description
+   ============================================ */
+
+.description {
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+/* ============================================
+   Utility
+   ============================================ */
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* ============================================
+   Keyframes
+   ============================================ */
+
+@keyframes overlayIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes overlayOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes slideInFromRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideOutToRight {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes slideInFromLeft {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideOutToLeft {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes slideInFromTop {
+  from {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideOutToTop {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-100%);
+  }
+}
+
+@keyframes slideInFromBottom {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideOutToBottom {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
+}

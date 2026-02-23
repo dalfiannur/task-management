@@ -1,0 +1,107 @@
+.dialogContent {
+  max-width: 28rem;
+}
+
+@media (min-width: 640px) {
+  .dialogContent {
+    max-width: 28rem;
+  }
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.memberList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 16rem;
+  overflow-y: auto;
+}
+
+.memberRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.375rem 0.5rem;
+  border-radius: calc(var(--radius) - 2px);
+}
+
+.memberRow:hover {
+  background-color: color-mix(in srgb, var(--muted) 50%, transparent);
+}
+
+.memberInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.memberAvatar {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+.memberFallback {
+  font-size: 10px;
+}
+
+.memberName {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.picBadge {
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted-foreground);
+  background-color: var(--muted);
+  padding: 0.125rem 0.375rem;
+  border-radius: calc(var(--radius) - 2px);
+}
+
+.removeButton {
+  width: 1.75rem;
+  height: 1.75rem;
+  color: var(--muted-foreground);
+}
+
+.removeButton:hover {
+  color: var(--destructive);
+}
+
+.removeIcon {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.emptyMessage {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--muted-foreground);
+  text-align: center;
+  padding: 1rem 0;
+}
+
+.addSection {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.addCombobox {
+  flex: 1;
+}
+
+.addIcon {
+  width: 0.875rem;
+  height: 0.875rem;
+  margin-right: 0.375rem;
+}

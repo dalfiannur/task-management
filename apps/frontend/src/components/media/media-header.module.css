@@ -1,0 +1,54 @@
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.backIcon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.title {
+  font-size: 1.5rem;
+  line-height: 2rem;
+  font-weight: 600;
+}
+
+.subtitle {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--muted-foreground);
+}
+
+.right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tabsList {
+  height: 2rem;
+}
+
+.tabsTrigger {
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+
+.tabsIcon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.uploadIcon {
+  width: 1rem;
+  height: 1rem;
+  margin-right: 0.25rem;
+}

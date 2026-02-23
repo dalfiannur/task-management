@@ -1,0 +1,97 @@
+.editorWrapper {
+  border-radius: calc(var(--radius) - 2px);
+  border: 1px solid var(--input);
+  transition: box-shadow 150ms, border-color 150ms;
+}
+
+.editorWrapper:focus-within {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ring) 30%, transparent);
+}
+
+/* Placeholder styles */
+.editorWrapper :global(.tiptap p.is-editor-empty:first-child::before) {
+  color: color-mix(in srgb, var(--muted-foreground) 50%, transparent);
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* Mention styles */
+.editorWrapper :global(.mention) {
+  color: var(--primary);
+  font-weight: 500;
+}
+
+/* Mention suggestion list */
+.mentionList {
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background-color: var(--popover);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  max-height: 12rem;
+  overflow-y: auto;
+}
+
+.mentionEmpty {
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background-color: var(--popover);
+  padding: 0.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -2px rgba(0, 0, 0, 0.1);
+}
+
+.mentionEmptyText {
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: var(--muted-foreground);
+}
+
+.mentionItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.375rem 0.75rem;
+  text-align: left;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  transition: background-color 150ms, color 150ms;
+}
+
+.mentionItem:hover {
+  background-color: var(--muted);
+}
+
+.mentionItemSelected {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.mentionAvatar {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 9999px;
+  object-fit: cover;
+}
+
+.mentionAvatarFallback {
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 9999px;
+  background-color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 500;
+}
+
+.mentionName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

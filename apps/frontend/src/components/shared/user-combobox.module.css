@@ -1,0 +1,77 @@
+.trigger {
+  width: 100%;
+  justify-content: space-between;
+  font-weight: 400;
+}
+
+.selectedUser {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.avatar {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.avatarFallback {
+  font-size: 10px;
+}
+
+.placeholder {
+  color: var(--muted-foreground);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: auto;
+}
+
+.clearIcon {
+  width: 0.875rem;
+  height: 0.875rem;
+  color: var(--muted-foreground);
+}
+
+.clearIcon:hover {
+  color: var(--foreground);
+}
+
+.chevron {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  opacity: 0.5;
+}
+
+.popover {
+  width: var(--radix-popover-trigger-width);
+  padding: 0;
+}
+
+.listAvatar {
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-right: 0.5rem;
+}
+
+.listAvatarFallback {
+  font-size: 10px;
+}
+
+.checkIcon {
+  margin-left: auto;
+  width: 1rem;
+  height: 1rem;
+}
+
+.checkVisible {
+  opacity: 1;
+}
+
+.checkHidden {
+  opacity: 0;
+}

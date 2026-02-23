@@ -1,0 +1,43 @@
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+.loadingHeader {
+  height: 2rem;
+  width: 100%;
+}
+
+.loadingBody {
+  height: 16rem;
+  width: 100%;
+}
+
+.emptyMessage {
+  text-align: center;
+  color: var(--muted-foreground);
+  padding-top: 3rem;
+  padding-bottom: 3rem;
+}
+
+.scrollContainer {
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background-color: var(--background);
+  max-width: 100%;
+}
+
+.gridLayout {
+  display: grid;
+}
+
+.taskPanelColumn {
+  position: sticky;
+  left: 0;
+  z-index: 20;
+  background-color: var(--background);
+  border-right: 1px solid var(--border);
+}

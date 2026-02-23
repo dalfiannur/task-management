@@ -10,6 +10,7 @@ import {
   computeTimelineRange,
 } from "./timeline-utils";
 import type { Task } from "@/types/task";
+import styles from "./gantt-chart.module.css";
 
 interface GanttChartProps {
   projectId: string;
@@ -22,16 +23,16 @@ export function GanttChart({ projectId }: GanttChartProps) {
 
   if (modulesLoading || tasksLoading) {
     return (
-      <div className="space-y-3 p-4">
-        <Skeleton className="h-8 w-full" />
-        <Skeleton className="h-64 w-full" />
+      <div className={styles.loadingContainer}>
+        <Skeleton className={styles.loadingHeader} />
+        <Skeleton className={styles.loadingBody} />
       </div>
     );
   }
 
   if (!modules || modules.length === 0) {
     return (
-      <p className="text-center text-muted-foreground py-12">
+      <p className={styles.emptyMessage}>
         No modules to display on the timeline.
       </p>
     );
@@ -68,15 +69,15 @@ export function GanttChart({ projectId }: GanttChartProps) {
   return (
     <div
       ref={scrollRef}
-      className="overflow-auto border rounded-lg bg-background max-w-full"
+      className={styles.scrollContainer}
       style={{ height: "calc(100vh - 200px)", width: "calc(100vw - 255px - 50px)" }}
     >
       <div style={{ width: totalWidth + taskPanelWidth }}>
         <div
-          className="grid"
+          className={styles.gridLayout}
           style={{ gridTemplateColumns: `${taskPanelWidth}px 1fr` }}
         >
-          <div className="sticky left-0 z-20 bg-background border-r">
+          <div className={styles.taskPanelColumn}>
             <GanttTaskPanel rows={rows} headerHeight={headerHeight} />
           </div>
           <div style={{ width: totalWidth }}>

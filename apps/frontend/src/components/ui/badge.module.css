@@ -1,0 +1,122 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 500;
+  width: fit-content;
+  white-space: nowrap;
+  flex-shrink: 0;
+  gap: 0.25rem;
+  overflow: hidden;
+  transition: color 150ms ease, box-shadow 150ms ease;
+}
+
+/* SVG children defaults */
+.badge > svg {
+  width: 0.75rem;
+  height: 0.75rem;
+  pointer-events: none;
+}
+
+/* Focus-visible ring */
+.badge:focus-visible {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 50%, transparent);
+}
+
+/* Aria-invalid state */
+.badge[aria-invalid="true"] {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--destructive) 20%, transparent);
+  border-color: var(--destructive);
+}
+
+/* ============================================
+   VARIANT STYLES via data-variant attribute
+   ============================================ */
+
+/* variant: default */
+.badge[data-variant="default"] {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+}
+
+a.badge[data-variant="default"]:hover {
+  background-color: color-mix(in srgb, var(--primary) 90%, transparent);
+}
+
+/* variant: secondary */
+.badge[data-variant="secondary"] {
+  background-color: var(--secondary);
+  color: var(--secondary-foreground);
+}
+
+a.badge[data-variant="secondary"]:hover {
+  background-color: color-mix(in srgb, var(--secondary) 90%, transparent);
+}
+
+/* variant: destructive */
+.badge[data-variant="destructive"] {
+  background-color: var(--destructive);
+  color: white;
+}
+
+a.badge[data-variant="destructive"]:hover {
+  background-color: color-mix(in srgb, var(--destructive) 90%, transparent);
+}
+
+.badge[data-variant="destructive"]:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--destructive) 20%, transparent);
+}
+
+/* variant: outline */
+.badge[data-variant="outline"] {
+  border-color: var(--border);
+  color: var(--foreground);
+}
+
+a.badge[data-variant="outline"]:hover {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
+/* variant: ghost */
+.badge[data-variant="ghost"] {
+  background-color: transparent;
+}
+
+a.badge[data-variant="ghost"]:hover {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
+/* variant: link */
+.badge[data-variant="link"] {
+  background-color: transparent;
+  color: var(--primary);
+  text-underline-offset: 4px;
+}
+
+a.badge[data-variant="link"]:hover {
+  text-decoration: underline;
+}
+
+/* ============================================
+   DARK MODE
+   ============================================ */
+
+:global(.dark) .badge[aria-invalid="true"] {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--destructive) 40%, transparent);
+}
+
+:global(.dark) .badge[data-variant="destructive"] {
+  background-color: color-mix(in srgb, var(--destructive) 60%, transparent);
+}
+
+:global(.dark) .badge[data-variant="destructive"]:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--destructive) 40%, transparent);
+}

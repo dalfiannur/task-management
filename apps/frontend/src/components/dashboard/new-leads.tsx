@@ -6,6 +6,7 @@ import { ApproveLeadDialog } from "./approve-lead-dialog";
 import type { Project, ProjectCore } from "@/types/project";
 import { useUsers } from "@/hooks/use-users";
 import { Sparkles } from "lucide-react";
+import styles from "./new-leads.module.css";
 
 type ProjectWithCore = Project & { coreDetail: ProjectCore | null };
 
@@ -27,12 +28,12 @@ export function NewLeads({ projects }: NewLeadsProps) {
   return (
     <>
       <Card>
-        <CardHeader className="flex-row items-center justify-between space-y-0">
-          <CardTitle className="text-base font-semibold">New Leads</CardTitle>
+        <CardHeader className={styles.headerRow}>
+          <CardTitle className={styles.cardTitle}>New Leads</CardTitle>
           {projects.length > 0 && (
             <Badge
               variant="secondary"
-              className="text-xs font-display font-semibold"
+              className={styles.pendingBadge}
             >
               {projects.length} pending
             </Badge>
@@ -40,34 +41,34 @@ export function NewLeads({ projects }: NewLeadsProps) {
         </CardHeader>
         <CardContent>
           {projects.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-6 text-muted-foreground">
-              <Sparkles className="size-5" />
-              <p className="text-sm">No new leads at the moment.</p>
+            <div className={styles.emptyState}>
+              <Sparkles className={styles.emptyIcon} />
+              <p className={styles.emptyText}>No new leads at the moment.</p>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className={styles.leadsList}>
               {projects.map((project) => {
                 const picName = getPicName(project.picId?.value);
                 return (
                   <div
                     key={project.id}
-                    className="flex items-center gap-3 rounded-lg border border-border/60 p-3 transition-colors hover:bg-accent/50"
+                    className={styles.leadItem}
                   >
-                    <div className="w-1 self-stretch rounded-full bg-amber-400 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
+                    <div className={styles.leadStripe} />
+                    <div className={styles.leadContent}>
+                      <div className={styles.leadHeader}>
                         <Badge
                           variant="outline"
-                          className="shrink-0 font-mono text-[10px]"
+                          className={styles.codeBadge}
                         >
                           {project.coreDetail?.code ?? project.id}
                         </Badge>
-                        <span className="text-sm font-medium truncate">
+                        <span className={styles.leadName}>
                           {project.coreDetail?.name.name ?? "Untitled"}
                         </span>
                       </div>
                       {picName && (
-                        <p className="text-xs text-muted-foreground mt-0.5">
+                        <p className={styles.picName}>
                           {picName}
                         </p>
                       )}
@@ -75,7 +76,7 @@ export function NewLeads({ projects }: NewLeadsProps) {
                     <Button
                       size="sm"
                       variant="outline"
-                      className="shrink-0"
+                      className={styles.approveBtn}
                       onClick={() => {
                         setSelectedProject(project);
                         setDialogOpen(true);

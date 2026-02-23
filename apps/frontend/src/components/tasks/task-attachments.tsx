@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useMediaFiles, useUploadMedia, useDeleteMedia } from "@/hooks/use-media";
 import { isImage, formatFileSize } from "@/types/media";
+import styles from "./task-attachments.module.css";
 
 interface TaskAttachmentsProps {
   projectId: string;
@@ -16,10 +17,10 @@ interface TaskAttachmentsProps {
 }
 
 function AttachmentIcon({ mimeType }: { mimeType: string }) {
-  if (isImage(mimeType)) return <ImageIcon className="size-3.5 text-purple-500" />;
+  if (isImage(mimeType)) return <ImageIcon className={`${styles.fileIcon} ${styles.iconPurple}`} />;
   if (mimeType === "application/pdf")
-    return <FileText className="size-3.5 text-red-500" />;
-  return <File className="size-3.5 text-muted-foreground" />;
+    return <FileText className={`${styles.fileIcon} ${styles.iconRed}`} />;
+  return <File className={`${styles.fileIcon} ${styles.iconMuted}`} />;
 }
 
 export function TaskAttachments({ projectId, taskId }: TaskAttachmentsProps) {
@@ -38,43 +39,43 @@ export function TaskAttachments({ projectId, taskId }: TaskAttachmentsProps) {
   };
 
   return (
-    <div className="space-y-2">
+    <div className={styles.container}>
       {files.map((file) => (
         <div
           key={file.id}
-          className="flex items-center gap-2 group"
+          className={styles.fileRow}
         >
           <AttachmentIcon mimeType={file.mediaFileInfo.mimeType} />
-          <span className="text-sm truncate flex-1" title={file.mediaFileInfo.originalFileName}>
+          <span className={styles.fileName} title={file.mediaFileInfo.originalFileName}>
             {file.mediaFileInfo.originalFileName}
           </span>
-          <span className="text-[10px] text-muted-foreground shrink-0">
+          <span className={styles.fileSize}>
             {formatFileSize(file.mediaFileInfo.size)}
           </span>
           <Button
             size="icon"
             variant="ghost"
-            className="size-5 opacity-0 group-hover:opacity-100 shrink-0"
+            className={styles.deleteButton}
             onClick={() => deleteMedia.mutate(file.id)}
           >
-            <X className="size-3" />
+            <X className={styles.deleteIcon} />
           </Button>
         </div>
       ))}
       <Button
         variant="ghost"
         size="sm"
-        className="h-7 text-xs w-full justify-start text-muted-foreground"
+        className={styles.addButton}
         onClick={() => inputRef.current?.click()}
       >
-        <Plus className="size-3 mr-1" />
+        <Plus className={styles.addIcon} />
         Attach file
       </Button>
       <input
         ref={inputRef}
         type="file"
         multiple
-        className="hidden"
+        className={styles.hiddenInput}
         onChange={handleFileSelect}
       />
     </div>

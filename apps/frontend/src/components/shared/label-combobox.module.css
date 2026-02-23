@@ -1,0 +1,135 @@
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: calc(var(--radius) - 2px);
+  padding: 0 0.5rem;
+  height: 1.75rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  transition: color 150ms, background-color 150ms;
+  width: 100%;
+}
+
+.trigger:hover {
+  background-color: color-mix(in srgb, var(--muted) 50%, transparent);
+}
+
+.selectedLabels {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex: 1;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.labelChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: 9999px;
+  padding: 0.125rem 0.375rem;
+  font-size: 10px;
+  font-weight: 500;
+  background-color: var(--muted);
+}
+
+.labelDot {
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 9999px;
+  flex-shrink: 0;
+}
+
+.labelName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 60px;
+}
+
+.overflowCount {
+  font-size: 10px;
+  color: var(--muted-foreground);
+}
+
+.clearIcon {
+  width: 0.75rem;
+  height: 0.75rem;
+  margin-left: auto;
+  color: color-mix(in srgb, var(--muted-foreground) 50%, transparent);
+  flex-shrink: 0;
+}
+
+.clearIcon:hover {
+  color: var(--foreground);
+}
+
+.emptyPlaceholder {
+  color: var(--muted-foreground);
+}
+
+.chevron {
+  width: 0.75rem;
+  height: 0.75rem;
+  margin-left: auto;
+  color: color-mix(in srgb, var(--muted-foreground) 40%, transparent);
+  flex-shrink: 0;
+}
+
+.popover {
+  width: 200px;
+  padding: 0;
+}
+
+.searchInput {
+  height: 2rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
+.emptyMessage {
+  padding: 0.75rem 0;
+  font-size: 0.75rem;
+  line-height: 1rem;
+  text-align: center;
+}
+
+.labelItem {
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
+.labelColorDot {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 9999px;
+  flex-shrink: 0;
+  margin-right: 0.375rem;
+}
+
+.checkIcon {
+  margin-left: auto;
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.checkVisible {
+  opacity: 1;
+}
+
+.checkHidden {
+  opacity: 0;
+}
+
+.createItem {
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
+.createIcon {
+  width: 0.875rem;
+  height: 0.875rem;
+  margin-right: 0.375rem;
+}

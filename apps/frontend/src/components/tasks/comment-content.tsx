@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import styles from "./comment-content.module.css";
 
 interface CommentContentProps {
   content: string;
@@ -16,7 +17,7 @@ export function CommentContent({ content, className }: CommentContentProps) {
     return (
       <p
         className={cn(
-          "text-xs text-foreground/80 whitespace-pre-wrap break-words",
+          styles.plainText,
           className,
         )}
       >
@@ -28,10 +29,7 @@ export function CommentContent({ content, className }: CommentContentProps) {
   return (
     <div
       className={cn(
-        "text-xs text-foreground/80 break-words prose prose-sm max-w-none",
-        // Mention styling
-        "[&_[data-type=mention]]:text-primary [&_[data-type=mention]]:font-medium",
-        "[&_.mention]:text-primary [&_.mention]:font-medium",
+        `${styles.richText} prose prose-sm max-w-none`,
         className,
       )}
       dangerouslySetInnerHTML={{ __html: content }}

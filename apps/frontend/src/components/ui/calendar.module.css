@@ -1,0 +1,359 @@
+/* Calendar wrapper */
+.calendar {
+  --cell-size: 2rem;
+  background-color: var(--background);
+  padding: 0.75rem;
+}
+
+[data-slot="card-content"] .calendar,
+[data-slot="popover-content"] .calendar {
+  background-color: transparent;
+}
+
+:global([dir="rtl"]) .calendar :global(.rdp-button_next) > svg,
+:global([dir="rtl"]) .calendar :global(.rdp-button_previous) > svg {
+  transform: rotate(180deg);
+}
+
+/* Root - the inner rdp root */
+.root {
+  width: fit-content;
+}
+
+/* Months container */
+.months {
+  display: flex;
+  gap: 1rem;
+  flex-direction: column;
+  position: relative;
+}
+
+@media (min-width: 768px) {
+  .months {
+    flex-direction: row;
+  }
+}
+
+/* Single month */
+.month {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 1rem;
+}
+
+/* Nav (prev/next buttons container) */
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  width: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  justify-content: space-between;
+}
+
+/* Nav buttons (previous / next) */
+.navButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--cell-size);
+  height: var(--cell-size);
+  padding: 0;
+  user-select: none;
+  background-color: transparent;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  outline: none;
+  transition: all 150ms ease;
+}
+
+.navButton:hover {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.navButton:focus-visible {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 50%, transparent);
+}
+
+.navButton[aria-disabled="true"] {
+  opacity: 0.5;
+}
+
+/* Month caption */
+.monthCaption {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--cell-size);
+  width: 100%;
+  padding-left: var(--cell-size);
+  padding-right: var(--cell-size);
+}
+
+/* Dropdowns (month/year pickers) */
+.dropdowns {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 500;
+  justify-content: center;
+  height: var(--cell-size);
+  gap: 0.375rem;
+}
+
+/* Dropdown root wrapper */
+.dropdownRoot {
+  position: relative;
+  border: 1px solid var(--input);
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  border-radius: var(--radius-md);
+}
+
+.dropdownRoot:has(:focus) {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 50%, transparent);
+}
+
+/* Dropdown select element */
+.dropdown {
+  position: absolute;
+  background-color: var(--popover);
+  inset: 0;
+  opacity: 0;
+}
+
+/* Caption label */
+.captionLabel {
+  user-select: none;
+  font-weight: 500;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+/* Caption label when used as dropdown trigger */
+.captionLabelDropdown {
+  user-select: none;
+  font-weight: 500;
+  border-radius: var(--radius-md);
+  padding-left: 0.5rem;
+  padding-right: 0.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  height: 2rem;
+}
+
+.captionLabelDropdown > svg {
+  color: var(--muted-foreground);
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+/* Table */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+/* Weekdays row */
+.weekdays {
+  display: flex;
+}
+
+/* Individual weekday header */
+.weekday {
+  color: var(--muted-foreground);
+  border-radius: var(--radius-md);
+  flex: 1;
+  font-weight: 400;
+  font-size: 0.8rem;
+  user-select: none;
+}
+
+/* Week row */
+.week {
+  display: flex;
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+/* Week number header */
+.weekNumberHeader {
+  user-select: none;
+  width: var(--cell-size);
+}
+
+/* Week number cell */
+.weekNumber {
+  font-size: 0.8rem;
+  user-select: none;
+  color: var(--muted-foreground);
+}
+
+/* Day cell (base styles shared by both variants) */
+.day,
+.dayWithWeekNumber {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  text-align: center;
+  aspect-ratio: 1 / 1;
+  user-select: none;
+}
+
+.day:last-child[data-selected="true"] button,
+.dayWithWeekNumber:last-child[data-selected="true"] button {
+  border-top-right-radius: var(--radius-md);
+  border-bottom-right-radius: var(--radius-md);
+}
+
+/* Without week numbers: first child is the first day */
+.day:first-child[data-selected="true"] button {
+  border-top-left-radius: var(--radius-md);
+  border-bottom-left-radius: var(--radius-md);
+}
+
+/* With week numbers: second child is the first day */
+.dayWithWeekNumber:nth-child(2)[data-selected="true"] button {
+  border-top-left-radius: var(--radius-md);
+  border-bottom-left-radius: var(--radius-md);
+}
+
+/* Range states */
+.rangeStart {
+  border-top-left-radius: var(--radius-md);
+  border-bottom-left-radius: var(--radius-md);
+  background-color: var(--accent);
+}
+
+.rangeMiddle {
+  border-radius: 0;
+}
+
+.rangeEnd {
+  border-top-right-radius: var(--radius-md);
+  border-bottom-right-radius: var(--radius-md);
+  background-color: var(--accent);
+}
+
+/* Today */
+.today {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+  border-radius: var(--radius-md);
+}
+
+.today[data-selected="true"] {
+  border-radius: 0;
+}
+
+/* Outside days */
+.outside {
+  color: var(--muted-foreground);
+}
+
+.outside[aria-selected="true"] {
+  color: var(--muted-foreground);
+}
+
+/* Disabled days */
+.disabled {
+  color: var(--muted-foreground);
+  opacity: 0.5;
+}
+
+/* Hidden days */
+.hidden {
+  visibility: hidden;
+}
+
+/* Chevron icon */
+.chevron {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Week number cell content */
+.weekNumberContent {
+  display: flex;
+  width: var(--cell-size);
+  height: var(--cell-size);
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+/* ============================================
+   Day button styles
+   ============================================ */
+
+.dayButton {
+  display: flex;
+  aspect-ratio: 1 / 1;
+  width: 100%;
+  height: auto;
+  min-width: var(--cell-size);
+  flex-direction: column;
+  gap: 0.25rem;
+  line-height: 1;
+  font-weight: 400;
+}
+
+.dayButton > span {
+  font-size: 0.75rem;
+  line-height: 1rem;
+  opacity: 0.7;
+}
+
+/* Selection states */
+.dayButton[data-selected-single="true"] {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.dayButton[data-range-middle="true"] {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+  border-radius: 0;
+}
+
+.dayButton[data-range-start="true"] {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+  border-radius: var(--radius-md);
+  border-top-left-radius: var(--radius-md);
+  border-bottom-left-radius: var(--radius-md);
+}
+
+.dayButton[data-range-end="true"] {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+  border-radius: var(--radius-md);
+  border-top-right-radius: var(--radius-md);
+  border-bottom-right-radius: var(--radius-md);
+}
+
+/* Focused day styling - parent .day has data-focused */
+[data-focused="true"] .dayButton {
+  position: relative;
+  z-index: 10;
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 50%, transparent);
+}
+
+/* Dark mode hover */
+:global(.dark) .dayButton:hover {
+  color: var(--accent-foreground);
+}
