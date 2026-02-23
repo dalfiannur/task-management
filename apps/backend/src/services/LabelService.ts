@@ -27,7 +27,10 @@ export default class LabelService extends BaseService {
       .exec();
 
     return await Promise.all(
-      entities.map((e: any) => labelArcheType.Unwrap(e)),
+      entities.map(async (e: Entity) => {
+        const info = await e.get(LabelInfo);
+        return { id: e.id, labelInfo: info ? { name: info.name, color: info.color, projectId: info.projectId } : null };
+      }),
     );
   }
 
@@ -54,9 +57,10 @@ export default class LabelService extends BaseService {
       },
     });
     const entity = await archetype.createAndSaveEntity();
-    const saved = await new Query().findOneById(entity.id);
+    const saved = await Entity.FindById(entity.id);
     if (!saved) throw new Error("Failed to create label");
-    return await labelArcheType.Unwrap(saved);
+    const info = await saved.get(LabelInfo);
+    return { id: saved.id, labelInfo: info ? { name: info.name, color: info.color, projectId: info.projectId } : null };
   }
 
   @GraphQLOperation({
@@ -69,7 +73,7 @@ export default class LabelService extends BaseService {
     output: labelArcheType,
   })
   async updateLabel(input: { id: string; name?: string; color?: string }) {
-    const entity = await new Query().findOneById(input.id);
+    const entity = await Entity.FindById(input.id);
     if (!entity) throw new Error("Label not found");
 
     const updates: Record<string, unknown> = {};
@@ -81,7 +85,10 @@ export default class LabelService extends BaseService {
       await entity.save();
     }
 
-    return await labelArcheType.Unwrap(entity);
+    const refreshed = await Entity.FindById(input.id);
+    if (!refreshed) throw new Error("Label not found after update");
+    const info = await refreshed.get(LabelInfo);
+    return { id: refreshed.id, labelInfo: info ? { name: info.name, color: info.color, projectId: info.projectId } : null };
   }
 
   @GraphQLOperation({

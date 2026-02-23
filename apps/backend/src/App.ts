@@ -80,6 +80,12 @@ export default class TasksAPI extends App {
     const uploadManager = UploadManager.getInstance();
     uploadManager.registerStorageProvider("s3", s3Provider);
     uploadManager.setDefaultStorageProvider("s3");
+    uploadManager.updateConfiguration({
+      allowedMimeTypes: [],
+      allowedExtensions: [],
+      validateFileSignature: false,
+      maxFileSize: 50 * 1024 * 1024,
+    });
 
     // Register services
     ServiceRegistry.registerService(new ActivityService());
