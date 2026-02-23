@@ -20,3 +20,9 @@ export class ModuleProjectRefComponent extends BaseComponent {
   @CompData({ indexed: true })
   projectId: string = "";
 }
+
+@Component
+export class ModulePicIdComponent extends BaseComponent {
+  @CompData()
+  value: string = "";
+}

@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { UserCombobox } from "@/components/shared/user-combobox";
 import { useCreateModule, useUpdateModule, useModules } from "@/hooks/use-modules";
 import { MODULE_COLORS } from "./module-section";
 import type { Module } from "@/types/task";
@@ -34,12 +35,14 @@ export function ModuleForm({
 
   const [name, setName] = useState(module?.name ?? "");
   const [description, setDescription] = useState(module?.description ?? "");
+  const [picId, setPicId] = useState<string | undefined>(module?.picId);
 
   // Reset form when dialog opens
   useEffect(() => {
     if (open) {
       setName(module?.name ?? "");
       setDescription(module?.description ?? "");
+      setPicId(module?.picId);
     }
   }, [open, module]);
 
@@ -55,12 +58,12 @@ export function ModuleForm({
 
     if (isEditing) {
       updateModule.mutate(
-        { id: module.id, input: { name, description } },
+        { id: module.id, input: { name, description, picId } },
         { onSuccess: () => onOpenChange(false) },
       );
     } else {
       createModule.mutate(
-        { name, description, projectId },
+        { name, description, projectId, picId },
         { onSuccess: () => onOpenChange(false) },
       );
     }
@@ -116,6 +119,14 @@ export function ModuleForm({
                   onChange={setDescription}
                   placeholder="Describe what this module covers..."
                 />
+              </div>
+
+              {/* Person In Charge */}
+              <div className={styles.descriptionField}>
+                <p className={styles.descriptionLabel}>
+                  Person In Charge
+                </p>
+                <UserCombobox value={picId} onChange={setPicId} />
               </div>
             </div>
           </div>

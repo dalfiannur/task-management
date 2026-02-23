@@ -10,6 +10,7 @@ interface MutationHookOptions<TInput, TRaw, TMapped> {
   mapVariables?: (input: TInput) => Record<string, unknown>;
   mapResponse?: (raw: TRaw) => TMapped;
   client?: ApolloClient;
+  refetchQueries?: DocumentNode[];
 }
 
 export function createMutationHook<TInput, TRaw, TMapped = TRaw>(
@@ -21,12 +22,16 @@ export function createMutationHook<TInput, TRaw, TMapped = TRaw>(
     mapVariables,
     mapResponse,
     client,
+    refetchQueries,
   } = options;
 
   return function useMutationHook() {
     const [exec, { loading }] = useMutation<Record<string, TRaw>>(
       mutation,
-      client ? { client } : undefined,
+      {
+        ...(client ? { client } : {}),
+        ...(refetchQueries ? { refetchQueries, awaitRefetchQueries: true } : {}),
+      },
     );
 
     const buildVars = (input: TInput) =>
@@ -59,17 +64,21 @@ interface VoidMutationHookOptions<TInput> {
   mutation: DocumentNode;
   mapVariables?: (input: TInput) => Record<string, unknown>;
   client?: ApolloClient;
+  refetchQueries?: DocumentNode[];
 }
 
 export function createVoidMutationHook<TInput>(
   options: VoidMutationHookOptions<TInput>,
 ) {
-  const { mutation, mapVariables, client } = options;
+  const { mutation, mapVariables, client, refetchQueries } = options;
 
   return function useVoidMutationHook() {
     const [exec, { loading }] = useMutation(
       mutation,
-      client ? { client } : undefined,
+      {
+        ...(client ? { client } : {}),
+        ...(refetchQueries ? { refetchQueries, awaitRefetchQueries: true } : {}),
+      },
     );
 
     const buildVars = (input: TInput) =>

@@ -38,11 +38,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useTasks, useUpdateTask } from "@/hooks/use-tasks";
 import { useDeleteModule } from "@/hooks/use-modules";
-import { useUsers } from "@/hooks/use-users";
+import { useUsers, useUser } from "@/hooks/use-users";
 import { ChevronRight, Delete, Plus } from "lucide-react";
 import { TASK_STATUS_CONFIG, type Module, type Task, type TaskStatus, type UpdateTaskInput } from "@/types/task";
 import { type ProjectStatus, } from "@/types/project"
-import { cn } from "@/lib/utils";
+import { cn, getInitials } from "@/lib/utils";
 import { Button } from "../ui/button";
 import s from "./module-section.module.css";
 
@@ -112,6 +112,34 @@ function TaskAssigneeCell({ assigneeIds }: { assigneeIds: string[] }) {
       </div>
       {assignedUsers.length > 3 && (
         <span className={s.overflowCount}>+{assignedUsers.length - 3}</span>
+      )}
+    </div>
+  );
+}
+
+function stripHtml(html: string) {
+  return html.replace(/<[^>]*>/g, "").trim();
+}
+
+function ModuleMetaRow({ description, picId }: { description?: string; picId?: string }) {
+  const { data: picUser } = useUser(picId);
+
+  return (
+    <div className={s.metaRow}>
+      {description && (
+        <span className={s.metaDescription}>{stripHtml(description)}</span>
+      )}
+      {picUser && (
+        <span className={s.metaPic}>
+          <span className={s.metaPicLabel}>PIC:</span>
+          <Avatar className={s.metaPicAvatar}>
+            <AvatarImage src={picUser.avatarUrl} />
+            <AvatarFallback className={s.assigneeFallback}>
+              {getInitials(picUser.name)}
+            </AvatarFallback>
+          </Avatar>
+          <span className={s.metaPicName}>{picUser.name}</span>
+        </span>
       )}
     </div>
   );
@@ -195,6 +223,10 @@ export function ModuleSection({
               </AlertDialogContent>
             </AlertDialog>
           </div>
+
+          {(module.description || module.picId) && (
+            <ModuleMetaRow description={module.description} picId={module.picId} />
+          )}
 
           <CollapsibleContent>
             <Table>
