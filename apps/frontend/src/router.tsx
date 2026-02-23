@@ -56,6 +56,7 @@ export const router = createBrowserRouter([
           { path: "projects", lazy: () => import("./pages/projects") },
           {
             path: "projects/:projectId",
+            lazy: () => import("./pages/project-layout"),
             children: [
               { index: true, lazy: () => import("./pages/project-detail") },
               { path: "media", lazy: () => import("./pages/media") },

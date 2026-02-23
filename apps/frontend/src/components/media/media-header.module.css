@@ -10,14 +10,9 @@
   gap: 0.75rem;
 }
 
-.backIcon {
-  width: 1rem;
-  height: 1rem;
-}
-
 .title {
-  font-size: 1.5rem;
-  line-height: 2rem;
+  font-size: 1.25rem;
+  line-height: 1.75rem;
   font-weight: 600;
 }
 

@@ -4,38 +4,8 @@
   min-width: 0;
 }
 
-.page > * + * {
-  margin-top: 1rem;
-}
-
-.skeletonPage {
-  padding: 1.5rem;
-}
-
-.skeletonPage > * + * {
-  margin-top: 1rem;
-}
-
 .notFound {
   padding: 1.5rem;
   text-align: center;
   color: var(--muted-foreground);
-}
-
-.header {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.backIcon {
-  width: 1rem;
-  height: 1rem;
-  margin-right: 0.25rem;
-}
-
-.title {
-  font-size: 1.25rem;
-  line-height: 1.75rem;
-  font-weight: 600;
 }

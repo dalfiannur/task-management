@@ -1,34 +1,25 @@
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUIStore } from "@/stores/ui-store";
-import { ArrowLeft, Grid3X3, List, Upload } from "lucide-react";
-import { Link } from "react-router";
+import { Grid3X3, List, Upload } from "lucide-react";
 import type { MediaViewMode } from "@/types/media";
 import styles from "./media-header.module.css";
 
 interface MediaHeaderProps {
-  projectId: string;
   onUploadClick: () => void;
 }
 
-export function MediaHeader({ projectId, onUploadClick }: MediaHeaderProps) {
+export function MediaHeader({ onUploadClick }: MediaHeaderProps) {
   const { mediaViewMode, setMediaViewMode } = useUIStore();
 
   return (
     <div className={styles.header}>
       <div className={styles.left}>
-        <Button size="sm" variant="ghost" asChild>
-          <Link
-            to={`/projects/${projectId}`}
-          >
-            <ArrowLeft className={styles.backIcon} />
-          </Link>
-        </Button>
         <div>
-        <h1 className={styles.title}>Media & Files</h1>
-        <p className={styles.subtitle}>
-          Manage project files and attachments
-        </p>
+          <h1 className={styles.title}>Media & Files</h1>
+          <p className={styles.subtitle}>
+            Manage project files and attachments
+          </p>
         </div>
       </div>
       <div className={styles.right}>

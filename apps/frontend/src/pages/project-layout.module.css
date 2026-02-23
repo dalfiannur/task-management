@@ -1,0 +1,402 @@
+/* Compact Header */
+.header {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  animation: fade-up 0.4s ease-out both;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.topRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.badges {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.codeBadge {
+  font-family: monospace;
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  border-color: color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+.statusBadge {
+  border: 0;
+  font-size: 11px;
+}
+
+.statusDot {
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 9999px;
+  margin-right: 0.375rem;
+  display: inline-block;
+}
+
+.dotPending {
+  background-color: #9ca3af;
+}
+
+.dotProspect {
+  background-color: #fbbf24;
+}
+
+.dotWin,
+.dotWon {
+  background-color: #34d399;
+}
+
+.dotOnGoing {
+  background-color: #60a5fa;
+}
+
+.dotCanceled {
+  background-color: #f87171;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.newModuleBtn {
+  height: 2rem;
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+
+.btnIcon {
+  width: 0.875rem;
+  height: 0.875rem;
+  margin-right: 0.375rem;
+}
+
+.moreBtn {
+  width: 2rem;
+  height: 2rem;
+}
+
+.moreBtnIcon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.menuIcon {
+  width: 0.875rem;
+  height: 0.875rem;
+  margin-right: 0.5rem;
+}
+
+.deleteItem {
+  color: var(--destructive);
+}
+
+.deleteItem:focus {
+  color: var(--destructive);
+}
+
+/* Parent link */
+.parentLink {
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: var(--muted-foreground);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.parentLink:hover {
+  color: var(--foreground);
+}
+
+.parentLinkIcon {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+/* Title */
+.projectTitle {
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+/* Meta row */
+.metaRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.picInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.picLabel {
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: color-mix(in srgb, var(--muted-foreground) 60%, transparent);
+}
+
+.picAvatar {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.picAvatarFallback {
+  font-size: 9px;
+}
+
+.picName {
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+  color: var(--muted-foreground);
+}
+
+.clientInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+}
+
+.clientIcon {
+  width: 0.8125rem;
+  height: 0.8125rem;
+  color: var(--muted-foreground);
+  flex-shrink: 0;
+}
+
+.clientName {
+  color: var(--muted-foreground);
+}
+
+.descriptionRow {
+  display: flex;
+  align-items: center;
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+  color: color-mix(in srgb, var(--muted-foreground) 80%, transparent);
+}
+
+.descSeparator {
+  color: color-mix(in srgb, var(--muted-foreground) 40%, transparent);
+}
+
+.descClamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Stats Strip */
+.statsStrip {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 0.625rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  animation: fade-up 0.4s ease-out both;
+  animation-delay: 100ms;
+}
+
+.statsGroup {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.statItem {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.statIconDone {
+  width: 0.875rem;
+  height: 0.875rem;
+  color: #10b981;
+}
+
+.statIconProgress {
+  width: 0.875rem;
+  height: 0.875rem;
+  color: #f59e0b;
+}
+
+.statIconTotal {
+  width: 0.875rem;
+  height: 0.875rem;
+  color: var(--muted-foreground);
+}
+
+.statValue {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.statLabel {
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: var(--muted-foreground);
+}
+
+.progressWrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+  max-width: 16rem;
+}
+
+.progressTrack {
+  height: 0.375rem;
+  flex: 1;
+  border-radius: 9999px;
+  background-color: var(--muted);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 9999px;
+  background-color: #10b981;
+}
+
+.progressPct {
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 600;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Tab Navigation */
+.tabNav {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.tabLink {
+  position: relative;
+  padding: 0.625rem 1rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  text-decoration: none;
+  transition: color 150ms;
+}
+
+.tabLink:hover {
+  color: var(--foreground);
+}
+
+.tabLinkActive {
+  color: var(--foreground);
+}
+
+.tabLinkActive::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0.5rem;
+  right: 0.5rem;
+  height: 2px;
+  background-color: var(--foreground);
+  border-radius: 1px;
+}
+
+.tabIcon {
+  width: 0.875rem;
+  height: 0.875rem;
+  margin-right: 0.375rem;
+  display: inline-block;
+  vertical-align: -2px;
+}
+
+/* Content area */
+.content {
+  flex: 1;
+  min-height: 0;
+}
+
+/* Not found */
+.notFound {
+  padding: 1.5rem;
+  text-align: center;
+  color: var(--muted-foreground);
+}
+
+/* Loading */
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+}
+
+.loadingIcon {
+  width: 2rem;
+  height: 2rem;
+  color: var(--muted-foreground);
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Delete dialog */
+.deleteDialogAction {
+  background-color: var(--destructive);
+  color: white;
+}
+
+.deleteDialogAction:hover {
+  background-color: color-mix(in srgb, var(--destructive) 90%, black);
+}
+
+/* Win button in menu */
+.winItem {
+  color: #059669;
+}
+
+.winItem:focus {
+  color: #059669;
+}

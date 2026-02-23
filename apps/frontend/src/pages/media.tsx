@@ -25,7 +25,6 @@ export function Component() {
   return (
     <div className={styles.page}>
       <MediaHeader
-        projectId={projectId!}
         onUploadClick={() => setUploadOpen(true)}
       />
 

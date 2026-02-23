@@ -27,7 +27,6 @@ import {
   Plus,
   FileText,
   GripVertical,
-  ArrowLeft,
   Search,
 } from "lucide-react";
 import type { Page } from "@/types/page";
@@ -164,11 +163,6 @@ export function Component() {
       {/* Header */}
       <div className={styles.header}>
         <div className={styles.headerLeft}>
-          <Button variant="ghost" size="icon" className={styles.backBtn} asChild>
-            <Link to={`/projects/${projectId}`}>
-              <ArrowLeft className={styles.backIcon} />
-            </Link>
-          </Button>
           <div>
             <h1 className={styles.title}>
               Pages
