@@ -48,11 +48,13 @@ const GET_PROJECT_CORE = gql`
   query GetProjectCore($input: getProjectInput!) {
     getProject(input: $input) {
       id
+      code
       name {
         name
         description
       }
       status
+      winStage
     }
   }
 `;

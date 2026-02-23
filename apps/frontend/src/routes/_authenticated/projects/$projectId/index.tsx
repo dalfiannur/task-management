@@ -82,6 +82,10 @@ const STATUS_ACCENT: Record<string, { gradient: string; dot: string }> = {
     gradient: "from-emerald-500/8 via-transparent",
     dot: "bg-emerald-400",
   },
+  won: {
+    gradient: "from-emerald-500/8 via-transparent",
+    dot: "bg-emerald-400",
+  },
   on_going: {
     gradient: "from-blue-500/8 via-transparent",
     dot: "bg-blue-400",
@@ -146,8 +150,8 @@ function ProjectDetailPage() {
     );
   }
 
-  const statusConfig = PROJECT_STATUS_CONFIG[project.status.value];
-  const accent = STATUS_ACCENT[project.status.value] ?? STATUS_ACCENT.pending;
+  const statusConfig = PROJECT_STATUS_CONFIG[project.coreDetail?.winStage === "won" && project.status.value === "prospect" ? "won" : project.status.value];
+  const accent = STATUS_ACCENT[project.coreDetail?.winStage === "won" && project.status.value === "prospect" ? "won" : project.status.value] ?? STATUS_ACCENT.pending;
 
   // Compute project-level task stats from all modules
   const projectModuleIds = new Set(modules?.map((m) => m.id) ?? []);
@@ -175,7 +179,7 @@ function ProjectDetailPage() {
                 variant="outline"
                 className="font-mono text-[11px] tracking-wider border-border/60"
               >
-                {getProjectDisplayName(project)}
+                {project.coreDetail?.code}
               </Badge>
               <Badge className={statusConfig.color + " border-0 text-[11px]"}>
                 <span
@@ -184,6 +188,7 @@ function ProjectDetailPage() {
                 {statusConfig.label}
               </Badge>
             </div>
+
             <div className="flex items-center gap-2">
               <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -262,7 +267,7 @@ function ProjectDetailPage() {
                 <FolderPlus className="size-3.5 mr-1.5" />
                 Sub-Project
               </Button>
-              {project.status.value === "win" && (
+              {project.coreDetail?.winStage === "won" && project.status.value === "prospect" && (
                 <Button
                   size="sm"
                   className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
@@ -491,7 +496,7 @@ function ProjectDetailPage() {
         onOpenChange={setFormOpen}
         projectId={projectId}
       />
-      {project.status.value === "win" && (
+      {project.coreDetail?.winStage === "won" && project.status.value === "prospect" && (
         <WinProjectDialog
           project={project}
           open={winDialogOpen}
