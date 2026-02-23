@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { useApproveProject } from "@/hooks/use-projects";
 import type { Project, ProjectCore } from "@/types/project";
 import { useApproveLead } from "@/hooks/use-leads";
+import styles from "./approve-lead-dialog.module.css";
 
 type ProjectWithCore = Project & { coreDetail: ProjectCore | null };
 
@@ -59,8 +60,8 @@ export function ApproveLeadDialog({
         <DialogHeader>
           <DialogTitle>Approve Lead — {project?.coreDetail?.name.name}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
+        <form onSubmit={handleSubmit} className={styles.form}>
+          <div className={styles.fieldGroup}>
             <Label htmlFor="description">Description / Brief</Label>
             <RichTextEditor
               content={description}
@@ -68,10 +69,10 @@ export function ApproveLeadDialog({
               placeholder="Enter project brief..."
             />
           </div>
-          <div className="space-y-2">
+          <div className={styles.fieldGroup}>
             <Label htmlFor="attachments">Attachment Files</Label>
             <Input id="attachments" type="file" multiple />
-            <p className="text-xs text-muted-foreground">
+            <p className={styles.hint}>
               Optional. Upload relevant documents.
             </p>
           </div>
@@ -83,8 +84,8 @@ export function ApproveLeadDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={approveProject.isPending}>
-              {approveProject.isPending ? "Approving..." : "Approve"}
+            <Button type="submit" disabled={approveProject.isLoading}>
+              {approveProject.isLoading ? "Approving..." : "Approve"}
             </Button>
           </DialogFooter>
         </form>

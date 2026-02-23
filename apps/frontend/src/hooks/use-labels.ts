@@ -1,4 +1,5 @@
-import { useQuery, useMutation, gql } from "@/lib/graphql-client";
+import { useQuery, gql } from "@/lib/graphql-client";
+import { createMutationHook, createVoidMutationHook, normalizeQueryResult } from "@/lib/hook-factories";
 import type { Label } from "@/types/task";
 
 // --- GraphQL operations ---
@@ -69,118 +70,37 @@ function mapLabel(l: LabelResponse): Label {
 // --- Hooks ---
 
 export function useLabels(projectId?: string) {
-  const { data, loading, error } = useQuery<{
-    listLabels: LabelResponse[];
-  }>(LIST_LABELS, {
+  const result = useQuery<{ listLabels: LabelResponse[] }>(LIST_LABELS, {
     variables: { input: { projectId } },
     skip: !projectId,
   });
-
-  return {
-    data: data?.listLabels.map(mapLabel),
-    isLoading: loading,
-    isPending: loading,
-    error: error ?? null,
-  };
+  return normalizeQueryResult(result, (d) => d.listLabels.map(mapLabel));
 }
 
-export function useCreateLabel() {
-  const [exec, { loading }] = useMutation<{ createLabel: LabelResponse }>(
-    CREATE_LABEL,
-  );
+export const useCreateLabel = createMutationHook<
+  { name: string; color: string; projectId: string },
+  LabelResponse,
+  Label
+>({
+  mutation: CREATE_LABEL,
+  responseKey: "createLabel",
+  mapResponse: mapLabel,
+});
 
-  return {
-    mutate: (
-      input: { name: string; color: string; projectId: string },
-      opts?: { onSuccess?: (data: Label) => void },
-    ) => {
-      exec({
-        variables: {
-          input: {
-            name: input.name,
-            color: input.color,
-            projectId: input.projectId,
-          },
-        },
-      }).then((res) => {
-        if (res.data) opts?.onSuccess?.(mapLabel(res.data.createLabel));
-      });
-    },
-    mutateAsync: async (input: {
-      name: string;
-      color: string;
-      projectId: string;
-    }): Promise<Label> => {
-      const res = await exec({
-        variables: {
-          input: {
-            name: input.name,
-            color: input.color,
-            projectId: input.projectId,
-          },
-        },
-      });
-      return mapLabel(res.data!.createLabel);
-    },
-    isPending: loading,
-  };
-}
+export const useUpdateLabel = createMutationHook<
+  { id: string; input: { name?: string; color?: string } },
+  LabelResponse,
+  Label
+>({
+  mutation: UPDATE_LABEL,
+  responseKey: "updateLabel",
+  mapVariables: (vars) => ({
+    input: { id: vars.id, name: vars.input.name, color: vars.input.color },
+  }),
+  mapResponse: mapLabel,
+});
 
-export function useUpdateLabel() {
-  const [exec, { loading }] = useMutation<{ updateLabel: LabelResponse }>(
-    UPDATE_LABEL,
-  );
-
-  return {
-    mutate: (
-      vars: { id: string; input: { name?: string; color?: string } },
-      opts?: { onSuccess?: (data: Label) => void },
-    ) => {
-      exec({
-        variables: {
-          input: {
-            id: vars.id,
-            name: vars.input.name,
-            color: vars.input.color,
-          },
-        },
-      }).then((res) => {
-        if (res.data) opts?.onSuccess?.(mapLabel(res.data.updateLabel));
-      });
-    },
-    mutateAsync: async (vars: {
-      id: string;
-      input: { name?: string; color?: string };
-    }): Promise<Label> => {
-      const res = await exec({
-        variables: {
-          input: {
-            id: vars.id,
-            name: vars.input.name,
-            color: vars.input.color,
-          },
-        },
-      });
-      return mapLabel(res.data!.updateLabel);
-    },
-    isPending: loading,
-  };
-}
-
-export function useDeleteLabel() {
-  const [exec, { loading }] = useMutation<{ deleteLabel: boolean }>(
-    DELETE_LABEL,
-  );
-
-  return {
-    mutate: (id: string, opts?: { onSuccess?: () => void }) => {
-      exec({ variables: { input: { id } } }).then(() => {
-        opts?.onSuccess?.();
-      });
-    },
-    mutateAsync: async (id: string): Promise<void> => {
-      await exec({ variables: { input: { id } } });
-    },
-    isPending: loading,
-  };
-}
+export const useDeleteLabel = createVoidMutationHook<string>({
+  mutation: DELETE_LABEL,
+  mapVariables: (id) => ({ input: { id } }),
+});

@@ -35,7 +35,6 @@ export function useActivities(taskId: string) {
   return {
     data: data?.listActivities,
     isLoading: loading,
-    isPending: loading,
     error: error ?? null,
   };
 }

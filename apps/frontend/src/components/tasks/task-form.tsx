@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useFormShortcut } from "@/hooks/use-form-shortcut";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -19,7 +20,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Command,
@@ -30,7 +30,6 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import {
-  Calendar as CalendarIcon,
   X,
   CircleDot,
   Signal,
@@ -40,7 +39,6 @@ import {
   Check,
   ChevronsUpDown,
 } from "lucide-react";
-import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { useCreateTask, useUpdateTask } from "@/hooks/use-tasks";
@@ -55,6 +53,9 @@ import {
 } from "@/types/task";
 import { Tag } from "lucide-react";
 import { LabelCombobox } from "@/components/shared/label-combobox";
+import { PropertyRow } from "@/components/shared/property-row";
+import { DatePickerField } from "@/components/shared/date-picker-field";
+import styles from "./task-form.module.css";
 
 interface TaskFormProps {
   open: boolean;
@@ -65,20 +66,20 @@ interface TaskFormProps {
 }
 
 const STATUS_DOT_COLORS: Record<TaskStatus, string> = {
-  backlog: "bg-gray-400",
-  todo: "bg-blue-400",
-  in_progress: "bg-amber-400",
-  in_review: "bg-violet-400",
-  done: "bg-emerald-400",
-  cancelled: "bg-red-400",
+  backlog: styles.dotBacklog,
+  todo: styles.dotTodo,
+  in_progress: styles.dotInProgress,
+  in_review: styles.dotInReview,
+  done: styles.dotDone,
+  cancelled: styles.dotCancelled,
 };
 
 const PRIORITY_DOT_COLORS: Record<TaskPriority, string> = {
-  none: "bg-gray-300",
-  low: "bg-blue-400",
-  medium: "bg-amber-400",
-  high: "bg-orange-500",
-  urgent: "bg-red-500",
+  none: styles.dotPriorityNone,
+  low: styles.dotPriorityLow,
+  medium: styles.dotPriorityMedium,
+  high: styles.dotPriorityHigh,
+  urgent: styles.dotPriorityUrgent,
 };
 
 export function TaskForm({ open, onOpenChange, task, moduleId, projectId }: TaskFormProps) {
@@ -102,9 +103,6 @@ export function TaskForm({ open, onOpenChange, task, moduleId, projectId }: Task
   );
   const [dueDate, setDueDate] = useState<string | undefined>(task?.dueDate);
   const [labelIds, setLabelIds] = useState<string[]>(task?.labelIds ?? []);
-
-  const [startDateOpen, setStartDateOpen] = useState(false);
-  const [dueDateOpen, setDueDateOpen] = useState(false);
 
   const parsedStartDate = startDate ? new Date(startDate) : undefined;
   const parsedDueDate = dueDate ? new Date(dueDate) : undefined;
@@ -148,31 +146,17 @@ export function TaskForm({ open, onOpenChange, task, moduleId, projectId }: Task
     }
   };
 
-  // Keyboard shortcut: Cmd/Ctrl + Enter to submit
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && title.trim()) {
-        e.preventDefault();
-        const form = document.querySelector<HTMLFormElement>(
-          "[data-task-form]",
-        );
-        form?.requestSubmit();
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [open, title]);
+  useFormShortcut(open, "[data-task-form]", !!title.trim());
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl max-h-[85vh] overflow-y-auto p-0">
+      <DialogContent className={`sm:max-w-4xl ${styles.dialogContent}`}>
         <form onSubmit={handleSubmit} data-task-form>
-          <div className="flex flex-col sm:flex-row">
-            {/* Left panel — main content */}
-            <div className="flex-1 p-6 sm:border-r min-w-0">
-              <DialogHeader className="mb-5">
-                <DialogTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/60">
+          <div className={styles.formLayout}>
+            {/* Left panel -- main content */}
+            <div className={styles.leftPanel}>
+              <DialogHeader className={styles.headerMargin}>
+                <DialogTitle className={styles.headerTitle}>
                   {isEditing ? "Edit Task" : "New Task"}
                 </DialogTitle>
                 <DialogDescription className="sr-only">
@@ -182,12 +166,12 @@ export function TaskForm({ open, onOpenChange, task, moduleId, projectId }: Task
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="space-y-5">
+              <div className={styles.leftContent}>
                 {/* Title input with accent bar */}
-                <div className="flex gap-3">
+                <div className={styles.titleRow}>
                   <div
                     className={cn(
-                      "w-1 shrink-0 rounded-full self-stretch transition-colors",
+                      styles.titleAccent,
                       STATUS_DOT_COLORS[status],
                     )}
                   />
@@ -195,14 +179,14 @@ export function TaskForm({ open, onOpenChange, task, moduleId, projectId }: Task
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="Task title..."
-                    className="flex-1 text-xl font-bold font-display tracking-tight bg-transparent border-0 outline-none placeholder:font-normal placeholder:text-base placeholder:text-muted-foreground/40"
+                    className={styles.titleInput}
                     autoFocus
                   />
                 </div>
 
                 {/* Description */}
-                <div className="space-y-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+                <div className={styles.descriptionSection}>
+                  <p className={styles.sectionLabel}>
                     Description
                   </p>
                   <RichTextEditor
@@ -214,17 +198,17 @@ export function TaskForm({ open, onOpenChange, task, moduleId, projectId }: Task
               </div>
 
               {/* Footer */}
-              <div className="flex items-center justify-between mt-6 pt-4 border-t">
-                <span className="text-[11px] text-muted-foreground/50">
-                  <kbd className="px-1.5 py-0.5 rounded bg-muted text-[10px] font-mono">
-                    ⌘
+              <div className={styles.footer}>
+                <span className={styles.shortcutHint}>
+                  <kbd className={styles.kbd}>
+                    &#8984;
                   </kbd>{" "}
-                  <kbd className="px-1.5 py-0.5 rounded bg-muted text-[10px] font-mono">
-                    ↵
+                  <kbd className={styles.kbd}>
+                    &#8629;
                   </kbd>{" "}
                   to submit
                 </span>
-                <div className="flex items-center gap-2">
+                <div className={styles.footerActions}>
                   <Button
                     type="button"
                     variant="ghost"
@@ -244,25 +228,25 @@ export function TaskForm({ open, onOpenChange, task, moduleId, projectId }: Task
               </div>
             </div>
 
-            {/* Right panel — property panel */}
-            <div className="w-full sm:w-[280px] shrink-0 bg-muted/20">
-              <div className="px-5 py-4 border-b">
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+            {/* Right panel -- property panel */}
+            <div className={styles.rightPanel}>
+              <div className={styles.propertiesHeader}>
+                <p className={styles.propertiesLabel}>
                   Properties
                 </p>
               </div>
 
-              <div className="p-4 space-y-1">
+              <div className={styles.propertiesBody}>
                 {/* Status */}
                 <PropertyRow icon={CircleDot} label="Status">
                   <Select
                     value={status}
                     onValueChange={(v) => setStatus(v as TaskStatus)}
                   >
-                    <SelectTrigger className="h-7 text-xs border-0 shadow-none bg-transparent hover:bg-muted/50 transition-colors px-2 w-auto gap-1.5 [&>svg:last-child]:size-3">
+                    <SelectTrigger className={styles.propertyTrigger}>
                       <span
                         className={cn(
-                          "size-2 rounded-full shrink-0",
+                          styles.dot,
                           STATUS_DOT_COLORS[status],
                         )}
                       />
@@ -276,10 +260,10 @@ export function TaskForm({ open, onOpenChange, task, moduleId, projectId }: Task
                         ][]
                       ).map(([key, config]) => (
                         <SelectItem key={key} value={key}>
-                          <div className="flex items-center gap-2">
+                          <div className={styles.selectItemRow}>
                             <span
                               className={cn(
-                                "size-2 rounded-full",
+                                styles.dot,
                                 STATUS_DOT_COLORS[key],
                               )}
                             />
@@ -297,10 +281,10 @@ export function TaskForm({ open, onOpenChange, task, moduleId, projectId }: Task
                     value={priority}
                     onValueChange={(v) => setPriority(v as TaskPriority)}
                   >
-                    <SelectTrigger className="h-7 text-xs border-0 shadow-none bg-transparent hover:bg-muted/50 transition-colors px-2 w-auto gap-1.5 [&>svg:last-child]:size-3">
+                    <SelectTrigger className={styles.propertyTrigger}>
                       <span
                         className={cn(
-                          "size-2 rounded-full shrink-0",
+                          styles.dot,
                           PRIORITY_DOT_COLORS[priority],
                         )}
                       />
@@ -314,10 +298,10 @@ export function TaskForm({ open, onOpenChange, task, moduleId, projectId }: Task
                         ][]
                       ).map(([key, config]) => (
                         <SelectItem key={key} value={key}>
-                          <div className="flex items-center gap-2">
+                          <div className={styles.selectItemRow}>
                             <span
                               className={cn(
-                                "size-2 rounded-full",
+                                styles.dot,
                                 PRIORITY_DOT_COLORS[key],
                               )}
                             />
@@ -348,113 +332,30 @@ export function TaskForm({ open, onOpenChange, task, moduleId, projectId }: Task
                   />
                 </PropertyRow>
 
-                <div className="h-px bg-border/60 my-2 !mt-3 !mb-3" />
+                <div className={styles.divider} />
 
                 {/* Start Date */}
                 <PropertyRow icon={CalendarDays} label="Start">
-                  <Popover
-                    open={startDateOpen}
-                    onOpenChange={setStartDateOpen}
-                  >
-                    <PopoverTrigger asChild>
-                      <button
-                        type="button"
-                        className={cn(
-                          "inline-flex items-center gap-1.5 rounded-md px-2 h-7 text-xs hover:bg-muted/50 transition-colors",
-                          !parsedStartDate && "text-muted-foreground",
-                        )}
-                      >
-                        <CalendarIcon className="size-3" />
-                        {parsedStartDate
-                          ? format(parsedStartDate, "MMM d, yyyy")
-                          : "Set date"}
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={parsedStartDate}
-                        onSelect={(d) => {
-                          setStartDate(d ? d.toISOString() : undefined);
-                          setStartDateOpen(false);
-                        }}
-                        initialFocus
-                      />
-                      {parsedStartDate && (
-                        <div className="p-2 border-t">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="w-full text-muted-foreground text-xs h-7"
-                            onClick={() => {
-                              setStartDate(undefined);
-                              setStartDateOpen(false);
-                            }}
-                          >
-                            <X className="mr-1 size-3" />
-                            Clear
-                          </Button>
-                        </div>
-                      )}
-                    </PopoverContent>
-                  </Popover>
+                  <DatePickerField
+                    value={parsedStartDate}
+                    onChange={(d) => setStartDate(d ? d.toISOString() : undefined)}
+                  />
                 </PropertyRow>
 
                 {/* Due Date */}
                 <PropertyRow icon={CalendarClock} label="Due">
-                  <Popover open={dueDateOpen} onOpenChange={setDueDateOpen}>
-                    <PopoverTrigger asChild>
-                      <button
-                        type="button"
-                        className={cn(
-                          "inline-flex items-center gap-1.5 rounded-md px-2 h-7 text-xs hover:bg-muted/50 transition-colors",
-                          !parsedDueDate && "text-muted-foreground",
-                        )}
-                      >
-                        <CalendarIcon className="size-3" />
-                        {parsedDueDate
-                          ? format(parsedDueDate, "MMM d, yyyy")
-                          : "Set date"}
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={parsedDueDate}
-                        onSelect={(d) => {
-                          setDueDate(d ? d.toISOString() : undefined);
-                          setDueDateOpen(false);
-                        }}
-                        initialFocus
-                      />
-                      {parsedDueDate && (
-                        <div className="p-2 border-t">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="w-full text-muted-foreground text-xs h-7"
-                            onClick={() => {
-                              setDueDate(undefined);
-                              setDueDateOpen(false);
-                            }}
-                          >
-                            <X className="mr-1 size-3" />
-                            Clear
-                          </Button>
-                        </div>
-                      )}
-                    </PopoverContent>
-                  </Popover>
+                  <DatePickerField
+                    value={parsedDueDate}
+                    onChange={(d) => setDueDate(d ? d.toISOString() : undefined)}
+                  />
                 </PropertyRow>
 
                 {/* Date range indicator */}
                 {parsedStartDate && parsedDueDate && (
-                  <div className="pl-7 pt-1">
-                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground/60">
-                      <div className="h-px flex-1 bg-border/60" />
-                      <span className="tabular-nums">
+                  <div className={styles.dateRange}>
+                    <div className={styles.dateRangeInner}>
+                      <div className={styles.dateRangeLine} />
+                      <span className={styles.dateRangeDays}>
                         {Math.ceil(
                           (parsedDueDate.getTime() -
                             parsedStartDate.getTime()) /
@@ -462,7 +363,7 @@ export function TaskForm({ open, onOpenChange, task, moduleId, projectId }: Task
                         )}{" "}
                         days
                       </span>
-                      <div className="h-px flex-1 bg-border/60" />
+                      <div className={styles.dateRangeLine} />
                     </div>
                   </div>
                 )}
@@ -494,11 +395,11 @@ function AssigneeCombobox({
           type="button"
           role="combobox"
           aria-expanded={open}
-          className="inline-flex items-center gap-1.5 rounded-md px-2 h-7 text-xs hover:bg-muted/50 transition-colors w-full"
+          className={styles.assigneeTrigger}
         >
           {selectedUsers.length > 0 ? (
             <>
-              <div className="flex items-center -space-x-1.5">
+              <div className={styles.avatarStack}>
                 {selectedUsers.slice(0, 3).map((user) => (
                   <Avatar key={user.id} className="size-4 ring-1 ring-background">
                     <AvatarImage src={user.avatarUrl} />
@@ -508,13 +409,13 @@ function AssigneeCombobox({
                   </Avatar>
                 ))}
               </div>
-              <span className="truncate">
+              <span className={styles.truncate}>
                 {selectedUsers.length === 1
                   ? selectedUsers[0].name
                   : `${selectedUsers.length} assignees`}
               </span>
               <X
-                className="size-3 ml-auto text-muted-foreground/50 hover:text-foreground shrink-0"
+                className={styles.clearIcon}
                 onClick={(e) => {
                   e.stopPropagation();
                   onChange([]);
@@ -523,8 +424,8 @@ function AssigneeCombobox({
             </>
           ) : (
             <>
-              <span className="text-muted-foreground">Unassigned</span>
-              <ChevronsUpDown className="size-3 ml-auto text-muted-foreground/40 shrink-0" />
+              <span className={styles.unassignedText}>Unassigned</span>
+              <ChevronsUpDown className={styles.chevronIcon} />
             </>
           )}
         </button>
@@ -567,8 +468,8 @@ function AssigneeCombobox({
                     {user.name}
                     <Check
                       className={cn(
-                        "ml-auto size-3.5",
-                        isSelected ? "opacity-100" : "opacity-0",
+                        styles.checkIcon,
+                        isSelected ? styles.checkVisible : styles.checkHidden,
                       )}
                     />
                   </CommandItem>
@@ -582,22 +483,3 @@ function AssigneeCombobox({
   );
 }
 
-function PropertyRow({
-  icon: Icon,
-  label,
-  children,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-center gap-2 min-h-[32px]">
-      <div className="flex items-center gap-1.5 w-[72px] shrink-0">
-        <Icon className="size-3.5 text-muted-foreground/50" />
-        <span className="text-xs text-muted-foreground">{label}</span>
-      </div>
-      <div className="flex-1 min-w-0">{children}</div>
-    </div>
-  );
-}

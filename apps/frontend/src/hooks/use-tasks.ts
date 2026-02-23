@@ -1,4 +1,5 @@
-import { useQuery, useMutation, gql } from "@/lib/graphql-client";
+import { useQuery, gql } from "@/lib/graphql-client";
+import { createMutationHook, createVoidMutationHook, normalizeQueryResult } from "@/lib/hook-factories";
 import type {
   Task,
   CreateTaskInput,
@@ -159,222 +160,100 @@ interface TaskFilters {
 }
 
 export function useTasks(filters: TaskFilters = {}) {
-  const { data, loading, error } = useQuery<{ listTasks: TaskResponse[] }>(
-    LIST_TASKS,
-    {
-      variables: {
-        input: {
-          moduleId: filters.moduleId,
-          status: filters.status,
-          priority: filters.priority,
-          assigneeId: filters.assignee,
-          search: filters.search,
-          sort: filters.sort,
-          page: filters.page,
-        },
+  const result = useQuery<{ listTasks: TaskResponse[] }>(LIST_TASKS, {
+    variables: {
+      input: {
+        moduleId: filters.moduleId,
+        status: filters.status,
+        priority: filters.priority,
+        assigneeId: filters.assignee,
+        search: filters.search,
+        sort: filters.sort,
+        page: filters.page,
       },
-      skip: !filters.moduleId,
     },
-  );
-
-  return {
-    data: data?.listTasks.map(mapTask),
-    isLoading: loading,
-    isPending: loading,
-    error: error ?? null,
-  };
+    skip: !filters.moduleId,
+  });
+  return normalizeQueryResult(result, (d) => d.listTasks.map(mapTask));
 }
 
 export function useTask(taskId: string) {
-  const { data, loading, error } = useQuery<{
-    getTask: TaskResponse | null;
-  }>(GET_TASK, {
+  const result = useQuery<{ getTask: TaskResponse | null }>(GET_TASK, {
     variables: { input: { id: taskId } },
     skip: !taskId,
   });
-
-  return {
-    data: data?.getTask ? mapTask(data.getTask) : undefined,
-    isLoading: loading,
-    isPending: loading,
-    error: error ?? null,
-  };
-}
-
-export function useCreateTask() {
-  const [exec, { loading }] = useMutation<{ createTask: TaskResponse }>(
-    CREATE_TASK,
+  return normalizeQueryResult(result, (d) =>
+    d.getTask ? mapTask(d.getTask) : undefined,
   );
-
-  return {
-    mutate: (
-      input: CreateTaskInput,
-      opts?: { onSuccess?: (data: Task) => void },
-    ) => {
-      exec({
-        variables: {
-          input: {
-            title: input.title,
-            description: input.description,
-            status: input.status,
-            priority: input.priority,
-            startDate: input.startDate,
-            dueDate: input.dueDate,
-            assigneeIds: input.assigneeIds,
-            moduleId: input.moduleId,
-            labelIds: input.labelIds,
-          },
-        },
-      }).then((res) => {
-        if (res.data) opts?.onSuccess?.(mapTask(res.data.createTask));
-      });
-    },
-    mutateAsync: async (input: CreateTaskInput): Promise<Task> => {
-      const res = await exec({
-        variables: {
-          input: {
-            title: input.title,
-            description: input.description,
-            status: input.status,
-            priority: input.priority,
-            startDate: input.startDate,
-            dueDate: input.dueDate,
-            assigneeIds: input.assigneeIds,
-            moduleId: input.moduleId,
-            labelIds: input.labelIds,
-          },
-        },
-      });
-      return mapTask(res.data!.createTask);
-    },
-    isPending: loading,
-  };
-}
-
-export function useUpdateTask() {
-  const [exec, { loading }] = useMutation<{ updateTask: TaskResponse }>(
-    UPDATE_TASK,
-  );
-
-  return {
-    mutate: (
-      vars: { id: string; input: UpdateTaskInput },
-      opts?: { onSuccess?: (data: Task) => void },
-    ) => {
-      exec({
-        variables: {
-          input: {
-            id: vars.id,
-            title: vars.input.title,
-            description: vars.input.description,
-            status: vars.input.status,
-            priority: vars.input.priority,
-            startDate: vars.input.startDate,
-            dueDate: vars.input.dueDate,
-            assigneeIds: vars.input.assigneeIds,
-            labelIds: vars.input.labelIds,
-          },
-        },
-      }).then((res) => {
-        if (res.data) opts?.onSuccess?.(mapTask(res.data.updateTask));
-      });
-    },
-    mutateAsync: async (vars: {
-      id: string;
-      input: UpdateTaskInput;
-    }): Promise<Task> => {
-      const res = await exec({
-        variables: {
-          input: {
-            id: vars.id,
-            title: vars.input.title,
-            description: vars.input.description,
-            status: vars.input.status,
-            priority: vars.input.priority,
-            startDate: vars.input.startDate,
-            dueDate: vars.input.dueDate,
-            assigneeIds: vars.input.assigneeIds,
-            labelIds: vars.input.labelIds,
-          },
-        },
-      });
-      return mapTask(res.data!.updateTask);
-    },
-    isPending: loading,
-  };
-}
-
-export function useDeleteTask() {
-  const [exec, { loading }] = useMutation<{ deleteTask: boolean }>(
-    DELETE_TASK,
-  );
-
-  return {
-    mutate: (id: string, opts?: { onSuccess?: () => void }) => {
-      exec({ variables: { input: { id } } }).then(() => {
-        opts?.onSuccess?.();
-      });
-    },
-    mutateAsync: async (id: string): Promise<void> => {
-      await exec({ variables: { input: { id } } });
-    },
-    isPending: loading,
-  };
-}
-
-export function useReorderTask() {
-  const [exec, { loading }] = useMutation<{ reorderTask: TaskResponse }>(
-    REORDER_TASK,
-  );
-
-  return {
-    mutate: (
-      vars: { id: string; newOrder: number; newStatus?: TaskStatus },
-      opts?: { onSuccess?: (data: Task) => void },
-    ) => {
-      exec({
-        variables: {
-          input: {
-            id: vars.id,
-            newOrder: vars.newOrder,
-            newStatus: vars.newStatus,
-          },
-        },
-      }).then((res) => {
-        if (res.data) opts?.onSuccess?.(mapTask(res.data.reorderTask));
-      });
-    },
-    mutateAsync: async (vars: {
-      id: string;
-      newOrder: number;
-      newStatus?: TaskStatus;
-    }): Promise<Task> => {
-      const res = await exec({
-        variables: {
-          input: {
-            id: vars.id,
-            newOrder: vars.newOrder,
-            newStatus: vars.newStatus,
-          },
-        },
-      });
-      return mapTask(res.data!.reorderTask);
-    },
-    isPending: loading,
-  };
 }
 
 export function useAllTasks(filters: { projectId?: string } = {}) {
-  const { data, loading, error } = useQuery<{
-    listAllTasks: TaskResponse[];
-  }>(LIST_ALL_TASKS, {
+  const result = useQuery<{ listAllTasks: TaskResponse[] }>(LIST_ALL_TASKS, {
     variables: { input: { projectId: filters.projectId } },
   });
-
-  return {
-    data: data?.listAllTasks.map(mapTask),
-    isLoading: loading,
-    isPending: loading,
-    error: error ?? null,
-  };
+  return normalizeQueryResult(result, (d) => d.listAllTasks.map(mapTask));
 }
+
+export const useCreateTask = createMutationHook<
+  CreateTaskInput,
+  TaskResponse,
+  Task
+>({
+  mutation: CREATE_TASK,
+  responseKey: "createTask",
+  mapVariables: (input) => ({
+    input: {
+      title: input.title,
+      description: input.description,
+      status: input.status,
+      priority: input.priority,
+      startDate: input.startDate,
+      dueDate: input.dueDate,
+      assigneeIds: input.assigneeIds,
+      moduleId: input.moduleId,
+      labelIds: input.labelIds,
+    },
+  }),
+  mapResponse: mapTask,
+});
+
+export const useUpdateTask = createMutationHook<
+  { id: string; input: UpdateTaskInput },
+  TaskResponse,
+  Task
+>({
+  mutation: UPDATE_TASK,
+  responseKey: "updateTask",
+  mapVariables: (vars) => ({
+    input: {
+      id: vars.id,
+      title: vars.input.title,
+      description: vars.input.description,
+      status: vars.input.status,
+      priority: vars.input.priority,
+      startDate: vars.input.startDate,
+      dueDate: vars.input.dueDate,
+      assigneeIds: vars.input.assigneeIds,
+      labelIds: vars.input.labelIds,
+    },
+  }),
+  mapResponse: mapTask,
+});
+
+export const useDeleteTask = createVoidMutationHook<string>({
+  mutation: DELETE_TASK,
+  mapVariables: (id) => ({ input: { id } }),
+});
+
+export const useReorderTask = createMutationHook<
+  { id: string; newOrder: number; newStatus?: TaskStatus },
+  TaskResponse,
+  Task
+>({
+  mutation: REORDER_TASK,
+  responseKey: "reorderTask",
+  mapVariables: (vars) => ({
+    input: { id: vars.id, newOrder: vars.newOrder, newStatus: vars.newStatus },
+  }),
+  mapResponse: mapTask,
+});

@@ -46,7 +46,6 @@ export function useMe() {
   return {
     data: meData,
     isLoading: loading,
-    isPending: loading,
     error: error ?? null,
   };
 }

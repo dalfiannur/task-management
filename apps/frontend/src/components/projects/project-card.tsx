@@ -1,4 +1,4 @@
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "react-router";
 import {
   Card,
   CardHeader,
@@ -13,19 +13,12 @@ import { FolderOpen } from "lucide-react";
 import type { Project, ProjectCore } from "@/types/project";
 import { PROJECT_STATUS_CONFIG } from "@/types/project";
 import { getProjectDisplayName } from "@/hooks/use-projects";
+import { cn, getInitials } from "@/lib/utils";
+import styles from "./project-card.module.css";
 
 interface ProjectCardProps {
   project: Project & { coreDetail: ProjectCore | null };
   parentName?: string;
-}
-
-function getInitials(name: string) {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
 }
 
 export function ProjectCard({ project, parentName }: ProjectCardProps) {
@@ -37,52 +30,49 @@ export function ProjectCard({ project, parentName }: ProjectCardProps) {
 
   return (
     <Card
-      className="cursor-pointer hover:bg-accent/50 transition-colors"
+      className={styles.card}
       onClick={() =>
-        navigate({
-          to: "/projects/$projectId",
-          params: { projectId: project.id },
-        })
+        navigate(`/projects/${project.id}`)
       }
     >
       <CardHeader>
-        <div className="flex items-start justify-between">
-          <div className="space-y-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="font-mono text-xs shrink-0">
+        <div className={styles.headerRow}>
+          <div className={styles.infoGroup}>
+            <div className={styles.badgeRow}>
+              <Badge variant="outline" className={styles.codeBadge}>
                 {getProjectDisplayName(project)}
               </Badge>
-              <Badge className={statusConfig.color + " border-0"}>
+              <Badge className={cn(statusConfig.color, styles.statusBadge)}>
                 {statusConfig.label}
               </Badge>
               {parentName && (
-                <Badge variant="secondary" className="text-[10px]">
+                <Badge variant="secondary" className={styles.subBadge}>
                   Sub: {parentName}
                 </Badge>
               )}
             </div>
-            <CardTitle className="text-base">{getProjectDisplayName(project)}</CardTitle>
+            <CardTitle className={styles.title}>{getProjectDisplayName(project)}</CardTitle>
             {project.description && (
               <CardDescription className="line-clamp-2">
                 {project.description.replace(/<[^>]*>/g, "")}
               </CardDescription>
             )}
           </div>
-          <FolderOpen className="size-5 text-muted-foreground shrink-0" />
+          <FolderOpen className={styles.folderIcon} />
         </div>
-        <div className="flex items-center justify-between mt-2">
-          <p className="text-xs text-muted-foreground">
+        <div className={styles.footer}>
+          <p className={styles.moduleCount}>
             {modules?.length ?? 0} module{modules?.length !== 1 ? "s" : ""}
           </p>
           {pic && (
-            <div className="flex items-center gap-1.5">
-              <Avatar className="size-5">
+            <div className={styles.picGroup}>
+              <Avatar className={styles.picAvatar}>
                 <AvatarImage src={pic.avatarUrl} />
-                <AvatarFallback className="text-[10px]">
+                <AvatarFallback className={styles.picFallback}>
                   {getInitials(pic.name)}
                 </AvatarFallback>
               </Avatar>
-              <span className="text-xs text-muted-foreground">{pic.name}</span>
+              <span className={styles.picName}>{pic.name}</span>
             </div>
           )}
         </div>

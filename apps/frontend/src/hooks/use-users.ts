@@ -50,7 +50,6 @@ export function useUsers() {
   return {
     data: data?.searchUsers.users.map(mapOidcUser),
     isLoading: loading,
-    isPending: loading,
     error: error ?? null,
   };
 }
@@ -61,7 +60,6 @@ export function useUser(id: string | undefined) {
   return {
     data: users?.find((u) => u.id === id),
     isLoading: false,
-    isPending: false,
     error: null,
   };
 }

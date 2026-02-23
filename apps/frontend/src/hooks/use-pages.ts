@@ -1,4 +1,5 @@
-import { useQuery, useMutation, gql } from "@/lib/graphql-client";
+import { useQuery, gql } from "@/lib/graphql-client";
+import { createMutationHook, createVoidMutationHook, normalizeQueryResult } from "@/lib/hook-factories";
 import type { Page } from "@/types/page";
 
 const PAGE_FIELDS = gql`
@@ -69,148 +70,56 @@ const REORDER_PAGES = gql`
 `;
 
 export function usePages(projectId: string) {
-  const { data, loading, error } = useQuery<{ listPages: Page[] }>(
-    LIST_PAGES,
-    {
-      variables: { input: { projectId } },
-      skip: !projectId,
-    },
-  );
-
-  return {
-    data: data?.listPages,
-    isLoading: loading,
-    isPending: loading,
-    error: error ?? null,
-  };
+  const result = useQuery<{ listPages: Page[] }>(LIST_PAGES, {
+    variables: { input: { projectId } },
+    skip: !projectId,
+  });
+  return normalizeQueryResult(result, (d) => d.listPages);
 }
 
 export function usePage(id: string) {
-  const { data, loading, error } = useQuery<{ getPage: Page }>(GET_PAGE, {
+  const result = useQuery<{ getPage: Page }>(GET_PAGE, {
     variables: { input: { id } },
     skip: !id,
   });
-
-  return {
-    data: data?.getPage,
-    isLoading: loading,
-    isPending: loading,
-    error: error ?? null,
-  };
+  return normalizeQueryResult(result, (d) => d.getPage);
 }
 
-export function useCreatePage() {
-  const [exec, { loading }] = useMutation<{ createPage: Page }>(CREATE_PAGE);
+export const useCreatePage = createMutationHook<
+  { projectId: string; title: string; icon?: string; content?: string },
+  Page
+>({
+  mutation: CREATE_PAGE,
+  responseKey: "createPage",
+});
 
-  return {
-    mutate: (
-      input: {
-        projectId: string;
-        title: string;
-        icon?: string;
-        content?: string;
-      },
-      opts?: { onSuccess?: (data: Page) => void },
-    ) => {
-      exec({ variables: { input } }).then((res) => {
-        if (res.data) opts?.onSuccess?.(res.data.createPage);
-      });
-    },
-    mutateAsync: async (input: {
-      projectId: string;
-      title: string;
-      icon?: string;
-      content?: string;
-    }): Promise<Page> => {
-      const res = await exec({ variables: { input } });
-      return res.data!.createPage;
-    },
-    isPending: loading,
-  };
-}
+export const useUpdatePage = createMutationHook<
+  {
+    id: string;
+    projectId: string;
+    title?: string;
+    icon?: string;
+    content?: string;
+    order?: number;
+  },
+  Page
+>({
+  mutation: UPDATE_PAGE,
+  responseKey: "updatePage",
+  mapVariables: ({ projectId: _projectId, ...rest }) => ({ input: rest }),
+});
 
-export function useUpdatePage() {
-  const [exec, { loading }] = useMutation<{ updatePage: Page }>(UPDATE_PAGE);
+export const useDeletePage = createVoidMutationHook<{
+  id: string;
+  projectId: string;
+}>({
+  mutation: DELETE_PAGE,
+  mapVariables: (input) => ({ input: { id: input.id } }),
+});
 
-  return {
-    mutate: (
-      input: {
-        id: string;
-        projectId: string;
-        title?: string;
-        icon?: string;
-        content?: string;
-        order?: number;
-      },
-      opts?: { onSuccess?: (data: Page) => void },
-    ) => {
-      const { projectId: _projectId, ...mutationInput } = input;
-      exec({ variables: { input: mutationInput } }).then((res) => {
-        if (res.data) opts?.onSuccess?.(res.data.updatePage);
-      });
-    },
-    mutateAsync: async (input: {
-      id: string;
-      projectId: string;
-      title?: string;
-      icon?: string;
-      content?: string;
-      order?: number;
-    }): Promise<Page> => {
-      const { projectId: _projectId, ...mutationInput } = input;
-      const res = await exec({ variables: { input: mutationInput } });
-      return res.data!.updatePage;
-    },
-    isPending: loading,
-  };
-}
-
-export function useDeletePage() {
-  const [exec, { loading }] = useMutation<{ deletePage: boolean }>(
-    DELETE_PAGE,
-  );
-
-  return {
-    mutate: (
-      input: { id: string; projectId: string },
-      opts?: { onSuccess?: () => void },
-    ) => {
-      exec({ variables: { input: { id: input.id } } }).then(() => {
-        opts?.onSuccess?.();
-      });
-    },
-    mutateAsync: async (input: {
-      id: string;
-      projectId: string;
-    }): Promise<boolean> => {
-      const res = await exec({ variables: { input: { id: input.id } } });
-      return res.data!.deletePage;
-    },
-    isPending: loading,
-  };
-}
-
-export function useReorderPages() {
-  const [exec, { loading }] = useMutation<{ reorderPages: boolean }>(
-    REORDER_PAGES,
-  );
-
-  return {
-    mutate: (
-      input: { projectId: string; pageIds: string[] },
-      opts?: { onSuccess?: () => void },
-    ) => {
-      exec({ variables: { input } }).then(() => {
-        opts?.onSuccess?.();
-      });
-    },
-    mutateAsync: async (input: {
-      projectId: string;
-      pageIds: string[];
-    }): Promise<boolean> => {
-      const res = await exec({ variables: { input } });
-      return res.data!.reorderPages;
-    },
-    isPending: loading,
-  };
-}
+export const useReorderPages = createVoidMutationHook<{
+  projectId: string;
+  pageIds: string[];
+}>({
+  mutation: REORDER_PAGES,
+});

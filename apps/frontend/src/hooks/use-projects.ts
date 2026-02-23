@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation, gql, CORE_URL, getAuthToken } from "@/lib/graphql-client";
+import { useQuery, gql, CORE_URL, getAuthToken } from "@/lib/graphql-client";
+import { createMutationHook, createVoidMutationHook } from "@/lib/hook-factories";
 import type { CreateSubProjectInput, Project, ProjectCore } from "@/types/project";
 
 // --- GraphQL operations ---
@@ -100,6 +101,12 @@ export function useProjects() {
                 id
                 code
                 name { name description }
+                clientDetail {
+                  name {
+                    name
+                    legalName
+                  }
+                }
                 status
                 winStage
               }
@@ -120,7 +127,6 @@ export function useProjects() {
   return {
     data: enrichedProjects,
     isLoading: loading,
-    isPending: loading,
     error: error ?? null,
   };
 }
@@ -165,6 +171,12 @@ export function useProject(id: string) {
             name { name description }
             status
             winStage
+            clientDetail {
+              name {
+                name
+                legalName
+              }
+            }
           }
         }`,
         variables: { input: { id: project.coreRef.value } },
@@ -183,89 +195,33 @@ export function useProject(id: string) {
   return {
     data: enriched,
     isLoading: loading,
-    isPending: loading,
     error: error ?? null,
   };
 }
 
-export function useApproveProject() {
-  const [exec, { loading }] = useMutation<{ approveProject: Project }>(
-    APPROVE_PROJECT,
-  );
+export const useApproveProject = createMutationHook<
+  { id: string; description?: string },
+  Project
+>({
+  mutation: APPROVE_PROJECT,
+  responseKey: "approveProject",
+  mapVariables: (input) => ({
+    input: { id: input.id, description: input.description },
+  }),
+});
 
-  return {
-    mutate: (
-      input: { id: string; description?: string },
-      opts?: { onSuccess?: (data: Project) => void },
-    ) => {
-      exec({
-        variables: { input: { id: input.id, description: input.description } },
-      }).then((res) => {
-        if (res.data) opts?.onSuccess?.(res.data.approveProject);
-      });
-    },
-    mutateAsync: async (input: {
-      id: string;
-      description?: string;
-    }): Promise<Project> => {
-      const res = await exec({
-        variables: { input: { id: input.id, description: input.description } },
-      });
-      return res.data!.approveProject;
-    },
-    isPending: loading,
-  };
-}
+export const useUpdateProject = createMutationHook<
+  { id: string; description?: string; status?: string; picId?: string },
+  Project
+>({
+  mutation: UPDATE_PROJECT,
+  responseKey: "updateProject",
+});
 
-export function useUpdateProject() {
-  const [exec, { loading }] = useMutation<{ updateProject: Project }>(
-    UPDATE_PROJECT,
-  );
-
-  return {
-    mutate: (
-      input: {
-        id: string;
-        description?: string;
-        status?: string;
-        picId?: string;
-      },
-      opts?: { onSuccess?: (data: Project) => void },
-    ) => {
-      exec({ variables: { input } }).then((res) => {
-        if (res.data) opts?.onSuccess?.(res.data.updateProject);
-      });
-    },
-    mutateAsync: async (input: {
-      id: string;
-      description?: string;
-      status?: string;
-      picId?: string;
-    }): Promise<Project> => {
-      const res = await exec({ variables: { input } });
-      return res.data!.updateProject;
-    },
-    isPending: loading,
-  };
-}
-
-export function useDeleteProject() {
-  const [exec, { loading }] = useMutation<{ deleteProject: boolean }>(
-    DELETE_PROJECT,
-  );
-
-  return {
-    mutate: (id: string, opts?: { onSuccess?: () => void }) => {
-      exec({ variables: { input: { id } } }).then(() => {
-        opts?.onSuccess?.();
-      });
-    },
-    mutateAsync: async (id: string): Promise<void> => {
-      await exec({ variables: { input: { id } } });
-    },
-    isPending: loading,
-  };
-}
+export const useDeleteProject = createVoidMutationHook<string>({
+  mutation: DELETE_PROJECT,
+  mapVariables: (id) => ({ input: { id } }),
+});
 
 // --- Sub-Projects ---
 
@@ -301,32 +257,17 @@ export function useSubProjects(parentProjectId?: string) {
       coreDetail: null as ProjectCore | null,
     })),
     isLoading: loading,
-    isPending: loading,
     error: error ?? null,
   };
 }
 
-export function useCreateSubProject() {
-  const [exec, { loading }] = useMutation<{ createSubProject: Project }>(
-    CREATE_SUB_PROJECT,
-  );
-
-  return {
-    mutate: (
-      input: CreateSubProjectInput,
-      opts?: { onSuccess?: (data: Project) => void },
-    ) => {
-      exec({ variables: { input } }).then((res) => {
-        if (res.data) opts?.onSuccess?.(res.data.createSubProject);
-      });
-    },
-    mutateAsync: async (input: CreateSubProjectInput): Promise<Project> => {
-      const res = await exec({ variables: { input } });
-      return res.data!.createSubProject;
-    },
-    isPending: loading,
-  };
-}
+export const useCreateSubProject = createMutationHook<
+  CreateSubProjectInput,
+  Project
+>({
+  mutation: CREATE_SUB_PROJECT,
+  responseKey: "createSubProject",
+});
 
 export function getProjectDisplayName(
   project: Project & { coreDetail: ProjectCore | null },

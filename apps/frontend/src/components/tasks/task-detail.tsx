@@ -1,4 +1,4 @@
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "react-router";
 import {
   Dialog,
   DialogContent,
@@ -45,6 +45,8 @@ import {
   StartDatePicker,
   DueDatePicker,
 } from "./task-detail-fields";
+import { PropertyRow } from "@/components/shared/property-row";
+import styles from "./task-detail.module.css";
 
 interface TaskDetailProps {
   taskId: string;
@@ -73,10 +75,7 @@ export function TaskDetail({
     if (onClose) {
       onClose();
     } else {
-      navigate({
-        to: "/projects/$projectId",
-        params: { projectId },
-      });
+      navigate(`/projects/${projectId}`);
     }
   };
 
@@ -93,23 +92,23 @@ export function TaskDetail({
 
   return (
     <Dialog open onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="sm:max-w-6xl max-h-[85vh] overflow-y-auto p-0">
+      <DialogContent className={`sm:max-w-6xl ${styles.dialogContent}`}>
         {isLoading ? (
-          <div className="p-6 space-y-4">
+          <div className={styles.loadingContainer}>
             <Skeleton className="h-8 w-3/4" />
             <Skeleton className="h-4 w-1/2" />
             <Skeleton className="h-32 w-full" />
           </div>
         ) : !task ? (
-          <div className="p-6 text-center text-muted-foreground">
+          <div className={styles.notFound}>
             Task not found
           </div>
         ) : (
-          <div className="flex flex-col sm:flex-row overflow-x-clip">
-            {/* Left panel — main content */}
-            <div className="flex-1 p-6 sm:border-r min-w-0">
-              <DialogHeader className="mb-5">
-                <DialogTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/60">
+          <div className={styles.layout}>
+            {/* Left panel -- main content */}
+            <div className={styles.leftPanel}>
+              <DialogHeader className={styles.headerMargin}>
+                <DialogTitle className={styles.headerTitle}>
                   Task Details
                 </DialogTitle>
                 <DialogDescription className="sr-only">
@@ -117,7 +116,7 @@ export function TaskDetail({
                 </DialogDescription>
               </DialogHeader>
 
-              <div className="space-y-5">
+              <div className={styles.leftContent}>
                 <EditableTitle
                   taskId={taskId}
                   value={task.title}
@@ -125,8 +124,8 @@ export function TaskDetail({
                   updateTask={updateTask}
                 />
 
-                <div className="space-y-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+                <div className={styles.descriptionSection}>
+                  <p className={styles.sectionLabel}>
                     Description
                   </p>
                   <EditableDescription
@@ -140,15 +139,15 @@ export function TaskDetail({
               </div>
             </div>
 
-            {/* Right panel — property panel */}
-            <div className="w-full sm:w-[280px] shrink-0 bg-muted/20">
-              <div className="px-5 py-4 border-b">
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+            {/* Right panel -- property panel */}
+            <div className={styles.rightPanel}>
+              <div className={styles.propertiesHeader}>
+                <p className={styles.propertiesLabel}>
                   Properties
                 </p>
               </div>
 
-              <div className="p-4 space-y-1">
+              <div className={styles.propertiesBody}>
                 {/* Status */}
                 <PropertyRow icon={CircleDot} label="Status">
                   <StatusSelect
@@ -178,7 +177,7 @@ export function TaskDetail({
                   />
                 </PropertyRow>
 
-                <div className="h-px bg-border/60 my-2 !mt-3 !mb-3" />
+                <div className={styles.divider} />
 
                 {/* Start Date */}
                 <PropertyRow icon={CalendarDays} label="Start">
@@ -200,10 +199,10 @@ export function TaskDetail({
 
                 {/* Date range indicator */}
                 {parsedStartDate && parsedDueDate && (
-                  <div className="pl-7 pt-1">
-                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground/60">
-                      <div className="h-px flex-1 bg-border/60" />
-                      <span className="tabular-nums">
+                  <div className={styles.dateRange}>
+                    <div className={styles.dateRangeInner}>
+                      <div className={styles.dateRangeLine} />
+                      <span className={styles.dateRangeDays}>
                         {Math.ceil(
                           (parsedDueDate.getTime() -
                             parsedStartDate.getTime()) /
@@ -211,12 +210,12 @@ export function TaskDetail({
                         )}{" "}
                         days
                       </span>
-                      <div className="h-px flex-1 bg-border/60" />
+                      <div className={styles.dateRangeLine} />
                     </div>
                   </div>
                 )}
 
-                <div className="h-px bg-border/60 my-2 !mt-3 !mb-3" />
+                <div className={styles.divider} />
 
                 {/* Labels */}
                 <PropertyRow icon={Tag} label="Labels">
@@ -230,7 +229,7 @@ export function TaskDetail({
 
                 {/* Module */}
                 <PropertyRow icon={Layers} label="Module">
-                  <span className="text-xs px-2">{moduleName}</span>
+                  <span className={styles.moduleName}>{moduleName}</span>
                 </PropertyRow>
 
                 {/* Attachments */}
@@ -243,11 +242,11 @@ export function TaskDetail({
               </div>
 
               {/* Timestamps + Delete */}
-              <div className="px-5 pb-5 space-y-3">
-                <div className="h-px bg-border/60" />
+              <div className={styles.timestampsSection}>
+                <div className={styles.timestampsDivider} />
 
-                <div className="space-y-0.5 pt-1">
-                  <p className="text-[11px] text-muted-foreground/60">
+                <div className={styles.timestamps}>
+                  <p className={styles.timestampText}>
                     Created{" "}
                     {new Date(task.createdAt).toLocaleDateString(undefined, {
                       year: "numeric",
@@ -255,7 +254,7 @@ export function TaskDetail({
                       day: "numeric",
                     })}
                   </p>
-                  <p className="text-[11px] text-muted-foreground/60">
+                  <p className={styles.timestampText}>
                     Updated{" "}
                     {new Date(task.updatedAt).toLocaleDateString(undefined, {
                       year: "numeric",
@@ -270,9 +269,9 @@ export function TaskDetail({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="w-full text-destructive hover:text-destructive hover:bg-destructive/10 text-xs h-8"
+                      className={styles.deleteButton}
                     >
-                      <Trash2 className="size-3.5 mr-1.5" />
+                      <Trash2 className={styles.deleteIcon} />
                       Delete Task
                     </Button>
                   </AlertDialogTrigger>
@@ -301,22 +300,3 @@ export function TaskDetail({
   );
 }
 
-function PropertyRow({
-  icon: Icon,
-  label,
-  children,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-center gap-2 min-h-[32px]">
-      <div className="flex items-center gap-1.5 w-[72px] shrink-0">
-        <Icon className="size-3.5 text-muted-foreground/50" />
-        <span className="text-xs text-muted-foreground">{label}</span>
-      </div>
-      <div className="flex-1 min-w-0">{children}</div>
-    </div>
-  );
-}

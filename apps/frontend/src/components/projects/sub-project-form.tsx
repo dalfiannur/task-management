@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { UserCombobox } from "@/components/shared/user-combobox";
 import { useCreateSubProject } from "@/hooks/use-projects";
+import styles from "./sub-project-form.module.css";
 
 interface SubProjectFormProps {
   open: boolean;
@@ -51,13 +52,13 @@ export function SubProjectForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className={styles.dialogContent}>
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Create Sub-Project</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
+          <div className={styles.fieldGroup}>
+            <div className={styles.field}>
               <Label htmlFor="sub-project-name">Name</Label>
               <Input
                 id="sub-project-name"
@@ -67,7 +68,7 @@ export function SubProjectForm({
                 autoFocus
               />
             </div>
-            <div className="space-y-2">
+            <div className={styles.field}>
               <Label>Description</Label>
               <RichTextEditor
                 content={description}
@@ -75,7 +76,7 @@ export function SubProjectForm({
                 placeholder="Describe the sub-project..."
               />
             </div>
-            <div className="space-y-2">
+            <div className={styles.field}>
               <Label>Project Manager</Label>
               <UserCombobox value={picId} onChange={setPicId} />
             </div>
@@ -90,9 +91,9 @@ export function SubProjectForm({
             </Button>
             <Button
               type="submit"
-              disabled={!name.trim() || createSubProject.isPending}
+              disabled={!name.trim() || createSubProject.isLoading}
             >
-              {createSubProject.isPending ? "Creating..." : "Create"}
+              {createSubProject.isLoading ? "Creating..." : "Create"}
             </Button>
           </DialogFooter>
         </form>

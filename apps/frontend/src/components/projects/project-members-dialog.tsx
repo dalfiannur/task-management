@@ -16,21 +16,14 @@ import {
 import { useMe } from "@/hooks/use-me";
 import { useUsers } from "@/hooks/use-users";
 import { X, UserPlus } from "lucide-react";
+import { getInitials } from "@/lib/utils";
+import styles from "./project-members-dialog.module.css";
 
 interface ProjectMembersDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   projectId: string;
   picId?: string;
-}
-
-function getInitials(name: string) {
-  return name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
 }
 
 export function ProjectMembersDialog({
@@ -65,13 +58,13 @@ export function ProjectMembersDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className={styles.dialogContent}>
         <DialogHeader>
           <DialogTitle>Project Members</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
+        <div className={styles.body}>
           {/* Member list */}
-          <div className="space-y-2 max-h-64 overflow-y-auto">
+          <div className={styles.memberList}>
             {members?.map((member) => {
               const user = users?.find(
                 (u) => u.id === member.membership.userId,
@@ -80,18 +73,18 @@ export function ProjectMembersDialog({
               return (
                 <div
                   key={member.id}
-                  className="flex items-center justify-between py-1.5 px-2 rounded-md hover:bg-muted/50"
+                  className={styles.memberRow}
                 >
-                  <div className="flex items-center gap-2">
-                    <Avatar className="size-7">
+                  <div className={styles.memberInfo}>
+                    <Avatar className={styles.memberAvatar}>
                       <AvatarImage src={user?.avatarUrl} />
-                      <AvatarFallback className="text-[10px]">
+                      <AvatarFallback className={styles.memberFallback}>
                         {getInitials(displayName)}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="text-sm">{displayName}</span>
+                    <span className={styles.memberName}>{displayName}</span>
                     {member.membership.userId === picId && (
-                      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                      <span className={styles.picBadge}>
                         PIC
                       </span>
                     )}
@@ -100,18 +93,18 @@ export function ProjectMembersDialog({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="size-7 text-muted-foreground hover:text-destructive"
+                      className={styles.removeButton}
                       onClick={() => handleRemove(member.membership.userId)}
-                      disabled={removeMember.isPending}
+                      disabled={removeMember.isLoading}
                     >
-                      <X className="size-3.5" />
+                      <X className={styles.removeIcon} />
                     </Button>
                   )}
                 </div>
               );
             })}
             {(!members || members.length === 0) && (
-              <p className="text-sm text-muted-foreground text-center py-4">
+              <p className={styles.emptyMessage}>
                 No members yet
               </p>
             )}
@@ -119,8 +112,8 @@ export function ProjectMembersDialog({
 
           {/* Add member */}
           {canManage && (
-            <div className="flex items-end gap-2 pt-2 border-t">
-              <div className="flex-1">
+            <div className={styles.addSection}>
+              <div className={styles.addCombobox}>
                 <UserCombobox
                   value={selectedUserId}
                   onChange={setSelectedUserId}
@@ -132,10 +125,10 @@ export function ProjectMembersDialog({
                 disabled={
                   !selectedUserId ||
                   memberUserIds.has(selectedUserId) ||
-                  addMember.isPending
+                  addMember.isLoading
                 }
               >
-                <UserPlus className="size-3.5 mr-1.5" />
+                <UserPlus className={styles.addIcon} />
                 Add
               </Button>
             </div>

@@ -1,4 +1,5 @@
-import { useQuery, useMutation, gql } from "@/lib/graphql-client";
+import { useQuery, gql } from "@/lib/graphql-client";
+import { createMutationHook, createVoidMutationHook, normalizeQueryResult } from "@/lib/hook-factories";
 import type { Module } from "@/types/task";
 
 // --- GraphQL operations ---
@@ -59,135 +60,41 @@ const DELETE_MODULE = gql`
 // --- Hooks ---
 
 export function useModules(projectId?: string) {
-  const { data, loading, error } = useQuery<{ listModules: Module[] }>(
-    LIST_MODULES,
-    {
-      variables: { input: { projectId } },
-      skip: !projectId,
-    },
-  );
-
-  return {
-    data: data?.listModules,
-    isLoading: loading,
-    isPending: loading,
-    error: error ?? null,
-  };
+  const result = useQuery<{ listModules: Module[] }>(LIST_MODULES, {
+    variables: { input: { projectId } },
+    skip: !projectId,
+  });
+  return normalizeQueryResult(result, (d) => d.listModules);
 }
 
 export function useModule(id: string) {
-  const { data, loading, error } = useQuery<{
-    getModule: Module | null;
-  }>(GET_MODULE, {
+  const result = useQuery<{ getModule: Module | null }>(GET_MODULE, {
     variables: { input: { id } },
     skip: !id,
   });
-
-  return {
-    data: data?.getModule ?? null,
-    isLoading: loading,
-    isPending: loading,
-    error: error ?? null,
-  };
+  return normalizeQueryResult(result, (d) => d.getModule ?? null);
 }
 
-export function useCreateModule() {
-  const [exec, { loading }] = useMutation<{ createModule: Module }>(
-    CREATE_MODULE,
-  );
+export const useCreateModule = createMutationHook<
+  { name: string; description?: string; projectId: string },
+  Module
+>({
+  mutation: CREATE_MODULE,
+  responseKey: "createModule",
+});
 
-  return {
-    mutate: (
-      input: { name: string; description?: string; projectId: string },
-      opts?: { onSuccess?: (data: Module) => void },
-    ) => {
-      exec({
-        variables: {
-          input: {
-            name: input.name,
-            description: input.description,
-            projectId: input.projectId,
-          },
-        },
-      }).then((res) => {
-        if (res.data) opts?.onSuccess?.(res.data.createModule);
-      });
-    },
-    mutateAsync: async (input: {
-      name: string;
-      description?: string;
-      projectId: string;
-    }): Promise<Module> => {
-      const res = await exec({
-        variables: {
-          input: {
-            name: input.name,
-            description: input.description,
-            projectId: input.projectId,
-          },
-        },
-      });
-      return res.data!.createModule;
-    },
-    isPending: loading,
-  };
-}
+export const useUpdateModule = createMutationHook<
+  { id: string; input: { name?: string; description?: string } },
+  Module
+>({
+  mutation: UPDATE_MODULE,
+  responseKey: "updateModule",
+  mapVariables: (vars) => ({
+    input: { id: vars.id, name: vars.input.name, description: vars.input.description },
+  }),
+});
 
-export function useUpdateModule() {
-  const [exec, { loading }] = useMutation<{ updateModule: Module }>(
-    UPDATE_MODULE,
-  );
-
-  return {
-    mutate: (
-      vars: { id: string; input: { name?: string; description?: string } },
-      opts?: { onSuccess?: (data: Module) => void },
-    ) => {
-      exec({
-        variables: {
-          input: {
-            id: vars.id,
-            name: vars.input.name,
-            description: vars.input.description,
-          },
-        },
-      }).then((res) => {
-        if (res.data) opts?.onSuccess?.(res.data.updateModule);
-      });
-    },
-    mutateAsync: async (vars: {
-      id: string;
-      input: { name?: string; description?: string };
-    }): Promise<Module> => {
-      const res = await exec({
-        variables: {
-          input: {
-            id: vars.id,
-            name: vars.input.name,
-            description: vars.input.description,
-          },
-        },
-      });
-      return res.data!.updateModule;
-    },
-    isPending: loading,
-  };
-}
-
-export function useDeleteModule() {
-  const [exec, { loading }] = useMutation<{ deleteModule: boolean }>(
-    DELETE_MODULE,
-  );
-
-  return {
-    mutate: (id: string, opts?: { onSuccess?: () => void }) => {
-      exec({ variables: { input: { id } } }).then(() => {
-        opts?.onSuccess?.();
-      });
-    },
-    mutateAsync: async (id: string): Promise<void> => {
-      await exec({ variables: { input: { id } } });
-    },
-    isPending: loading,
-  };
-}
+export const useDeleteModule = createVoidMutationHook<string>({
+  mutation: DELETE_MODULE,
+  mapVariables: (id) => ({ input: { id } }),
+});

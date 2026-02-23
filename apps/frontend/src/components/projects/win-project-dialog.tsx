@@ -15,6 +15,7 @@ import { useMediaFiles, useUploadMedia, useDeleteMedia } from "@/hooks/use-media
 import { isImage, formatFileSize } from "@/types/media";
 import type { Project, ProjectCore } from "@/types/project";
 import { FileText, ImageIcon, File, Plus, X } from "lucide-react";
+import styles from "./win-project-dialog.module.css";
 
 interface WinProjectDialogProps {
   project: Project & { coreDetail: ProjectCore | null };
@@ -23,10 +24,10 @@ interface WinProjectDialogProps {
 }
 
 function AttachmentIcon({ mimeType }: { mimeType: string }) {
-  if (isImage(mimeType)) return <ImageIcon className="size-3.5 text-purple-500" />;
+  if (isImage(mimeType)) return <ImageIcon className={styles.attachmentIconPurple} />;
   if (mimeType === "application/pdf")
-    return <FileText className="size-3.5 text-red-500" />;
-  return <File className="size-3.5 text-muted-foreground" />;
+    return <FileText className={styles.attachmentIconRed} />;
+  return <File className={styles.attachmentIconDefault} />;
 }
 
 export function WinProjectDialog({
@@ -69,17 +70,17 @@ export function WinProjectDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className={styles.dialogContent}>
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Win Project — {project.coreDetail?.name.name}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
+          <div className={styles.fieldGroup}>
+            <div className={styles.field}>
               <Label>PIC</Label>
               <UserCombobox value={picId} onChange={setPicId} />
             </div>
-            <div className="space-y-2">
+            <div className={styles.field}>
               <Label>Description / Brief</Label>
               <RichTextEditor
                 content={description}
@@ -87,28 +88,28 @@ export function WinProjectDialog({
                 placeholder="Enter project brief..."
               />
             </div>
-            <div className="space-y-2">
+            <div className={styles.field}>
               <Label>Attachments</Label>
               {files.map((file) => (
-                <div key={file.id} className="flex items-center gap-2 group">
+                <div key={file.id} className={styles.attachmentRow}>
                   <AttachmentIcon mimeType={file.mediaFileInfo.mimeType} />
                   <span
-                    className="text-sm truncate flex-1"
+                    className={styles.fileName}
                     title={file.mediaFileInfo.originalFileName}
                   >
                     {file.mediaFileInfo.originalFileName}
                   </span>
-                  <span className="text-[10px] text-muted-foreground shrink-0">
+                  <span className={styles.fileSize}>
                     {formatFileSize(file.mediaFileInfo.size)}
                   </span>
                   <Button
                     type="button"
                     size="icon"
                     variant="ghost"
-                    className="size-5 opacity-0 group-hover:opacity-100 shrink-0"
+                    className={styles.removeButton}
                     onClick={() => deleteMedia.mutate(file.id)}
                   >
-                    <X className="size-3" />
+                    <X className={styles.removeIcon} />
                   </Button>
                 </div>
               ))}
@@ -116,17 +117,17 @@ export function WinProjectDialog({
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-7 text-xs w-full justify-start text-muted-foreground"
+                className={styles.attachButton}
                 onClick={() => inputRef.current?.click()}
               >
-                <Plus className="size-3 mr-1" />
+                <Plus className={styles.attachIcon} />
                 Attach file
               </Button>
               <input
                 ref={inputRef}
                 type="file"
                 multiple
-                className="hidden"
+                className={styles.hiddenInput}
                 onChange={handleFileSelect}
               />
             </div>
@@ -139,8 +140,8 @@ export function WinProjectDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={updateProject.isPending}>
-              {updateProject.isPending ? "Saving..." : "Save & Start Project"}
+            <Button type="submit" disabled={updateProject.isLoading}>
+              {updateProject.isLoading ? "Saving..." : "Save & Start Project"}
             </Button>
           </DialogFooter>
         </form>

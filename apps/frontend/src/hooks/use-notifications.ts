@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
-import { useQuery, useMutation, gql } from "@/lib/graphql-client";
+import { useQuery, gql } from "@/lib/graphql-client";
+import { createVoidMutationHook, normalizeQueryResult } from "@/lib/hook-factories";
 import { toast } from "sonner";
 import type { Notification } from "@/types/notification";
 
@@ -49,18 +50,11 @@ const MARK_ALL_READ = gql`
 `;
 
 export function useNotifications(limit = 50) {
-  const { data, loading, error } = useQuery<{
-    listNotifications: Notification[];
-  }>(LIST_NOTIFICATIONS, {
-    variables: { input: { limit } },
-  });
-
-  return {
-    data: data?.listNotifications,
-    isLoading: loading,
-    isPending: loading,
-    error: error ?? null,
-  };
+  const result = useQuery<{ listNotifications: Notification[] }>(
+    LIST_NOTIFICATIONS,
+    { variables: { input: { limit } } },
+  );
+  return normalizeQueryResult(result, (d) => d.listNotifications);
 }
 
 export function useUnreadNotificationCount() {
@@ -94,45 +88,16 @@ export function useUnreadNotificationCount() {
   return {
     data: count,
     isLoading: loading,
-    isPending: loading,
     error: error ?? null,
   };
 }
 
-export function useMarkNotificationsRead() {
-  const [exec, { loading }] = useMutation<{
-    markNotificationsRead: boolean;
-  }>(MARK_READ);
+export const useMarkNotificationsRead = createVoidMutationHook<string[]>({
+  mutation: MARK_READ,
+  mapVariables: (ids) => ({ input: { ids } }),
+});
 
-  return {
-    mutate: (ids: string[], opts?: { onSuccess?: () => void }) => {
-      exec({ variables: { input: { ids } } }).then(() => {
-        opts?.onSuccess?.();
-      });
-    },
-    mutateAsync: async (ids: string[]): Promise<boolean> => {
-      const res = await exec({ variables: { input: { ids } } });
-      return res.data!.markNotificationsRead;
-    },
-    isPending: loading,
-  };
-}
-
-export function useMarkAllNotificationsRead() {
-  const [exec, { loading }] = useMutation<{
-    markAllNotificationsRead: boolean;
-  }>(MARK_ALL_READ);
-
-  return {
-    mutate: (opts?: { onSuccess?: () => void }) => {
-      exec({ variables: { input: {} } }).then(() => {
-        opts?.onSuccess?.();
-      });
-    },
-    mutateAsync: async (): Promise<boolean> => {
-      const res = await exec({ variables: { input: {} } });
-      return res.data!.markAllNotificationsRead;
-    },
-    isPending: loading,
-  };
-}
+export const useMarkAllNotificationsRead = createVoidMutationHook<void>({
+  mutation: MARK_ALL_READ,
+  mapVariables: () => ({ input: {} }),
+});

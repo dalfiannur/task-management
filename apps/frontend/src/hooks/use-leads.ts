@@ -1,4 +1,5 @@
-import { useQuery, useMutation, gql, coreClient } from "@/lib/graphql-client";
+import { useQuery, gql, coreClient } from "@/lib/graphql-client";
+import { createMutationHook, normalizeQueryResult } from "@/lib/hook-factories";
 import type { Project, ProjectCore, ProjectStatus } from "@/types/project";
 
 const LIST_PROJECTS = gql`
@@ -50,42 +51,17 @@ function mapCoreProject(p: ProjectCore): ProjectWithCore {
 }
 
 export function useNewLeads() {
-  const { data, loading, error } = useQuery<{
-    listProjects: ProjectCore[];
-  }>(LIST_PROJECTS, {
+  const result = useQuery<{ listProjects: ProjectCore[] }>(LIST_PROJECTS, {
     client: coreClient,
   });
-
-  return {
-    data: data?.listProjects.map(mapCoreProject),
-    isLoading: loading,
-    isPending: loading,
-    error: error ?? null,
-  };
+  return normalizeQueryResult(result, (d) => d.listProjects.map(mapCoreProject));
 }
 
-export function useApproveLead() {
-  const [exec, { loading }] = useMutation<{ updateProject: ProjectCore }>(
-    APPROVE_PROJECT,
-    { client: coreClient },
-  );
-
-  return {
-    mutate: (
-      input: { id: string; winStage: string },
-      opts?: { onSuccess?: (data: ProjectCore) => void },
-    ) => {
-      exec({ variables: { input } }).then((res) => {
-        if (res.data) opts?.onSuccess?.(res.data.updateProject);
-      });
-    },
-    mutateAsync: async (input: {
-      id: string;
-      winStage: string;
-    }): Promise<ProjectCore> => {
-      const res = await exec({ variables: { input } });
-      return res.data!.updateProject;
-    },
-    isPending: loading,
-  };
-}
+export const useApproveLead = createMutationHook<
+  { id: string; winStage: string },
+  ProjectCore
+>({
+  mutation: APPROVE_PROJECT,
+  responseKey: "updateProject",
+  client: coreClient,
+});

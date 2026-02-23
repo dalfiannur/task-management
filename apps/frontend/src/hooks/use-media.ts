@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import { useQuery, useMutation, gql, getAuthToken } from "@/lib/graphql-client";
+import { useQuery, gql, getAuthToken } from "@/lib/graphql-client";
+import { createMutationHook, createVoidMutationHook } from "@/lib/hook-factories";
 import type { MediaFile } from "@/types/media";
 
 const API_BASE =
@@ -98,7 +99,6 @@ export function useMediaFiles(filters: MediaFilters) {
   return {
     data: data?.listMediaFiles,
     isLoading: loading,
-    isPending: loading,
     error: error ?? null,
   };
 }
@@ -114,42 +114,41 @@ export function useMediaFile(id: string) {
   return {
     data: data?.getMediaFile ?? null,
     isLoading: loading,
-    isPending: loading,
     error: error ?? null,
   };
 }
 
 export function useUploadMedia() {
-  const [isPending, setIsPending] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   return {
     mutate: (
       vars: { file: File; projectId: string; taskId?: string },
       opts?: { onSuccess?: (data: MediaFile) => void },
     ) => {
-      setIsPending(true);
+      setLoading(true);
       uploadFile(vars)
         .then((data) => {
           triggerMediaRefetch();
           opts?.onSuccess?.(data);
         })
-        .finally(() => setIsPending(false));
+        .finally(() => setLoading(false));
     },
     mutateAsync: async (vars: {
       file: File;
       projectId: string;
       taskId?: string;
     }): Promise<MediaFile> => {
-      setIsPending(true);
+      setLoading(true);
       try {
         const result = await uploadFile(vars);
         triggerMediaRefetch();
         return result;
       } finally {
-        setIsPending(false);
+        setLoading(false);
       }
     },
-    isPending,
+    isLoading: loading,
   };
 }
 
@@ -178,50 +177,18 @@ async function uploadFile(vars: {
   return res.json();
 }
 
-export function useDeleteMedia() {
-  const [exec, { loading }] = useMutation<{ deleteMediaFile: boolean }>(
-    DELETE_MEDIA_FILE,
-  );
+export const useDeleteMedia = createVoidMutationHook<string>({
+  mutation: DELETE_MEDIA_FILE,
+  mapVariables: (id) => ({ input: { id } }),
+});
 
-  return {
-    mutate: (id: string, opts?: { onSuccess?: () => void }) => {
-      exec({ variables: { input: { id } } }).then(() => {
-        opts?.onSuccess?.();
-      });
-    },
-    mutateAsync: async (id: string): Promise<boolean> => {
-      const res = await exec({ variables: { input: { id } } });
-      return res.data!.deleteMediaFile;
-    },
-    isPending: loading,
-  };
-}
-
-export function useUpdateMedia() {
-  const [exec, { loading }] = useMutation<{ updateMediaFile: MediaFile }>(
-    UPDATE_MEDIA_FILE,
-  );
-
-  return {
-    mutate: (
-      vars: { id: string; taskId?: string },
-      opts?: { onSuccess?: (data: MediaFile) => void },
-    ) => {
-      exec({ variables: { input: { id: vars.id, taskId: vars.taskId } } }).then(
-        (res) => {
-          if (res.data) opts?.onSuccess?.(res.data.updateMediaFile);
-        },
-      );
-    },
-    mutateAsync: async (vars: {
-      id: string;
-      taskId?: string;
-    }): Promise<MediaFile> => {
-      const res = await exec({
-        variables: { input: { id: vars.id, taskId: vars.taskId } },
-      });
-      return res.data!.updateMediaFile;
-    },
-    isPending: loading,
-  };
-}
+export const useUpdateMedia = createMutationHook<
+  { id: string; taskId?: string },
+  MediaFile
+>({
+  mutation: UPDATE_MEDIA_FILE,
+  responseKey: "updateMediaFile",
+  mapVariables: (vars) => ({
+    input: { id: vars.id, taskId: vars.taskId },
+  }),
+});

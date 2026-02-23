@@ -1,4 +1,5 @@
-import { useQuery, useMutation, gql } from "@/lib/graphql-client";
+import { useQuery, gql } from "@/lib/graphql-client";
+import { createVoidMutationHook, normalizeQueryResult } from "@/lib/hook-factories";
 
 const LIST_PROJECT_MEMBERS = gql`
   query ListProjectMembers($input: listProjectMembersInput!) {
@@ -33,61 +34,26 @@ export interface ProjectMember {
 }
 
 export function useProjectMembers(projectId: string) {
-  const { data, loading, error } = useQuery<{
-    listProjectMembers: ProjectMember[];
-  }>(LIST_PROJECT_MEMBERS, {
-    variables: { input: { projectId } },
-    skip: !projectId,
-  });
-
-  return {
-    data: data?.listProjectMembers,
-    isLoading: loading,
-    isPending: loading,
-    error: error ?? null,
-  };
+  const result = useQuery<{ listProjectMembers: ProjectMember[] }>(
+    LIST_PROJECT_MEMBERS,
+    {
+      variables: { input: { projectId } },
+      skip: !projectId,
+    },
+  );
+  return normalizeQueryResult(result, (d) => d.listProjectMembers);
 }
 
-export function useAddProjectMember() {
-  const [exec, { loading }] = useMutation(ADD_PROJECT_MEMBER);
+export const useAddProjectMember = createVoidMutationHook<{
+  projectId: string;
+  userId: string;
+}>({
+  mutation: ADD_PROJECT_MEMBER,
+});
 
-  return {
-    mutate: (
-      input: { projectId: string; userId: string },
-      opts?: { onSuccess?: () => void },
-    ) => {
-      exec({ variables: { input } }).then(() => {
-        opts?.onSuccess?.();
-      });
-    },
-    mutateAsync: async (input: {
-      projectId: string;
-      userId: string;
-    }): Promise<void> => {
-      await exec({ variables: { input } });
-    },
-    isPending: loading,
-  };
-}
-
-export function useRemoveProjectMember() {
-  const [exec, { loading }] = useMutation(REMOVE_PROJECT_MEMBER);
-
-  return {
-    mutate: (
-      input: { projectId: string; userId: string },
-      opts?: { onSuccess?: () => void },
-    ) => {
-      exec({ variables: { input } }).then(() => {
-        opts?.onSuccess?.();
-      });
-    },
-    mutateAsync: async (input: {
-      projectId: string;
-      userId: string;
-    }): Promise<void> => {
-      await exec({ variables: { input } });
-    },
-    isPending: loading,
-  };
-}
+export const useRemoveProjectMember = createVoidMutationHook<{
+  projectId: string;
+  userId: string;
+}>({
+  mutation: REMOVE_PROJECT_MEMBER,
+});
