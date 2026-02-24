@@ -10,6 +10,7 @@ import { useUser } from "@/hooks/use-users";
 import { useTasks } from "@/hooks/use-tasks";
 import { ModuleForm } from "@/components/modules/module-form";
 import { WinProjectDialog } from "@/components/projects/win-project-dialog";
+import { CloseProjectDialog } from "@/components/projects/close-project-dialog";
 import { SubProjectForm } from "@/components/projects/sub-project-form";
 import { ProjectMembersDialog } from "@/components/projects/project-members-dialog";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,7 @@ import {
   Image as ImageIcon,
   FileText,
   FolderOpen,
+  Lock,
 } from "lucide-react";
 import { PROJECT_STATUS_CONFIG, type ProjectStatus } from "@/types/project";
 import { cn, getInitials } from "@/lib/utils";
@@ -85,6 +87,7 @@ export function Component() {
   const [subProjectFormOpen, setSubProjectFormOpen] = useState(false);
   const [membersOpen, setMembersOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [closeDialogOpen, setCloseDialogOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -208,6 +211,15 @@ export function Component() {
                   <FolderPlus className={styles.menuIcon} />
                   Sub-Project
                 </DropdownMenuItem>
+                {project.status.value === "on_going" && (
+                  <DropdownMenuItem
+                    className={styles.closeItem}
+                    onClick={() => setCloseDialogOpen(true)}
+                  >
+                    <Lock className={styles.menuIcon} />
+                    Close Project
+                  </DropdownMenuItem>
+                )}
                 {showWin && (
                   <DropdownMenuItem
                     className={styles.winItem}
@@ -362,6 +374,13 @@ export function Component() {
         projectId={projectId!}
         projectLeaderId={project?.projectLeaderId?.value}
       />
+      {project.status.value === "on_going" && (
+        <CloseProjectDialog
+          project={project}
+          open={closeDialogOpen}
+          onOpenChange={setCloseDialogOpen}
+        />
+      )}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

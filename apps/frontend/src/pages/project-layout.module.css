@@ -410,3 +410,12 @@
 .winItem:focus {
   color: #059669;
 }
+
+/* Close Project button in menu */
+.closeItem {
+  color: #7c3aed;
+}
+
+.closeItem:focus {
+  color: #7c3aed;
+}
