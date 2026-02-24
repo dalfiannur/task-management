@@ -43,6 +43,9 @@ const PROJECT_FIELDS = gql`
     resolvedStatus {
       value
     }
+    closedAt {
+      value
+    }
   }
 `;
 
@@ -61,6 +64,7 @@ interface ProjectRaw {
   clientLegalName?: { value: string };
   winStage?: { value: string };
   resolvedStatus?: { value: string };
+  closedAt?: { value: string };
 }
 
 function mapProject(raw: ProjectRaw): Project {
@@ -78,6 +82,7 @@ function mapProject(raw: ProjectRaw): Project {
     clientLegalName: raw.clientLegalName?.value,
     winStage: raw.winStage?.value,
     resolvedStatus: raw.resolvedStatus?.value,
+    closedAt: raw.closedAt?.value,
   };
 }
 
@@ -120,6 +125,15 @@ const UPDATE_PROJECT = gql`
 const DELETE_PROJECT = gql`
   mutation DeleteProject($input: deleteProjectInput!) {
     deleteProject(input: $input)
+  }
+`;
+
+const CLOSE_PROJECT = gql`
+  ${PROJECT_FIELDS}
+  mutation CloseProject($input: closeProjectInput!) {
+    closeProject(input: $input) {
+      ...ProjectFields
+    }
   }
 `;
 
@@ -169,6 +183,17 @@ export const useDeleteProject = createVoidMutationHook<string>({
   mutation: DELETE_PROJECT,
   mapVariables: (id) => ({ input: { id } }),
   refetchQueries: [LIST_PROJECTS],
+});
+
+export const useCloseProject = createMutationHook<
+  { id: string },
+  ProjectRaw,
+  Project
+>({
+  mutation: CLOSE_PROJECT,
+  responseKey: "closeProject",
+  mapResponse: mapProject,
+  refetchQueries: [LIST_PROJECTS, GET_PROJECT],
 });
 
 // --- Sub-Projects ---
