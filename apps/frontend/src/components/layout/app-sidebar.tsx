@@ -41,6 +41,7 @@ const STATUS_DOT_COLORS: Record<ProjectStatus, string> = {
   won: "dot-won",
   on_going: "dot-on-going",
   canceled: "dot-canceled",
+  closed: "dot-closed",
 };
 
 function ProjectTreeItem({ project }: { project: Project }) {

@@ -72,6 +72,10 @@
   background-color: #f87171;
 }
 
+.dotClosed {
+  background-color: #a855f7;
+}
+
 .headerActions {
   display: flex;
   align-items: center;

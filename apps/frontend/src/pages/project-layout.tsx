@@ -62,6 +62,7 @@ const DOT_CLASS: Record<string, string> = {
   won: styles.dotWon,
   on_going: styles.dotOnGoing,
   canceled: styles.dotCanceled,
+  closed: styles.dotClosed,
 };
 
 export interface ProjectLayoutContext {
