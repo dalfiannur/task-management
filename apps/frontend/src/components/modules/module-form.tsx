@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { Textarea } from "@/components/ui/textarea";
 import { UserCombobox } from "@/components/shared/user-combobox";
 import { useCreateModule, useUpdateModule, useModules } from "@/hooks/use-modules";
 import { MODULE_COLORS } from "./module-section";
@@ -114,11 +114,17 @@ export function ModuleForm({
                 <p className={styles.descriptionLabel}>
                   Description
                 </p>
-                <RichTextEditor
-                  content={description}
-                  onChange={setDescription}
+                <Textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
                   placeholder="Describe what this module covers..."
+                  maxLength={500}
+                  className={styles.descriptionTextarea}
+                  rows={3}
                 />
+                <span className={styles.charCount}>
+                  {description.length}/500
+                </span>
               </div>
 
               {/* Person In Charge */}

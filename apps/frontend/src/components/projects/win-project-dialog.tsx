@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { Textarea } from "@/components/ui/textarea";
 import { UserCombobox } from "@/components/shared/user-combobox";
 import { useUpdateProject } from "@/hooks/use-projects";
 import { useMediaFiles, useUploadMedia, useDeleteMedia } from "@/hooks/use-media";
@@ -82,9 +82,9 @@ export function WinProjectDialog({
             </div>
             <div className={styles.field}>
               <Label>Description / Brief</Label>
-              <RichTextEditor
-                content={description}
-                onChange={setDescription}
+              <Textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
                 placeholder="Enter project brief..."
               />
             </div>

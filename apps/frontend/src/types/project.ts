@@ -47,6 +47,12 @@ export interface CreateSubProjectInput {
     name: string;
     description?: string;
     projectLeaderId?: string;
+    ownerId?: string;
+    divisionId?: string;
+    commercial?: boolean;
+    value?: number;
+    startDate?: string;
+    endDate?: string;
 }
 
 export const PROJECT_STATUS_CONFIG: Record<

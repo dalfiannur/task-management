@@ -1,0 +1,73 @@
+.trigger {
+  width: 100%;
+  justify-content: space-between;
+  font-weight: 400;
+}
+
+.selectedItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.placeholder {
+  color: var(--muted-foreground);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: auto;
+}
+
+.clearIcon {
+  width: 0.875rem;
+  height: 0.875rem;
+  color: var(--muted-foreground);
+}
+
+.clearIcon:hover {
+  color: var(--foreground);
+}
+
+.chevron {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  opacity: 0.5;
+}
+
+.popover {
+  width: var(--radix-popover-trigger-width);
+  padding: 0;
+}
+
+.itemContent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.itemName {
+  font-weight: 500;
+}
+
+.itemLegalName {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+
+.checkIcon {
+  margin-left: auto;
+  width: 1rem;
+  height: 1rem;
+}
+
+.checkVisible {
+  opacity: 1;
+}
+
+.checkHidden {
+  opacity: 0;
+}

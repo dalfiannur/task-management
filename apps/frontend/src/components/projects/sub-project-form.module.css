@@ -1,10 +1,10 @@
 .dialogContent {
-  max-width: 32rem;
+  max-width: 36rem;
 }
 
 @media (min-width: 640px) {
   .dialogContent {
-    max-width: 32rem;
+    max-width: 36rem;
   }
 }
 
@@ -19,5 +19,17 @@
 .field {
   display: flex;
   flex-direction: column;
+  gap: 0.5rem;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.checkboxField {
+  display: flex;
+  align-items: center;
   gap: 0.5rem;
 }

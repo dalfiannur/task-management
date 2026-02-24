@@ -9,7 +9,7 @@ export interface CoreProject {
   clientDetail?: { name: { name: string; legalName: string } } | null;
   status: string;
   winStage: string;
-  ref: { leaderId: string };
+  ref: { leaderId: string; clientId: string };
 }
 
 interface CacheEntry {
@@ -42,7 +42,7 @@ const CORE_PROJECT_FIELDS = `
   }
   status
   winStage
-  ref { leaderId }
+  ref { leaderId clientId }
 `;
 
 const CORE_PROJECT_QUERY = `
@@ -146,6 +146,63 @@ export async function fetchCoreProjects(
   }
 
   return map;
+}
+
+const CREATE_CORE_PROJECT_MUTATION = `
+  mutation CreateCoreProject($input: createProjectInput!) {
+    createProject(input: $input) {
+      ${CORE_PROJECT_FIELDS}
+    }
+  }
+`;
+
+export interface CreateCoreProjectInput {
+  name: string;
+  description?: string;
+  clientId: string;
+  authorId: string;
+  parentId?: string;
+  ownerId?: string;
+  divisionId?: string;
+  commercial?: boolean;
+  value?: number;
+  projectLeaderId?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
+export async function createCoreProject(
+  input: CreateCoreProjectInput,
+  authToken: string | null,
+): Promise<CoreProject> {
+  const res = await fetch(CORE_API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+    },
+    body: JSON.stringify({
+      query: CREATE_CORE_PROJECT_MUTATION,
+      variables: { input },
+    }),
+  });
+
+  const json = (await res.json()) as {
+    data?: { createProject: CoreProject };
+    errors?: { message: string }[];
+  };
+
+  if (json.errors?.length) {
+    throw new Error(`Core API error: ${json.errors[0].message}`);
+  }
+
+  const project = json.data?.createProject;
+  if (!project) {
+    throw new Error("Core API returned no project data");
+  }
+
+  setCache(project.id, project);
+  return project;
 }
 
 export function extractAuthToken(request?: Request): string | null {

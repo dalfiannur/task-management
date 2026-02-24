@@ -29,7 +29,7 @@ export function ModuleCard({ module, projectId }: ModuleCardProps) {
           <div className={styles.infoGroup}>
             <CardTitle className={styles.title}>{module.name}</CardTitle>
             {module.description && (
-              <CardDescription>{module.description.replace(/<[^>]*>/g, "")}</CardDescription>
+              <CardDescription>{module.description}</CardDescription>
             )}
           </div>
           <Boxes className={styles.icon} />

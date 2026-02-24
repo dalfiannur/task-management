@@ -34,12 +34,19 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useTasks, useUpdateTask } from "@/hooks/use-tasks";
 import { useDeleteModule } from "@/hooks/use-modules";
 import { useUsers, useUser } from "@/hooks/use-users";
-import { ChevronRight, Delete, Plus } from "lucide-react";
+import { ChevronRight, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
+import { ModuleForm } from "./module-form";
 import { TASK_STATUS_CONFIG, type Module, type Task, type TaskStatus, type UpdateTaskInput } from "@/types/task";
 import { type ProjectStatus, } from "@/types/project"
 import { cn, getInitials } from "@/lib/utils";
@@ -117,17 +124,13 @@ function TaskAssigneeCell({ assigneeIds }: { assigneeIds: string[] }) {
   );
 }
 
-function stripHtml(html: string) {
-  return html.replace(/<[^>]*>/g, "").trim();
-}
-
 function ModuleMetaRow({ description, picId }: { description?: string; picId?: string }) {
   const { data: picUser } = useUser(picId);
 
   return (
     <div className={s.metaRow}>
       {description && (
-        <span className={s.metaDescription}>{stripHtml(description)}</span>
+        <span className={s.metaDescription}>{description}</span>
       )}
       {picUser && (
         <span className={s.metaPic}>
@@ -156,6 +159,8 @@ export function ModuleSection({
   const updateTask = useUpdateTask();
   const deleteModule = useDeleteModule();
   const [taskFormOpen, setTaskFormOpen] = useState(false);
+  const [editFormOpen, setEditFormOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const color = MODULE_COLORS[colorIndex % MODULE_COLORS.length];
 
@@ -196,17 +201,29 @@ export function ModuleSection({
                 </div>
               )}
             </CollapsibleTrigger>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={s.deleteButton}
-                >
-                  <Delete className={s.deleteIcon} />
-                  Delete Module
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className={s.menuButton}>
+                  <MoreHorizontal className={s.menuIcon} />
                 </Button>
-              </AlertDialogTrigger>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setEditFormOpen(true)}>
+                  <Pencil className={s.menuItemIcon} />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className={s.destructiveItem}
+                  onClick={() => setDeleteDialogOpen(true)}
+                >
+                  <Trash2 className={s.menuItemIcon} />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>Delete module?</AlertDialogTitle>
@@ -309,6 +326,13 @@ export function ModuleSection({
         onOpenChange={setTaskFormOpen}
         moduleId={module.id}
         projectId={projectId}
+      />
+
+      <ModuleForm
+        open={editFormOpen}
+        onOpenChange={setEditFormOpen}
+        projectId={projectId}
+        module={module}
       />
 
       {selectedTaskId && (

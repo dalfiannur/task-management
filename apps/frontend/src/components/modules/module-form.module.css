@@ -84,6 +84,20 @@
   color: color-mix(in srgb, var(--muted-foreground) 50%, transparent);
 }
 
+.descriptionTextarea {
+  resize: vertical;
+  min-height: 4.5rem;
+  max-height: 10rem;
+  font-size: 0.875rem;
+  line-height: 1.375rem;
+}
+
+.charCount {
+  font-size: 11px;
+  color: color-mix(in srgb, var(--muted-foreground) 50%, transparent);
+  text-align: right;
+}
+
 .footer {
   display: flex;
   align-items: center;

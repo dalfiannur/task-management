@@ -84,14 +84,29 @@
   text-align: right;
 }
 
-.deleteButton {
+.menuButton {
   margin-left: auto;
+  width: 1.75rem;
+  height: 1.75rem;
+  flex-shrink: 0;
 }
 
-.deleteIcon {
+.menuIcon {
   width: 1rem;
   height: 1rem;
-  margin-right: 0.5rem;
+}
+
+.menuItemIcon {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.destructiveItem {
+  color: var(--destructive);
+}
+
+.destructiveItem:focus {
+  color: var(--destructive);
 }
 
 /* ModuleMetaRow */

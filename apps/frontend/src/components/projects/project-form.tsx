@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { Textarea } from "@/components/ui/textarea";
 import { UserCombobox } from "@/components/shared/user-combobox";
 // TODO: createProject and updateProject mutations are not available yet on backend
 // import { useCreateProject, useUpdateProject } from "@/hooks/use-projects";
@@ -69,9 +69,9 @@ export function ProjectForm({ open, onOpenChange, project }: ProjectFormProps) {
             </div>
             <div className={styles.field}>
               <Label>Description</Label>
-              <RichTextEditor
-                content={description}
-                onChange={setDescription}
+              <Textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
                 placeholder="Describe the project..."
               />
             </div>
