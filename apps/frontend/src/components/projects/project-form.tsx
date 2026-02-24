@@ -20,22 +20,22 @@ import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { UserCombobox } from "@/components/shared/user-combobox";
 // TODO: createProject and updateProject mutations are not available yet on backend
 // import { useCreateProject, useUpdateProject } from "@/hooks/use-projects";
-import type { Project, ProjectCore, ProjectStatus } from "@/types/project";
+import type { Project, ProjectStatus } from "@/types/project";
 import { PROJECT_STATUS_CONFIG } from "@/types/project";
 import styles from "./project-form.module.css";
 
 interface ProjectFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  project?: Project & { coreDetail: ProjectCore | null };
+  project?: Project;
 }
 
 export function ProjectForm({ open, onOpenChange, project }: ProjectFormProps) {
   const isEditing = !!project;
 
-  const [title, setTitle] = useState(project?.coreDetail?.name.name ?? "");
+  const [title, setTitle] = useState(project?.coreName ?? "");
   const [description, setDescription] = useState(project?.description ?? "");
-  const [picId, setPicId] = useState<string | undefined>(project?.picId?.value);
+  const [projectLeaderId, setProjectLeaderId] = useState<string | undefined>(project?.projectLeaderId?.value);
   const [status, setStatus] = useState<ProjectStatus>(
     project?.status.value ?? "pending",
   );
@@ -76,8 +76,8 @@ export function ProjectForm({ open, onOpenChange, project }: ProjectFormProps) {
               />
             </div>
             <div className={styles.field}>
-              <Label>Person In Contact</Label>
-              <UserCombobox value={picId} onChange={setPicId} />
+              <Label>Project Leader</Label>
+              <UserCombobox value={projectLeaderId} onChange={setProjectLeaderId} />
             </div>
             <div className={styles.field}>
               <Label>Status</Label>

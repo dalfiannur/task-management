@@ -1,6 +1,6 @@
 import { useQuery, gql, coreClient } from "@/lib/graphql-client";
 import { createMutationHook, normalizeQueryResult } from "@/lib/hook-factories";
-import type { Project, ProjectCore, ProjectStatus } from "@/types/project";
+import type { Project, ProjectStatus } from "@/types/project";
 
 const LIST_PROJECTS = gql`
   query ListLeadProjects {
@@ -32,26 +32,30 @@ const APPROVE_PROJECT = gql`
   }
 `;
 
-type ProjectWithCore = Project & { coreDetail: ProjectCore | null };
+/** Raw Core project shape from the Core GraphQL API. */
+interface CoreProjectRaw {
+  id: string;
+  code: string;
+  name: { name: string; description: string };
+  status: string;
+  winStage: string;
+}
 
-function mapCoreProject(p: ProjectCore): ProjectWithCore {
+function mapCoreProject(p: CoreProjectRaw): Project {
   return {
     id: p.id,
     coreRef: { value: p.id },
     status: { value: p.status as ProjectStatus },
     description: p.name.description,
-    coreDetail: {
-      id: p.id,
-      code: p.code,
-      name: { name: p.name.name, description: p.name.description },
-      status: p.status,
-      winStage: p.winStage,
-    },
+    code: p.code,
+    coreName: p.name.name,
+    coreDescription: p.name.description,
+    winStage: p.winStage,
   };
 }
 
 export function useNewLeads() {
-  const result = useQuery<{ listProjects: ProjectCore[] }>(LIST_PROJECTS, {
+  const result = useQuery<{ listProjects: CoreProjectRaw[] }>(LIST_PROJECTS, {
     client: coreClient,
   });
   return normalizeQueryResult(result, (d) => d.listProjects.map(mapCoreProject));
@@ -59,7 +63,7 @@ export function useNewLeads() {
 
 export const useApproveLead = createMutationHook<
   { id: string; winStage: string },
-  ProjectCore
+  CoreProjectRaw
 >({
   mutation: APPROVE_PROJECT,
   responseKey: "updateProject",

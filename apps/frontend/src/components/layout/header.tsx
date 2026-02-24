@@ -14,7 +14,7 @@ import { useUIStore } from "@/stores/ui-store";
 import { Link, useParams, useSearchParams } from "react-router";
 import { useState } from "react";
 import { TaskForm } from "@/components/tasks/task-form";
-import { useProject } from "@/hooks/use-projects";
+import { useProject, getProjectDisplayName } from "@/hooks/use-projects";
 import { useModule } from "@/hooks/use-modules";
 import { NotificationBell } from "./notification-bell";
 import { cn } from "@/lib/utils";
@@ -47,6 +47,8 @@ export function Header() {
     }
   };
 
+  const projectName = project ? getProjectDisplayName(project) : undefined;
+
   return (
     <>
       <header className={styles.header}>
@@ -67,11 +69,11 @@ export function Header() {
                   {moduleId ? (
                     <BreadcrumbLink asChild>
                       <Link to={`/projects/${project.id}`}>
-                        {project?.coreDetail?.name.name}
+                        {projectName}
                       </Link>
                     </BreadcrumbLink>
                   ) : (
-                    <BreadcrumbPage>{project.coreDetail?.name.name}</BreadcrumbPage>
+                    <BreadcrumbPage>{projectName}</BreadcrumbPage>
                   )}
                 </BreadcrumbItem>
               </>

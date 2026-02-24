@@ -13,12 +13,12 @@ import { UserCombobox } from "@/components/shared/user-combobox";
 import { useUpdateProject } from "@/hooks/use-projects";
 import { useMediaFiles, useUploadMedia, useDeleteMedia } from "@/hooks/use-media";
 import { isImage, formatFileSize } from "@/types/media";
-import type { Project, ProjectCore } from "@/types/project";
+import type { Project } from "@/types/project";
 import { FileText, ImageIcon, File, Plus, X } from "lucide-react";
 import styles from "./win-project-dialog.module.css";
 
 interface WinProjectDialogProps {
-  project: Project & { coreDetail: ProjectCore | null };
+  project: Project;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -35,7 +35,7 @@ export function WinProjectDialog({
   open,
   onOpenChange,
 }: WinProjectDialogProps) {
-  const [picId, setPicId] = useState<string | undefined>(project.picId?.value);
+  const [projectLeaderId, setProjectLeaderId] = useState<string | undefined>(project.projectLeaderId?.value);
   const [description, setDescription] = useState(project.description ?? "");
   const inputRef = useRef<HTMLInputElement>(null);
   const updateProject = useUpdateProject();
@@ -59,7 +59,7 @@ export function WinProjectDialog({
       {
         id: project.id,
         description,
-        picId,
+        projectLeaderId,
         status: "on_going",
       },
       {
@@ -73,12 +73,12 @@ export function WinProjectDialog({
       <DialogContent className={styles.dialogContent}>
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Win Project — {project.coreDetail?.name.name}</DialogTitle>
+            <DialogTitle>Win Project — {project.coreName}</DialogTitle>
           </DialogHeader>
           <div className={styles.fieldGroup}>
             <div className={styles.field}>
-              <Label>PIC</Label>
-              <UserCombobox value={picId} onChange={setPicId} />
+              <Label>Project Leader</Label>
+              <UserCombobox value={projectLeaderId} onChange={setProjectLeaderId} />
             </div>
             <div className={styles.field}>
               <Label>Description / Brief</Label>

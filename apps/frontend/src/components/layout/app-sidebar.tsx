@@ -31,30 +31,31 @@ import { ProjectForm } from "@/components/projects/project-form";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { Project, ProjectCore, ProjectStatus } from "@/types/project";
+import type { Project, ProjectStatus } from "@/types/project";
 import styles from "./app-sidebar.module.css";
 
 const STATUS_DOT_COLORS: Record<ProjectStatus, string> = {
   pending: "dot-pending",
   prospect: "dot-prospect",
   win: "dot-win",
+  won: "dot-won",
   on_going: "dot-on-going",
   canceled: "dot-canceled",
 };
 
-function ProjectTreeItem({ project }: { project: Project & { coreDetail: ProjectCore | null } }) {
+function ProjectTreeItem({ project }: { project: Project }) {
   const params = useParams();
   const activeProjectId = (params as { projectId?: string }).projectId;
   const isProjectActive = activeProjectId === project.id;
 
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton asChild isActive={isProjectActive} tooltip={project.coreDetail?.name.name}>
+      <SidebarMenuButton asChild isActive={isProjectActive} tooltip={project.coreName}>
         <Link to={`/projects/${project.id}`}>
           <span
             className={cn(styles.statusDot, STATUS_DOT_COLORS[project.status.value] ?? "dot-pending")}
           />
-          <span className={styles.projectName}>{project.coreDetail?.name.name}</span>
+          <span className={styles.projectName}>{project.coreName}</span>
         </Link>
       </SidebarMenuButton>
     </SidebarMenuItem>

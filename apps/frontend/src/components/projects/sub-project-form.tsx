@@ -27,7 +27,7 @@ export function SubProjectForm({
 }: SubProjectFormProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [picId, setPicId] = useState<string | undefined>();
+  const [projectLeaderId, setProjectLeaderId] = useState<string | undefined>();
   const createSubProject = useCreateSubProject();
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -37,13 +37,13 @@ export function SubProjectForm({
         parentProjectId,
         name: name.trim(),
         description: description || undefined,
-        picId,
+        projectLeaderId,
       },
       {
         onSuccess: () => {
           setName("");
           setDescription("");
-          setPicId(undefined);
+          setProjectLeaderId(undefined);
           onOpenChange(false);
         },
       },
@@ -77,8 +77,8 @@ export function SubProjectForm({
               />
             </div>
             <div className={styles.field}>
-              <Label>Project Manager</Label>
-              <UserCombobox value={picId} onChange={setPicId} />
+              <Label>Project Leader</Label>
+              <UserCombobox value={projectLeaderId} onChange={setProjectLeaderId} />
             </div>
           </div>
           <DialogFooter>

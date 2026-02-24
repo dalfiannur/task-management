@@ -23,14 +23,14 @@ interface ProjectMembersDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   projectId: string;
-  picId?: string;
+  projectLeaderId?: string;
 }
 
 export function ProjectMembersDialog({
   open,
   onOpenChange,
   projectId,
-  picId,
+  projectLeaderId,
 }: ProjectMembersDialogProps) {
   const { data: members } = useProjectMembers(projectId);
   const { data: users } = useUsers();
@@ -40,7 +40,7 @@ export function ProjectMembersDialog({
   const [selectedUserId, setSelectedUserId] = useState<string | undefined>();
 
   const canManage =
-    me?.role === "manager" || (picId && me?.externalId === picId);
+    me?.role === "manager" || (projectLeaderId && me?.id === projectLeaderId);
 
   const memberUserIds = new Set(members?.map((m) => m.membership.userId) ?? []);
 
@@ -83,9 +83,9 @@ export function ProjectMembersDialog({
                       </AvatarFallback>
                     </Avatar>
                     <span className={styles.memberName}>{displayName}</span>
-                    {member.membership.userId === picId && (
+                    {member.membership.userId === projectLeaderId && (
                       <span className={styles.picBadge}>
-                        PIC
+                        Leader
                       </span>
                     )}
                   </div>

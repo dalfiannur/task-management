@@ -1,7 +1,6 @@
-import { useState, useEffect } from "react";
-import { useQuery, gql, CORE_URL, getAuthToken } from "@/lib/graphql-client";
-import { createMutationHook, createVoidMutationHook } from "@/lib/hook-factories";
-import type { CreateSubProjectInput, Project, ProjectCore } from "@/types/project";
+import { useQuery, gql } from "@/lib/graphql-client";
+import { createMutationHook, createVoidMutationHook, normalizeQueryResult } from "@/lib/hook-factories";
+import type { CreateSubProjectInput, Project } from "@/types/project";
 
 // --- GraphQL operations ---
 
@@ -14,7 +13,7 @@ const PROJECT_FIELDS = gql`
     status {
       value
     }
-    picId {
+    projectLeaderId {
       value
     }
     name {
@@ -23,6 +22,13 @@ const PROJECT_FIELDS = gql`
     parent {
       id
     }
+    code
+    coreName
+    coreDescription
+    clientName
+    clientLegalName
+    winStage
+    resolvedStatus
   }
 `;
 
@@ -71,132 +77,16 @@ const DELETE_PROJECT = gql`
 // --- Hooks ---
 
 export function useProjects() {
-  const { data, loading, error } = useQuery<{ listProjects: Project[] }>(
-    LIST_PROJECTS,
-  );
-
-  const projects = data?.listProjects;
-
-  const [enrichedProjects, setEnrichedProjects] = useState<
-    (Project & { coreDetail: ProjectCore | null })[] | undefined
-  >(undefined);
-
-  useEffect(() => {
-    if (!projects) return;
-
-    Promise.all(
-      projects.map((project) => {
-        if (!project.coreRef?.value) {
-          return Promise.resolve({ ...project, coreDetail: null });
-        }
-        return fetch(CORE_URL, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {}),
-          },
-          body: JSON.stringify({
-            query: `query GetProjectCore($input: getProjectInput!) {
-              getProject(input: $input) {
-                id
-                code
-                name { name description }
-                clientDetail {
-                  name {
-                    name
-                    legalName
-                  }
-                }
-                status
-                winStage
-              }
-            }`,
-            variables: { input: { id: project.coreRef.value } },
-          }),
-        })
-          .then((r) => r.json())
-          .then((res: { data?: { getProject: ProjectCore | null } }) => ({
-            ...project,
-            coreDetail: res.data?.getProject ?? null,
-          }))
-          .catch(() => ({ ...project, coreDetail: null }));
-      }),
-    ).then(setEnrichedProjects);
-  }, [projects]);
-
-  return {
-    data: enrichedProjects,
-    isLoading: loading,
-    error: error ?? null,
-  };
+  const result = useQuery<{ listProjects: Project[] }>(LIST_PROJECTS);
+  return normalizeQueryResult(result, (d) => d.listProjects);
 }
 
 export function useProject(id: string) {
-  const { data, loading, error } = useQuery<{
-    getProject: Project | null;
-  }>(GET_PROJECT, {
+  const result = useQuery<{ getProject: Project | null }>(GET_PROJECT, {
     variables: { input: { id } },
     skip: !id,
   });
-
-  const [enriched, setEnriched] = useState<
-    (Project & { coreDetail: ProjectCore | null }) | null | undefined
-  >(undefined);
-
-  const project = data?.getProject;
-
-  useEffect(() => {
-    if (project === undefined) return;
-    if (project === null) {
-      setEnriched(null);
-      return;
-    }
-
-    if (!project.coreRef?.value) {
-      setEnriched({ ...project, coreDetail: null });
-      return;
-    }
-
-    fetch(CORE_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(getAuthToken() ? { Authorization: `Bearer ${getAuthToken()}` } : {}),
-      },
-      body: JSON.stringify({
-        query: `query GetProjectCore($input: getProjectInput!) {
-          getProject(input: $input) {
-            id
-            code
-            name { name description }
-            status
-            winStage
-            clientDetail {
-              name {
-                name
-                legalName
-              }
-            }
-          }
-        }`,
-        variables: { input: { id: project.coreRef.value } },
-      }),
-    })
-      .then((r) => r.json())
-      .then((res: { data?: { getProject: ProjectCore | null } }) =>
-        setEnriched({
-          ...project,
-          coreDetail: res.data?.getProject ?? null,
-        }),
-      )
-      .catch(() => setEnriched({ ...project, coreDetail: null }));
-  }, [project]);
-
-  return {
-    data: enriched,
-    isLoading: loading,
-    error: error ?? null,
-  };
+  return normalizeQueryResult(result, (d) => d.getProject);
 }
 
 export const useApproveProject = createMutationHook<
@@ -211,7 +101,7 @@ export const useApproveProject = createMutationHook<
 });
 
 export const useUpdateProject = createMutationHook<
-  { id: string; description?: string; status?: string; picId?: string },
+  { id: string; description?: string; status?: string; projectLeaderId?: string },
   Project
 >({
   mutation: UPDATE_PROJECT,
@@ -244,21 +134,11 @@ const CREATE_SUB_PROJECT = gql`
 `;
 
 export function useSubProjects(parentProjectId?: string) {
-  const { data, loading, error } = useQuery<{
-    listSubProjects: Project[];
-  }>(LIST_SUB_PROJECTS, {
+  const result = useQuery<{ listSubProjects: Project[] }>(LIST_SUB_PROJECTS, {
     variables: { input: { parentProjectId } },
     skip: !parentProjectId,
   });
-
-  return {
-    data: data?.listSubProjects.map((p) => ({
-      ...p,
-      coreDetail: null as ProjectCore | null,
-    })),
-    isLoading: loading,
-    error: error ?? null,
-  };
+  return normalizeQueryResult(result, (d) => d.listSubProjects);
 }
 
 export const useCreateSubProject = createMutationHook<
@@ -269,8 +149,6 @@ export const useCreateSubProject = createMutationHook<
   responseKey: "createSubProject",
 });
 
-export function getProjectDisplayName(
-  project: Project & { coreDetail: ProjectCore | null },
-): string {
-  return project.name?.value || project.coreDetail?.name.name || "Untitled";
+export function getProjectDisplayName(project: Project): string {
+  return project.name?.value || project.coreName || "Untitled";
 }

@@ -10,21 +10,21 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useModules } from "@/hooks/use-modules";
 import { useUser } from "@/hooks/use-users";
 import { FolderOpen } from "lucide-react";
-import type { Project, ProjectCore } from "@/types/project";
+import type { Project } from "@/types/project";
 import { PROJECT_STATUS_CONFIG } from "@/types/project";
 import { getProjectDisplayName } from "@/hooks/use-projects";
 import { cn, getInitials } from "@/lib/utils";
 import styles from "./project-card.module.css";
 
 interface ProjectCardProps {
-  project: Project & { coreDetail: ProjectCore | null };
+  project: Project;
   parentName?: string;
 }
 
 export function ProjectCard({ project, parentName }: ProjectCardProps) {
   const navigate = useNavigate();
   const { data: modules } = useModules(project.id);
-  const { data: pic } = useUser(project.picId?.value);
+  const { data: pic } = useUser(project.projectLeaderId?.value);
 
   const statusConfig = PROJECT_STATUS_CONFIG[project.status.value];
 

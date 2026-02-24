@@ -9,7 +9,7 @@ export interface Project {
         value: ProjectStatus
     }
     description?: string;
-    picId?: {
+    projectLeaderId?: {
         value: string;
     };
     name?: {
@@ -18,36 +18,27 @@ export interface Project {
     parent?: {
         id: string;
     } | null;
-}
-
-export interface ProjectCore {
-    id: string;
-    code: string;
-    name: {
-        name: string;
-        description: string;
-    };
-    clientDetail?: {
-        name: {
-            name: string;
-            legalName: string;
-        };
-    } | null;
-    status: string;
-    winStage: string;
+    // Enrichment fields from Core (populated by backend)
+    code?: string;
+    coreName?: string;
+    coreDescription?: string;
+    clientName?: string;
+    clientLegalName?: string;
+    winStage?: string;
+    resolvedStatus?: string;
 }
 
 export interface CreateProjectInput {
     title: string;
     description?: string;
-    picId?: string;
+    projectLeaderId?: string;
     status?: ProjectStatus;
 }
 
 export interface UpdateProjectInput {
     title?: string;
     description?: string;
-    picId?: string | null;
+    projectLeaderId?: string | null;
     status?: ProjectStatus;
 }
 
@@ -55,7 +46,7 @@ export interface CreateSubProjectInput {
     parentProjectId: string;
     name: string;
     description?: string;
-    picId?: string;
+    projectLeaderId?: string;
 }
 
 export const PROJECT_STATUS_CONFIG: Record<

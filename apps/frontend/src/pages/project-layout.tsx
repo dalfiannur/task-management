@@ -50,7 +50,7 @@ import {
   Image as ImageIcon,
   FileText,
 } from "lucide-react";
-import { PROJECT_STATUS_CONFIG } from "@/types/project";
+import { PROJECT_STATUS_CONFIG, type ProjectStatus } from "@/types/project";
 import { cn, getInitials } from "@/lib/utils";
 import styles from "./project-layout.module.css";
 
@@ -74,7 +74,7 @@ export function Component() {
 
   const { data: project, isLoading } = useProject(projectId!);
   const { data: modules } = useModules(projectId);
-  const { data: pic } = useUser(project?.picId?.value);
+  const { data: pic } = useUser(project?.projectLeaderId?.value);
   const { data: allTasks } = useTasks();
   const deleteProject = useDeleteProject();
 
@@ -96,12 +96,7 @@ export function Component() {
     return <div className={styles.notFound}>Project not found</div>;
   }
 
-  const resolvedStatus =
-    project.coreDetail?.winStage === "won" &&
-    project.status.value === "prospect"
-      ? "won"
-      : project.status.value;
-
+  const resolvedStatus = (project.resolvedStatus ?? project.status.value) as ProjectStatus;
   const statusConfig = PROJECT_STATUS_CONFIG[resolvedStatus];
   const dotClass = DOT_CLASS[resolvedStatus] ?? DOT_CLASS.pending;
 
@@ -119,7 +114,7 @@ export function Component() {
     totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
 
   const showWin =
-    project.coreDetail?.winStage === "won" &&
+    project.winStage === "won" &&
     project.status.value === "prospect";
 
   // Active tab detection
@@ -165,7 +160,7 @@ export function Component() {
         <div className={styles.topRow}>
           <div className={styles.badges}>
             <Badge variant="outline" className={styles.codeBadge}>
-              {project.coreDetail?.code}
+              {project.code}
             </Badge>
             <Badge className={cn(statusConfig.color, styles.statusBadge)}>
               <span className={cn(styles.statusDot, dotClass)} />
@@ -243,7 +238,7 @@ export function Component() {
         <div className={styles.metaRow}>
           {pic && (
             <div className={styles.picInfo}>
-              <span className={styles.picLabel}>PIC</span>
+              <span className={styles.picLabel}>Leader</span>
               <Avatar className={styles.picAvatar}>
                 <AvatarImage src={pic.avatarUrl} />
                 <AvatarFallback className={styles.picAvatarFallback}>
@@ -253,20 +248,20 @@ export function Component() {
               <span className={styles.picName}>{pic.name}</span>
             </div>
           )}
-          {project.coreDetail?.clientDetail?.name.name && (
+          {project.clientName && (
             <div className={styles.clientInfo}>
               <span className={styles.descSeparator}>&middot;</span>
               <Building className={styles.clientIcon} />
               <span className={styles.clientName}>
-                {project.coreDetail.clientDetail.name.name}
+                {project.clientName}
               </span>
             </div>
           )}
-          {project.coreDetail?.name.description && (
+          {project.coreDescription && (
             <div className={styles.descriptionRow}>
               <span className={styles.descSeparator}>&middot;</span>
               <span className={styles.descClamp}>
-                {project.coreDetail.name.description}
+                {project.coreDescription}
               </span>
             </div>
           )}
@@ -356,7 +351,7 @@ export function Component() {
         open={membersOpen}
         onOpenChange={setMembersOpen}
         projectId={projectId!}
-        picId={project?.picId?.value}
+        projectLeaderId={project?.projectLeaderId?.value}
       />
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>

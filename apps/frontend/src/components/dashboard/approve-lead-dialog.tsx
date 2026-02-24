@@ -11,14 +11,12 @@ import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useApproveProject } from "@/hooks/use-projects";
-import type { Project, ProjectCore } from "@/types/project";
+import type { Project } from "@/types/project";
 import { useApproveLead } from "@/hooks/use-leads";
 import styles from "./approve-lead-dialog.module.css";
 
-type ProjectWithCore = Project & { coreDetail: ProjectCore | null };
-
 interface ApproveLeadDialogProps {
-  project: ProjectWithCore | null;
+  project: Project | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -37,7 +35,7 @@ export function ApproveLeadDialog({
     if (!project) return;
 
     approveProject.mutate(
-      { id: project.id, name: project.coreDetail?.name.name ?? "", description },
+      { id: project.id, description },
       {
         onSuccess: () => {
           approveLead.mutate(
@@ -58,7 +56,7 @@ export function ApproveLeadDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Approve Lead — {project?.coreDetail?.name.name}</DialogTitle>
+          <DialogTitle>Approve Lead — {project?.coreName}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className={styles.form}>
           <div className={styles.fieldGroup}>

@@ -3,25 +3,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ApproveLeadDialog } from "./approve-lead-dialog";
-import type { Project, ProjectCore } from "@/types/project";
+import type { Project } from "@/types/project";
 import { useUsers } from "@/hooks/use-users";
 import { Sparkles } from "lucide-react";
 import styles from "./new-leads.module.css";
 
-type ProjectWithCore = Project & { coreDetail: ProjectCore | null };
-
 interface NewLeadsProps {
-  projects: ProjectWithCore[];
+  projects: Project[];
 }
 
 export function NewLeads({ projects }: NewLeadsProps) {
-  const [selectedProject, setSelectedProject] = useState<ProjectWithCore | null>(null);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const { data: users } = useUsers();
 
-  function getPicName(picId?: string) {
-    if (!picId || !users) return null;
-    const user = users.find((u) => u.id === picId);
+  function getLeaderName(leaderId?: string) {
+    if (!leaderId || !users) return null;
+    const user = users.find((u) => u.id === leaderId);
     return user?.name ?? null;
   }
 
@@ -48,7 +46,7 @@ export function NewLeads({ projects }: NewLeadsProps) {
           ) : (
             <div className={styles.leadsList}>
               {projects.map((project) => {
-                const picName = getPicName(project.picId?.value);
+                const leaderName = getLeaderName(project.projectLeaderId?.value);
                 return (
                   <div
                     key={project.id}
@@ -61,15 +59,15 @@ export function NewLeads({ projects }: NewLeadsProps) {
                           variant="outline"
                           className={styles.codeBadge}
                         >
-                          {project.coreDetail?.code ?? project.id}
+                          {project.code ?? project.id}
                         </Badge>
                         <span className={styles.leadName}>
-                          {project.coreDetail?.name.name ?? "Untitled"}
+                          {project.coreName ?? "Untitled"}
                         </span>
                       </div>
-                      {picName && (
+                      {leaderName && (
                         <p className={styles.picName}>
-                          {picName}
+                          {leaderName}
                         </p>
                       )}
                     </div>
