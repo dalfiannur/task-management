@@ -5,15 +5,15 @@
 }
 
 .loadingContainer {
-  padding: 1.5rem;
+  padding: 1.25rem;
 }
 
 .loadingContainer > * + * {
-  margin-top: 1rem;
+  margin-top: 0.75rem;
 }
 
 .notFound {
-  padding: 1.5rem;
+  padding: 1.25rem;
   text-align: center;
   color: var(--muted-foreground);
 }
@@ -33,7 +33,7 @@
 /* Left panel */
 .leftPanel {
   flex: 1;
-  padding: 1.5rem;
+  padding: 1.25rem;
   min-width: 0;
 }
 
@@ -44,32 +44,34 @@
 }
 
 .headerMargin {
-  margin-bottom: 1.25rem;
+  margin-bottom: 1rem;
 }
 
 .headerTitle {
   font-size: 0.75rem;
   line-height: 1rem;
   font-weight: 600;
+  font-family: var(--font-mono);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: color-mix(in srgb, var(--muted-foreground) 60%, transparent);
 }
 
 .leftContent > * + * {
-  margin-top: 1.25rem;
+  margin-top: 1rem;
 }
 
 .sectionLabel {
   font-size: 11px;
   font-weight: 600;
+  font-family: var(--font-mono);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: color-mix(in srgb, var(--muted-foreground) 50%, transparent);
 }
 
 .descriptionSection > * + * {
-  margin-top: 0.5rem;
+  margin-top: 0.375rem;
 }
 
 /* Right panel */
@@ -81,25 +83,26 @@
 
 @media (min-width: 640px) {
   .rightPanel {
-    width: 280px;
+    width: 260px;
   }
 }
 
 .propertiesHeader {
-  padding: 1rem 1.25rem;
+  padding: 0.875rem 1rem;
   border-bottom: 1px solid var(--border);
 }
 
 .propertiesLabel {
   font-size: 11px;
   font-weight: 600;
+  font-family: var(--font-mono);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: color-mix(in srgb, var(--muted-foreground) 50%, transparent);
 }
 
 .propertiesBody {
-  padding: 1rem;
+  padding: 0.875rem;
 }
 
 .propertiesBody > * + * {
@@ -109,8 +112,8 @@
 .divider {
   height: 1px;
   background-color: color-mix(in srgb, var(--border) 60%, transparent);
-  margin-top: 0.75rem !important;
-  margin-bottom: 0.75rem !important;
+  margin-top: 0.625rem !important;
+  margin-bottom: 0.625rem !important;
 }
 
 /* Date range indicator */
@@ -124,6 +127,7 @@
   align-items: center;
   gap: 0.375rem;
   font-size: 11px;
+  font-family: var(--font-mono);
   color: color-mix(in srgb, var(--muted-foreground) 60%, transparent);
 }
 
@@ -146,11 +150,11 @@
 
 /* Timestamps */
 .timestampsSection {
-  padding: 0 1.25rem 1.25rem;
+  padding: 0 1rem 1rem;
 }
 
 .timestampsSection > * + * {
-  margin-top: 0.75rem;
+  margin-top: 0.625rem;
 }
 
 .timestampsDivider {
@@ -168,6 +172,7 @@
 
 .timestampText {
   font-size: 11px;
+  font-family: var(--font-mono);
   color: color-mix(in srgb, var(--muted-foreground) 60%, transparent);
 }
 
@@ -176,7 +181,7 @@
   color: var(--destructive);
   font-size: 0.75rem;
   line-height: 1rem;
-  height: 2rem;
+  height: 1.75rem;
 }
 
 .deleteButton:hover {
@@ -195,7 +200,7 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  min-height: 32px;
+  min-height: 28px;
 }
 
 .propertyLabel {
@@ -215,6 +220,7 @@
 .propertyLabelText {
   font-size: 0.75rem;
   line-height: 1rem;
+  font-family: var(--font-mono);
   color: var(--muted-foreground);
 }
 
