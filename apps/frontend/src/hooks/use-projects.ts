@@ -1,6 +1,6 @@
 import { useQuery, gql } from "@/lib/graphql-client";
 import { createMutationHook, createVoidMutationHook, normalizeQueryResult } from "@/lib/hook-factories";
-import type { CreateSubProjectInput, Project } from "@/types/project";
+import type { CreateSubProjectInput, Project, ProjectStatus } from "@/types/project";
 
 // --- GraphQL operations ---
 
@@ -22,15 +22,64 @@ const PROJECT_FIELDS = gql`
     parent {
       id
     }
-    code
-    coreName
-    coreDescription
-    clientName
-    clientLegalName
-    winStage
-    resolvedStatus
+    code {
+      value
+    }
+    coreName {
+      value
+    }
+    coreDescription {
+      value
+    }
+    clientName {
+      value
+    }
+    clientLegalName {
+      value
+    }
+    winStage {
+      value
+    }
+    resolvedStatus {
+      value
+    }
   }
 `;
+
+/** Raw shape from GraphQL (enrichment fields wrapped as { value }) */
+interface ProjectRaw {
+  id: string;
+  coreRef: { value: string };
+  status: { value: string };
+  projectLeaderId?: { value: string };
+  name?: { value: string };
+  parent?: { id: string } | null;
+  code?: { value: string };
+  coreName?: { value: string };
+  coreDescription?: { value: string };
+  clientName?: { value: string };
+  clientLegalName?: { value: string };
+  winStage?: { value: string };
+  resolvedStatus?: { value: string };
+}
+
+function mapProject(raw: ProjectRaw): Project {
+  return {
+    id: raw.id,
+    coreRef: raw.coreRef,
+    status: raw.status as { value: ProjectStatus },
+    projectLeaderId: raw.projectLeaderId,
+    name: raw.name,
+    parent: raw.parent,
+    code: raw.code?.value,
+    coreName: raw.coreName?.value,
+    coreDescription: raw.coreDescription?.value,
+    clientName: raw.clientName?.value,
+    clientLegalName: raw.clientLegalName?.value,
+    winStage: raw.winStage?.value,
+    resolvedStatus: raw.resolvedStatus?.value,
+  };
+}
 
 const LIST_PROJECTS = gql`
   ${PROJECT_FIELDS}
@@ -77,20 +126,23 @@ const DELETE_PROJECT = gql`
 // --- Hooks ---
 
 export function useProjects() {
-  const result = useQuery<{ listProjects: Project[] }>(LIST_PROJECTS);
-  return normalizeQueryResult(result, (d) => d.listProjects);
+  const result = useQuery<{ listProjects: ProjectRaw[] }>(LIST_PROJECTS);
+  return normalizeQueryResult(result, (d) => d.listProjects.map(mapProject));
 }
 
 export function useProject(id: string) {
-  const result = useQuery<{ getProject: Project | null }>(GET_PROJECT, {
+  const result = useQuery<{ getProject: ProjectRaw | null }>(GET_PROJECT, {
     variables: { input: { id } },
     skip: !id,
   });
-  return normalizeQueryResult(result, (d) => d.getProject);
+  return normalizeQueryResult(result, (d) =>
+    d.getProject ? mapProject(d.getProject) : null,
+  );
 }
 
 export const useApproveProject = createMutationHook<
   { id: string; description?: string },
+  ProjectRaw,
   Project
 >({
   mutation: APPROVE_PROJECT,
@@ -98,14 +150,17 @@ export const useApproveProject = createMutationHook<
   mapVariables: (input) => ({
     input: { id: input.id, description: input.description },
   }),
+  mapResponse: mapProject,
 });
 
 export const useUpdateProject = createMutationHook<
   { id: string; description?: string; status?: string; projectLeaderId?: string },
+  ProjectRaw,
   Project
 >({
   mutation: UPDATE_PROJECT,
   responseKey: "updateProject",
+  mapResponse: mapProject,
 });
 
 export const useDeleteProject = createVoidMutationHook<string>({
@@ -134,19 +189,21 @@ const CREATE_SUB_PROJECT = gql`
 `;
 
 export function useSubProjects(parentProjectId?: string) {
-  const result = useQuery<{ listSubProjects: Project[] }>(LIST_SUB_PROJECTS, {
+  const result = useQuery<{ listSubProjects: ProjectRaw[] }>(LIST_SUB_PROJECTS, {
     variables: { input: { parentProjectId } },
     skip: !parentProjectId,
   });
-  return normalizeQueryResult(result, (d) => d.listSubProjects);
+  return normalizeQueryResult(result, (d) => d.listSubProjects.map(mapProject));
 }
 
 export const useCreateSubProject = createMutationHook<
   CreateSubProjectInput,
+  ProjectRaw,
   Project
 >({
   mutation: CREATE_SUB_PROJECT,
   responseKey: "createSubProject",
+  mapResponse: mapProject,
 });
 
 export function getProjectDisplayName(project: Project): string {
