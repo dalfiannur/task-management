@@ -33,6 +33,7 @@ import MembershipService from "./MembershipService";
 import {
   fetchCoreProject,
   fetchCoreProjects,
+  createCoreProject,
   extractAuthToken,
   type CoreProject,
 } from "~/lib/core-client";
@@ -64,19 +65,29 @@ export default class ProjectService extends BaseService {
     output: [ProjectArcheType],
   })
   async listProjects(_input: unknown, context: { request?: Request }) {
-    const query = new Query()
+    const allProjects = await new Query()
       .with(ProjectTag)
       .with(ProjectCoreRefComponent)
-      .with(ProjectStatusComponent);
-    const allProjects = await query.populate().exec();
+      .with(ProjectStatusComponent)
+      .populate()
+      .exec();
+
+    // Exclude sub-projects (those with a parent reference)
+    const rootProjects: typeof allProjects = [];
+    for (const p of allProjects) {
+      const parentRef = await p.get(ProjectParentRefComponent);
+      if (!parentRef?.parentProjectId) {
+        rootProjects.push(p);
+      }
+    }
 
     const user = await this.extractUser(context);
-    let filteredProjects = allProjects;
+    let filteredProjects = rootProjects;
     if (user) {
       const role = user.role ?? await getUserRole(user.id);
       if (role !== "manager") {
         const memberProjectIds = await this.getMemberProjectIds(user.id);
-        filteredProjects = allProjects.filter((p: any) => memberProjectIds.has(p.id));
+        filteredProjects = rootProjects.filter((p: any) => memberProjectIds.has(p.id));
       }
     }
 
@@ -171,6 +182,12 @@ export default class ProjectService extends BaseService {
       name: z.string(),
       description: z.string().optional(),
       projectLeaderId: z.string().optional(),
+      ownerId: z.string().optional(),
+      divisionId: z.string().optional(),
+      commercial: z.boolean().optional(),
+      value: z.number().optional(),
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
     }),
     output: ProjectArcheType,
   })
@@ -180,17 +197,65 @@ export default class ProjectService extends BaseService {
       name: string;
       description?: string;
       projectLeaderId?: string;
+      ownerId?: string;
+      divisionId?: string;
+      commercial?: boolean;
+      value?: number;
+      startDate?: string;
+      endDate?: string;
     },
     context: { request?: Request },
   ) {
+    // 1. Find parent project and get its coreRef
     const parent = await new Query().findOneById(input.parentProjectId);
     if (!parent) throw new Error("Parent project not found");
 
+    const parentCoreRef = await parent.get(ProjectCoreRefComponent);
+    if (!parentCoreRef?.value) {
+      throw new Error("Parent project has no Core reference — cannot create sub-project in Core");
+    }
+
+    // 2. Fetch parent Core data to inherit clientId
+    const authToken = extractAuthToken(context.request);
+    const parentCoreData = await fetchCoreProject(parentCoreRef.value, authToken);
+    if (!parentCoreData) {
+      throw new Error("Could not fetch parent project data from Core");
+    }
+
+    const clientId = parentCoreData.ref.clientId;
+    if (!clientId) {
+      throw new Error("Parent project has no clientId in Core");
+    }
+
+    // 3. Extract user for authorId
+    const user = await this.extractUser(context);
+    if (!user) throw new Error("Authentication required");
+
+    // 4. Create project in Core with parentId
+    const coreProject = await createCoreProject(
+      {
+        name: input.name,
+        description: input.description,
+        clientId,
+        authorId: user.id,
+        parentId: parentCoreRef.value,
+        ownerId: input.ownerId,
+        divisionId: input.divisionId,
+        commercial: input.commercial,
+        value: input.value,
+        projectLeaderId: input.projectLeaderId,
+        startDate: input.startDate,
+        endDate: input.endDate,
+      },
+      authToken,
+    );
+
+    // 5. Create local entity with coreRef pointing to new Core project
     const entity = Entity.Create()
       .add(ProjectTag, {})
       .add(ProjectNameComponent, { value: input.name })
       .add(ProjectParentRefComponent, { parentProjectId: input.parentProjectId })
-      .add(ProjectCoreRefComponent, { value: "" })
+      .add(ProjectCoreRefComponent, { value: coreProject.id })
       .add(ProjectDescriptionComponent, { value: input.description || "" })
       .add(ProjectStatusComponent, { value: "on_going" });
 
@@ -200,16 +265,14 @@ export default class ProjectService extends BaseService {
 
     await entity.save();
 
-    // Auto-add creator and leader as members
-    const user = await this.extractUser(context);
-    if (user) {
-      await MembershipService.getInstance().ensureMembership(entity.id, user.id);
-    }
+    // 6. Auto-add creator and leader as members
+    await MembershipService.getInstance().ensureMembership(entity.id, user.id);
     if (input.projectLeaderId) {
       await MembershipService.getInstance().ensureMembership(entity.id, input.projectLeaderId);
     }
 
-    enrichEntity(entity, null, "on_going");
+    // 7. Enrich with Core data and return
+    enrichEntity(entity, coreProject, "on_going");
     return entity;
   }
 
@@ -243,10 +306,28 @@ export default class ProjectService extends BaseService {
       }
     }
 
-    // Sub-projects have no coreRef, enrich with null
+    // Collect coreRef IDs for enrichment (sub-projects with Core refs)
+    const coreRefEntries: { entity: any; coreRefId: string }[] = [];
     for (const entity of filteredProjects) {
+      const coreRef = entity.getInMemory(ProjectCoreRefComponent);
+      if (coreRef?.value && coreRef.value !== "") {
+        coreRefEntries.push({ entity, coreRefId: coreRef.value });
+      }
+    }
+
+    const uniqueIds = [...new Set(coreRefEntries.map((e) => e.coreRefId))];
+    const authToken = extractAuthToken(context.request);
+    const coreMap = uniqueIds.length > 0
+      ? await fetchCoreProjects(uniqueIds, authToken)
+      : new Map<string, CoreProject>();
+
+    // Enrich each entity — Core-backed sub-projects get real data, legacy ones get null
+    for (const entity of filteredProjects) {
+      const coreRef = entity.getInMemory(ProjectCoreRefComponent);
+      const coreRefId = coreRef?.value;
+      const coreData = coreRefId ? coreMap.get(coreRefId) ?? null : null;
       const statusComp = entity.getInMemory(ProjectStatusComponent);
-      enrichEntity(entity, null, statusComp?.value ?? "on_going");
+      enrichEntity(entity, coreData, statusComp?.value ?? "on_going");
     }
 
     return filteredProjects;

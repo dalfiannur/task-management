@@ -172,9 +172,11 @@ export function AppSidebar() {
           </div>
           <SidebarGroupContent>
             <SidebarMenu>
-              {projects?.map((project) => (
-                <ProjectTreeItem key={project.id} project={project} />
-              ))}
+              {projects
+                ?.filter((project) => !project.parent?.id)
+                .map((project) => (
+                  <ProjectTreeItem key={project.id} project={project} />
+                ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
