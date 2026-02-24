@@ -9,7 +9,7 @@
   background-color: var(--foreground);
   color: var(--background);
   padding: 0.25rem 0.625rem;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   line-height: 1rem;
   text-wrap: balance;
   transform-origin: var(--radix-tooltip-content-transform-origin);

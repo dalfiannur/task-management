@@ -52,7 +52,7 @@
 
 /* When parent avatar has data-size="sm", reduce text size */
 [data-size="sm"] > .fallback {
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   line-height: 1rem;
 }
 

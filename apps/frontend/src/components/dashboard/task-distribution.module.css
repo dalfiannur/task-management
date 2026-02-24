@@ -83,7 +83,7 @@
 }
 
 .statusPercent {
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   line-height: 1rem;
   color: var(--muted-foreground);
   width: 2rem;

@@ -28,7 +28,7 @@
 
 .codeBadge {
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   line-height: 1rem;
   flex-shrink: 0;
 }
@@ -39,7 +39,7 @@
 }
 
 .subBadge {
-  font-size: 0.6875rem;
+  font-size: 0.875rem;
   font-family: var(--font-mono);
 }
 
@@ -64,7 +64,7 @@
 
 .moduleCount {
   font-family: var(--font-mono);
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   line-height: 1rem;
   color: var(--muted-foreground);
 }
@@ -85,7 +85,7 @@
 }
 
 .picName {
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   line-height: 1rem;
   color: var(--muted-foreground);
 }

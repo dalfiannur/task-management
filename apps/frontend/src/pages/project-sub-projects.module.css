@@ -43,7 +43,7 @@
 }
 
 .emptySubtitle {
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   line-height: 1.25rem;
   color: color-mix(in srgb, var(--muted-foreground) 70%, transparent);
   margin-top: 0.125rem;

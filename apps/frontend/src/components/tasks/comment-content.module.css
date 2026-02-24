@@ -1,5 +1,5 @@
 .plainText {
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   line-height: 1rem;
   color: color-mix(in srgb, var(--foreground) 80%, transparent);
   white-space: pre-wrap;
@@ -8,7 +8,7 @@
 }
 
 .richText {
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   line-height: 1rem;
   color: color-mix(in srgb, var(--foreground) 80%, transparent);
   word-wrap: break-word;

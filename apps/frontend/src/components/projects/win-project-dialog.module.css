@@ -61,7 +61,7 @@
 
 .fileSize {
   font-family: var(--font-mono);
-  font-size: 0.6875rem;
+  font-size: 0.875rem;
   color: var(--muted-foreground);
   flex-shrink: 0;
 }
@@ -80,7 +80,7 @@
 
 .attachButton {
   height: 1.5rem;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   line-height: 1rem;
   width: 100%;
   justify-content: flex-start;

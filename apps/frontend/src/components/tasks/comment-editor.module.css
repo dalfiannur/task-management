@@ -45,7 +45,7 @@
 }
 
 .mentionEmptyText {
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   line-height: 1rem;
   color: var(--muted-foreground);
 }
@@ -57,7 +57,7 @@
   width: 100%;
   padding: 0.3125rem 0.625rem;
   text-align: left;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   line-height: 1rem;
   transition: background-color 150ms, color 150ms;
 }

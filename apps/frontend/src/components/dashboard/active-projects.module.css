@@ -15,7 +15,7 @@
 }
 
 .viewAllLink {
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   line-height: 1rem;
   color: var(--muted-foreground);
   transition: color 150ms;
@@ -92,7 +92,7 @@
 }
 
 .moduleCount {
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   line-height: 1rem;
   color: var(--muted-foreground);
   font-family: var(--font-mono);
@@ -112,7 +112,7 @@
 }
 
 .picName {
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   line-height: 1rem;
   color: var(--muted-foreground);
   overflow: hidden;

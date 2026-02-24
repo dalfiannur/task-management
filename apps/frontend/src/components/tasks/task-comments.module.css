@@ -3,7 +3,7 @@
 }
 
 .sectionLabel {
-  font-size: 11px;
+  font-size: 0.875rem;
   font-weight: 600;
   font-family: var(--font-mono);
   text-transform: uppercase;
@@ -23,7 +23,7 @@
   display: flex;
   align-items: center;
   gap: 0.375rem;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   line-height: 1rem;
   font-family: var(--font-mono);
   color: var(--muted-foreground);
@@ -67,7 +67,7 @@
 }
 
 .avatarFallback {
-  font-size: 10px;
+  font-size: 0.875rem;
   background-color: var(--muted);
 }
 
@@ -83,19 +83,19 @@
 }
 
 .authorName {
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   line-height: 1rem;
   font-weight: 500;
 }
 
 .commentTime {
-  font-size: 11px;
+  font-size: 0.875rem;
   font-family: var(--font-mono);
   color: color-mix(in srgb, var(--muted-foreground) 60%, transparent);
 }
 
 .editedTag {
-  font-size: 10px;
+  font-size: 0.875rem;
   font-family: var(--font-mono);
   color: color-mix(in srgb, var(--muted-foreground) 40%, transparent);
   font-style: italic;
@@ -145,7 +145,7 @@
 
 .editButton {
   height: 1.75rem;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   line-height: 1rem;
 }
 
@@ -176,13 +176,13 @@
 }
 
 .addCommentHint {
-  font-size: 10px;
+  font-size: 0.875rem;
   font-family: var(--font-mono);
   color: color-mix(in srgb, var(--muted-foreground) 40%, transparent);
 }
 
 .addCommentStatus {
-  font-size: 10px;
+  font-size: 0.875rem;
   font-family: var(--font-mono);
   color: color-mix(in srgb, var(--muted-foreground) 40%, transparent);
 }

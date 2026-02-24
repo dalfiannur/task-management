@@ -9,7 +9,7 @@
 .weekCell {
   border-right: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   line-height: 1rem;
   font-weight: 500;
   color: var(--muted-foreground);
@@ -26,7 +26,7 @@
 
 .dayCell {
   border-right: 1px solid var(--border);
-  font-size: 10px;
+  font-size: 0.875rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -125,7 +125,7 @@
 }
 
 .tooltipDate {
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   line-height: 1rem;
   color: var(--muted-foreground);
   font-family: var(--font-mono);

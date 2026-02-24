@@ -15,7 +15,7 @@
 }
 
 .pendingBadge {
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   line-height: 1rem;
   font-weight: 600;
   font-family: var(--font-mono);
@@ -83,7 +83,7 @@
 .codeBadge {
   flex-shrink: 0;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.875rem;
 }
 
 .leadName {
@@ -96,7 +96,7 @@
 }
 
 .picName {
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   line-height: 1rem;
   color: var(--muted-foreground);
   margin-top: 0.0625rem;

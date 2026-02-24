@@ -41,7 +41,7 @@
 }
 
 .taskCountBadge {
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   line-height: 1rem;
   font-family: var(--font-mono);
 }
@@ -65,7 +65,7 @@
 }
 
 .taskDate {
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   line-height: 1rem;
   color: var(--muted-foreground);
   white-space: nowrap;

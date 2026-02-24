@@ -385,7 +385,7 @@
   padding-left: 0.5rem;
   padding-right: 0.5rem;
   color: color-mix(in srgb, var(--sidebar-foreground) 70%, transparent);
-  font-size: 0.6875rem;
+  font-size: 0.875rem;
   line-height: 1rem;
   font-weight: 500;
   font-family: var(--font-mono);
@@ -517,7 +517,7 @@
   border-radius: calc(var(--radius) - 2px);
   padding: 0.375rem 0.5rem;
   text-align: left;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   line-height: 1.25rem;
   outline: none;
   transition: width 200ms ease, height 200ms ease, padding 200ms ease;
@@ -606,14 +606,14 @@
 /* --- size: default --- */
 .sidebarMenuButton[data-size="default"] {
   height: 1.875rem;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   line-height: 1.25rem;
 }
 
 /* --- size: sm --- */
 .sidebarMenuButton[data-size="sm"] {
   height: 1.625rem;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   line-height: 1rem;
 }
 
@@ -754,7 +754,7 @@
   border-radius: calc(var(--radius) - 2px);
   padding-left: 0.25rem;
   padding-right: 0.25rem;
-  font-size: 0.6875rem;
+  font-size: 0.875rem;
   line-height: 1rem;
   font-weight: 500;
   font-family: var(--font-mono);
@@ -921,7 +921,7 @@
 
 /* size: sm */
 .sidebarMenuSubButton[data-size="sm"] {
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   line-height: 1rem;
 }
 

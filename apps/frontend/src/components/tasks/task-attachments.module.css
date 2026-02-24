@@ -39,7 +39,7 @@
 }
 
 .fileSize {
-  font-size: 10px;
+  font-size: 0.875rem;
   font-family: var(--font-mono);
   color: var(--muted-foreground);
   flex-shrink: 0;
@@ -59,7 +59,7 @@
 
 .addButton {
   height: 1.75rem;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   line-height: 1rem;
   width: 100%;
   justify-content: flex-start;

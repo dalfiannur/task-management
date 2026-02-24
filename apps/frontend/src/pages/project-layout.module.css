@@ -32,14 +32,14 @@
 
 .codeBadge {
   font-family: var(--font-mono);
-  font-size: 0.6875rem;
+  font-size: 0.875rem;
   letter-spacing: 0.05em;
   border-color: color-mix(in srgb, var(--border) 60%, transparent);
 }
 
 .statusBadge {
   border: 0;
-  font-size: 0.6875rem;
+  font-size: 0.875rem;
   font-family: var(--font-mono);
 }
 
@@ -80,7 +80,7 @@
 
 .newModuleBtn {
   height: 1.75rem;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   line-height: 1rem;
 }
 
@@ -116,7 +116,7 @@
 
 /* Parent link */
 .parentLink {
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   line-height: 1rem;
   color: var(--muted-foreground);
   display: flex;
@@ -158,7 +158,7 @@
 }
 
 .picLabel {
-  font-size: 0.625rem;
+  font-size: 0.875rem;
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -176,7 +176,7 @@
 }
 
 .picName {
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   line-height: 1.25rem;
   color: var(--muted-foreground);
 }
@@ -185,7 +185,7 @@
   display: flex;
   align-items: center;
   gap: 0.375rem;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   line-height: 1.25rem;
 }
 
@@ -203,7 +203,7 @@
 .descriptionRow {
   display: flex;
   align-items: center;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   line-height: 1.25rem;
   color: color-mix(in srgb, var(--muted-foreground) 80%, transparent);
 }
@@ -261,14 +261,14 @@
 }
 
 .statValue {
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   font-family: var(--font-mono);
 }
 
 .statLabel {
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   line-height: 1rem;
   color: var(--muted-foreground);
   font-family: var(--font-mono);
@@ -297,7 +297,7 @@
 }
 
 .progressPct {
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   line-height: 1rem;
   font-weight: 600;
   color: var(--muted-foreground);
@@ -317,7 +317,7 @@
 .tabLink {
   position: relative;
   padding: 0.5rem 0.875rem;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   font-weight: 500;
   color: var(--muted-foreground);
   text-decoration: none;

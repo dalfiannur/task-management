@@ -27,7 +27,7 @@
 }
 
 .subtitle {
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   line-height: 1.25rem;
   color: var(--muted-foreground);
   font-family: var(--font-mono);
@@ -60,7 +60,7 @@
   padding-left: 2rem;
   padding-right: 0.875rem;
   height: 1.75rem;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   line-height: 1.25rem;
   width: 200px;
   transition: color 150ms, background-color 150ms;
@@ -117,7 +117,7 @@
 }
 
 .emptySubtitle {
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   line-height: 1.25rem;
   color: color-mix(in srgb, var(--muted-foreground) 70%, transparent);
   margin-top: 0.125rem;
@@ -201,7 +201,7 @@
 }
 
 .pageMeta {
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   line-height: 1rem;
   color: var(--muted-foreground);
   overflow: hidden;

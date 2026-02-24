@@ -220,7 +220,7 @@
   margin-top: 0;
   margin-bottom: 0.5rem;
   overflow-x: auto;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   line-height: 1.5;
 }
 
@@ -234,7 +234,7 @@
   background-color: var(--muted);
   border-radius: var(--radius-sm);
   padding: 0.125rem 0.25rem;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
 }
 
 .editorContent :global(.tiptap) :global(hr) {
