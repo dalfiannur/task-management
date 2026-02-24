@@ -9,68 +9,6 @@
   }
 }
 
-/* Sub-Projects */
-.subProjectsSection {
-  padding-left: 1.5rem;
-  padding-right: 1.5rem;
-  padding-top: 1rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid var(--border);
-}
-
-.subProjectsToggle {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  font-size: 0.875rem;
-  line-height: 1.25rem;
-  font-weight: 500;
-  color: var(--muted-foreground);
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  transition: color 150ms;
-}
-
-.subProjectsToggle:hover {
-  color: var(--foreground);
-}
-
-.chevronIcon {
-  width: 1rem;
-  height: 1rem;
-  transition: transform 150ms;
-}
-
-.chevronExpanded {
-  transform: rotate(90deg);
-}
-
-.subProjectsCount {
-  font-size: 0.75rem;
-  line-height: 1rem;
-  color: color-mix(in srgb, var(--muted-foreground) 60%, transparent);
-}
-
-.subProjectsGrid {
-  display: grid;
-  gap: 0.75rem;
-  margin-top: 0.75rem;
-}
-
-@media (min-width: 640px) {
-  .subProjectsGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 1024px) {
-  .subProjectsGrid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
 /* Filters Row */
 .filtersRow {
   padding-left: 1.5rem;

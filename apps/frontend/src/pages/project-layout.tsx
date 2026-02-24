@@ -49,6 +49,7 @@ import {
   GanttChart as GanttChartIcon,
   Image as ImageIcon,
   FileText,
+  FolderOpen,
 } from "lucide-react";
 import { PROJECT_STATUS_CONFIG, type ProjectStatus } from "@/types/project";
 import { cn, getInitials } from "@/lib/utils";
@@ -124,6 +125,7 @@ export function Component() {
 
   let activeTab = "overview";
   if (pathname.startsWith(`${basePath}/timeline`)) activeTab = "timeline";
+  else if (pathname.startsWith(`${basePath}/sub-projects`)) activeTab = "sub-projects";
   else if (pathname.startsWith(`${basePath}/media`)) activeTab = "media";
   else if (pathname.startsWith(`${basePath}/pages`)) activeTab = "pages";
 
@@ -134,6 +136,12 @@ export function Component() {
       label: "Timeline",
       to: `${basePath}/timeline`,
       icon: GanttChartIcon,
+    },
+    {
+      key: "sub-projects",
+      label: "Sub-Projects",
+      to: `${basePath}/sub-projects`,
+      icon: FolderOpen,
     },
     {
       key: "media",

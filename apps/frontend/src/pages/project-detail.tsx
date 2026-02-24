@@ -1,14 +1,11 @@
 import { useParams, useSearchParams } from "react-router";
 import { useOutletContext } from "react-router";
-import { useProject, useSubProjects } from "@/hooks/use-projects";
+import { useProject } from "@/hooks/use-projects";
 import { useModules } from "@/hooks/use-modules";
 import { ModuleSection } from "@/components/modules/module-section";
 import { TaskFilters } from "@/components/tasks/task-filters";
 import { Button } from "@/components/ui/button";
-import { ProjectCard } from "@/components/projects/project-card";
-import { Plus, Search, CircleDot, ChevronRight } from "lucide-react";
-import { useState } from "react";
-import { cn } from "@/lib/utils";
+import { Plus, Search, CircleDot } from "lucide-react";
 import type { ProjectLayoutContext } from "./project-layout";
 import styles from "./project-detail.module.css";
 
@@ -23,8 +20,6 @@ export function Component() {
 
   const { data: project } = useProject(projectId!);
   const { data: modules } = useModules(projectId);
-  const { data: subProjects } = useSubProjects(projectId);
-  const [subProjectsExpanded, setSubProjectsExpanded] = useState(true);
 
   if (!project) {
     return null;
@@ -32,35 +27,6 @@ export function Component() {
 
   return (
     <div>
-      {/* Sub-Projects */}
-      {subProjects && subProjects.length > 0 && (
-        <div className={styles.subProjectsSection}>
-          <button
-            type="button"
-            className={styles.subProjectsToggle}
-            onClick={() => setSubProjectsExpanded((v) => !v)}
-          >
-            <ChevronRight
-              className={cn(
-                styles.chevronIcon,
-                subProjectsExpanded && styles.chevronExpanded,
-              )}
-            />
-            Sub-Projects
-            <span className={styles.subProjectsCount}>
-              ({subProjects.length})
-            </span>
-          </button>
-          {subProjectsExpanded && (
-            <div className={styles.subProjectsGrid}>
-              {subProjects.map((sub) => (
-                <ProjectCard key={sub.id} project={sub} />
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Filters Row */}
       <div className={styles.filtersRow}>
         <TaskFilters filters={{ status, priority }} />
