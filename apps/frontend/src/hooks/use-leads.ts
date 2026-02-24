@@ -68,4 +68,5 @@ export const useApproveLead = createMutationHook<
   mutation: APPROVE_PROJECT,
   responseKey: "updateProject",
   client: coreClient,
+  refetchQueries: [LIST_PROJECTS],
 });

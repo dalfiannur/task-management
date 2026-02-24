@@ -151,6 +151,7 @@ export const useApproveProject = createMutationHook<
     input: { id: input.id, description: input.description },
   }),
   mapResponse: mapProject,
+  refetchQueries: [LIST_PROJECTS, GET_PROJECT],
 });
 
 export const useUpdateProject = createMutationHook<
@@ -161,11 +162,13 @@ export const useUpdateProject = createMutationHook<
   mutation: UPDATE_PROJECT,
   responseKey: "updateProject",
   mapResponse: mapProject,
+  refetchQueries: [LIST_PROJECTS, GET_PROJECT],
 });
 
 export const useDeleteProject = createVoidMutationHook<string>({
   mutation: DELETE_PROJECT,
   mapVariables: (id) => ({ input: { id } }),
+  refetchQueries: [LIST_PROJECTS],
 });
 
 // --- Sub-Projects ---
@@ -204,6 +207,7 @@ export const useCreateSubProject = createMutationHook<
   mutation: CREATE_SUB_PROJECT,
   responseKey: "createSubProject",
   mapResponse: mapProject,
+  refetchQueries: [LIST_SUB_PROJECTS, LIST_PROJECTS],
 });
 
 export function getProjectDisplayName(project: Project): string {

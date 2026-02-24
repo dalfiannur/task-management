@@ -180,6 +180,7 @@ async function uploadFile(vars: {
 export const useDeleteMedia = createVoidMutationHook<string>({
   mutation: DELETE_MEDIA_FILE,
   mapVariables: (id) => ({ input: { id } }),
+  refetchQueries: [LIST_MEDIA_FILES],
 });
 
 export const useUpdateMedia = createMutationHook<
@@ -191,4 +192,5 @@ export const useUpdateMedia = createMutationHook<
   mapVariables: (vars) => ({
     input: { id: vars.id, taskId: vars.taskId },
   }),
+  refetchQueries: [LIST_MEDIA_FILES],
 });

@@ -95,9 +95,11 @@ export function useUnreadNotificationCount() {
 export const useMarkNotificationsRead = createVoidMutationHook<string[]>({
   mutation: MARK_READ,
   mapVariables: (ids) => ({ input: { ids } }),
+  refetchQueries: [LIST_NOTIFICATIONS, UNREAD_COUNT],
 });
 
 export const useMarkAllNotificationsRead = createVoidMutationHook<void>({
   mutation: MARK_ALL_READ,
   mapVariables: () => ({ input: {} }),
+  refetchQueries: [LIST_NOTIFICATIONS, UNREAD_COUNT],
 });

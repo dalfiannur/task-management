@@ -64,6 +64,7 @@ export const useCreateComment = createMutationHook<
 >({
   mutation: CREATE_COMMENT,
   responseKey: "createComment",
+  refetchQueries: [LIST_COMMENTS],
 });
 
 export const useUpdateComment = createMutationHook<
@@ -73,6 +74,7 @@ export const useUpdateComment = createMutationHook<
   mutation: UPDATE_COMMENT,
   responseKey: "updateComment",
   mapVariables: ({ taskId: _taskId, ...rest }) => ({ input: rest }),
+  refetchQueries: [LIST_COMMENTS],
 });
 
 export const useDeleteComment = createVoidMutationHook<{
@@ -81,4 +83,5 @@ export const useDeleteComment = createVoidMutationHook<{
 }>({
   mutation: DELETE_COMMENT,
   mapVariables: (input) => ({ input: { id: input.id } }),
+  refetchQueries: [LIST_COMMENTS],
 });

@@ -85,6 +85,7 @@ export const useCreateLabel = createMutationHook<
   mutation: CREATE_LABEL,
   responseKey: "createLabel",
   mapResponse: mapLabel,
+  refetchQueries: [LIST_LABELS],
 });
 
 export const useUpdateLabel = createMutationHook<
@@ -98,9 +99,11 @@ export const useUpdateLabel = createMutationHook<
     input: { id: vars.id, name: vars.input.name, color: vars.input.color },
   }),
   mapResponse: mapLabel,
+  refetchQueries: [LIST_LABELS],
 });
 
 export const useDeleteLabel = createVoidMutationHook<string>({
   mutation: DELETE_LABEL,
   mapVariables: (id) => ({ input: { id } }),
+  refetchQueries: [LIST_LABELS],
 });

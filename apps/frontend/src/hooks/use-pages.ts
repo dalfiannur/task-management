@@ -91,6 +91,7 @@ export const useCreatePage = createMutationHook<
 >({
   mutation: CREATE_PAGE,
   responseKey: "createPage",
+  refetchQueries: [LIST_PAGES],
 });
 
 export const useUpdatePage = createMutationHook<
@@ -107,6 +108,7 @@ export const useUpdatePage = createMutationHook<
   mutation: UPDATE_PAGE,
   responseKey: "updatePage",
   mapVariables: ({ projectId: _projectId, ...rest }) => ({ input: rest }),
+  refetchQueries: [LIST_PAGES, GET_PAGE],
 });
 
 export const useDeletePage = createVoidMutationHook<{
@@ -115,6 +117,7 @@ export const useDeletePage = createVoidMutationHook<{
 }>({
   mutation: DELETE_PAGE,
   mapVariables: (input) => ({ input: { id: input.id } }),
+  refetchQueries: [LIST_PAGES],
 });
 
 export const useReorderPages = createVoidMutationHook<{
@@ -122,4 +125,5 @@ export const useReorderPages = createVoidMutationHook<{
   pageIds: string[];
 }>({
   mutation: REORDER_PAGES,
+  refetchQueries: [LIST_PAGES],
 });

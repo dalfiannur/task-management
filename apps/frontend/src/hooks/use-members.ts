@@ -49,6 +49,7 @@ export const useAddProjectMember = createVoidMutationHook<{
   userId: string;
 }>({
   mutation: ADD_PROJECT_MEMBER,
+  refetchQueries: [LIST_PROJECT_MEMBERS],
 });
 
 export const useRemoveProjectMember = createVoidMutationHook<{
@@ -56,4 +57,5 @@ export const useRemoveProjectMember = createVoidMutationHook<{
   userId: string;
 }>({
   mutation: REMOVE_PROJECT_MEMBER,
+  refetchQueries: [LIST_PROJECT_MEMBERS],
 });

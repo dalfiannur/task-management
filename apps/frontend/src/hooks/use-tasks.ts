@@ -215,6 +215,7 @@ export const useCreateTask = createMutationHook<
     },
   }),
   mapResponse: mapTask,
+  refetchQueries: [LIST_TASKS, LIST_ALL_TASKS],
 });
 
 export const useUpdateTask = createMutationHook<
@@ -238,11 +239,13 @@ export const useUpdateTask = createMutationHook<
     },
   }),
   mapResponse: mapTask,
+  refetchQueries: [LIST_TASKS, LIST_ALL_TASKS, GET_TASK],
 });
 
 export const useDeleteTask = createVoidMutationHook<string>({
   mutation: DELETE_TASK,
   mapVariables: (id) => ({ input: { id } }),
+  refetchQueries: [LIST_TASKS, LIST_ALL_TASKS],
 });
 
 export const useReorderTask = createMutationHook<
@@ -256,4 +259,5 @@ export const useReorderTask = createMutationHook<
     input: { id: vars.id, newOrder: vars.newOrder, newStatus: vars.newStatus },
   }),
   mapResponse: mapTask,
+  refetchQueries: [LIST_TASKS, LIST_ALL_TASKS],
 });
