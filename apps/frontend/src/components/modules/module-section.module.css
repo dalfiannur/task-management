@@ -9,18 +9,18 @@
   display: flex;
   width: 100%;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
+  gap: 0.375rem;
+  padding: 0.625rem 0.875rem;
 }
 
 .trigger {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.375rem;
   flex: 1;
   border-radius: calc(var(--radius) - 2px);
-  margin: -0.25rem;
-  padding: 0.25rem;
+  margin: -0.1875rem;
+  padding: 0.1875rem;
   transition: color 150ms, background-color 150ms;
 }
 
@@ -29,8 +29,8 @@
 }
 
 .chevron {
-  width: 1rem;
-  height: 1rem;
+  width: 0.875rem;
+  height: 0.875rem;
   flex-shrink: 0;
   color: var(--muted-foreground);
   transition: transform 150ms;
@@ -48,7 +48,8 @@
 }
 
 .countBadge {
-  margin-left: 0.25rem;
+  font-family: var(--font-mono);
+  margin-left: 0.1875rem;
   font-size: 0.75rem;
   line-height: 1rem;
   font-variant-numeric: tabular-nums;
@@ -57,14 +58,14 @@
 .progressGroup {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.375rem;
   margin-left: auto;
-  margin-right: 0.25rem;
+  margin-right: 0.1875rem;
 }
 
 .progressTrack {
   height: 0.25rem;
-  width: 4rem;
+  width: 3.5rem;
   border-radius: 9999px;
   background-color: var(--muted);
   overflow: hidden;
@@ -77,23 +78,24 @@
 }
 
 .progressText {
-  font-size: 11px;
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
   color: var(--muted-foreground);
   font-variant-numeric: tabular-nums;
-  width: 1.75rem;
+  width: 1.5rem;
   text-align: right;
 }
 
 .menuButton {
   margin-left: auto;
-  width: 1.75rem;
-  height: 1.75rem;
+  width: 1.5rem;
+  height: 1.5rem;
   flex-shrink: 0;
 }
 
 .menuIcon {
-  width: 1rem;
-  height: 1rem;
+  width: 0.875rem;
+  height: 0.875rem;
 }
 
 .menuItemIcon {
@@ -113,8 +115,8 @@
 .metaRow {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 0 1rem 0.5rem 2.75rem;
+  gap: 0.75rem;
+  padding: 0 0.875rem 0.375rem 2.375rem;
   font-size: 0.8125rem;
   line-height: 1.25rem;
 }
@@ -131,11 +133,12 @@
 .metaPic {
   display: flex;
   align-items: center;
-  gap: 0.375rem;
+  gap: 0.3125rem;
   flex-shrink: 0;
 }
 
 .metaPicLabel {
+  font-family: var(--font-mono);
   font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -144,8 +147,8 @@
 }
 
 .metaPicAvatar {
-  width: 1.125rem;
-  height: 1.125rem;
+  width: 1rem;
+  height: 1rem;
 }
 
 .metaPicName {
@@ -162,16 +165,16 @@
 .singleAssignee {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.375rem;
 }
 
 .assigneeAvatar {
-  width: 1.25rem;
-  height: 1.25rem;
+  width: 1.125rem;
+  height: 1.125rem;
 }
 
 .assigneeFallback {
-  font-size: 10px;
+  font-size: 0.5625rem;
 }
 
 .assigneeName {
@@ -185,7 +188,7 @@
 .multiAssignee {
   display: flex;
   align-items: center;
-  gap: 0.375rem;
+  gap: 0.3125rem;
 }
 
 .avatarStack {
@@ -198,12 +201,13 @@
 }
 
 .stackedAvatar {
-  width: 1.25rem;
-  height: 1.25rem;
+  width: 1.125rem;
+  height: 1.125rem;
   box-shadow: 0 0 0 1px var(--background);
 }
 
 .overflowCount {
+  font-family: var(--font-mono);
   font-size: 0.75rem;
   line-height: 1rem;
   color: var(--muted-foreground);
@@ -219,15 +223,16 @@
 }
 
 .taskTitle {
-  padding-left: 2.5rem;
+  padding-left: 2.125rem;
   font-weight: 500;
 }
 
 .statusTrigger {
+  font-family: var(--font-mono);
   height: auto;
   border-radius: 9999px;
   border-color: transparent;
-  padding: 0.125rem 0.5rem;
+  padding: 0.0625rem 0.375rem;
   font-size: 0.75rem;
   line-height: 1rem;
   font-weight: 500;
@@ -240,6 +245,7 @@
 }
 
 .dueDateCell {
+  font-family: var(--font-mono);
   color: var(--muted-foreground);
 }
 
@@ -252,15 +258,15 @@
 }
 
 .addTaskCell {
-  padding-left: 2.5rem;
-  padding-top: 0.5rem;
-  padding-bottom: 0.5rem;
+  padding-left: 2.125rem;
+  padding-top: 0.375rem;
+  padding-bottom: 0.375rem;
 }
 
 .addTaskLabel {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.1875rem;
   font-size: 0.875rem;
   line-height: 1.25rem;
   color: var(--muted-foreground);
@@ -278,11 +284,11 @@
 
 .emptyCell {
   text-align: center;
-  padding-top: 1.5rem;
-  padding-bottom: 1.5rem;
+  padding-top: 1.25rem;
+  padding-bottom: 1.25rem;
   color: var(--muted-foreground);
 }
 
 .skeletonCell {
-  padding-left: 2.5rem;
+  padding-left: 2.125rem;
 }
