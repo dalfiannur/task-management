@@ -1,17 +1,17 @@
 .page {
-  padding: 1.5rem;
+  padding: 1.25rem;
 }
 
 .pageSpacing > * + * {
-  margin-top: 2rem;
+  margin-top: 1.5rem;
 }
 
 .skeletonPage {
-  padding: 1.5rem;
+  padding: 1.25rem;
 }
 
 .skeletonPage > * + * {
-  margin-top: 1.5rem;
+  margin-top: 1.25rem;
 }
 
 .skeletonHeader > * + * {
@@ -20,7 +20,7 @@
 
 .skeletonStatsGrid {
   display: grid;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 @media (min-width: 640px) {
@@ -37,7 +37,7 @@
 
 .skeletonContentGrid {
   display: grid;
-  gap: 1.5rem;
+  gap: 1.25rem;
 }
 
 @media (min-width: 1024px) {
@@ -51,11 +51,11 @@
 }
 
 .skeletonMainCol > * + * {
-  margin-top: 1.5rem;
+  margin-top: 1.25rem;
 }
 
 .skeletonSideCol > * + * {
-  margin-top: 1.5rem;
+  margin-top: 1.25rem;
 }
 
 .fadeUp {
@@ -78,22 +78,23 @@
 }
 
 .headerTitle {
-  font-size: 1.875rem;
-  line-height: 2.25rem;
+  font-size: 1.5rem;
+  line-height: 2rem;
   font-weight: 700;
   letter-spacing: -0.025em;
 }
 
 .headerSubtitle {
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   line-height: 1.25rem;
   color: var(--muted-foreground);
-  margin-top: 0.25rem;
+  margin-top: 0.125rem;
+  font-family: var(--font-mono);
 }
 
 .statsGrid {
   display: grid;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 @media (min-width: 640px) {
@@ -114,7 +115,7 @@
 
 .contentGrid {
   display: grid;
-  gap: 1.5rem;
+  gap: 1.25rem;
 }
 
 @media (min-width: 1024px) {
@@ -134,7 +135,7 @@
 }
 
 .mainCol > * + * {
-  margin-top: 1.5rem;
+  margin-top: 1.25rem;
 }
 
 .sideCol {
@@ -142,5 +143,5 @@
 }
 
 .sideCol > * + * {
-  margin-top: 1.5rem;
+  margin-top: 1.25rem;
 }
