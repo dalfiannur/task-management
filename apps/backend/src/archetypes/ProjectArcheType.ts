@@ -13,6 +13,7 @@ import {
   ProjectClientLegalNameComponent,
   ProjectWinStageComponent,
   ProjectResolvedStatusComponent,
+  ProjectClosedAtComponent,
 } from "~/components/ProjectComponents";
 import { ArcheTypeNames } from "./ArcheTypeNames";
 
@@ -58,6 +59,9 @@ export class ProjectArcheTypeClass extends BaseArcheType {
 
   @ArcheTypeField(ProjectResolvedStatusComponent, { nullable: true })
   resolvedStatus!: ProjectResolvedStatusComponent;
+
+  @ArcheTypeField(ProjectClosedAtComponent, { nullable: true })
+  closedAt!: ProjectClosedAtComponent;
 }
 
 export const ProjectArcheType = new ProjectArcheTypeClass();
