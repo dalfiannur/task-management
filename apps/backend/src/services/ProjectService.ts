@@ -19,6 +19,7 @@ import {
   ProjectClientLegalNameComponent,
   ProjectWinStageComponent,
   ProjectResolvedStatusComponent,
+  ProjectClosedAtComponent,
 } from "~/components/ProjectComponents";
 import {
   ModuleDescriptionComponent,
@@ -287,6 +288,7 @@ export default class ProjectService extends BaseService {
   ) {
     const allSubProjects = await new Query()
       .with(ProjectTag)
+      .with(ProjectCoreRefComponent)
       .with(ProjectStatusComponent)
       .with(ProjectParentRefComponent, {
         filters: [
@@ -430,6 +432,39 @@ export default class ProjectService extends BaseService {
     enrichEntity(project, coreData, "prospect");
 
     return project;
+  }
+
+  @GraphQLOperation({
+    type: "Mutation",
+    input: z.object({
+      id: z.string(),
+    }),
+    output: ProjectArcheType,
+  })
+  async closeProject(input: { id: string }, context: { request?: Request }) {
+    const entity = await new Query().findOneById(input.id);
+    if (!entity) throw new Error("Project not found");
+
+    const statusComp = await entity.get(ProjectStatusComponent);
+    if (statusComp?.value !== "on_going") {
+      throw new Error("Only on_going projects can be closed");
+    }
+
+    await entity.set(ProjectStatusComponent, { value: "closed" });
+    await entity.set(ProjectClosedAtComponent, { value: new Date().toISOString() });
+    await entity.save();
+
+    // Enrich with Core data
+    const coreRef = await entity.get(ProjectCoreRefComponent);
+    if (coreRef?.value) {
+      const authToken = extractAuthToken(context.request);
+      const coreData = await fetchCoreProject(coreRef.value, authToken);
+      enrichEntity(entity, coreData, "closed");
+    } else {
+      enrichEntity(entity, null, "closed");
+    }
+
+    return entity;
   }
 
   @GraphQLOperation({
