@@ -83,3 +83,9 @@ export class ProjectResolvedStatusComponent extends BaseComponent {
   value: string = "";
 }
 
+@Component
+export class ProjectClosedAtComponent extends BaseComponent {
+  @CompData()
+  value: string = "";
+}
+
