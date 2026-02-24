@@ -9,7 +9,8 @@
 }
 
 html {
-  line-height: 1.5;
+  line-height: 1.45;
+  font-size: 14px;
   -webkit-text-size-adjust: 100%;
   tab-size: 4;
   font-family: var(--font-sans);
@@ -46,7 +47,7 @@ b, strong {
 }
 
 code, kbd, samp, pre {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-size: 1em;
 }
 

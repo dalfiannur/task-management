@@ -45,8 +45,8 @@
   font-family: var(--font-sans);
 }
 
-.font-display {
-  font-family: var(--font-display);
+.font-mono {
+  font-family: var(--font-mono);
 }
 
 /* Scrollbar styling */

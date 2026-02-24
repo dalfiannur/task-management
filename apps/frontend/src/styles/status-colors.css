@@ -1,103 +1,103 @@
 /* Task status badge colors */
 .status-backlog {
-  background-color: #f3f4f6;
-  color: #374151;
+  background-color: hsl(35 12% 92%);
+  color: hsl(20 10% 35%);
 }
 
 .status-todo {
-  background-color: #dbeafe;
-  color: #1d4ed8;
+  background-color: hsl(225 50% 92%);
+  color: hsl(225 65% 42%);
 }
 
 .status-in-progress {
-  background-color: #fef9c3;
-  color: #a16207;
+  background-color: hsl(38 85% 88%);
+  color: hsl(30 80% 32%);
 }
 
 .status-in-review {
-  background-color: #f3e8ff;
-  color: #7e22ce;
+  background-color: hsl(275 40% 92%);
+  color: hsl(275 50% 42%);
 }
 
 .status-done {
-  background-color: #dcfce7;
-  color: #15803d;
+  background-color: hsl(152 40% 88%);
+  color: hsl(152 55% 28%);
 }
 
 .status-cancelled {
-  background-color: #fee2e2;
-  color: #b91c1c;
+  background-color: hsl(8 60% 92%);
+  color: hsl(8 65% 42%);
 }
 
 /* Task priority colors */
 .priority-none {
-  color: #9ca3af;
+  color: hsl(20 8% 55%);
 }
 
 .priority-low {
-  color: #3b82f6;
+  color: hsl(225 60% 50%);
 }
 
 .priority-medium {
-  color: #eab308;
+  color: hsl(38 90% 42%);
 }
 
 .priority-high {
-  color: #f97316;
+  color: hsl(25 85% 48%);
 }
 
 .priority-urgent {
-  color: #ef4444;
+  color: hsl(8 75% 50%);
 }
 
 /* Project status dot colors */
 .dot-pending {
-  background-color: #9ca3af;
+  background-color: hsl(20 8% 55%);
 }
 
 .dot-prospect {
-  background-color: #fbbf24;
+  background-color: hsl(38 90% 52%);
 }
 
 .dot-win {
-  background-color: #34d399;
+  background-color: hsl(152 55% 42%);
 }
 
 .dot-on-going {
-  background-color: #60a5fa;
+  background-color: hsl(225 60% 52%);
 }
 
 .dot-canceled {
-  background-color: #f87171;
+  background-color: hsl(8 70% 55%);
 }
 
 /* Dark mode adjustments */
 .dark .status-backlog {
-  background-color: rgba(156, 163, 175, 0.15);
-  color: #d1d5db;
+  background-color: hsla(30, 10%, 50%, 0.15);
+  color: hsl(35 10% 72%);
 }
 
 .dark .status-todo {
-  background-color: rgba(59, 130, 246, 0.15);
-  color: #93c5fd;
+  background-color: hsla(225, 55%, 50%, 0.15);
+  color: hsl(225 55% 72%);
 }
 
 .dark .status-in-progress {
-  background-color: rgba(234, 179, 8, 0.15);
-  color: #fde047;
+  background-color: hsla(38, 85%, 50%, 0.15);
+  color: hsl(38 85% 65%);
 }
 
 .dark .status-in-review {
-  background-color: rgba(168, 85, 247, 0.15);
-  color: #c4b5fd;
+  background-color: hsla(275, 45%, 50%, 0.15);
+  color: hsl(275 45% 72%);
 }
 
 .dark .status-done {
-  background-color: rgba(34, 197, 94, 0.15);
-  color: #86efac;
+  background-color: hsla(152, 50%, 40%, 0.15);
+  color: hsl(152 45% 62%);
 }
 
 .dark .status-cancelled {
-  background-color: rgba(239, 68, 68, 0.15);
-  color: #fca5a5;
+  background-color: hsla(8, 65%, 50%, 0.15);
+  color: hsl(8 60% 65%);
 }
