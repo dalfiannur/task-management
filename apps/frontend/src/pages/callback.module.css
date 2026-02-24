@@ -7,8 +7,8 @@
 }
 
 .spinner {
-  width: 2rem;
-  height: 2rem;
+  width: 1.75rem;
+  height: 1.75rem;
   color: var(--muted-foreground);
   animation: spin 1s linear infinite;
 }

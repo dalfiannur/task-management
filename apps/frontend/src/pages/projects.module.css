@@ -1,11 +1,11 @@
 .page {
-  padding: 1.5rem;
+  padding: 1.25rem;
 }
 
 .skeletonGrid {
-  padding: 1.5rem;
+  padding: 1.25rem;
   display: grid;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 @media (min-width: 640px) {
@@ -24,12 +24,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.25rem;
 }
 
 .title {
-  font-size: 1.5rem;
-  line-height: 2rem;
+  font-size: 1.25rem;
+  line-height: 1.75rem;
   font-weight: 600;
 }
 
@@ -41,7 +41,7 @@
 
 .grid {
   display: grid;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 @media (min-width: 640px) {
@@ -59,6 +59,6 @@
 .empty {
   text-align: center;
   color: var(--muted-foreground);
-  padding-top: 3rem;
-  padding-bottom: 3rem;
+  padding-top: 2.5rem;
+  padding-bottom: 2.5rem;
 }
