@@ -65,8 +65,8 @@
 
 .ellipsis {
   display: flex;
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 2rem;
+  height: 2rem;
   align-items: center;
   justify-content: center;
 }

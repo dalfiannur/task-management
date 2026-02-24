@@ -19,8 +19,8 @@
 }
 
 .avatar[data-size="lg"] {
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 2.25rem;
+  height: 2.25rem;
 }
 
 /* ============================================
@@ -158,8 +158,8 @@
 }
 
 .group:has([data-size="lg"]) > .groupCount {
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 2.25rem;
+  height: 2.25rem;
 }
 
 .group:has([data-size="lg"]) > .groupCount > svg {
