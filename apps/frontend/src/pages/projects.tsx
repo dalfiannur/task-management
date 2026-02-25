@@ -5,15 +5,28 @@ import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 import styles from "./projects.module.css";
+
+type ProjectFilter = "active" | "closed" | "all";
 
 export function Component() {
   const { data: allProjects, isLoading } = useProjects();
-  const projects = allProjects?.filter((p) => p.status.value !== "pending");
+  const nonPending = allProjects?.filter((p) => p.status.value !== "pending");
+  const [filter, setFilter] = useState<ProjectFilter>("active");
+
+  const projects = nonPending?.filter((p) => {
+    if (filter === "active") return p.status.value !== "closed";
+    if (filter === "closed") return p.status.value === "closed";
+    return true;
+  });
+
   const nameMap = new Map(
-    projects?.map((p) => [p.id, getProjectDisplayName(p)]),
+    nonPending?.map((p) => [p.id, getProjectDisplayName(p)]),
   );
   const [formOpen, setFormOpen] = useState(false);
+
+  const closedCount = nonPending?.filter((p) => p.status.value === "closed").length ?? 0;
 
   if (isLoading) {
     return (
@@ -33,6 +46,26 @@ export function Component() {
           <Plus className={styles.btnIcon} />
           New Project
         </Button>
+      </div>
+      <div className={styles.filterTabs}>
+        <button
+          className={cn(styles.filterTab, filter === "active" && styles.filterTabActive)}
+          onClick={() => setFilter("active")}
+        >
+          Active
+        </button>
+        <button
+          className={cn(styles.filterTab, filter === "closed" && styles.filterTabActive)}
+          onClick={() => setFilter("closed")}
+        >
+          Closed{closedCount > 0 && <span className={styles.filterCount}>{closedCount}</span>}
+        </button>
+        <button
+          className={cn(styles.filterTab, filter === "all" && styles.filterTabActive)}
+          onClick={() => setFilter("all")}
+        >
+          All
+        </button>
       </div>
       <div className={styles.grid}>
         {projects?.map((project) => (

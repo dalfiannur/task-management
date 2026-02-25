@@ -174,7 +174,7 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {projects
-                ?.filter((project) => !project.parent?.id)
+                ?.filter((project) => !project.parent?.id && project.status.value !== "closed")
                 .map((project) => (
                   <ProjectTreeItem key={project.id} project={project} />
                 ))}

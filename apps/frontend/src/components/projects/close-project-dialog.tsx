@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useState, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,8 +9,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useCloseProject } from "@/hooks/use-projects";
-import { useMediaFiles, useUploadMedia, useDeleteMedia } from "@/hooks/use-media";
-import { isImage, formatFileSize } from "@/types/media";
+import { useUploadMedia, useDeleteMedia } from "@/hooks/use-media";
+import { isImage, formatFileSize, type MediaFile } from "@/types/media";
 import type { Project } from "@/types/project";
 import { FileText, ImageIcon, File, Plus, X } from "lucide-react";
 import styles from "./close-project-dialog.module.css";
@@ -35,8 +35,8 @@ export function CloseProjectDialog({
 }: CloseProjectDialogProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const closeProject = useCloseProject();
+  const [reportFiles, setReportFiles] = useState<MediaFile[]>([]);
 
-  const { data: files = [] } = useMediaFiles({ projectId: project.id });
   const uploadMedia = useUploadMedia();
   const deleteMedia = useDeleteMedia();
 
@@ -44,21 +44,32 @@ export function CloseProjectDialog({
     const fileList = e.target.files;
     if (!fileList) return;
     for (const file of Array.from(fileList)) {
-      await uploadMedia.mutateAsync({ file, projectId: project.id });
+      const uploaded = await uploadMedia.mutateAsync({ file, projectId: project.id });
+      setReportFiles((prev) => [...prev, uploaded]);
     }
     e.target.value = "";
   };
+
+  const handleRemoveFile = useCallback((fileId: string) => {
+    deleteMedia.mutate(fileId);
+    setReportFiles((prev) => prev.filter((f) => f.id !== fileId));
+  }, [deleteMedia]);
+
+  const handleOpenChange = useCallback((value: boolean) => {
+    if (!value) setReportFiles([]);
+    onOpenChange(value);
+  }, [onOpenChange]);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     closeProject.mutate(
       { id: project.id },
-      { onSuccess: () => onOpenChange(false) },
+      { onSuccess: () => handleOpenChange(false) },
     );
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className={styles.dialogContent}>
         <form onSubmit={handleSubmit}>
           <DialogHeader>
@@ -71,7 +82,7 @@ export function CloseProjectDialog({
             </p>
             <div className={styles.field}>
               <Label>Report Files</Label>
-              {files.map((file) => (
+              {reportFiles.map((file) => (
                 <div key={file.id} className={styles.attachmentRow}>
                   <AttachmentIcon mimeType={file.mediaFileInfo.mimeType} />
                   <span
@@ -88,7 +99,7 @@ export function CloseProjectDialog({
                     size="icon"
                     variant="ghost"
                     className={styles.removeButton}
-                    onClick={() => deleteMedia.mutate(file.id)}
+                    onClick={() => handleRemoveFile(file.id)}
                   >
                     <X className={styles.removeIcon} />
                   </Button>
@@ -117,7 +128,7 @@ export function CloseProjectDialog({
             <Button
               type="button"
               variant="outline"
-              onClick={() => onOpenChange(false)}
+              onClick={() => handleOpenChange(false)}
             >
               Cancel
             </Button>
