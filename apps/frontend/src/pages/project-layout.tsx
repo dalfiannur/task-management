@@ -2,6 +2,7 @@ import { Link, Outlet, useLocation, useNavigate, useParams } from "react-router"
 import { useState } from "react";
 import {
   useProject,
+  useSubProjects,
   useDeleteProject,
   getProjectDisplayName,
 } from "@/hooks/use-projects";
@@ -78,6 +79,7 @@ export function Component() {
   const { data: modules } = useModules(projectId);
   const { data: pic } = useUser(project?.projectLeaderId?.value);
   const { data: allTasks } = useTasks();
+  const { data: subProjects } = useSubProjects(projectId);
   const deleteProject = useDeleteProject();
 
   const [formOpen, setFormOpen] = useState(false);
@@ -144,6 +146,7 @@ export function Component() {
       label: "Sub-Projects",
       to: `${basePath}/sub-projects`,
       icon: FolderOpen,
+      count: subProjects?.length,
     },
     {
       key: "members",
@@ -326,6 +329,11 @@ export function Component() {
             >
               <tab.icon className={styles.tabIcon} />
               {tab.label}
+              {tab.count != null && tab.count > 0 && (
+                <Badge variant="secondary" className={styles.tabCountBadge}>
+                  {tab.count}
+                </Badge>
+              )}
             </Link>
           ))}
         </nav>
