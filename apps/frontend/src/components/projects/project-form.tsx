@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,8 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { UserCombobox } from "@/components/shared/user-combobox";
-import { CompanyCombobox } from "@/components/shared/company-combobox";
-import { DivisionCombobox } from "@/components/shared/division-combobox";
+import { ClientCombobox } from "@/components/shared/client-combobox";
 import { DatePickerField } from "@/components/shared/date-picker-field";
 import { useCreateProject } from "@/hooks/use-projects";
 import styles from "./project-form.module.css";
@@ -29,26 +28,17 @@ export function ProjectForm({ open, onOpenChange }: ProjectFormProps) {
   const [description, setDescription] = useState("");
   const [clientId, setClientId] = useState<string | undefined>();
   const [projectLeaderId, setProjectLeaderId] = useState<string | undefined>();
-  const [ownerId, setOwnerId] = useState<string | undefined>();
-  const [divisionId, setDivisionId] = useState<string | undefined>();
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
   const [value, setValue] = useState<string>("");
   const [commercial, setCommercial] = useState(false);
   const createProject = useCreateProject();
 
-  // Reset divisionId when ownerId changes
-  useEffect(() => {
-    setDivisionId(undefined);
-  }, [ownerId]);
-
   const resetForm = () => {
     setName("");
     setDescription("");
     setClientId(undefined);
     setProjectLeaderId(undefined);
-    setOwnerId(undefined);
-    setDivisionId(undefined);
     setStartDate(undefined);
     setEndDate(undefined);
     setValue("");
@@ -65,8 +55,6 @@ export function ProjectForm({ open, onOpenChange }: ProjectFormProps) {
         clientId,
         description: description || undefined,
         projectLeaderId,
-        ownerId,
-        divisionId,
         commercial: commercial || undefined,
         value: parsedValue,
         startDate: startDate ? format(startDate, "yyyy-MM-dd") : undefined,
@@ -109,23 +97,11 @@ export function ProjectForm({ open, onOpenChange }: ProjectFormProps) {
             </div>
             <div className={styles.field}>
               <Label>Client</Label>
-              <CompanyCombobox value={clientId} onChange={setClientId} />
+              <ClientCombobox value={clientId} onChange={setClientId} />
             </div>
             <div className={styles.field}>
               <Label>Project Leader</Label>
               <UserCombobox value={projectLeaderId} onChange={setProjectLeaderId} />
-            </div>
-            <div className={styles.field}>
-              <Label>Owner (Company)</Label>
-              <CompanyCombobox value={ownerId} onChange={setOwnerId} />
-            </div>
-            <div className={styles.field}>
-              <Label>Division</Label>
-              <DivisionCombobox
-                value={divisionId}
-                onChange={setDivisionId}
-                companyId={ownerId}
-              />
             </div>
             <div className={styles.row}>
               <div className={styles.field}>
