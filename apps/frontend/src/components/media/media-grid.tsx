@@ -43,9 +43,10 @@ function FileIcon({ mimeType }: { mimeType: string }) {
 interface MediaGridProps {
   files: MediaFile[];
   isLoading: boolean;
+  readOnly?: boolean;
 }
 
-export function MediaGrid({ files, isLoading }: MediaGridProps) {
+export function MediaGrid({ files, isLoading, readOnly }: MediaGridProps) {
   const deleteMedia = useDeleteMedia();
 
   if (isLoading) {
@@ -124,30 +125,32 @@ export function MediaGrid({ files, isLoading }: MediaGridProps) {
                 </a>
               </Button>
             )}
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button size="icon" variant="destructive" className={styles.actionBtn}>
-                  <Trash2 className={styles.actionIcon} />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete file?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will permanently delete &quot;
-                    {file.mediaFileInfo.originalFileName}&quot;.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => deleteMedia.mutate(file.id)}
-                  >
-                    Delete
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+            {!readOnly && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button size="icon" variant="destructive" className={styles.actionBtn}>
+                    <Trash2 className={styles.actionIcon} />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete file?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will permanently delete &quot;
+                      {file.mediaFileInfo.originalFileName}&quot;.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => deleteMedia.mutate(file.id)}
+                    >
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </div>
         </Card>
       ))}

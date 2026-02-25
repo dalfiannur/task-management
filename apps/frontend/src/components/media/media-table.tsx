@@ -57,9 +57,10 @@ function getMimeLabel(mimeType: string): string {
 interface MediaTableProps {
   files: MediaFile[];
   isLoading: boolean;
+  readOnly?: boolean;
 }
 
-export function MediaTable({ files, isLoading }: MediaTableProps) {
+export function MediaTable({ files, isLoading, readOnly }: MediaTableProps) {
   const deleteMedia = useDeleteMedia();
 
   if (isLoading) {
@@ -144,34 +145,36 @@ export function MediaTable({ files, isLoading }: MediaTableProps) {
                       </a>
                     </Button>
                   )}
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className={styles.deleteBtn}
-                      >
-                        <Trash2 className={styles.actionIcon} />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete file?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This will permanently delete &quot;
-                          {file.mediaFileInfo.originalFileName}&quot;.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => deleteMedia.mutate(file.id)}
+                  {!readOnly && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className={styles.deleteBtn}
                         >
-                          Delete
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                          <Trash2 className={styles.actionIcon} />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete file?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will permanently delete &quot;
+                            {file.mediaFileInfo.originalFileName}&quot;.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => deleteMedia.mutate(file.id)}
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
                 </div>
               </TableCell>
             </TableRow>

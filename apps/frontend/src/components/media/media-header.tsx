@@ -1,15 +1,10 @@
-import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUIStore } from "@/stores/ui-store";
-import { Grid3X3, List, Upload } from "lucide-react";
+import { Grid3X3, List } from "lucide-react";
 import type { MediaViewMode } from "@/types/media";
 import styles from "./media-header.module.css";
 
-interface MediaHeaderProps {
-  onUploadClick: () => void;
-}
-
-export function MediaHeader({ onUploadClick }: MediaHeaderProps) {
+export function MediaHeader() {
   const { mediaViewMode, setMediaViewMode } = useUIStore();
 
   return (
@@ -36,10 +31,6 @@ export function MediaHeader({ onUploadClick }: MediaHeaderProps) {
             </TabsTrigger>
           </TabsList>
         </Tabs>
-        <Button size="sm" onClick={onUploadClick}>
-          <Upload className={styles.uploadIcon} />
-          Upload
-        </Button>
       </div>
     </div>
   );
