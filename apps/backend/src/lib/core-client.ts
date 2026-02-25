@@ -87,7 +87,8 @@ export async function fetchCoreProject(
     const project = json.data?.getProject ?? null;
     setCache(id, project);
     return project;
-  } catch {
+  } catch (err) {
+    console.error(`[core-client] fetchCoreProject failed for id=${id}:`, err);
     setCache(id, null);
     return null;
   }
@@ -140,7 +141,8 @@ export async function fetchCoreProjects(
     for (const id of uncachedIds) {
       if (!fetched.has(id)) setCache(id, null);
     }
-  } catch {
+  } catch (err) {
+    console.error(`[core-client] fetchCoreProjects batch failed for ids=${uncachedIds.join(",")}:`, err);
     // Cache all as null on failure
     for (const id of uncachedIds) setCache(id, null);
   }

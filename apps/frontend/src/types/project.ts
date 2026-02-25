@@ -30,10 +30,16 @@ export interface Project {
 }
 
 export interface CreateProjectInput {
-    title: string;
+    name: string;
+    clientId: string;
     description?: string;
     projectLeaderId?: string;
-    status?: ProjectStatus;
+    ownerId?: string;
+    divisionId?: string;
+    commercial?: boolean;
+    value?: number;
+    startDate?: string;
+    endDate?: string;
 }
 
 export interface UpdateProjectInput {

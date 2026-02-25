@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -9,42 +10,75 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { UserCombobox } from "@/components/shared/user-combobox";
-// TODO: createProject and updateProject mutations are not available yet on backend
-// import { useCreateProject, useUpdateProject } from "@/hooks/use-projects";
-import type { Project, ProjectStatus } from "@/types/project";
-import { PROJECT_STATUS_CONFIG } from "@/types/project";
+import { CompanyCombobox } from "@/components/shared/company-combobox";
+import { DivisionCombobox } from "@/components/shared/division-combobox";
+import { DatePickerField } from "@/components/shared/date-picker-field";
+import { useCreateProject } from "@/hooks/use-projects";
 import styles from "./project-form.module.css";
 
 interface ProjectFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  project?: Project;
 }
 
-export function ProjectForm({ open, onOpenChange, project }: ProjectFormProps) {
-  const isEditing = !!project;
+export function ProjectForm({ open, onOpenChange }: ProjectFormProps) {
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [clientId, setClientId] = useState<string | undefined>();
+  const [projectLeaderId, setProjectLeaderId] = useState<string | undefined>();
+  const [ownerId, setOwnerId] = useState<string | undefined>();
+  const [divisionId, setDivisionId] = useState<string | undefined>();
+  const [startDate, setStartDate] = useState<Date | undefined>();
+  const [endDate, setEndDate] = useState<Date | undefined>();
+  const [value, setValue] = useState<string>("");
+  const [commercial, setCommercial] = useState(false);
+  const createProject = useCreateProject();
 
-  const [title, setTitle] = useState(project?.coreName ?? "");
-  const [description, setDescription] = useState(project?.description ?? "");
-  const [projectLeaderId, setProjectLeaderId] = useState<string | undefined>(project?.projectLeaderId?.value);
-  const [status, setStatus] = useState<ProjectStatus>(
-    project?.status.value ?? "pending",
-  );
+  // Reset divisionId when ownerId changes
+  useEffect(() => {
+    setDivisionId(undefined);
+  }, [ownerId]);
+
+  const resetForm = () => {
+    setName("");
+    setDescription("");
+    setClientId(undefined);
+    setProjectLeaderId(undefined);
+    setOwnerId(undefined);
+    setDivisionId(undefined);
+    setStartDate(undefined);
+    setEndDate(undefined);
+    setValue("");
+    setCommercial(false);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: createProject/updateProject mutations not available yet
-    console.warn("Project create/update not yet supported");
-    onOpenChange(false);
+    if (!clientId) return;
+    const parsedValue = value ? parseFloat(value) : undefined;
+    createProject.mutate(
+      {
+        name: name.trim(),
+        clientId,
+        description: description || undefined,
+        projectLeaderId,
+        ownerId,
+        divisionId,
+        commercial: commercial || undefined,
+        value: parsedValue,
+        startDate: startDate ? format(startDate, "yyyy-MM-dd") : undefined,
+        endDate: endDate ? format(endDate, "yyyy-MM-dd") : undefined,
+      },
+      {
+        onSuccess: () => {
+          resetForm();
+          onOpenChange(false);
+        },
+      },
+    );
   };
 
   return (
@@ -52,18 +86,16 @@ export function ProjectForm({ open, onOpenChange, project }: ProjectFormProps) {
       <DialogContent className={styles.dialogContent}>
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>
-              {isEditing ? "Edit Project" : "Create Project"}
-            </DialogTitle>
+            <DialogTitle>Create Project</DialogTitle>
           </DialogHeader>
           <div className={styles.fieldGroup}>
             <div className={styles.field}>
-              <Label htmlFor="project-title">Title</Label>
+              <Label htmlFor="project-name">Name</Label>
               <Input
-                id="project-title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Project title..."
+                id="project-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Project name..."
                 autoFocus
               />
             </div>
@@ -76,33 +108,54 @@ export function ProjectForm({ open, onOpenChange, project }: ProjectFormProps) {
               />
             </div>
             <div className={styles.field}>
+              <Label>Client</Label>
+              <CompanyCombobox value={clientId} onChange={setClientId} />
+            </div>
+            <div className={styles.field}>
               <Label>Project Leader</Label>
               <UserCombobox value={projectLeaderId} onChange={setProjectLeaderId} />
             </div>
             <div className={styles.field}>
-              <Label>Status</Label>
-              <Select
-                value={status}
-                onValueChange={(v) => setStatus(v as ProjectStatus)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {(
-                    Object.entries(PROJECT_STATUS_CONFIG) as [
-                      ProjectStatus,
-                      { label: string },
-                    ][]
-                  )
-                    .filter(([value]) => value !== "win")
-                    .map(([value, config]) => (
-                      <SelectItem key={value} value={value}>
-                        {config.label}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
+              <Label>Owner (Company)</Label>
+              <CompanyCombobox value={ownerId} onChange={setOwnerId} />
+            </div>
+            <div className={styles.field}>
+              <Label>Division</Label>
+              <DivisionCombobox
+                value={divisionId}
+                onChange={setDivisionId}
+                companyId={ownerId}
+              />
+            </div>
+            <div className={styles.row}>
+              <div className={styles.field}>
+                <Label>Start Date</Label>
+                <DatePickerField value={startDate} onChange={setStartDate} />
+              </div>
+              <div className={styles.field}>
+                <Label>End Date</Label>
+                <DatePickerField value={endDate} onChange={setEndDate} />
+              </div>
+            </div>
+            <div className={styles.field}>
+              <Label htmlFor="project-value">Value</Label>
+              <Input
+                id="project-value"
+                type="number"
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                placeholder="Project value..."
+                min={0}
+                step="any"
+              />
+            </div>
+            <div className={styles.checkboxField}>
+              <Checkbox
+                id="project-commercial"
+                checked={commercial}
+                onCheckedChange={(checked) => setCommercial(checked === true)}
+              />
+              <Label htmlFor="project-commercial">Commercial</Label>
             </div>
           </div>
           <DialogFooter>
@@ -113,8 +166,11 @@ export function ProjectForm({ open, onOpenChange, project }: ProjectFormProps) {
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={!title.trim()}>
-              {isEditing ? "Save" : "Create"}
+            <Button
+              type="submit"
+              disabled={!name.trim() || !clientId || createProject.isLoading}
+            >
+              {createProject.isLoading ? "Creating..." : "Create"}
             </Button>
           </DialogFooter>
         </form>

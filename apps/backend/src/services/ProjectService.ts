@@ -179,6 +179,85 @@ export default class ProjectService extends BaseService {
   @GraphQLOperation({
     type: "Mutation",
     input: z.object({
+      name: z.string(),
+      clientId: z.string(),
+      description: z.string().optional(),
+      projectLeaderId: z.string().optional(),
+      ownerId: z.string().optional(),
+      divisionId: z.string().optional(),
+      commercial: z.boolean().optional(),
+      value: z.number().optional(),
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
+    }),
+    output: ProjectArcheType,
+  })
+  async createProject(
+    input: {
+      name: string;
+      clientId: string;
+      description?: string;
+      projectLeaderId?: string;
+      ownerId?: string;
+      divisionId?: string;
+      commercial?: boolean;
+      value?: number;
+      startDate?: string;
+      endDate?: string;
+    },
+    context: { request?: Request },
+  ) {
+    const user = await this.extractUser(context);
+    if (!user) throw new Error("Authentication required");
+
+    const authToken = extractAuthToken(context.request);
+
+    // Create project in Core (no parentId for root projects)
+    const coreProject = await createCoreProject(
+      {
+        name: input.name,
+        description: input.description,
+        clientId: input.clientId,
+        authorId: user.id,
+        ownerId: input.ownerId,
+        divisionId: input.divisionId,
+        commercial: input.commercial,
+        value: input.value,
+        projectLeaderId: input.projectLeaderId,
+        startDate: input.startDate,
+        endDate: input.endDate,
+      },
+      authToken,
+    );
+
+    // Create local entity
+    const entity = Entity.Create()
+      .add(ProjectTag, {})
+      .add(ProjectNameComponent, { value: input.name })
+      .add(ProjectCoreRefComponent, { value: coreProject.id })
+      .add(ProjectDescriptionComponent, { value: input.description || "" })
+      .add(ProjectStatusComponent, { value: "on_going" });
+
+    if (input.projectLeaderId) {
+      entity.add(ProjectLeaderIdComponent, { value: input.projectLeaderId });
+    }
+
+    await entity.save();
+
+    // Auto-add creator and leader as members
+    await MembershipService.getInstance().ensureMembership(entity.id, user.id);
+    if (input.projectLeaderId) {
+      await MembershipService.getInstance().ensureMembership(entity.id, input.projectLeaderId);
+    }
+
+    // Enrich with Core data and return
+    enrichEntity(entity, coreProject, "on_going");
+    return entity;
+  }
+
+  @GraphQLOperation({
+    type: "Mutation",
+    input: z.object({
       parentProjectId: z.string(),
       name: z.string(),
       description: z.string().optional(),

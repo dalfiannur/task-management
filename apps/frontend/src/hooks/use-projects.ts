@@ -1,6 +1,6 @@
 import { useQuery, gql } from "@/lib/graphql-client";
 import { createMutationHook, createVoidMutationHook, normalizeQueryResult } from "@/lib/hook-factories";
-import type { CreateSubProjectInput, Project, ProjectStatus } from "@/types/project";
+import type { CreateProjectInput, CreateSubProjectInput, Project, ProjectStatus } from "@/types/project";
 
 // --- GraphQL operations ---
 
@@ -137,6 +137,15 @@ const CLOSE_PROJECT = gql`
   }
 `;
 
+const CREATE_PROJECT = gql`
+  ${PROJECT_FIELDS}
+  mutation CreateProject($input: createProjectInput!) {
+    createProject(input: $input) {
+      ...ProjectFields
+    }
+  }
+`;
+
 // --- Hooks ---
 
 export function useProjects() {
@@ -153,6 +162,17 @@ export function useProject(id: string) {
     d.getProject ? mapProject(d.getProject) : null,
   );
 }
+
+export const useCreateProject = createMutationHook<
+  CreateProjectInput,
+  ProjectRaw,
+  Project
+>({
+  mutation: CREATE_PROJECT,
+  responseKey: "createProject",
+  mapResponse: mapProject,
+  refetchQueries: [LIST_PROJECTS],
+});
 
 export const useApproveProject = createMutationHook<
   { id: string; description?: string },
