@@ -11,6 +11,7 @@ export interface Activity {
     actorId: string;
     actorName: string;
     action: "created" | "updated" | "deleted";
+    taskTitle: string;
     changes: string; // JSON string of FieldChange[]
     createdAt: string;
   };

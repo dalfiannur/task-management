@@ -116,6 +116,7 @@ export default class TaskService extends BaseService {
       projectId: z.string().optional(),
       status: z.string().optional(),
       priority: z.string().optional(),
+      assigneeId: z.string().optional(),
       page: z.number().optional(),
       pageSize: z.number().optional(),
     }),
@@ -126,6 +127,7 @@ export default class TaskService extends BaseService {
       projectId?: string;
       status?: string;
       priority?: string;
+      assigneeId?: string;
       page?: number;
       pageSize?: number;
     },
@@ -143,6 +145,19 @@ export default class TaskService extends BaseService {
       query.with(TaskInfo, {
         filters: [
           Query.typedFilter(TaskInfo, "priority", "=", input.priority),
+        ],
+      });
+    }
+
+    if (input.assigneeId) {
+      query.with(TaskAssignment, {
+        filters: [
+          Query.typedFilter(
+            TaskAssignment,
+            "assigneeIds",
+            "LIKE",
+            `%"${input.assigneeId}"%`,
+          ),
         ],
       });
     }
@@ -198,6 +213,7 @@ export default class TaskService extends BaseService {
     context: { request?: Request },
   ) {
     const archetype = new TaskArcheType();
+    const now = new Date().toISOString();
     archetype.fill({
       taskInfo: {
         title: input.title,
@@ -207,6 +223,8 @@ export default class TaskService extends BaseService {
         startDate: input.startDate ?? "",
         dueDate: input.dueDate ?? "",
         order: 0,
+        createdAt: now,
+        updatedAt: now,
       },
       taskAssignment: {
         assigneeIds: encodeAssigneeIds(input.assigneeIds),
@@ -240,6 +258,7 @@ export default class TaskService extends BaseService {
           actorName: user.name,
           action: "created",
           changes: [],
+          taskTitle: input.title,
         });
       }
     }
@@ -310,10 +329,9 @@ export default class TaskService extends BaseService {
     if (input.priority !== undefined) taskInfoUpdates.priority = input.priority;
     if (input.startDate !== undefined) taskInfoUpdates.startDate = input.startDate;
     if (input.dueDate !== undefined) taskInfoUpdates.dueDate = input.dueDate;
+    taskInfoUpdates.updatedAt = new Date().toISOString();
 
-    if (Object.keys(taskInfoUpdates).length > 0) {
-      await entity.set(TaskInfo, taskInfoUpdates);
-    }
+    await entity.set(TaskInfo, taskInfoUpdates);
 
     if (input.assigneeIds !== undefined) {
       await entity.set(TaskAssignment, { assigneeIds: encodeAssigneeIds(input.assigneeIds) });
@@ -380,6 +398,7 @@ export default class TaskService extends BaseService {
         actorName,
         action: "updated",
         changes,
+        taskTitle: oldTaskInfo?.title ?? "",
       });
     }
 
@@ -457,6 +476,7 @@ export default class TaskService extends BaseService {
           actorName: user.name,
           action: "deleted",
           changes: [{ field: "title", from: taskTitle, to: "" }],
+          taskTitle,
         });
       }
     }

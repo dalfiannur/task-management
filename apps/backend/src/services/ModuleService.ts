@@ -15,6 +15,22 @@ export default class ModuleService extends BaseService {
   @GraphQLOperation({
     type: "Query",
     input: z.object({
+      _dummy: z.string().optional(),
+    }),
+    output: [ModuleArcheType],
+  })
+  async listAllModules() {
+    const query = new Query()
+      .with(ModuleTag)
+      .with(ModuleNameComponent)
+      .with(ModuleProjectRefComponent);
+
+    return await query.populate().exec();
+  }
+
+  @GraphQLOperation({
+    type: "Query",
+    input: z.object({
       projectId: z.string(),
     }),
     output: [ModuleArcheType],

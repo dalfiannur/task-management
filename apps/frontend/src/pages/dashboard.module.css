@@ -145,3 +145,7 @@
 .sideCol > * + * {
   margin-top: 1.25rem;
 }
+
+.fullWidth {
+  composes: fadeUp;
+}

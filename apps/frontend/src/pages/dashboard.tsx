@@ -1,9 +1,13 @@
-import { useAllTasks } from "@/hooks/use-tasks";
+import { useAllTasks, getUpcomingDeadlines } from "@/hooks/use-tasks";
 import { useProjects } from "@/hooks/use-projects";
 import { useNewLeads } from "@/hooks/use-leads";
-import { useIsManager } from "@/hooks/use-me";
+import { useMe, useIsManager } from "@/hooks/use-me";
+import { useAllModules } from "@/hooks/use-modules";
 import { StatCard } from "@/components/dashboard/stat-card";
-import { TaskDistribution } from "@/components/dashboard/task-distribution";
+import { MyAssignedTasks } from "@/components/dashboard/my-assigned-tasks";
+import { UpcomingDeadlines } from "@/components/dashboard/upcoming-deadlines";
+import { ProjectProgress } from "@/components/dashboard/project-progress";
+import { TeamActivityFeed } from "@/components/dashboard/team-activity-feed";
 import { NewLeads } from "@/components/dashboard/new-leads";
 import { ActiveProjects } from "@/components/dashboard/active-projects";
 import { RecentTasks } from "@/components/dashboard/recent-tasks";
@@ -20,13 +24,15 @@ const STAT_ACCENTS = {
 };
 
 export function Component() {
+  const { data: me } = useMe();
   const { data: tasks, isLoading: tasksLoading } = useAllTasks();
   const { data: projects, isLoading: projectsLoading } = useProjects();
+  const { data: modules, isLoading: modulesLoading } = useAllModules();
   const isManager = useIsManager();
   const { data: leads, isLoading: leadsLoading } = useNewLeads();
 
   const isLoading =
-    tasksLoading || projectsLoading || (isManager && leadsLoading);
+    tasksLoading || projectsLoading || modulesLoading || (isManager && leadsLoading);
 
   if (isLoading) {
     return (
@@ -56,18 +62,20 @@ export function Component() {
 
   const allTasks = tasks ?? [];
   const allProjects = projects ?? [];
+  const allModules = modules ?? [];
   const today = new Date();
 
+  // Stats
   const totalTasks = allTasks.length;
-  const inProgressTasks = allTasks.filter(
-    (t) => t.status === "in_progress",
-  ).length;
-  const doneTasks = allTasks.filter(
-    (t) => t.status === "done",
-  ).length;
-  const activeProjects = allProjects.filter(
-    (p) => p.status.value === "on_going",
-  ).length;
+  const inProgressTasks = allTasks.filter((t) => t.status === "in_progress").length;
+  const doneTasks = allTasks.filter((t) => t.status === "done").length;
+  const activeProjects = allProjects.filter((p) => p.status.value === "on_going").length;
+
+  // Derived data
+  const myTasks = me
+    ? allTasks.filter((t) => t.assigneeIds.includes(me.id))
+    : [];
+  const deadlineTasks = getUpcomingDeadlines(allTasks);
 
   const stats = [
     {
@@ -105,9 +113,7 @@ export function Component() {
       <div className={styles.pageSpacing}>
         {/* Header */}
         <div className={styles.header}>
-          <h1 className={styles.headerTitle}>
-            Dashboard
-          </h1>
+          <h1 className={styles.headerTitle}>Dashboard</h1>
           <p className={styles.headerSubtitle}>
             {format(today, "EEEE, MMMM d, yyyy")} &middot; {totalTasks}{" "}
             {totalTasks === 1 ? "task" : "tasks"} across {allProjects.length}{" "}
@@ -134,23 +140,67 @@ export function Component() {
           ))}
         </div>
 
-        {/* Content Grid */}
-        <div className={styles.contentGrid}>
-          <div
-            className={styles.mainCol}
-            style={{ animationDelay: "400ms" }}
-          >
-            <TaskDistribution tasks={allTasks} />
-            {isManager && <NewLeads projects={leads ?? []} />}
-          </div>
-          <div
-            className={styles.sideCol}
-            style={{ animationDelay: "500ms" }}
-          >
-            <ActiveProjects projects={allProjects} />
-            <RecentTasks tasks={allTasks} />
-          </div>
-        </div>
+        {/* Content Grid — role-based layout */}
+        {isManager ? (
+          <>
+            {/* Manager: oversight-first */}
+            <div className={styles.contentGrid}>
+              <div className={styles.mainCol} style={{ animationDelay: "400ms" }}>
+                <ProjectProgress
+                  projects={allProjects}
+                  tasks={allTasks}
+                  modules={allModules}
+                />
+              </div>
+              <div className={styles.sideCol} style={{ animationDelay: "500ms" }}>
+                <UpcomingDeadlines tasks={deadlineTasks} />
+              </div>
+            </div>
+            <div className={styles.contentGrid}>
+              <div className={styles.mainCol} style={{ animationDelay: "550ms" }}>
+                <NewLeads projects={leads ?? []} />
+              </div>
+              <div className={styles.sideCol} style={{ animationDelay: "600ms" }}>
+                <ActiveProjects projects={allProjects} />
+              </div>
+            </div>
+            <div className={styles.contentGrid}>
+              <div className={styles.mainCol} style={{ animationDelay: "650ms" }}>
+                <TeamActivityFeed />
+              </div>
+              <div className={styles.sideCol} style={{ animationDelay: "700ms" }}>
+                <RecentTasks tasks={allTasks} />
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Member: personal-first */}
+            <div className={styles.contentGrid}>
+              <div className={styles.mainCol} style={{ animationDelay: "400ms" }}>
+                <MyAssignedTasks tasks={myTasks} />
+              </div>
+              <div className={styles.sideCol} style={{ animationDelay: "500ms" }}>
+                <UpcomingDeadlines tasks={deadlineTasks} />
+              </div>
+            </div>
+            <div className={styles.contentGrid}>
+              <div className={styles.mainCol} style={{ animationDelay: "550ms" }}>
+                <ProjectProgress
+                  projects={allProjects}
+                  tasks={allTasks}
+                  modules={allModules}
+                />
+              </div>
+              <div className={styles.sideCol} style={{ animationDelay: "600ms" }}>
+                <RecentTasks tasks={allTasks} />
+              </div>
+            </div>
+            <div className={styles.fullWidth} style={{ animationDelay: "650ms" }}>
+              <TeamActivityFeed />
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

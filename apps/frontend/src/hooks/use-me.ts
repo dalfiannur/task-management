@@ -7,6 +7,7 @@ const ME_QUERY = gql`
       profile {
         displayName
       }
+      isAdmin
     }
   }
 `;
@@ -25,6 +26,7 @@ interface MeResponse {
     profile: {
       displayName: string;
     };
+    isAdmin: boolean;
   } | null;
 }
 
@@ -37,7 +39,7 @@ export function useMe() {
     ? {
         id: data.me.id,
         profile: data.me.profile,
-        role: "manager",
+        role: data.me.isAdmin ? "manager" : "member",
       }
     : data === undefined
       ? (undefined as unknown as null)

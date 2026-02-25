@@ -15,6 +15,9 @@ export class ActivityInfo extends BaseComponent {
   action: string = "";
 
   @CompData()
+  taskTitle: string = "";
+
+  @CompData()
   changes: string = "[]";
 
   @CompData()

@@ -54,6 +54,18 @@ const UPDATE_MODULE = gql`
   }
 `;
 
+const LIST_ALL_MODULES = gql`
+  query ListAllModules($input: listAllModulesInput!) {
+    listAllModules(input: $input) {
+      id
+      name
+      project {
+        id
+      }
+    }
+  }
+`;
+
 const DELETE_MODULE = gql`
   mutation DeleteModule($input: deleteModuleInput!) {
     deleteModule(input: $input)
@@ -126,3 +138,26 @@ export const useDeleteModule = createVoidMutationHook<string>({
   mapVariables: (id) => ({ input: { id } }),
   refetchQueries: [LIST_MODULES],
 });
+
+export interface ModuleWithProject {
+  id: string;
+  name: string;
+  projectId: string;
+}
+
+interface AllModuleResponse {
+  id: string;
+  name: string;
+  project?: { id: string } | null;
+}
+
+export function useAllModules() {
+  const result = useQuery<{ listAllModules: AllModuleResponse[] }>(LIST_ALL_MODULES, {
+    variables: { input: {} },
+  });
+  return normalizeQueryResult(result, (d) =>
+    d.listAllModules
+      .filter((m): m is AllModuleResponse & { project: { id: string } } => !!m.project?.id)
+      .map((m) => ({ id: m.id, name: m.name, projectId: m.project.id })),
+  );
+}

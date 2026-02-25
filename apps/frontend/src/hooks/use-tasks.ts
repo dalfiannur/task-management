@@ -21,6 +21,8 @@ const TASK_FIELDS = gql`
       startDate
       dueDate
       order
+      createdAt
+      updatedAt
     }
     taskAssignment {
       assigneeIds
@@ -104,6 +106,8 @@ interface TaskResponse {
     startDate: string;
     dueDate: string;
     order: number;
+    createdAt: string;
+    updatedAt: string;
   };
   taskAssignment: {
     assigneeIds: string;
@@ -141,8 +145,8 @@ function mapTask(t: TaskResponse): Task {
     assigneeIds,
     moduleId: t.taskAssignment.moduleId,
     labelIds,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    createdAt: t.taskInfo.createdAt || new Date().toISOString(),
+    updatedAt: t.taskInfo.updatedAt || new Date().toISOString(),
   };
 }
 
@@ -187,11 +191,28 @@ export function useTask(taskId: string) {
   );
 }
 
-export function useAllTasks(filters: { projectId?: string } = {}) {
+export function useAllTasks(filters: { projectId?: string; assigneeId?: string } = {}) {
   const result = useQuery<{ listAllTasks: TaskResponse[] }>(LIST_ALL_TASKS, {
-    variables: { input: { projectId: filters.projectId } },
+    variables: { input: { projectId: filters.projectId, assigneeId: filters.assigneeId } },
   });
   return normalizeQueryResult(result, (d) => d.listAllTasks.map(mapTask));
+}
+
+/** Filter tasks with upcoming due dates, sorted soonest first. Excludes done/cancelled. */
+export function getUpcomingDeadlines(tasks: Task[], limit = 8): Task[] {
+  return tasks
+    .filter((t) => t.dueDate && t.status !== "done" && t.status !== "cancelled")
+    .sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime())
+    .slice(0, limit);
+}
+
+/** Filter tasks that are past their due date and not done/cancelled. */
+export function getOverdueTasks(tasks: Task[]): Task[] {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  return tasks.filter(
+    (t) => t.dueDate && new Date(t.dueDate) < now && t.status !== "done" && t.status !== "cancelled",
+  );
 }
 
 export const useCreateTask = createMutationHook<

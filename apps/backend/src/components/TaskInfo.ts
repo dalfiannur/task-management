@@ -22,4 +22,10 @@ export class TaskInfo extends BaseComponent {
 
   @CompData()
   order: number = 0;
+
+  @CompData()
+  createdAt: string = "";
+
+  @CompData()
+  updatedAt: string = "";
 }
