@@ -34,7 +34,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  Plus,
   MoreHorizontal,
   Users,
   FolderPlus,
@@ -181,17 +180,6 @@ export function Component() {
           </div>
 
           <div className={styles.headerActions}>
-            {project.status.value === "on_going" && (
-              <Button
-                size="sm"
-                className={styles.newModuleBtn}
-                onClick={() => setFormOpen(true)}
-              >
-                <Plus className={styles.btnIcon} />
-                New Module
-              </Button>
-            )}
-
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button

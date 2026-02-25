@@ -46,6 +46,16 @@ export function Component() {
             className={styles.searchInput}
           />
         </div>
+        {project.status.value === "on_going" && (
+          <Button
+            size="sm"
+            className={styles.newModuleBtn}
+            onClick={openModuleForm}
+          >
+            <Plus className={styles.newModuleBtnIcon} />
+            New Module
+          </Button>
+        )}
       </div>
 
       {/* Module List */}

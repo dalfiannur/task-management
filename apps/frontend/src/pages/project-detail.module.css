@@ -59,6 +59,17 @@
   background-color: var(--muted);
 }
 
+/* New Module button */
+.newModuleBtn {
+  flex-shrink: 0;
+}
+
+.newModuleBtnIcon {
+  width: 0.875rem;
+  height: 0.875rem;
+  margin-right: 0.25rem;
+}
+
 /* Module list */
 .moduleList {
   padding: 1.25rem;
