@@ -1,0 +1,15 @@
+.dialogContent {
+  max-width: 40rem;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+@media (min-width: 640px) {
+  .dialogContent {
+    max-width: 40rem;
+  }
+}
+
+.body {
+  padding: 0 1.25rem 1.25rem;
+}

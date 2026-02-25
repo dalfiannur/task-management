@@ -12,9 +12,10 @@ import {
   useMarkNotificationsRead,
   useMarkAllNotificationsRead,
 } from "@/hooks/use-notifications";
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "react-router";
 import { cn } from "@/lib/utils";
 import type { Notification } from "@/types/notification";
+import styles from "./notification-bell.module.css";
 
 function formatTimeAgo(iso: string): string {
   const now = Date.now();
@@ -47,12 +48,7 @@ export function NotificationBell() {
       markRead.mutate([notification.id]);
     }
     setOpen(false);
-    // Navigate to the task - we need to find the project/module route
-    // For now, use a search-based approach
-    navigate({
-      to: "/projects",
-      search: { search: notification.notificationInfo.taskTitle },
-    });
+    navigate(`/projects?search=${encodeURIComponent(notification.notificationInfo.taskTitle)}`);
   };
 
   const handleMarkAllRead = () => {
@@ -62,51 +58,43 @@ export function NotificationBell() {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative size-8 rounded-full"
-        >
-          <Bell className="size-4" />
+        <Button variant="ghost" size="icon" className={styles.bellBtn}>
+          <Bell className={styles.bellIcon} />
           {count > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-medium">
+            <span className={styles.badge}>
               {count > 99 ? "99+" : count}
             </span>
           )}
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-80 p-0"
+        className={styles.popoverContent}
         align="end"
         sideOffset={8}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-3 py-2 border-b">
-          <span className="text-sm font-semibold">Notifications</span>
+        <div className={styles.popoverHeader}>
+          <span className={styles.popoverTitle}>Notifications</span>
           {count > 0 && (
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 text-xs gap-1"
+              className={styles.markAllBtn}
               onClick={handleMarkAllRead}
-              disabled={markAllRead.isPending}
+              disabled={markAllRead.isLoading}
             >
-              <CheckCheck className="size-3" />
+              <CheckCheck className={styles.markAllIcon} />
               Mark all read
             </Button>
           )}
         </div>
 
-        {/* Notification list */}
-        <div className="max-h-80 overflow-y-auto">
+        <div className={styles.notifList}>
           {isLoading ? (
-            <div className="flex items-center justify-center py-8 text-xs text-muted-foreground">
-              Loading...
-            </div>
+            <div className={styles.loadingState}>Loading...</div>
           ) : notifications.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-              <Bell className="size-8 mb-2 opacity-20" />
-              <p className="text-xs">No notifications yet</p>
+            <div className={styles.emptyState}>
+              <Bell className={styles.emptyIcon} />
+              <p className={styles.emptyText}>No notifications yet</p>
             </div>
           ) : (
             notifications.map((n) => (
@@ -138,33 +126,17 @@ function NotificationItem({
   return (
     <button
       type="button"
-      className={cn(
-        "w-full flex items-start gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-muted/50",
-        isUnread && "bg-accent/30",
-      )}
+      className={cn(styles.notifItem, isUnread && styles.notifItemUnread)}
       onClick={onClick}
     >
-      <div
-        className={cn(
-          "mt-0.5 flex items-center justify-center size-7 rounded-full shrink-0",
-          info.type === "mention"
-            ? "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
-            : "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400",
-        )}
-      >
-        <Icon className="size-3.5" />
+      <div className={info.type === "mention" ? styles.notifIconMention : styles.notifIconAssignment}>
+        <Icon className={styles.notifIconSvg} />
       </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-xs leading-relaxed">
-          {info.message}
-        </p>
-        <p className="text-[10px] text-muted-foreground/60 mt-0.5">
-          {formatTimeAgo(info.createdAt)}
-        </p>
+      <div className={styles.notifBody}>
+        <p className={styles.notifMessage}>{info.message}</p>
+        <p className={styles.notifTime}>{formatTimeAgo(info.createdAt)}</p>
       </div>
-      {isUnread && (
-        <div className="mt-2 size-2 rounded-full bg-primary shrink-0" />
-      )}
+      {isUnread && <div className={styles.unreadDot} />}
     </button>
   );
 }

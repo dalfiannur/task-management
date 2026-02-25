@@ -1,0 +1,32 @@
+.card {
+  cursor: pointer;
+  transition: color 150ms, background-color 150ms;
+}
+
+.card:hover {
+  background-color: color-mix(in srgb, var(--accent) 50%, transparent);
+}
+
+.headerRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.infoGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1875rem;
+}
+
+.title {
+  font-size: 0.9375rem;
+  line-height: 1.375rem;
+}
+
+.icon {
+  width: 1.125rem;
+  height: 1.125rem;
+  color: var(--muted-foreground);
+  flex-shrink: 0;
+}

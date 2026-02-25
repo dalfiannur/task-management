@@ -1,0 +1,73 @@
+.header {
+  border-bottom: 1px solid var(--border);
+  background-color: color-mix(in srgb, var(--muted) 50%, transparent);
+  padding-left: 0.625rem;
+  padding-right: 0.625rem;
+  display: flex;
+  align-items: flex-end;
+  font-weight: 500;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--muted-foreground);
+}
+
+.headerLabel {
+  padding-bottom: 0.375rem;
+  font-family: var(--font-mono);
+}
+
+.moduleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding-left: 0.625rem;
+  padding-right: 0.625rem;
+  border-bottom: 1px solid var(--border);
+  background-color: color-mix(in srgb, var(--muted) 30%, transparent);
+}
+
+.moduleStripe {
+  width: 0.25rem;
+  border-radius: 9999px;
+  align-self: stretch;
+  margin-top: 0.375rem;
+  margin-bottom: 0.375rem;
+}
+
+.moduleName {
+  font-weight: 600;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.taskCountBadge {
+  font-size: 0.875rem;
+  line-height: 1rem;
+  font-family: var(--font-mono);
+}
+
+.taskRow {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding-left: 1.5rem;
+  padding-right: 0.625rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.taskTitle {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.taskDate {
+  font-size: 0.875rem;
+  line-height: 1rem;
+  color: var(--muted-foreground);
+  white-space: nowrap;
+  font-family: var(--font-mono);
+}

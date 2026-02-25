@@ -1,0 +1,14 @@
+.page {
+  padding: 1.25rem;
+}
+
+.title {
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 1.25rem;
+}
+
+.placeholder {
+  color: var(--muted-foreground);
+}

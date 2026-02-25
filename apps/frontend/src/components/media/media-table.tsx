@@ -32,16 +32,17 @@ import {
 import type { MediaFile } from "@/types/media";
 import { isImage, formatFileSize } from "@/types/media";
 import { useDeleteMedia } from "@/hooks/use-media";
+import styles from "./media-table.module.css";
 
 function FileTypeIcon({ mimeType }: { mimeType: string }) {
-  if (isImage(mimeType)) return <ImageIcon className="size-4 text-purple-500" />;
+  if (isImage(mimeType)) return <ImageIcon className={styles.fileTypeIconPurple} />;
   if (mimeType === "application/pdf")
-    return <FileText className="size-4 text-red-500" />;
+    return <FileText className={styles.fileTypeIconRed} />;
   if (mimeType.includes("spreadsheet") || mimeType.includes("excel"))
-    return <FileSpreadsheet className="size-4 text-green-600" />;
+    return <FileSpreadsheet className={styles.fileTypeIconGreen} />;
   if (mimeType.includes("word") || mimeType.includes("document"))
-    return <FileText className="size-4 text-blue-500" />;
-  return <File className="size-4 text-muted-foreground" />;
+    return <FileText className={styles.fileTypeIconBlue} />;
+  return <File className={styles.fileTypeIconMuted} />;
 }
 
 function getMimeLabel(mimeType: string): string {
@@ -56,16 +57,17 @@ function getMimeLabel(mimeType: string): string {
 interface MediaTableProps {
   files: MediaFile[];
   isLoading: boolean;
+  readOnly?: boolean;
 }
 
-export function MediaTable({ files, isLoading }: MediaTableProps) {
+export function MediaTable({ files, isLoading, readOnly }: MediaTableProps) {
   const deleteMedia = useDeleteMedia();
 
   if (isLoading) {
     return (
-      <div className="space-y-2">
+      <div className={styles.loadingList}>
         {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={i} className="h-12 w-full rounded" />
+          <Skeleton key={i} className={styles.skeletonRow} />
         ))}
       </div>
     );
@@ -73,65 +75,65 @@ export function MediaTable({ files, isLoading }: MediaTableProps) {
 
   if (files.length === 0) {
     return (
-      <div className="text-center py-16 text-muted-foreground">
-        <File className="size-12 mx-auto mb-3 opacity-50" />
-        <p className="text-sm">No files uploaded yet</p>
-        <p className="text-xs">Upload files to get started</p>
+      <div className={styles.emptyState}>
+        <File className={styles.emptyIcon} />
+        <p className={styles.emptyTitle}>No files uploaded yet</p>
+        <p className={styles.emptySubtitle}>Upload files to get started</p>
       </div>
     );
   }
 
   return (
-    <div className="rounded-md border">
+    <div className={styles.tableWrapper}>
       <Table>
         <TableHeader>
           <TableRow>
             <TableHead>Name</TableHead>
-            <TableHead className="w-[80px]">Type</TableHead>
-            <TableHead className="w-[80px]">Size</TableHead>
-            <TableHead className="w-[100px]">Linked Task</TableHead>
-            <TableHead className="w-[100px] text-right">Actions</TableHead>
+            <TableHead className={styles.typeCol}>Type</TableHead>
+            <TableHead className={styles.sizeCol}>Size</TableHead>
+            <TableHead className={styles.linkedCol}>Linked Task</TableHead>
+            <TableHead className={styles.actionsCol}>Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {files.map((file) => (
             <TableRow key={file.id}>
               <TableCell>
-                <div className="flex items-center gap-2 min-w-0">
+                <div className={styles.nameCell}>
                   <FileTypeIcon mimeType={file.mediaFileInfo.mimeType} />
-                  <span className="text-sm truncate">
+                  <span className={styles.fileNameText}>
                     {file.mediaFileInfo.originalFileName}
                   </span>
                 </div>
               </TableCell>
               <TableCell>
-                <Badge variant="outline" className="text-[10px]">
+                <Badge variant="outline" className={styles.typeBadge}>
                   {getMimeLabel(file.mediaFileInfo.mimeType)}
                 </Badge>
               </TableCell>
-              <TableCell className="text-sm text-muted-foreground">
+              <TableCell className={styles.sizeText}>
                 {formatFileSize(file.mediaFileInfo.size)}
               </TableCell>
               <TableCell>
                 {file.mediaFileInfo.taskId ? (
                   <Badge
                     variant="secondary"
-                    className="text-[10px] px-1.5 py-0"
+                    className={styles.linkedBadge}
                   >
-                    <Link2 className="size-2.5 mr-0.5" />
+                    <Link2 className={styles.linkedIcon} />
                     Linked
                   </Badge>
                 ) : (
-                  <span className="text-xs text-muted-foreground">—</span>
+                  <span className={styles.noLink}>&mdash;</span>
                 )}
               </TableCell>
-              <TableCell className="text-right">
-                <div className="flex items-center justify-end gap-1">
+              <TableCell className={styles.actionsCell}>
+                <div className={styles.actionsWrapper}>
                   {file.mediaFileInfo.url && (
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="size-7"
+                      className={styles.actionBtn}
                       asChild
                     >
                       <a
@@ -139,38 +141,40 @@ export function MediaTable({ files, isLoading }: MediaTableProps) {
                         target="_blank"
                         rel="noopener noreferrer"
                       >
-                        <Download className="size-3.5" />
+                        <Download className={styles.actionIcon} />
                       </a>
                     </Button>
                   )}
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="size-7 text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="size-3.5" />
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete file?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This will permanently delete &quot;
-                          {file.mediaFileInfo.originalFileName}&quot;.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => deleteMedia.mutate(file.id)}
+                  {!readOnly && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className={styles.deleteBtn}
                         >
-                          Delete
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                          <Trash2 className={styles.actionIcon} />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete file?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will permanently delete &quot;
+                            {file.mediaFileInfo.originalFileName}&quot;.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => deleteMedia.mutate(file.id)}
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
                 </div>
               </TableCell>
             </TableRow>

@@ -29,6 +29,7 @@ export default class ActivityService extends BaseService {
     actorName: string;
     action: "created" | "updated" | "deleted";
     changes: Array<{ field: string; from: string; to: string }>;
+    taskTitle?: string;
   }): Promise<void> {
     const archetype = new ActivityArcheType();
     archetype.fill({
@@ -37,12 +38,31 @@ export default class ActivityService extends BaseService {
         actorId: params.actorId,
         actorName: params.actorName,
         action: params.action,
+        taskTitle: params.taskTitle ?? "",
         changes: JSON.stringify(params.changes),
         createdAt: new Date().toISOString(),
       },
     });
 
     await archetype.createAndSaveEntity();
+  }
+
+  @GraphQLOperation({
+    type: "Query",
+    input: z.object({
+      limit: z.number().optional(),
+    }),
+    output: [activityArcheType],
+  })
+  async listRecentActivities(input: { limit?: number }) {
+    const take = input.limit ?? 20;
+    const entities = await new Query()
+      .with(ActivityInfo)
+      .sortBy(ActivityInfo, "createdAt", "DESC")
+      .take(take)
+      .populate()
+      .exec();
+    return entities;
   }
 
   @GraphQLOperation({

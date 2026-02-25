@@ -1,7 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
-import { gql } from "graphql-request";
+import { useQuery, gql, oidcClient } from "@/lib/graphql-client";
 import { useAuth } from "react-oidc-context";
-import { oidcGraphClient } from "@/lib/graphql-client";
 import type { User } from "@/types/task";
 
 interface OidcUser {
@@ -9,23 +7,23 @@ interface OidcUser {
   profile: {
     displayName: string;
     avatarUrl: string;
-  }
+  };
 }
 
 const SEARCH_USERS = gql`
-query SearchUsers($input: searchUsersInput!) {
-  searchUsers(input: $input) {
-    users {
-      id
-      profile {
-        displayName
-        avatarUrl
+  query SearchUsers($input: searchUsersInput!) {
+    searchUsers(input: $input) {
+      users {
+        id
+        profile {
+          displayName
+          avatarUrl
+        }
       }
+      total
     }
-    total
   }
-}
-`
+`;
 
 function mapOidcUser(u: OidcUser): User {
   return {
@@ -40,30 +38,28 @@ function mapOidcUser(u: OidcUser): User {
 export function useUsers() {
   const auth = useAuth();
   const token = auth.user?.access_token;
-  return useQuery({
-    queryKey: ["users", token],
-    enabled: !!token,
-    retry: false,
-    queryFn: async (): Promise<User[]> => {
-      const res = await oidcGraphClient.request<{
-        searchUsers: {
-          users: OidcUser[],
-          total: number
-        }
-      }>(SEARCH_USERS, { input: {} })
 
-      return res.searchUsers.users.map(mapOidcUser)
-    },
+  const { data, loading, error } = useQuery<{
+    searchUsers: { users: OidcUser[]; total: number };
+  }>(SEARCH_USERS, {
+    variables: { input: {} },
+    skip: !token,
+    client: oidcClient,
   });
+
+  return {
+    data: data?.searchUsers.users.map(mapOidcUser),
+    isLoading: loading,
+    error: error ?? null,
+  };
 }
 
 export function useUser(id: string | undefined) {
   const { data: users } = useUsers();
-  return useQuery({
-    queryKey: ["users", id],
-    queryFn: async (): Promise<User | undefined> => {
-      return users?.find((u) => u.id === id);
-    },
-    enabled: !!id && !!users,
-  });
+
+  return {
+    data: users?.find((u) => u.id === id),
+    isLoading: false,
+    error: null,
+  };
 }

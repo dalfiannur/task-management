@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Upload, X, File as FileIcon } from "lucide-react";
 import { formatFileSize } from "@/types/media";
 import { useUploadMedia } from "@/hooks/use-media";
+import { cn } from "@/lib/utils";
+import styles from "./media-upload-dialog.module.css";
 
 interface MediaUploadDialogProps {
   open: boolean;
@@ -65,7 +67,7 @@ export function MediaUploadDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className={styles.dialogContent}>
         <DialogHeader>
           <DialogTitle>Upload Files</DialogTitle>
           <DialogDescription>
@@ -74,11 +76,7 @@ export function MediaUploadDialog({
         </DialogHeader>
 
         <div
-          className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-            dragOver
-              ? "border-primary bg-primary/5"
-              : "border-muted-foreground/25"
-          }`}
+          className={cn(styles.dropzone, dragOver && styles.dropzoneActive)}
           onDragOver={(e) => {
             e.preventDefault();
             setDragOver(true);
@@ -86,8 +84,8 @@ export function MediaUploadDialog({
           onDragLeave={() => setDragOver(false)}
           onDrop={handleDrop}
         >
-          <Upload className="size-8 mx-auto mb-2 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground mb-2">
+          <Upload className={styles.dropzoneIcon} />
+          <p className={styles.dropzoneText}>
             Drag & drop files here, or
           </p>
           <Button
@@ -101,7 +99,7 @@ export function MediaUploadDialog({
             ref={inputRef}
             type="file"
             multiple
-            className="hidden"
+            className={styles.hiddenInput}
             onChange={(e) => {
               if (e.target.files) addFiles(e.target.files);
               e.target.value = "";
@@ -110,31 +108,31 @@ export function MediaUploadDialog({
         </div>
 
         {selectedFiles.length > 0 && (
-          <div className="space-y-2 max-h-48 overflow-y-auto">
+          <div className={styles.fileList}>
             {selectedFiles.map((file, i) => (
               <div
                 key={`${file.name}-${i}`}
-                className="flex items-center gap-2 p-2 rounded bg-muted/50"
+                className={styles.fileItem}
               >
-                <FileIcon className="size-4 shrink-0 text-muted-foreground" />
-                <span className="text-sm truncate flex-1">{file.name}</span>
-                <span className="text-xs text-muted-foreground shrink-0">
+                <FileIcon className={styles.fileItemIcon} />
+                <span className={styles.fileItemName}>{file.name}</span>
+                <span className={styles.fileItemSize}>
                   {formatFileSize(file.size)}
                 </span>
                 <Button
                   size="icon"
                   variant="ghost"
-                  className="size-6 shrink-0"
+                  className={styles.removeBtn}
                   onClick={() => removeFile(i)}
                 >
-                  <X className="size-3" />
+                  <X className={styles.removeIcon} />
                 </Button>
               </div>
             ))}
           </div>
         )}
 
-        <div className="flex justify-end gap-2">
+        <div className={styles.footer}>
           <Button
             variant="outline"
             size="sm"

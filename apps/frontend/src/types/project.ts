@@ -1,4 +1,4 @@
-export type ProjectStatus = "pending" | "prospect" | "win" | "on_going" | "canceled";
+export type ProjectStatus = "pending" | "prospect" | "win" | "won" | "on_going" | "canceled" | "closed";
 
 export interface Project {
     id: string;
@@ -9,7 +9,7 @@ export interface Project {
         value: ProjectStatus
     }
     description?: string;
-    picId?: {
+    projectLeaderId?: {
         value: string;
     };
     name?: {
@@ -18,30 +18,34 @@ export interface Project {
     parent?: {
         id: string;
     } | null;
-}
-
-export interface ProjectCore {
-    id: string;
-    code: string;
-    name: {
-        name: string;
-        description: string;
-    };
-    status: string;
-    winStage: string;
+    // Enrichment fields from Core (populated by backend)
+    code?: string;
+    coreName?: string;
+    coreDescription?: string;
+    clientName?: string;
+    clientLegalName?: string;
+    winStage?: string;
+    resolvedStatus?: string;
+    closedAt?: string;
 }
 
 export interface CreateProjectInput {
-    title: string;
+    name: string;
+    clientId: string;
     description?: string;
-    picId?: string;
-    status?: ProjectStatus;
+    projectLeaderId?: string;
+    ownerId?: string;
+    divisionId?: string;
+    commercial?: boolean;
+    value?: number;
+    startDate?: string;
+    endDate?: string;
 }
 
 export interface UpdateProjectInput {
     title?: string;
     description?: string;
-    picId?: string | null;
+    projectLeaderId?: string | null;
     status?: ProjectStatus;
 }
 
@@ -49,7 +53,13 @@ export interface CreateSubProjectInput {
     parentProjectId: string;
     name: string;
     description?: string;
-    picId?: string;
+    projectLeaderId?: string;
+    ownerId?: string;
+    divisionId?: string;
+    commercial?: boolean;
+    value?: number;
+    startDate?: string;
+    endDate?: string;
 }
 
 export const PROJECT_STATUS_CONFIG: Record<
@@ -59,6 +69,8 @@ export const PROJECT_STATUS_CONFIG: Record<
     pending: { label: "Pending", color: "bg-gray-100 text-gray-700" },
     prospect: { label: "Prospect", color: "bg-amber-100 text-amber-700" },
     win: { label: "Win", color: "bg-emerald-100 text-emerald-700" },
+    won: { label: "Win", color: "bg-emerald-100 text-emerald-700" },
     on_going: { label: "On Going", color: "bg-blue-100 text-blue-700" },
     canceled: { label: "Canceled", color: "bg-red-100 text-red-700" },
+    closed: { label: "Closed", color: "bg-purple-100 text-purple-700" },
 };

@@ -3,13 +3,29 @@ import { GraphQLOperation } from 'bunsane/gql';
 import { Entity } from 'bunsane/core/Entity';
 import { Query } from 'bunsane/query';
 import { z } from "zod";
-import { ModuleDescriptionComponent, ModuleNameComponent, ModuleProjectRefComponent, ModuleTag } from "../components/ModuleComponents";
+import { ModuleDescriptionComponent, ModuleNameComponent, ModulePicIdComponent, ModuleProjectRefComponent, ModuleTag } from "../components/ModuleComponents";
 import { ModuleArcheType } from "../archetypes/ModuleArcheType";
 
 export default class ModuleService extends BaseService {
   constructor() {
     super();
     ModuleArcheType.registerFieldResolvers(this);
+  }
+
+  @GraphQLOperation({
+    type: "Query",
+    input: z.object({
+      _dummy: z.string().optional(),
+    }),
+    output: [ModuleArcheType],
+  })
+  async listAllModules() {
+    const query = new Query()
+      .with(ModuleTag)
+      .with(ModuleNameComponent)
+      .with(ModuleProjectRefComponent);
+
+    return await query.populate().exec();
   }
 
   @GraphQLOperation({
@@ -24,6 +40,7 @@ export default class ModuleService extends BaseService {
       .with(ModuleTag)
       .with(ModuleNameComponent)
       .with(ModuleDescriptionComponent)
+      .with(ModulePicIdComponent)
       .with(ModuleProjectRefComponent, {
         filters: [
           Query.filter("projectId", Query.filterOp.EQ, input.projectId),
@@ -52,6 +69,7 @@ export default class ModuleService extends BaseService {
       name: z.string(),
       description: z.string().optional(),
       projectId: z.string(),
+      picId: z.string().optional(),
     }),
     output: ModuleArcheType,
   })
@@ -59,12 +77,17 @@ export default class ModuleService extends BaseService {
     name: string;
     description?: string;
     projectId: string;
+    picId?: string;
   }) {
     const entity = Entity.Create()
       .add(ModuleTag, {})
       .add(ModuleNameComponent, { value: input.name })
       .add(ModuleDescriptionComponent, { value: input.description ?? "" })
       .add(ModuleProjectRefComponent, { projectId: input.projectId });
+
+    if (input.picId) {
+      entity.add(ModulePicIdComponent, { value: input.picId });
+    }
 
     await entity.save();
 
@@ -79,6 +102,7 @@ export default class ModuleService extends BaseService {
       id: z.string(),
       name: z.string().optional(),
       description: z.string().optional(),
+      picId: z.string().optional(),
     }),
     output: ModuleArcheType,
   })
@@ -86,6 +110,7 @@ export default class ModuleService extends BaseService {
     id: string;
     name?: string;
     description?: string;
+    picId?: string;
   }) {
     const entity = await new Query().findOneById(input.id);
     if (!entity) throw new Error("Module not found");
@@ -95,6 +120,9 @@ export default class ModuleService extends BaseService {
     }
     if (input.description !== undefined) {
       await entity.set(ModuleDescriptionComponent, { value: input.description });
+    }
+    if (input.picId !== undefined) {
+      await entity.set(ModulePicIdComponent, { value: input.picId });
     }
     await entity.save();
 

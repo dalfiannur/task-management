@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useFormShortcut } from "@/hooks/use-form-shortcut";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -7,10 +8,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { Textarea } from "@/components/ui/textarea";
+import { UserCombobox } from "@/components/shared/user-combobox";
 import { useCreateModule, useUpdateModule, useModules } from "@/hooks/use-modules";
 import { MODULE_COLORS } from "./module-section";
 import type { Module } from "@/types/task";
+import styles from "./module-form.module.css";
 
 interface ModuleFormProps {
   open: boolean;
@@ -32,12 +35,14 @@ export function ModuleForm({
 
   const [name, setName] = useState(module?.name ?? "");
   const [description, setDescription] = useState(module?.description ?? "");
+  const [picId, setPicId] = useState<string | undefined>(module?.picId);
 
   // Reset form when dialog opens
   useEffect(() => {
     if (open) {
       setName(module?.name ?? "");
       setDescription(module?.description ?? "");
+      setPicId(module?.picId);
     }
   }, [open, module]);
 
@@ -53,46 +58,32 @@ export function ModuleForm({
 
     if (isEditing) {
       updateModule.mutate(
-        { id: module.id, input: { name, description } },
+        { id: module.id, input: { name, description, picId } },
         { onSuccess: () => onOpenChange(false) },
       );
     } else {
       createModule.mutate(
-        { name, description, projectId },
+        { name, description, projectId, picId },
         { onSuccess: () => onOpenChange(false) },
       );
     }
   };
 
-  // Keyboard shortcut: Cmd/Ctrl + Enter to submit
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && name.trim()) {
-        e.preventDefault();
-        const form = document.querySelector<HTMLFormElement>(
-          "[data-module-form]",
-        );
-        form?.requestSubmit();
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [open, name]);
+  useFormShortcut(open, "[data-module-form]", !!name.trim());
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg p-0 overflow-hidden">
+      <DialogContent className={styles.dialogContent}>
         {/* Color accent strip */}
         <div
-          className="h-1 w-full"
+          className={styles.accentStrip}
           style={{ background: `linear-gradient(90deg, ${accentColor}, ${accentColor}44)` }}
         />
 
         <form onSubmit={handleSubmit} data-module-form>
-          <div className="p-6 pb-0">
-            <DialogHeader className="mb-5">
-              <DialogTitle className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/60">
+          <div className={styles.formBody}>
+            <DialogHeader className={styles.header}>
+              <DialogTitle className={styles.headerTitle}>
                 {isEditing ? "Edit Module" : "New Module"}
               </DialogTitle>
               <DialogDescription className="sr-only">
@@ -102,48 +93,62 @@ export function ModuleForm({
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-5">
+            <div className={styles.fields}>
               {/* Title input with accent bar */}
-              <div className="flex gap-3">
+              <div className={styles.titleRow}>
                 <div
-                  className="w-1 shrink-0 rounded-full self-stretch transition-colors"
+                  className={styles.accentBar}
                   style={{ backgroundColor: accentColor }}
                 />
                 <input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Module name..."
-                  className="flex-1 text-xl font-bold font-display tracking-tight bg-transparent border-0 outline-none placeholder:font-normal placeholder:text-base placeholder:text-muted-foreground/40"
+                  className={styles.titleInput}
                   autoFocus
                 />
               </div>
 
               {/* Description */}
-              <div className="space-y-2">
-                <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+              <div className={styles.descriptionField}>
+                <p className={styles.descriptionLabel}>
                   Description
                 </p>
-                <RichTextEditor
-                  content={description}
-                  onChange={setDescription}
+                <Textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
                   placeholder="Describe what this module covers..."
+                  maxLength={500}
+                  className={styles.descriptionTextarea}
+                  rows={3}
                 />
+                <span className={styles.charCount}>
+                  {description.length}/500
+                </span>
+              </div>
+
+              {/* Person In Charge */}
+              <div className={styles.descriptionField}>
+                <p className={styles.descriptionLabel}>
+                  Person In Charge
+                </p>
+                <UserCombobox value={picId} onChange={setPicId} />
               </div>
             </div>
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-between px-6 py-4 mt-2 border-t">
-            <span className="text-[11px] text-muted-foreground/50">
-              <kbd className="px-1.5 py-0.5 rounded bg-muted text-[10px] font-mono">
+          <div className={styles.footer}>
+            <span className={styles.shortcutHint}>
+              <kbd className={styles.kbd}>
                 ⌘
               </kbd>{" "}
-              <kbd className="px-1.5 py-0.5 rounded bg-muted text-[10px] font-mono">
+              <kbd className={styles.kbd}>
                 ↵
               </kbd>{" "}
               to submit
             </span>
-            <div className="flex items-center gap-2">
+            <div className={styles.footerActions}>
               <Button
                 type="button"
                 variant="ghost"

@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import styles from "./stat-card.module.css";
 
 interface StatCardProps {
   title: string;
@@ -18,35 +19,32 @@ export function StatCard({
 }: StatCardProps) {
   return (
     <Card
-      className="overflow-hidden border-l-[3px] py-0 transition-shadow hover:shadow-md"
+      className={styles.card}
       style={{ borderLeftColor: accentColor }}
     >
-      <CardContent className="p-5">
-        <div className="flex items-start justify-between">
-          <div className="space-y-1.5">
-            <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+      <CardContent className={styles.content}>
+        <div className={styles.layout}>
+          <div className={styles.textGroup}>
+            <p className={styles.title}>
               {title}
             </p>
             <p
-              className="text-4xl font-extrabold font-display tracking-tight"
-              style={{
-                color: accentColor,
-                fontVariantNumeric: "tabular-nums",
-              }}
+              className={styles.value}
+              style={{ color: accentColor }}
             >
               {value}
             </p>
             {description && (
-              <p className="text-[11px] text-muted-foreground">
+              <p className={styles.description}>
                 {description}
               </p>
             )}
           </div>
           <div
-            className="rounded-xl p-2.5"
+            className={styles.iconWrapper}
             style={{ backgroundColor: `${accentColor}14` }}
           >
-            <Icon className="size-5" style={{ color: accentColor }} />
+            <Icon className={styles.icon} style={{ color: accentColor }} />
           </div>
         </div>
       </CardContent>

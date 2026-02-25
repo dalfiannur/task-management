@@ -4,7 +4,7 @@ import { Query } from "bunsane/query";
 import { z } from "zod";
 import { ProjectMembershipData } from "~/components/ProjectMembership";
 import { ProjectMembershipArcheTypeClass } from "~/archetypes/ProjectMembershipArcheType";
-import { ProjectPicIdComponent } from "~/components/ProjectComponents";
+import { ProjectLeaderIdComponent } from "~/components/ProjectComponents";
 import { AuthPlugin } from "~/plugins/AuthPlugin";
 import { getUserRole } from "./UserService";
 
@@ -74,7 +74,7 @@ export default class MembershipService extends BaseService {
     input: { projectId: string; userId: string },
     context: { request?: Request },
   ) {
-    await this.requireManagerOrPic(context, input.projectId);
+    await this.requireMember(context, input.projectId);
     await this.ensureMembership(input.projectId, input.userId);
     return true;
   }
@@ -88,7 +88,7 @@ export default class MembershipService extends BaseService {
     input: { projectId: string; userId: string },
     context: { request?: Request },
   ) {
-    await this.requireManagerOrPic(context, input.projectId);
+    await this.requireMember(context, input.projectId);
 
     const entities = await new Query()
       .with(ProjectMembershipData, {
@@ -107,9 +107,9 @@ export default class MembershipService extends BaseService {
   }
 
   /**
-   * Auth helper: caller must be a manager OR the project's PIC.
+   * Auth helper: caller must be a manager, project leader, or project member.
    */
-  private async requireManagerOrPic(context: { request?: Request }, projectId: string) {
+  private async requireMember(context: { request?: Request }, projectId: string) {
     if (!context.request) throw new Error("Authentication required");
     const user = await AuthPlugin.extractUser(context.request);
     if (!user) throw new Error("Authentication required");
@@ -117,13 +117,24 @@ export default class MembershipService extends BaseService {
     const role = user.role ?? await getUserRole(user.id);
     if (role === "manager") return user;
 
-    // Check if user is the project PIC
+    // Check if user is the project leader
     const projectEntity = await new Query().findOneById(projectId);
     if (projectEntity) {
-      const picComponent = await projectEntity.get(ProjectPicIdComponent);
-      if (picComponent?.value === user.id) return user;
+      const leaderComponent = await projectEntity.get(ProjectLeaderIdComponent);
+      if (leaderComponent?.value === user.id) return user;
     }
 
-    throw new Error("Manager or PIC access required");
+    // Check if user is a project member
+    const memberships = await new Query()
+      .with(ProjectMembershipData, {
+        filters: [
+          Query.typedFilter(ProjectMembershipData, "projectId", "=", projectId),
+          Query.typedFilter(ProjectMembershipData, "userId", "=", user.id),
+        ],
+      })
+      .exec();
+    if (memberships.length > 0) return user;
+
+    throw new Error("Project membership required");
   }
 }

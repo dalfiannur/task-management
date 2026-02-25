@@ -21,11 +21,9 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Check, Calendar as CalendarIcon, X, ChevronsUpDown } from "lucide-react";
-import { format } from "date-fns";
+import { Check, X, ChevronsUpDown } from "lucide-react";
 import {
   TASK_STATUS_CONFIG,
   TASK_PRIORITY_CONFIG,
@@ -33,33 +31,34 @@ import {
   type TaskPriority,
 } from "@/types/task";
 import type { User } from "@/types/task";
-import type { UseMutationResult } from "@tanstack/react-query";
 import type { Task, UpdateTaskInput } from "@/types/task";
 import { useLabels } from "@/hooks/use-labels";
 import { LabelCombobox } from "@/components/shared/label-combobox";
+import { DatePickerField } from "@/components/shared/date-picker-field";
 import { cn } from "@/lib/utils";
+import styles from "./task-detail-fields.module.css";
 
-type UpdateTaskMutation = UseMutationResult<
-  Task,
-  Error,
-  { id: string; input: UpdateTaskInput }
->;
+interface UpdateTaskMutation {
+  mutate: (
+    vars: { id: string; input: UpdateTaskInput },
+    opts?: { onSuccess?: (data: Task) => void },
+  ) => void;
+  isLoading: boolean;
+}
 
 const STATUS_DOT_COLORS: Record<TaskStatus, string> = {
-  backlog: "bg-gray-400",
-  todo: "bg-blue-400",
-  in_progress: "bg-amber-400",
-  in_review: "bg-violet-400",
-  done: "bg-emerald-400",
-  cancelled: "bg-red-400",
+  todo: styles.dotTodo,
+  in_progress: styles.dotInProgress,
+  done: styles.dotDone,
+  cancelled: styles.dotCancelled,
 };
 
 const PRIORITY_DOT_COLORS: Record<TaskPriority, string> = {
-  none: "bg-gray-300",
-  low: "bg-blue-400",
-  medium: "bg-amber-400",
-  high: "bg-orange-500",
-  urgent: "bg-red-500",
+  none: styles.dotPriorityNone,
+  low: styles.dotPriorityLow,
+  medium: styles.dotPriorityMedium,
+  high: styles.dotPriorityHigh,
+  urgent: styles.dotPriorityUrgent,
 };
 
 // --- Save indicator hook & component ---
@@ -85,8 +84,8 @@ function SaveIndicator({ visible }: { visible: boolean }) {
   return (
     <Check
       className={cn(
-        "size-3.5 text-green-500 transition-opacity duration-300 shrink-0",
-        visible ? "opacity-100" : "opacity-0",
+        styles.saveIndicator,
+        visible ? styles.saveVisible : styles.saveHidden,
       )}
     />
   );
@@ -130,16 +129,16 @@ export function EditableTitle({
 
   if (!editing) {
     return (
-      <div className="flex gap-3 items-start">
+      <div className={styles.titleRow}>
         <div
           className={cn(
-            "w-1 shrink-0 rounded-full mt-1 self-stretch transition-colors",
+            styles.titleAccent,
             STATUS_DOT_COLORS[status],
           )}
         />
-        <div className="flex items-center gap-2 flex-1 min-w-0">
+        <div className={styles.titleInner}>
           <h2
-            className="text-xl font-bold font-display tracking-tight cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1 transition-colors"
+            className={styles.titleText}
             onClick={() => setEditing(true)}
           >
             {value}
@@ -151,17 +150,17 @@ export function EditableTitle({
   }
 
   return (
-    <div className="flex gap-3 items-start">
+    <div className={styles.titleRow}>
       <div
         className={cn(
-          "w-1 shrink-0 rounded-full mt-1 self-stretch transition-colors",
+          styles.titleAccent,
           STATUS_DOT_COLORS[status],
         )}
       />
-      <div className="flex items-center gap-2 flex-1 min-w-0">
+      <div className={styles.titleInner}>
         <Input
           autoFocus
-          className="text-xl font-bold font-display tracking-tight h-auto py-1 px-1 -mx-1"
+          className={styles.titleInput}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onBlur={save}
@@ -217,18 +216,18 @@ export function EditableDescription({
 
   if (!editing) {
     return (
-      <div className="flex items-start gap-2">
+      <div className={styles.descriptionRow}>
         <div
-          className="flex-1 cursor-pointer hover:bg-muted/30 rounded-lg px-3 py-2.5 -mx-1 transition-colors min-h-[2.5rem]"
+          className={styles.descriptionClickable}
           onClick={() => setEditing(true)}
         >
           {value ? (
             <div
-              className="prose prose-sm max-w-none"
+              className="prose"
               dangerouslySetInnerHTML={{ __html: value }}
             />
           ) : (
-            <p className="text-sm text-muted-foreground/40 italic">
+            <p className={styles.descriptionPlaceholder}>
               Add a description...
             </p>
           )}
@@ -240,7 +239,7 @@ export function EditableDescription({
 
   return (
     <div
-      className="space-y-2"
+      className={styles.descriptionEditing}
       onKeyDown={(e: ReactKeyboardEvent) => {
         if (e.key === "Escape") cancel();
       }}
@@ -250,7 +249,7 @@ export function EditableDescription({
         onChange={setDraft}
         placeholder="Add a description..."
       />
-      <div className="flex items-center gap-2 justify-end">
+      <div className={styles.descriptionActions}>
         <SaveIndicator visible={saved} />
         <Button variant="ghost" size="sm" onClick={cancel}>
           Cancel
@@ -276,7 +275,7 @@ export function StatusSelect({ taskId, value, startDate, updateTask }: StatusSel
   const { saved, flash } = useSaveIndicator();
 
   return (
-    <div className="flex items-center gap-1">
+    <div className={styles.selectRow}>
       <Select
         value={value}
         onValueChange={(v) => {
@@ -291,10 +290,10 @@ export function StatusSelect({ taskId, value, startDate, updateTask }: StatusSel
           );
         }}
       >
-        <SelectTrigger className="h-7 w-full text-xs border-0 shadow-none bg-transparent hover:bg-muted/50 transition-colors px-2 gap-1.5 [&>svg:last-child]:size-3">
+        <SelectTrigger className={styles.propertyTrigger}>
           <span
             className={cn(
-              "size-2 rounded-full shrink-0",
+              styles.dot,
               STATUS_DOT_COLORS[value],
             )}
           />
@@ -304,8 +303,8 @@ export function StatusSelect({ taskId, value, startDate, updateTask }: StatusSel
           {(Object.entries(TASK_STATUS_CONFIG) as [TaskStatus, { label: string; color: string }][]).map(
             ([key, config]) => (
               <SelectItem key={key} value={key}>
-                <div className="flex items-center gap-2">
-                  <span className={cn("size-2 rounded-full", STATUS_DOT_COLORS[key])} />
+                <div className={styles.selectItemRow}>
+                  <span className={cn(styles.dot, STATUS_DOT_COLORS[key])} />
                   {config.label}
                 </div>
               </SelectItem>
@@ -334,7 +333,7 @@ export function PrioritySelect({
   const { saved, flash } = useSaveIndicator();
 
   return (
-    <div className="flex items-center gap-1">
+    <div className={styles.selectRow}>
       <Select
         value={value}
         onValueChange={(v) => {
@@ -344,10 +343,10 @@ export function PrioritySelect({
           );
         }}
       >
-        <SelectTrigger className="h-7 text-xs border-0 shadow-none bg-transparent hover:bg-muted/50 transition-colors px-2 w-full gap-1.5 [&>svg:last-child]:size-3">
+        <SelectTrigger className={styles.propertyTrigger}>
           <span
             className={cn(
-              "size-2 rounded-full shrink-0",
+              styles.dot,
               PRIORITY_DOT_COLORS[value],
             )}
           />
@@ -357,8 +356,8 @@ export function PrioritySelect({
           {(Object.entries(TASK_PRIORITY_CONFIG) as [TaskPriority, { label: string; color: string; icon: string }][]).map(
             ([key, config]) => (
               <SelectItem key={key} value={key}>
-                <div className="flex items-center gap-2">
-                  <span className={cn("size-2 rounded-full", PRIORITY_DOT_COLORS[key])} />
+                <div className={styles.selectItemRow}>
+                  <span className={cn(styles.dot, PRIORITY_DOT_COLORS[key])} />
                   {config.label}
                 </div>
               </SelectItem>
@@ -408,18 +407,18 @@ export function AssigneeSelect({
   };
 
   return (
-    <div className="flex items-center gap-1">
+    <div className={styles.selectRow}>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <button
             type="button"
             role="combobox"
             aria-expanded={open}
-            className="inline-flex items-center gap-1.5 rounded-md px-2 h-7 text-xs hover:bg-muted/50 transition-colors w-full"
+            className={styles.assigneeTrigger}
           >
             {selectedUsers.length > 0 ? (
               <>
-                <div className="flex items-center -space-x-1.5">
+                <div className={styles.avatarStack}>
                   {selectedUsers.slice(0, 3).map((user) => (
                     <Avatar key={user.id} className="size-4 ring-1 ring-background">
                       <AvatarImage src={user.avatarUrl} />
@@ -429,13 +428,13 @@ export function AssigneeSelect({
                     </Avatar>
                   ))}
                 </div>
-                <span className="truncate">
+                <span className={styles.truncate}>
                   {selectedUsers.length === 1
                     ? selectedUsers[0].name
                     : `${selectedUsers.length} assignees`}
                 </span>
                 <X
-                  className="size-3 ml-auto text-muted-foreground/50 hover:text-foreground shrink-0"
+                  className={styles.clearIcon}
                   onClick={(e) => {
                     e.stopPropagation();
                     handleClear();
@@ -444,8 +443,8 @@ export function AssigneeSelect({
               </>
             ) : (
               <>
-                <span className="text-muted-foreground">Unassigned</span>
-                <ChevronsUpDown className="size-3 ml-auto text-muted-foreground/40 shrink-0" />
+                <span className={styles.unassignedText}>Unassigned</span>
+                <ChevronsUpDown className={styles.chevronIcon} />
               </>
             )}
           </button>
@@ -482,8 +481,8 @@ export function AssigneeSelect({
                       {user.name}
                       <Check
                         className={cn(
-                          "ml-auto size-3.5",
-                          isSelected ? "opacity-100" : "opacity-0",
+                          styles.checkIcon,
+                          isSelected ? styles.checkVisible : styles.checkHidden,
                         )}
                       />
                     </CommandItem>
@@ -512,55 +511,20 @@ export function StartDatePicker({
   value,
   updateTask,
 }: StartDatePickerProps) {
-  const [open, setOpen] = useState(false);
   const { saved, flash } = useSaveIndicator();
   const date = value ? new Date(value) : undefined;
 
-  const saveDate = (newDate: Date | undefined) => {
-    updateTask.mutate(
-      { id: taskId, input: { startDate: newDate ? newDate.toISOString() : null } },
-      { onSuccess: () => flash() },
-    );
-    setOpen(false);
-  };
-
   return (
-    <div className="flex items-center gap-1">
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-md px-2 h-7 text-xs hover:bg-muted/50 transition-colors",
-              !date && "text-muted-foreground",
-            )}
-          >
-            <CalendarIcon className="size-3" />
-            {date ? format(date, "MMM d, yyyy") : "Set date"}
-          </button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
-          <Calendar
-            mode="single"
-            selected={date}
-            onSelect={(d) => saveDate(d)}
-            initialFocus
-          />
-          {date && (
-            <div className="p-2 border-t">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full text-muted-foreground text-xs h-7"
-                onClick={() => saveDate(undefined)}
-              >
-                <X className="mr-1 size-3" />
-                Clear
-              </Button>
-            </div>
-          )}
-        </PopoverContent>
-      </Popover>
+    <div className={styles.selectRow}>
+      <DatePickerField
+        value={date}
+        onChange={(d) => {
+          updateTask.mutate(
+            { id: taskId, input: { startDate: d ? d.toISOString() : null } },
+            { onSuccess: () => flash() },
+          );
+        }}
+      />
       <SaveIndicator visible={saved} />
     </div>
   );
@@ -592,7 +556,7 @@ export function LabelSelect({
   };
 
   return (
-    <div className="flex items-center gap-1">
+    <div className={styles.labelRow}>
       <LabelCombobox
         value={value}
         labels={labels}
@@ -617,55 +581,20 @@ export function DueDatePicker({
   value,
   updateTask,
 }: DueDatePickerProps) {
-  const [open, setOpen] = useState(false);
   const { saved, flash } = useSaveIndicator();
   const date = value ? new Date(value) : undefined;
 
-  const saveDate = (newDate: Date | undefined) => {
-    updateTask.mutate(
-      { id: taskId, input: { dueDate: newDate ? newDate.toISOString() : null } },
-      { onSuccess: () => flash() },
-    );
-    setOpen(false);
-  };
-
   return (
-    <div className="flex items-center gap-1">
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-md px-2 h-7 text-xs hover:bg-muted/50 transition-colors",
-              !date && "text-muted-foreground",
-            )}
-          >
-            <CalendarIcon className="size-3" />
-            {date ? format(date, "MMM d, yyyy") : "Set date"}
-          </button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
-          <Calendar
-            mode="single"
-            selected={date}
-            onSelect={(d) => saveDate(d)}
-            initialFocus
-          />
-          {date && (
-            <div className="p-2 border-t">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full text-muted-foreground text-xs h-7"
-                onClick={() => saveDate(undefined)}
-              >
-                <X className="mr-1 size-3" />
-                Clear
-              </Button>
-            </div>
-          )}
-        </PopoverContent>
-      </Popover>
+    <div className={styles.selectRow}>
+      <DatePickerField
+        value={date}
+        onChange={(d) => {
+          updateTask.mutate(
+            { id: taskId, input: { dueDate: d ? d.toISOString() : null } },
+            { onSuccess: () => flash() },
+          );
+        }}
+      />
       <SaveIndicator visible={saved} />
     </div>
   );

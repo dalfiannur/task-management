@@ -11,13 +11,12 @@ import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useApproveProject } from "@/hooks/use-projects";
-import type { Project, ProjectCore } from "@/types/project";
+import type { Project } from "@/types/project";
 import { useApproveLead } from "@/hooks/use-leads";
-
-type ProjectWithCore = Project & { coreDetail: ProjectCore | null };
+import styles from "./approve-lead-dialog.module.css";
 
 interface ApproveLeadDialogProps {
-  project: ProjectWithCore | null;
+  project: Project | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -36,7 +35,7 @@ export function ApproveLeadDialog({
     if (!project) return;
 
     approveProject.mutate(
-      { id: project.id, name: project.coreDetail?.name.name ?? "", description },
+      { id: project.id, description },
       {
         onSuccess: () => {
           approveLead.mutate(
@@ -57,10 +56,10 @@ export function ApproveLeadDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Approve Lead — {project?.coreDetail?.name.name}</DialogTitle>
+          <DialogTitle>Approve Lead — {project?.coreName}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
+        <form onSubmit={handleSubmit} className={styles.form}>
+          <div className={styles.fieldGroup}>
             <Label htmlFor="description">Description / Brief</Label>
             <RichTextEditor
               content={description}
@@ -68,10 +67,10 @@ export function ApproveLeadDialog({
               placeholder="Enter project brief..."
             />
           </div>
-          <div className="space-y-2">
+          <div className={styles.fieldGroup}>
             <Label htmlFor="attachments">Attachment Files</Label>
             <Input id="attachments" type="file" multiple />
-            <p className="text-xs text-muted-foreground">
+            <p className={styles.hint}>
               Optional. Upload relevant documents.
             </p>
           </div>
@@ -83,8 +82,8 @@ export function ApproveLeadDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={approveProject.isPending}>
-              {approveProject.isPending ? "Approving..." : "Approve"}
+            <Button type="submit" disabled={approveProject.isLoading}>
+              {approveProject.isLoading ? "Approving..." : "Approve"}
             </Button>
           </DialogFooter>
         </form>

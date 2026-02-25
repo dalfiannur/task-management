@@ -1,6 +1,5 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { graphqlClient } from "@/lib/graphql-client";
-import { gql } from "graphql-request";
+import { useQuery, gql } from "@/lib/graphql-client";
+import { createMutationHook, createVoidMutationHook, normalizeQueryResult } from "@/lib/hook-factories";
 import type { Comment } from "@/types/comment";
 
 const COMMENT_FIELDS = gql`
@@ -51,79 +50,55 @@ const DELETE_COMMENT = gql`
   }
 `;
 
+const COMMENT_COUNTS = gql`
+  query CommentCounts($input: commentCountsInput!) {
+    commentCounts(input: $input)
+  }
+`;
+
 export function useComments(taskId: string) {
-  return useQuery({
-    queryKey: ["comments", taskId],
-    queryFn: async (): Promise<Comment[]> => {
-      const data = await graphqlClient.request<{
-        listComments: Comment[];
-      }>(LIST_COMMENTS, { input: { taskId } });
-      return data.listComments;
-    },
-    enabled: !!taskId,
+  const result = useQuery<{ listComments: Comment[] }>(LIST_COMMENTS, {
+    variables: { input: { taskId } },
+    skip: !taskId,
   });
+  return normalizeQueryResult(result, (d) => d.listComments);
 }
 
-export function useCreateComment() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (input: {
-      taskId: string;
-      content: string;
-      mentionedUserIds?: string[];
-    }): Promise<Comment> => {
-      const data = await graphqlClient.request<{
-        createComment: Comment;
-      }>(CREATE_COMMENT, { input });
-      return data.createComment;
-    },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["comments", variables.taskId],
-      });
-    },
-  });
-}
+export const useCreateComment = createMutationHook<
+  { taskId: string; content: string; mentionedUserIds?: string[] },
+  Comment
+>({
+  mutation: CREATE_COMMENT,
+  responseKey: "createComment",
+  refetchQueries: [LIST_COMMENTS, COMMENT_COUNTS],
+});
 
-export function useUpdateComment() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (input: {
-      id: string;
-      content: string;
-      taskId: string;
-      mentionedUserIds?: string[];
-    }): Promise<Comment> => {
-      const { taskId: _taskId, ...mutationInput } = input;
-      const data = await graphqlClient.request<{
-        updateComment: Comment;
-      }>(UPDATE_COMMENT, { input: mutationInput });
-      return data.updateComment;
-    },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["comments", variables.taskId],
-      });
-    },
-  });
-}
+export const useUpdateComment = createMutationHook<
+  { id: string; content: string; taskId: string; mentionedUserIds?: string[] },
+  Comment
+>({
+  mutation: UPDATE_COMMENT,
+  responseKey: "updateComment",
+  mapVariables: ({ taskId: _taskId, ...rest }) => ({ input: rest }),
+  refetchQueries: [LIST_COMMENTS],
+});
 
-export function useDeleteComment() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (input: {
-      id: string;
-      taskId: string;
-    }): Promise<boolean> => {
-      const data = await graphqlClient.request<{
-        deleteComment: boolean;
-      }>(DELETE_COMMENT, { input: { id: input.id } });
-      return data.deleteComment;
+export const useDeleteComment = createVoidMutationHook<{
+  id: string;
+  taskId: string;
+}>({
+  mutation: DELETE_COMMENT,
+  mapVariables: (input) => ({ input: { id: input.id } }),
+  refetchQueries: [LIST_COMMENTS, COMMENT_COUNTS],
+});
+
+export function useCommentCounts(taskIds: string[]) {
+  const result = useQuery<{ commentCounts: Record<string, number> }>(
+    COMMENT_COUNTS,
+    {
+      variables: { input: { taskIds } },
+      skip: taskIds.length === 0,
     },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["comments", variables.taskId],
-      });
-    },
-  });
+  );
+  return normalizeQueryResult(result, (d) => d.commentCounts);
 }

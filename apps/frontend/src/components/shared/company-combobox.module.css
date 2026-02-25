@@ -1,0 +1,73 @@
+.trigger {
+  width: 100%;
+  justify-content: space-between;
+  font-weight: 400;
+}
+
+.selectedItem {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.placeholder {
+  color: var(--muted-foreground);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.1875rem;
+  margin-left: auto;
+}
+
+.clearIcon {
+  width: 0.875rem;
+  height: 0.875rem;
+  color: var(--muted-foreground);
+}
+
+.clearIcon:hover {
+  color: var(--foreground);
+}
+
+.chevron {
+  width: 0.875rem;
+  height: 0.875rem;
+  flex-shrink: 0;
+  opacity: 0.5;
+}
+
+.popover {
+  width: var(--radix-popover-trigger-width);
+  padding: 0;
+}
+
+.itemContent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.0625rem;
+}
+
+.itemName {
+  font-weight: 500;
+}
+
+.itemLegalName {
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+}
+
+.checkIcon {
+  margin-left: auto;
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.checkVisible {
+  opacity: 1;
+}
+
+.checkHidden {
+  opacity: 0;
+}

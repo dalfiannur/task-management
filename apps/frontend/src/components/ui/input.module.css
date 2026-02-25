@@ -1,0 +1,67 @@
+.input {
+  height: 2rem;
+  width: 100%;
+  min-width: 0;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--input);
+  background-color: transparent;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  transition: color 150ms ease, box-shadow 150ms ease;
+  outline: none;
+}
+
+/* Placeholder */
+.input::placeholder {
+  color: var(--muted-foreground);
+}
+
+/* Selection */
+.input::selection {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+}
+
+/* File input */
+.input::file-selector-button {
+  display: inline-flex;
+  height: 1.75rem;
+  border: 0;
+  background-color: transparent;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+/* Focus-visible */
+.input:focus-visible {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 50%, transparent);
+}
+
+/* Disabled */
+.input:disabled {
+  pointer-events: none;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Aria-invalid */
+.input[aria-invalid="true"] {
+  border-color: var(--destructive);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--destructive) 20%, transparent);
+}
+
+/* ============================================
+   DARK MODE
+   ============================================ */
+
+:global(.dark) .input {
+  background-color: color-mix(in srgb, var(--input) 30%, transparent);
+}
+
+:global(.dark) .input[aria-invalid="true"] {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--destructive) 40%, transparent);
+}

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -9,9 +10,11 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { Textarea } from "@/components/ui/textarea";
 import { UserCombobox } from "@/components/shared/user-combobox";
+import { DatePickerField } from "@/components/shared/date-picker-field";
 import { useCreateSubProject } from "@/hooks/use-projects";
+import styles from "./sub-project-form.module.css";
 
 interface SubProjectFormProps {
   open: boolean;
@@ -26,8 +29,18 @@ export function SubProjectForm({
 }: SubProjectFormProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [picId, setPicId] = useState<string | undefined>();
+  const [projectLeaderId, setProjectLeaderId] = useState<string | undefined>();
+  const [startDate, setStartDate] = useState<Date | undefined>();
+  const [endDate, setEndDate] = useState<Date | undefined>();
   const createSubProject = useCreateSubProject();
+
+  const resetForm = () => {
+    setName("");
+    setDescription("");
+    setProjectLeaderId(undefined);
+    setStartDate(undefined);
+    setEndDate(undefined);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,13 +49,13 @@ export function SubProjectForm({
         parentProjectId,
         name: name.trim(),
         description: description || undefined,
-        picId,
+        projectLeaderId,
+        startDate: startDate ? format(startDate, "yyyy-MM-dd") : undefined,
+        endDate: endDate ? format(endDate, "yyyy-MM-dd") : undefined,
       },
       {
         onSuccess: () => {
-          setName("");
-          setDescription("");
-          setPicId(undefined);
+          resetForm();
           onOpenChange(false);
         },
       },
@@ -51,13 +64,13 @@ export function SubProjectForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className={styles.dialogContent}>
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Create Sub-Project</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
+          <div className={styles.fieldGroup}>
+            <div className={styles.field}>
               <Label htmlFor="sub-project-name">Name</Label>
               <Input
                 id="sub-project-name"
@@ -67,17 +80,27 @@ export function SubProjectForm({
                 autoFocus
               />
             </div>
-            <div className="space-y-2">
+            <div className={styles.field}>
               <Label>Description</Label>
-              <RichTextEditor
-                content={description}
-                onChange={setDescription}
+              <Textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
                 placeholder="Describe the sub-project..."
               />
             </div>
-            <div className="space-y-2">
-              <Label>Project Manager</Label>
-              <UserCombobox value={picId} onChange={setPicId} />
+            <div className={styles.field}>
+              <Label>Project Leader</Label>
+              <UserCombobox value={projectLeaderId} onChange={setProjectLeaderId} />
+            </div>
+            <div className={styles.row}>
+              <div className={styles.field}>
+                <Label>Start Date</Label>
+                <DatePickerField value={startDate} onChange={setStartDate} />
+              </div>
+              <div className={styles.field}>
+                <Label>End Date</Label>
+                <DatePickerField value={endDate} onChange={setEndDate} />
+              </div>
             </div>
           </div>
           <DialogFooter>
@@ -90,9 +113,9 @@ export function SubProjectForm({
             </Button>
             <Button
               type="submit"
-              disabled={!name.trim() || createSubProject.isPending}
+              disabled={!name.trim() || createSubProject.isLoading}
             >
-              {createSubProject.isPending ? "Creating..." : "Create"}
+              {createSubProject.isLoading ? "Creating..." : "Create"}
             </Button>
           </DialogFooter>
         </form>

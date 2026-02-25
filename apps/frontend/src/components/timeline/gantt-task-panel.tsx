@@ -5,6 +5,7 @@ import {
   ROW_HEIGHT,
   formatDateRange,
 } from "./timeline-utils";
+import styles from "./gantt-task-panel.module.css";
 
 interface GanttTaskPanelProps {
   rows: TimelineRow[];
@@ -15,10 +16,10 @@ export function GanttTaskPanel({ rows, headerHeight }: GanttTaskPanelProps) {
   return (
     <div>
       <div
-        className="border-b bg-muted/50 px-3 flex items-end font-medium text-sm text-muted-foreground"
+        className={styles.header}
         style={{ height: headerHeight }}
       >
-        <span className="pb-2">Task</span>
+        <span className={styles.headerLabel}>Task</span>
       </div>
 
       {rows.map((row) => {
@@ -28,17 +29,17 @@ export function GanttTaskPanel({ rows, headerHeight }: GanttTaskPanelProps) {
           return (
             <div
               key={`mod-${row.module.id}`}
-              className="flex items-center gap-2 px-3 border-b bg-muted/30"
+              className={styles.moduleRow}
               style={{ height: ROW_HEIGHT }}
             >
               <div
-                className="w-1 rounded-full self-stretch my-2"
+                className={styles.moduleStripe}
                 style={{ backgroundColor: color }}
               />
-              <span className="font-semibold text-sm" style={{ color }}>
+              <span className={styles.moduleName} style={{ color }}>
                 {row.module.name}
               </span>
-              <Badge variant="secondary" className="text-xs">
+              <Badge variant="secondary" className={styles.taskCountBadge}>
                 {row.taskCount}
               </Badge>
             </div>
@@ -48,11 +49,11 @@ export function GanttTaskPanel({ rows, headerHeight }: GanttTaskPanelProps) {
         return (
           <div
             key={`task-${row.task.id}`}
-            className="flex items-center gap-2 px-3 pl-7 border-b"
+            className={styles.taskRow}
             style={{ height: ROW_HEIGHT }}
           >
-            <span className="text-sm truncate flex-1">{row.task.title}</span>
-            <span className="text-xs text-muted-foreground whitespace-nowrap">
+            <span className={styles.taskTitle}>{row.task.title}</span>
+            <span className={styles.taskDate}>
               {formatDateRange(row.task.startDate, row.task.dueDate)}
             </span>
           </div>

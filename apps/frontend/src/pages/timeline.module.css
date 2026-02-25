@@ -1,0 +1,11 @@
+.page {
+  padding: 1.25rem;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.notFound {
+  padding: 1.25rem;
+  text-align: center;
+  color: var(--muted-foreground);
+}

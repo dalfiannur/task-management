@@ -1,0 +1,101 @@
+/* ============================================
+   Popover Content
+   ============================================ */
+
+.content {
+  z-index: 50;
+  width: 18rem; /* w-72 */
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background-color: var(--popover);
+  color: var(--popover-foreground);
+  padding: 0.75rem;
+  box-shadow:
+    0 4px 6px -1px rgb(0 0 0 / 0.1),
+    0 2px 4px -2px rgb(0 0 0 / 0.1);
+  outline: none;
+  transform-origin: var(--radix-popover-content-transform-origin);
+
+  /* Enter animation */
+  animation: popoverIn 150ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Exit animation when closed */
+.content[data-state="closed"] {
+  animation: popoverOut 150ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Slide direction based on side */
+.content[data-side="bottom"] {
+  --slide-from-y: -0.5rem;
+  --slide-from-x: 0;
+}
+
+.content[data-side="top"] {
+  --slide-from-y: 0.5rem;
+  --slide-from-x: 0;
+}
+
+.content[data-side="left"] {
+  --slide-from-x: 0.5rem;
+  --slide-from-y: 0;
+}
+
+.content[data-side="right"] {
+  --slide-from-x: -0.5rem;
+  --slide-from-y: 0;
+}
+
+/* ============================================
+   Popover Header
+   ============================================ */
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+/* ============================================
+   Popover Title
+   ============================================ */
+
+.title {
+  font-weight: 500;
+}
+
+/* ============================================
+   Popover Description
+   ============================================ */
+
+.description {
+  color: var(--muted-foreground);
+}
+
+/* ============================================
+   Keyframes
+   ============================================ */
+
+@keyframes popoverIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translate(var(--slide-from-x, 0), var(--slide-from-y, 0));
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translate(0, 0);
+  }
+}
+
+@keyframes popoverOut {
+  from {
+    opacity: 1;
+    transform: scale(1) translate(0, 0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95) translate(var(--slide-from-x, 0), var(--slide-from-y, 0));
+  }
+}

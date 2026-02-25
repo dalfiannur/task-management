@@ -1,54 +1,36 @@
-import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useUIStore } from "@/stores/ui-store";
-import { ArrowLeft, Grid3X3, List, Upload } from "lucide-react";
-import { Link } from "@tanstack/react-router";
+import { Grid3X3, List } from "lucide-react";
 import type { MediaViewMode } from "@/types/media";
+import styles from "./media-header.module.css";
 
-interface MediaHeaderProps {
-  projectId: string;
-  onUploadClick: () => void;
-}
-
-export function MediaHeader({ projectId, onUploadClick }: MediaHeaderProps) {
+export function MediaHeader() {
   const { mediaViewMode, setMediaViewMode } = useUIStore();
 
   return (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        <Button size="sm" variant="ghost" asChild>
-          <Link
-            to="/projects/$projectId"
-            params={{ projectId }}
-          >
-            <ArrowLeft className="size-4" />
-          </Link>
-        </Button>
+    <div className={styles.header}>
+      <div className={styles.left}>
         <div>
-        <h1 className="text-2xl font-semibold">Media & Files</h1>
-        <p className="text-sm text-muted-foreground">
-          Manage project files and attachments
-        </p>
+          <h1 className={styles.title}>Media & Files</h1>
+          <p className={styles.subtitle}>
+            Manage project files and attachments
+          </p>
         </div>
       </div>
-      <div className="flex items-center gap-2">
+      <div className={styles.right}>
         <Tabs
           value={mediaViewMode}
           onValueChange={(v) => setMediaViewMode(v as MediaViewMode)}
         >
-          <TabsList className="h-8">
-            <TabsTrigger value="grid" className="px-2">
-              <Grid3X3 className="size-4" />
+          <TabsList className={styles.tabsList}>
+            <TabsTrigger value="grid" className={styles.tabsTrigger}>
+              <Grid3X3 className={styles.tabsIcon} />
             </TabsTrigger>
-            <TabsTrigger value="table" className="px-2">
-              <List className="size-4" />
+            <TabsTrigger value="table" className={styles.tabsTrigger}>
+              <List className={styles.tabsIcon} />
             </TabsTrigger>
           </TabsList>
         </Tabs>
-        <Button size="sm" onClick={onUploadClick}>
-          <Upload className="size-4 mr-1" />
-          Upload
-        </Button>
       </div>
     </div>
   );

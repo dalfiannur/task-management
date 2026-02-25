@@ -1,0 +1,7 @@
+.page {
+  padding: 1.25rem;
+}
+
+.page > * + * {
+  margin-top: 0.75rem;
+}

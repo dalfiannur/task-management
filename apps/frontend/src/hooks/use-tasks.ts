@@ -1,6 +1,5 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { graphqlClient } from "@/lib/graphql-client";
-import { gql } from "graphql-request";
+import { useQuery, gql } from "@/lib/graphql-client";
+import { createMutationHook, createVoidMutationHook, normalizeQueryResult } from "@/lib/hook-factories";
 import type {
   Task,
   CreateTaskInput,
@@ -22,6 +21,8 @@ const TASK_FIELDS = gql`
       startDate
       dueDate
       order
+      createdAt
+      updatedAt
     }
     taskAssignment {
       assigneeIds
@@ -105,6 +106,8 @@ interface TaskResponse {
     startDate: string;
     dueDate: string;
     order: number;
+    createdAt: string;
+    updatedAt: string;
   };
   taskAssignment: {
     assigneeIds: string;
@@ -142,8 +145,8 @@ function mapTask(t: TaskResponse): Task {
     assigneeIds,
     moduleId: t.taskAssignment.moduleId,
     labelIds,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    createdAt: t.taskInfo.createdAt || new Date().toISOString(),
+    updatedAt: t.taskInfo.updatedAt || new Date().toISOString(),
   };
 }
 
@@ -161,153 +164,121 @@ interface TaskFilters {
 }
 
 export function useTasks(filters: TaskFilters = {}) {
-  return useQuery({
-    queryKey: ["tasks", filters],
-    queryFn: async (): Promise<Task[]> => {
-      if (!filters.moduleId) return [];
-      const data = await graphqlClient.request<{
-        listTasks: TaskResponse[];
-      }>(LIST_TASKS, {
-        input: {
-          moduleId: filters.moduleId,
-          status: filters.status,
-          priority: filters.priority,
-          assigneeId: filters.assignee,
-          search: filters.search,
-          sort: filters.sort,
-          page: filters.page,
-        },
-      });
-      return data.listTasks.map(mapTask);
+  const result = useQuery<{ listTasks: TaskResponse[] }>(LIST_TASKS, {
+    variables: {
+      input: {
+        moduleId: filters.moduleId,
+        status: filters.status,
+        priority: filters.priority,
+        assigneeId: filters.assignee,
+        search: filters.search,
+        sort: filters.sort,
+        page: filters.page,
+      },
     },
-    enabled: !!filters.moduleId,
+    skip: !filters.moduleId,
   });
+  return normalizeQueryResult(result, (d) => d.listTasks.map(mapTask));
 }
 
 export function useTask(taskId: string) {
-  return useQuery({
-    queryKey: ["tasks", taskId],
-    queryFn: async (): Promise<Task | undefined> => {
-      const data = await graphqlClient.request<{
-        getTask: TaskResponse | null;
-      }>(GET_TASK, { input: { id: taskId } });
-      return data.getTask ? mapTask(data.getTask) : undefined;
-    },
-    enabled: !!taskId,
+  const result = useQuery<{ getTask: TaskResponse | null }>(GET_TASK, {
+    variables: { input: { id: taskId } },
+    skip: !taskId,
   });
+  return normalizeQueryResult(result, (d) =>
+    d.getTask ? mapTask(d.getTask) : undefined,
+  );
 }
 
-export function useCreateTask() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (input: CreateTaskInput): Promise<Task> => {
-      const data = await graphqlClient.request<{
-        createTask: TaskResponse;
-      }>(CREATE_TASK, {
-        input: {
-          title: input.title,
-          description: input.description,
-          status: input.status,
-          priority: input.priority,
-          startDate: input.startDate,
-          dueDate: input.dueDate,
-          assigneeIds: input.assigneeIds,
-          moduleId: input.moduleId,
-          labelIds: input.labelIds,
-        },
-      });
-      return mapTask(data.createTask);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["activities"] });
-    },
+export function useAllTasks(filters: { projectId?: string; assigneeId?: string } = {}) {
+  const result = useQuery<{ listAllTasks: TaskResponse[] }>(LIST_ALL_TASKS, {
+    variables: { input: { projectId: filters.projectId, assigneeId: filters.assigneeId } },
   });
+  return normalizeQueryResult(result, (d) => d.listAllTasks.map(mapTask));
 }
 
-export function useUpdateTask() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({
-      id,
-      input,
-    }: {
-      id: string;
-      input: UpdateTaskInput;
-    }): Promise<Task> => {
-      const data = await graphqlClient.request<{
-        updateTask: TaskResponse;
-      }>(UPDATE_TASK, {
-        input: {
-          id,
-          title: input.title,
-          description: input.description,
-          status: input.status,
-          priority: input.priority,
-          startDate: input.startDate,
-          dueDate: input.dueDate,
-          assigneeIds: input.assigneeIds,
-          labelIds: input.labelIds,
-        },
-      });
-      return mapTask(data.updateTask);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["activities"] });
-    },
-  });
+/** Filter tasks with upcoming due dates, sorted soonest first. Excludes done/cancelled. */
+export function getUpcomingDeadlines(tasks: Task[], limit = 8): Task[] {
+  return tasks
+    .filter((t) => t.dueDate && t.status !== "done" && t.status !== "cancelled")
+    .sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime())
+    .slice(0, limit);
 }
 
-export function useDeleteTask() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: string): Promise<void> => {
-      await graphqlClient.request<{ deleteTask: boolean }>(DELETE_TASK, {
-        input: { id },
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-    },
-  });
+/** Filter tasks that are past their due date and not done/cancelled. */
+export function getOverdueTasks(tasks: Task[]): Task[] {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  return tasks.filter(
+    (t) => t.dueDate && new Date(t.dueDate) < now && t.status !== "done" && t.status !== "cancelled",
+  );
 }
 
-export function useReorderTask() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({
-      id,
-      newOrder,
-      newStatus,
-    }: {
-      id: string;
-      newOrder: number;
-      newStatus?: TaskStatus;
-    }): Promise<Task> => {
-      const data = await graphqlClient.request<{
-        reorderTask: TaskResponse;
-      }>(REORDER_TASK, { input: { id, newOrder, newStatus } });
-      return mapTask(data.reorderTask);
+export const useCreateTask = createMutationHook<
+  CreateTaskInput,
+  TaskResponse,
+  Task
+>({
+  mutation: CREATE_TASK,
+  responseKey: "createTask",
+  mapVariables: (input) => ({
+    input: {
+      title: input.title,
+      description: input.description,
+      status: input.status,
+      priority: input.priority,
+      startDate: input.startDate,
+      dueDate: input.dueDate,
+      assigneeIds: input.assigneeIds,
+      moduleId: input.moduleId,
+      labelIds: input.labelIds,
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-    },
-  });
-}
+  }),
+  mapResponse: mapTask,
+  refetchQueries: [LIST_TASKS, LIST_ALL_TASKS],
+});
 
-export function useAllTasks(filters: { projectId?: string } = {}) {
-  return useQuery({
-    queryKey: ["allTasks", filters],
-    queryFn: async (): Promise<Task[]> => {
-      const data = await graphqlClient.request<{
-        listAllTasks: TaskResponse[];
-      }>(LIST_ALL_TASKS, {
-        input: {
-          projectId: filters.projectId,
-        },
-      });
-      return data.listAllTasks.map(mapTask);
+export const useUpdateTask = createMutationHook<
+  { id: string; input: UpdateTaskInput },
+  TaskResponse,
+  Task
+>({
+  mutation: UPDATE_TASK,
+  responseKey: "updateTask",
+  mapVariables: (vars) => ({
+    input: {
+      id: vars.id,
+      title: vars.input.title,
+      description: vars.input.description,
+      status: vars.input.status,
+      priority: vars.input.priority,
+      startDate: vars.input.startDate,
+      dueDate: vars.input.dueDate,
+      assigneeIds: vars.input.assigneeIds,
+      labelIds: vars.input.labelIds,
     },
-  });
-}
+  }),
+  mapResponse: mapTask,
+  refetchQueries: [LIST_TASKS, LIST_ALL_TASKS, GET_TASK],
+});
+
+export const useDeleteTask = createVoidMutationHook<string>({
+  mutation: DELETE_TASK,
+  mapVariables: (id) => ({ input: { id } }),
+  refetchQueries: [LIST_TASKS, LIST_ALL_TASKS],
+});
+
+export const useReorderTask = createMutationHook<
+  { id: string; newOrder: number; newStatus?: TaskStatus },
+  TaskResponse,
+  Task
+>({
+  mutation: REORDER_TASK,
+  responseKey: "reorderTask",
+  mapVariables: (vars) => ({
+    input: { id: vars.id, newOrder: vars.newOrder, newStatus: vars.newStatus },
+  }),
+  mapResponse: mapTask,
+  refetchQueries: [LIST_TASKS, LIST_ALL_TASKS],
+});

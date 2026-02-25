@@ -1,0 +1,151 @@
+.page {
+  padding: 1.25rem;
+}
+
+.pageSpacing > * + * {
+  margin-top: 1.5rem;
+}
+
+.skeletonPage {
+  padding: 1.25rem;
+}
+
+.skeletonPage > * + * {
+  margin-top: 1.25rem;
+}
+
+.skeletonHeader > * + * {
+  margin-top: 0.375rem;
+}
+
+.skeletonStatsGrid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .skeletonStatsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .skeletonStatsGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.skeletonContentGrid {
+  display: grid;
+  gap: 1.25rem;
+}
+
+@media (min-width: 1024px) {
+  .skeletonContentGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.skeletonMainCol {
+  grid-column: span 2;
+}
+
+.skeletonMainCol > * + * {
+  margin-top: 1.25rem;
+}
+
+.skeletonSideCol > * + * {
+  margin-top: 1.25rem;
+}
+
+.fadeUp {
+  animation: fade-up 0.4s ease-out both;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.header {
+  composes: fadeUp;
+}
+
+.headerTitle {
+  font-size: 1.5rem;
+  line-height: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.headerSubtitle {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--muted-foreground);
+  margin-top: 0.125rem;
+  font-family: var(--font-mono);
+}
+
+.statsGrid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .statsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .statsGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.statItem {
+  composes: fadeUp;
+}
+
+.contentGrid {
+  display: grid;
+  gap: 1.25rem;
+}
+
+@media (min-width: 1024px) {
+  .contentGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.mainCol {
+  composes: fadeUp;
+}
+
+@media (min-width: 1024px) {
+  .mainCol {
+    grid-column: span 2;
+  }
+}
+
+.mainCol > * + * {
+  margin-top: 1.25rem;
+}
+
+.sideCol {
+  composes: fadeUp;
+}
+
+.sideCol > * + * {
+  margin-top: 1.25rem;
+}
+
+.fullWidth {
+  composes: fadeUp;
+}

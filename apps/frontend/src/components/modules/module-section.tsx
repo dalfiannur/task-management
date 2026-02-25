@@ -34,16 +34,26 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useTasks, useUpdateTask } from "@/hooks/use-tasks";
 import { useDeleteModule } from "@/hooks/use-modules";
-import { useUsers } from "@/hooks/use-users";
-import { ChevronRight, Delete, Plus } from "lucide-react";
+import { useUsers, useUser } from "@/hooks/use-users";
+import { ChevronRight, MessageSquare, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
+import { ModuleForm } from "./module-form";
+import { CommentsDialog } from "@/components/tasks/comments-dialog";
+import { useCommentCounts } from "@/hooks/use-comments";
 import { TASK_STATUS_CONFIG, type Module, type Task, type TaskStatus, type UpdateTaskInput } from "@/types/task";
 import { type ProjectStatus, } from "@/types/project"
-import { cn } from "@/lib/utils";
+import { cn, getInitials } from "@/lib/utils";
 import { Button } from "../ui/button";
+import s from "./module-section.module.css";
 
 export const MODULE_COLORS = [
   "#3b82f6", // blue
@@ -69,7 +79,7 @@ function TaskAssigneeCell({ assigneeIds }: { assigneeIds: string[] }) {
   const assignedUsers = allUsers.filter((u) => assigneeIds.includes(u.id));
 
   if (assignedUsers.length === 0) {
-    return <span className="text-muted-foreground">&mdash;</span>;
+    return <span className={s.assigneeDash}>&mdash;</span>;
   }
 
   if (assignedUsers.length === 1) {
@@ -81,19 +91,19 @@ function TaskAssigneeCell({ assigneeIds }: { assigneeIds: string[] }) {
       .toUpperCase()
       .slice(0, 2);
     return (
-      <div className="flex items-center gap-2">
-        <Avatar className="size-5">
+      <div className={s.singleAssignee}>
+        <Avatar className={s.assigneeAvatar}>
           <AvatarImage src={user.avatarUrl} />
-          <AvatarFallback className="text-[10px]">{initials}</AvatarFallback>
+          <AvatarFallback className={s.assigneeFallback}>{initials}</AvatarFallback>
         </Avatar>
-        <span className="text-sm truncate">{user.name}</span>
+        <span className={s.assigneeName}>{user.name}</span>
       </div>
     );
   }
 
   return (
-    <div className="flex items-center gap-1.5">
-      <div className="flex items-center -space-x-1.5">
+    <div className={s.multiAssignee}>
+      <div className={s.avatarStack}>
         {assignedUsers.slice(0, 3).map((user) => {
           const initials = user.name
             .split(" ")
@@ -102,15 +112,15 @@ function TaskAssigneeCell({ assigneeIds }: { assigneeIds: string[] }) {
             .toUpperCase()
             .slice(0, 2);
           return (
-            <Avatar key={user.id} className="size-5 ring-1 ring-background">
+            <Avatar key={user.id} className={s.stackedAvatar}>
               <AvatarImage src={user.avatarUrl} />
-              <AvatarFallback className="text-[10px]">{initials}</AvatarFallback>
+              <AvatarFallback className={s.assigneeFallback}>{initials}</AvatarFallback>
             </Avatar>
           );
         })}
       </div>
       {assignedUsers.length > 3 && (
-        <span className="text-xs text-muted-foreground">+{assignedUsers.length - 3}</span>
+        <span className={s.overflowCount}>+{assignedUsers.length - 3}</span>
       )}
     </div>
   );
@@ -127,7 +137,13 @@ export function ModuleSection({
   const updateTask = useUpdateTask();
   const deleteModule = useDeleteModule();
   const [taskFormOpen, setTaskFormOpen] = useState(false);
+  const [editFormOpen, setEditFormOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [commentsTaskId, setCommentsTaskId] = useState<string | null>(null);
+  const { data: picUser } = useUser(module.picId);
+  const taskIds = tasks?.map((t) => t.id) ?? [];
+  const { data: commentCounts } = useCommentCounts(taskIds);
   const color = MODULE_COLORS[colorIndex % MODULE_COLORS.length];
 
   const taskCount = tasks?.length ?? 0;
@@ -138,46 +154,72 @@ export function ModuleSection({
     <>
       <Collapsible defaultOpen className="group/module">
         <div
-          className="rounded-lg border overflow-hidden border-l-4"
+          className={s.container}
           style={{ borderLeftColor: color }}
         >
-          <div className="flex w-full items-center gap-2 px-4 py-3">
-            <CollapsibleTrigger className="flex items-center gap-2 flex-1 hover:bg-accent/50 transition-colors rounded -m-1 p-1">
-              <ChevronRight className="size-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]/module:rotate-90" />
-              <span className="font-semibold text-sm" style={{ color }}>
+          <div className={s.headerBar}>
+            <CollapsibleTrigger className={s.trigger}>
+              <ChevronRight className={s.chevron} />
+              <span className={s.moduleName} style={{ color }}>
                 {module.name}
               </span>
-              <Badge variant="secondary" className="ml-1 text-xs tabular-nums">
+              <Badge variant="secondary" className={s.countBadge}>
                 {isLoading ? "..." : taskCount}
               </Badge>
+              {module.description && (
+                <span className={s.headerDescription}>{module.description}</span>
+              )}
               {!isLoading && taskCount > 0 && (
-                <div className="flex items-center gap-2 ml-auto mr-1">
-                  <div className="h-1 w-16 rounded-full bg-muted overflow-hidden">
+                <div className={s.progressGroup}>
+                  <div className={s.progressTrack}>
                     <div
-                      className="h-full rounded-full transition-all duration-500"
+                      className={s.progressFill}
                       style={{
                         width: `${progressPct}%`,
                         backgroundColor: color,
                       }}
                     />
                   </div>
-                  <span className="text-[11px] text-muted-foreground tabular-nums w-7 text-right">
+                  <span className={s.progressText}>
                     {progressPct}%
                   </span>
                 </div>
               )}
+              {picUser && (
+                <span className={s.headerPic}>
+                  <Avatar className={s.headerPicAvatar}>
+                    <AvatarImage src={picUser.avatarUrl} />
+                    <AvatarFallback className={s.assigneeFallback}>
+                      {getInitials(picUser.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className={s.headerPicName}>{picUser.name}</span>
+                </span>
+              )}
             </CollapsibleTrigger>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="ml-auto"
-                >
-                  <Delete className="size-4 mr-2" />
-                  Delete Module
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className={s.menuButton}>
+                  <MoreHorizontal className={s.menuIcon} />
                 </Button>
-              </AlertDialogTrigger>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setEditFormOpen(true)}>
+                  <Pencil className={s.menuItemIcon} />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className={s.destructiveItem}
+                  onClick={() => setDeleteDialogOpen(true)}
+                >
+                  <Trash2 className={s.menuItemIcon} />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
               <AlertDialogContent>
                 <AlertDialogHeader>
                   <AlertDialogTitle>Delete module?</AlertDialogTitle>
@@ -199,7 +241,7 @@ export function ModuleSection({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="pl-10">Task</TableHead>
+                  <TableHead className={s.skeletonCell}>Task</TableHead>
                   <TableHead className="w-[120px]">Status</TableHead>
                   <TableHead className="w-[120px]">Priority</TableHead>
                   <TableHead className="w-[120px]">Due Date</TableHead>
@@ -211,7 +253,7 @@ export function ModuleSection({
                   <>
                     {[1, 2].map((i) => (
                       <TableRow key={i}>
-                        <TableCell className="pl-10">
+                        <TableCell className={s.skeletonCell}>
                           <Skeleton className="h-4 w-40" />
                         </TableCell>
                         <TableCell>
@@ -235,7 +277,7 @@ export function ModuleSection({
                   <TableRow>
                     <TableCell
                       colSpan={5}
-                      className="text-center py-6 text-muted-foreground"
+                      className={s.emptyCell}
                     >
                       No tasks in this module
                     </TableCell>
@@ -249,17 +291,19 @@ export function ModuleSection({
                       task={task}
                       updateTask={updateTask}
                       onNavigate={() => setSelectedTaskId(task.id)}
+                      commentCount={commentCounts?.[task.id] ?? 0}
+                      onOpenComments={() => setCommentsTaskId(task.id)}
                     />
                   ))}
 
                 {!((projectStatus === "prospect" || projectStatus === "win") && module.name !== "Proposal") && (
                   <TableRow
-                    className="cursor-pointer hover:bg-accent/50"
+                    className={s.addTaskRow}
                     onClick={() => setTaskFormOpen(true)}
                   >
-                    <TableCell colSpan={5} className="pl-10 py-2">
-                      <span className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors">
-                        <Plus className="size-3.5" />
+                    <TableCell colSpan={5} className={s.addTaskCell}>
+                      <span className={s.addTaskLabel}>
+                        <Plus className={s.addTaskIcon} />
                         Add task
                       </span>
                     </TableCell>
@@ -278,12 +322,29 @@ export function ModuleSection({
         projectId={projectId}
       />
 
+      <ModuleForm
+        open={editFormOpen}
+        onOpenChange={setEditFormOpen}
+        projectId={projectId}
+        module={module}
+      />
+
       {selectedTaskId && (
         <TaskDetail
           taskId={selectedTaskId}
           projectId={projectId}
           moduleId={module.id}
           onClose={() => setSelectedTaskId(null)}
+        />
+      )}
+
+      {commentsTaskId && (
+        <CommentsDialog
+          open={!!commentsTaskId}
+          onOpenChange={(open) => !open && setCommentsTaskId(null)}
+          taskId={commentsTaskId}
+          projectId={projectId}
+          taskTitle={tasks?.find((t) => t.id === commentsTaskId)?.title}
         />
       )}
     </>
@@ -294,17 +355,32 @@ function TaskRow({
   task,
   updateTask,
   onNavigate,
+  commentCount,
+  onOpenComments,
 }: {
   task: Task;
   updateTask: ReturnType<typeof useUpdateTask>;
   onNavigate: () => void;
+  commentCount: number;
+  onOpenComments: () => void;
 }) {
   return (
     <TableRow
-      className="cursor-pointer hover:bg-accent/50"
+      className={s.taskRow}
       onClick={onNavigate}
     >
-      <TableCell className="pl-10 font-medium">{task.title}</TableCell>
+      <TableCell className={s.taskTitle}>
+        {task.title}
+        {commentCount > 0 && (
+          <button
+            className={s.commentBadge}
+            onClick={(e) => { e.stopPropagation(); onOpenComments(); }}
+          >
+            <MessageSquare className={s.commentIcon} />
+            <span>{commentCount}</span>
+          </button>
+        )}
+      </TableCell>
       <TableCell onClick={(e) => e.stopPropagation()}>
         <Select
           value={task.status}
@@ -319,7 +395,7 @@ function TaskRow({
         >
           <SelectTrigger
             className={cn(
-              "h-auto rounded-full border-transparent px-2 py-0.5 text-xs font-medium w-fit shadow-none [&>svg]:hidden",
+              s.statusTrigger,
               TASK_STATUS_CONFIG[task.status].color,
             )}
           >
@@ -339,7 +415,7 @@ function TaskRow({
       <TableCell>
         <TaskPriorityBadge priority={task.priority} />
       </TableCell>
-      <TableCell className="text-muted-foreground">
+      <TableCell className={s.dueDateCell}>
         {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "\u2014"}
       </TableCell>
       <TableCell>

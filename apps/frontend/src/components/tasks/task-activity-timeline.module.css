@@ -1,0 +1,120 @@
+.container > * + * {
+  margin-top: 1.25rem;
+}
+
+.section > * + * {
+  margin-top: 0.625rem;
+}
+
+.sectionLabel {
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: color-mix(in srgb, var(--muted-foreground) 50%, transparent);
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.sectionIcon {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.loadingRow {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.875rem;
+  line-height: 1rem;
+  font-family: var(--font-mono);
+  color: var(--muted-foreground);
+  padding: 0.875rem 0;
+}
+
+.spinner {
+  width: 0.875rem;
+  height: 0.875rem;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.emptyText {
+  font-size: 0.875rem;
+  line-height: 1rem;
+  color: color-mix(in srgb, var(--muted-foreground) 60%, transparent);
+  padding: 0.375rem 0;
+}
+
+.commentsList > * + * {
+  margin-top: 0.625rem;
+}
+
+.activityList > * + * {
+  margin-top: 0.625rem;
+}
+
+/* ActivityItem */
+.activityRow {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.875rem;
+  line-height: 1rem;
+  color: var(--muted-foreground);
+  padding: 0.25rem 0;
+}
+
+.activityIcon {
+  width: 0.875rem;
+  height: 0.875rem;
+  flex-shrink: 0;
+}
+
+.iconGreen {
+  color: #22c55e;
+}
+
+.iconRed {
+  color: #ef4444;
+}
+
+.iconBlue {
+  color: #3b82f6;
+}
+
+.actorName {
+  font-weight: 500;
+  color: var(--foreground);
+}
+
+.activityTime {
+  font-size: 0.875rem;
+  font-family: var(--font-mono);
+  color: color-mix(in srgb, var(--muted-foreground) 60%, transparent);
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.activityChanges > * + * {
+  margin-top: 0.25rem;
+}
+
+.deletedIcon {
+  width: 0.875rem;
+  height: 0.875rem;
+  color: #ef4444;
+  flex-shrink: 0;
+  text-align: center;
+  font-weight: 700;
+}

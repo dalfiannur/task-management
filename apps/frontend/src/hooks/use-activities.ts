@@ -1,6 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
-import { graphqlClient } from "@/lib/graphql-client";
-import { gql } from "graphql-request";
+import { useQuery, gql } from "@/lib/graphql-client";
 import type { Activity } from "@/types/activity";
 
 const ACTIVITY_FIELDS = gql`
@@ -11,6 +9,7 @@ const ACTIVITY_FIELDS = gql`
       actorId
       actorName
       action
+      taskTitle
       changes
       createdAt
     }
@@ -26,15 +25,41 @@ const LIST_ACTIVITIES = gql`
   }
 `;
 
+const LIST_RECENT_ACTIVITIES = gql`
+  ${ACTIVITY_FIELDS}
+  query ListRecentActivities($input: listRecentActivitiesInput!) {
+    listRecentActivities(input: $input) {
+      ...ActivityFields
+    }
+  }
+`;
+
 export function useActivities(taskId: string) {
-  return useQuery({
-    queryKey: ["activities", taskId],
-    queryFn: async (): Promise<Activity[]> => {
-      const data = await graphqlClient.request<{
-        listActivities: Activity[];
-      }>(LIST_ACTIVITIES, { input: { taskId } });
-      return data.listActivities;
-    },
-    enabled: !!taskId,
+  const { data, loading, error } = useQuery<{
+    listActivities: Activity[];
+  }>(LIST_ACTIVITIES, {
+    variables: { input: { taskId } },
+    skip: !taskId,
   });
+
+  return {
+    data: data?.listActivities,
+    isLoading: loading,
+    error: error ?? null,
+  };
+}
+
+export function useRecentActivities(limit = 20) {
+  const { data, loading, error } = useQuery<{
+    listRecentActivities: Activity[];
+  }>(LIST_RECENT_ACTIVITIES, {
+    variables: { input: { limit } },
+    pollInterval: 30000,
+  });
+
+  return {
+    data: data?.listRecentActivities,
+    isLoading: loading,
+    error: error ?? null,
+  };
 }

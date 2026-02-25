@@ -1,7 +1,5 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { gql } from "graphql-request";
-import { graphqlClient } from "@/lib/graphql-client";
-import { queryClient } from "@/lib/query-client";
+import { useQuery, gql } from "@/lib/graphql-client";
+import { createVoidMutationHook, normalizeQueryResult } from "@/lib/hook-factories";
 
 const LIST_PROJECT_MEMBERS = gql`
   query ListProjectMembers($input: listProjectMembersInput!) {
@@ -36,40 +34,28 @@ export interface ProjectMember {
 }
 
 export function useProjectMembers(projectId: string) {
-  return useQuery({
-    queryKey: ["project-members", projectId],
-    enabled: !!projectId,
-    queryFn: async (): Promise<ProjectMember[]> => {
-      const data = await graphqlClient.request<{
-        listProjectMembers: ProjectMember[];
-      }>(LIST_PROJECT_MEMBERS, { input: { projectId } });
-      return data.listProjectMembers;
+  const result = useQuery<{ listProjectMembers: ProjectMember[] }>(
+    LIST_PROJECT_MEMBERS,
+    {
+      variables: { input: { projectId } },
+      skip: !projectId,
     },
-  });
+  );
+  return normalizeQueryResult(result, (d) => d.listProjectMembers);
 }
 
-export function useAddProjectMember() {
-  return useMutation({
-    mutationFn: async (input: { projectId: string; userId: string }) => {
-      await graphqlClient.request(ADD_PROJECT_MEMBER, { input });
-    },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["project-members", variables.projectId],
-      });
-    },
-  });
-}
+export const useAddProjectMember = createVoidMutationHook<{
+  projectId: string;
+  userId: string;
+}>({
+  mutation: ADD_PROJECT_MEMBER,
+  refetchQueries: [LIST_PROJECT_MEMBERS],
+});
 
-export function useRemoveProjectMember() {
-  return useMutation({
-    mutationFn: async (input: { projectId: string; userId: string }) => {
-      await graphqlClient.request(REMOVE_PROJECT_MEMBER, { input });
-    },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["project-members", variables.projectId],
-      });
-    },
-  });
-}
+export const useRemoveProjectMember = createVoidMutationHook<{
+  projectId: string;
+  userId: string;
+}>({
+  mutation: REMOVE_PROJECT_MEMBER,
+  refetchQueries: [LIST_PROJECT_MEMBERS],
+});

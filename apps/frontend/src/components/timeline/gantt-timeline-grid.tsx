@@ -19,6 +19,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import styles from "./gantt-timeline-grid.module.css";
 
 interface GanttTimelineGridProps {
   rows: TimelineRow[];
@@ -54,13 +55,13 @@ export function GanttTimelineGrid({
   return (
     <div ref={gridRef} style={{ width: totalWidth }}>
       {/* Week + Day headers */}
-      <div style={{ height: headerHeight }} className="border-b">
+      <div style={{ height: headerHeight }} className={styles.headerRow}>
         {/* Week row */}
-        <div className="flex" style={{ height: headerHeight / 2 }}>
+        <div className={styles.weekRow} style={{ height: headerHeight / 2 }}>
           {weeks.map((week: WeekGroup) => (
             <div
               key={week.weekStart.toISOString()}
-              className="border-r border-b text-xs font-medium text-muted-foreground flex items-center justify-center bg-muted/50"
+              className={styles.weekCell}
               style={{ width: week.days.length * DAY_WIDTH }}
             >
               {format(week.weekStart, "MMM d")}
@@ -68,20 +69,20 @@ export function GanttTimelineGrid({
           ))}
         </div>
         {/* Day row */}
-        <div className="flex" style={{ height: headerHeight / 2 }}>
+        <div className={styles.dayRow} style={{ height: headerHeight / 2 }}>
           {range.days.map((day) => {
             const isToday = isSameDay(day, today);
             const weekend = isWeekend(day);
             return (
               <div
                 key={day.toISOString()}
-                className={`border-r text-[10px] flex items-center justify-center ${
+                className={
                   isToday
-                    ? "bg-red-100 dark:bg-red-950 font-bold text-red-600"
+                    ? styles.dayCellToday
                     : weekend
-                      ? "bg-muted/30 text-muted-foreground"
-                      : "text-muted-foreground"
-                }`}
+                      ? styles.dayCellWeekend
+                      : styles.dayCellNormal
+                }
                 style={{ width: DAY_WIDTH }}
               >
                 {format(day, "d")}
@@ -93,22 +94,22 @@ export function GanttTimelineGrid({
 
       {/* Grid body */}
       <TooltipProvider delayDuration={200}>
-        <div className="relative">
+        <div className={styles.bodyContainer}>
           {/* Day column backgrounds */}
-          <div className="absolute inset-0 flex pointer-events-none">
+          <div className={styles.columnBackgrounds}>
             {range.days.map((day) => {
               const isToday = isSameDay(day, today);
               const weekend = isWeekend(day);
               return (
                 <div
                   key={day.toISOString()}
-                  className={`border-r shrink-0 ${
+                  className={
                     isToday
-                      ? "bg-red-50/50 dark:bg-red-950/20"
+                      ? styles.colBgToday
                       : weekend
-                        ? "bg-muted/20"
-                        : ""
-                  }`}
+                        ? styles.colBgWeekend
+                        : styles.colBgNormal
+                  }
                   style={{
                     width: DAY_WIDTH,
                     height: rows.length * ROW_HEIGHT,
@@ -121,7 +122,7 @@ export function GanttTimelineGrid({
           {/* Today marker line */}
           {todayIndex >= 0 && (
             <div
-              className="absolute top-0 w-0.5 bg-red-500 z-10 pointer-events-none"
+              className={styles.todayMarker}
               style={{
                 left: todayIndex * DAY_WIDTH + DAY_WIDTH / 2,
                 height: rows.length * ROW_HEIGHT,
@@ -135,7 +136,7 @@ export function GanttTimelineGrid({
               return (
                 <div
                   key={`mod-${row.module.id}`}
-                  className="border-b bg-muted/10"
+                  className={styles.moduleRow}
                   style={{ height: ROW_HEIGHT }}
                 />
               );
@@ -148,25 +149,24 @@ export function GanttTimelineGrid({
             return (
               <div
                 key={`task-${row.task.id}`}
-                className="border-b relative"
+                className={styles.taskRow}
                 style={{ height: ROW_HEIGHT }}
               >
                 {bar && (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <div
-                        className="absolute top-2 h-5 rounded-md cursor-default transition-opacity hover:opacity-80"
+                        className={styles.taskBar}
                         style={{
                           left: bar.left,
                           width: bar.width,
                           backgroundColor: color,
-                          opacity: 0.85,
                         }}
                       />
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p className="font-medium">{row.task.title}</p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className={styles.tooltipTitle}>{row.task.title}</p>
+                      <p className={styles.tooltipDate}>
                         {formatDateRange(
                           row.task.startDate,
                           row.task.dueDate,

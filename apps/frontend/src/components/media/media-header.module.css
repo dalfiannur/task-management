@@ -1,0 +1,45 @@
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.title {
+  font-size: 1.125rem;
+  line-height: 1.5rem;
+  font-weight: 600;
+}
+
+.subtitle {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--muted-foreground);
+  font-family: var(--font-mono);
+}
+
+.right {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.tabsList {
+  height: 1.75rem;
+}
+
+.tabsTrigger {
+  padding-left: 0.375rem;
+  padding-right: 0.375rem;
+}
+
+.tabsIcon {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+

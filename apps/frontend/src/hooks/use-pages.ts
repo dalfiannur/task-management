@@ -1,6 +1,5 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { graphqlClient } from "@/lib/graphql-client";
-import { gql } from "graphql-request";
+import { useQuery, gql } from "@/lib/graphql-client";
+import { createMutationHook, createVoidMutationHook, normalizeQueryResult } from "@/lib/hook-factories";
 import type { Page } from "@/types/page";
 
 const PAGE_FIELDS = gql`
@@ -71,117 +70,60 @@ const REORDER_PAGES = gql`
 `;
 
 export function usePages(projectId: string) {
-  return useQuery({
-    queryKey: ["pages", projectId],
-    queryFn: async (): Promise<Page[]> => {
-      const data = await graphqlClient.request<{
-        listPages: Page[];
-      }>(LIST_PAGES, { input: { projectId } });
-      return data.listPages;
-    },
-    enabled: !!projectId,
+  const result = useQuery<{ listPages: Page[] }>(LIST_PAGES, {
+    variables: { input: { projectId } },
+    skip: !projectId,
   });
+  return normalizeQueryResult(result, (d) => d.listPages);
 }
 
 export function usePage(id: string) {
-  return useQuery({
-    queryKey: ["page", id],
-    queryFn: async (): Promise<Page> => {
-      const data = await graphqlClient.request<{
-        getPage: Page;
-      }>(GET_PAGE, { input: { id } });
-      return data.getPage;
-    },
-    enabled: !!id,
+  const result = useQuery<{ getPage: Page }>(GET_PAGE, {
+    variables: { input: { id } },
+    skip: !id,
   });
+  return normalizeQueryResult(result, (d) => d.getPage);
 }
 
-export function useCreatePage() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (input: {
-      projectId: string;
-      title: string;
-      icon?: string;
-      content?: string;
-    }): Promise<Page> => {
-      const data = await graphqlClient.request<{
-        createPage: Page;
-      }>(CREATE_PAGE, { input });
-      return data.createPage;
-    },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["pages", variables.projectId],
-      });
-    },
-  });
-}
+export const useCreatePage = createMutationHook<
+  { projectId: string; title: string; icon?: string; content?: string },
+  Page
+>({
+  mutation: CREATE_PAGE,
+  responseKey: "createPage",
+  refetchQueries: [LIST_PAGES],
+});
 
-export function useUpdatePage() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (input: {
-      id: string;
-      projectId: string;
-      title?: string;
-      icon?: string;
-      content?: string;
-      order?: number;
-    }): Promise<Page> => {
-      const { projectId: _projectId, ...mutationInput } = input;
-      const data = await graphqlClient.request<{
-        updatePage: Page;
-      }>(UPDATE_PAGE, { input: mutationInput });
-      return data.updatePage;
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({
-        queryKey: ["pages", data.pageInfo.projectId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["page", data.id],
-      });
-    },
-  });
-}
+export const useUpdatePage = createMutationHook<
+  {
+    id: string;
+    projectId: string;
+    title?: string;
+    icon?: string;
+    content?: string;
+    order?: number;
+  },
+  Page
+>({
+  mutation: UPDATE_PAGE,
+  responseKey: "updatePage",
+  mapVariables: ({ projectId: _projectId, ...rest }) => ({ input: rest }),
+  refetchQueries: [LIST_PAGES, GET_PAGE],
+});
 
-export function useDeletePage() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (input: {
-      id: string;
-      projectId: string;
-    }): Promise<boolean> => {
-      const data = await graphqlClient.request<{
-        deletePage: boolean;
-      }>(DELETE_PAGE, { input: { id: input.id } });
-      return data.deletePage;
-    },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["pages", variables.projectId],
-      });
-    },
-  });
-}
+export const useDeletePage = createVoidMutationHook<{
+  id: string;
+  projectId: string;
+}>({
+  mutation: DELETE_PAGE,
+  mapVariables: (input) => ({ input: { id: input.id } }),
+  refetchQueries: [LIST_PAGES],
+});
 
-export function useReorderPages() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (input: {
-      projectId: string;
-      pageIds: string[];
-    }): Promise<boolean> => {
-      const data = await graphqlClient.request<{
-        reorderPages: boolean;
-      }>(REORDER_PAGES, { input });
-      return data.reorderPages;
-    },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["pages", variables.projectId],
-      });
-    },
-  });
-}
+export const useReorderPages = createVoidMutationHook<{
+  projectId: string;
+  pageIds: string[];
+}>({
+  mutation: REORDER_PAGES,
+  refetchQueries: [LIST_PAGES],
+});

@@ -1,0 +1,21 @@
+.label {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.875rem;
+  line-height: 1;
+  font-weight: 500;
+  user-select: none;
+}
+
+/* When inside a group with data-disabled=true */
+:global([data-disabled="true"]) .label {
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+/* When a preceding peer is disabled */
+:global(:disabled) ~ .label {
+  cursor: not-allowed;
+  opacity: 0.5;
+}

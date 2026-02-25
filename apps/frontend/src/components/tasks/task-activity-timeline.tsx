@@ -22,6 +22,7 @@ import {
   type TaskPriority,
 } from "@/types/task";
 import type { Activity, FieldChange } from "@/types/activity";
+import styles from "./task-activity-timeline.module.css";
 
 interface TaskActivityTimelineProps {
   taskId: string;
@@ -54,25 +55,25 @@ export function TaskActivityTimeline({
   );
 
   return (
-    <div className="space-y-6">
+    <div className={styles.container}>
       {/* Comments Section */}
-      <div className="space-y-3">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50 flex items-center gap-1.5">
-          <MessageSquare className="size-3.5" />
+      <div className={styles.section}>
+        <p className={styles.sectionLabel}>
+          <MessageSquare className={styles.sectionIcon} />
           Comments ({comments.length})
         </p>
 
         {commentsLoading ? (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground py-4">
-            <Loader2 className="size-3.5 animate-spin" />
+          <div className={styles.loadingRow}>
+            <Loader2 className={styles.spinner} />
             Loading comments...
           </div>
         ) : sortedComments.length === 0 ? (
-          <p className="text-xs text-muted-foreground/60 py-2">
+          <p className={styles.emptyText}>
             No comments yet
           </p>
         ) : (
-          <div className="space-y-3">
+          <div className={styles.commentsList}>
             {sortedComments.map((comment) => (
               <CommentItem
                 key={comment.id}
@@ -89,23 +90,23 @@ export function TaskActivityTimeline({
       </div>
 
       {/* Activity Section */}
-      <div className="space-y-3">
-        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50 flex items-center gap-1.5">
-          <History className="size-3.5" />
+      <div className={styles.section}>
+        <p className={styles.sectionLabel}>
+          <History className={styles.sectionIcon} />
           Activity ({activities.length})
         </p>
 
         {activitiesLoading ? (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground py-4">
-            <Loader2 className="size-3.5 animate-spin" />
+          <div className={styles.loadingRow}>
+            <Loader2 className={styles.spinner} />
             Loading activity...
           </div>
         ) : sortedActivities.length === 0 ? (
-          <p className="text-xs text-muted-foreground/60 py-2">
+          <p className={styles.emptyText}>
             No activity yet
           </p>
         ) : (
-          <div className="space-y-3">
+          <div className={styles.activityList}>
             {sortedActivities.map((activity) => (
               <ActivityItem
                 key={activity.id}
@@ -141,15 +142,15 @@ function ActivityItem({
 
   if (activityInfo.action === "created") {
     return (
-      <div className="flex items-center gap-2 text-xs text-muted-foreground py-1">
-        <Plus className="size-3.5 text-green-500 shrink-0" />
+      <div className={styles.activityRow}>
+        <Plus className={`${styles.activityIcon} ${styles.iconGreen}`} />
         <span>
-          <span className="font-medium text-foreground">
+          <span className={styles.actorName}>
             {activityInfo.actorName}
           </span>{" "}
           created this task
         </span>
-        <span className="text-[11px] text-muted-foreground/60 ml-auto shrink-0">
+        <span className={styles.activityTime}>
           {formatRelativeTime(activityInfo.createdAt)}
         </span>
       </div>
@@ -158,39 +159,39 @@ function ActivityItem({
 
   if (activityInfo.action === "deleted") {
     return (
-      <div className="flex items-center gap-2 text-xs text-muted-foreground py-1">
-        <span className="size-3.5 text-red-500 shrink-0 text-center font-bold">
+      <div className={styles.activityRow}>
+        <span className={styles.deletedIcon}>
           &times;
         </span>
         <span>
-          <span className="font-medium text-foreground">
+          <span className={styles.actorName}>
             {activityInfo.actorName}
           </span>{" "}
           deleted this task
         </span>
-        <span className="text-[11px] text-muted-foreground/60 ml-auto shrink-0">
+        <span className={styles.activityTime}>
           {formatRelativeTime(activityInfo.createdAt)}
         </span>
       </div>
     );
   }
 
-  // "updated" action — one row per change
+  // "updated" action -- one row per change
   return (
-    <div className="space-y-1">
+    <div className={styles.activityChanges}>
       {changes.map((change, i) => (
         <div
           key={i}
-          className="flex items-center gap-2 text-xs text-muted-foreground py-1"
+          className={styles.activityRow}
         >
-          <ArrowRight className="size-3.5 text-blue-500 shrink-0" />
+          <ArrowRight className={`${styles.activityIcon} ${styles.iconBlue}`} />
           <span>
-            <span className="font-medium text-foreground">
+            <span className={styles.actorName}>
               {activityInfo.actorName}
             </span>{" "}
             {formatFieldChange(change, users, labels)}
           </span>
-          <span className="text-[11px] text-muted-foreground/60 ml-auto shrink-0">
+          <span className={styles.activityTime}>
             {formatRelativeTime(activityInfo.createdAt)}
           </span>
         </div>

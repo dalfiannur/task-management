@@ -1,0 +1,67 @@
+.checkbox {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  border-radius: 4px;
+  border: 1px solid var(--input);
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  transition: box-shadow 150ms ease;
+  outline: none;
+}
+
+/* Checked state */
+.checkbox[data-state="checked"] {
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+  border-color: var(--primary);
+}
+
+/* Focus-visible */
+.checkbox:focus-visible {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 50%, transparent);
+}
+
+/* Disabled */
+.checkbox:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Aria-invalid */
+.checkbox[aria-invalid="true"] {
+  border-color: var(--destructive);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--destructive) 20%, transparent);
+}
+
+/* ============================================
+   INDICATOR
+   ============================================ */
+
+.indicator {
+  display: grid;
+  place-content: center;
+  color: currentColor;
+  transition: none;
+}
+
+.icon {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+/* ============================================
+   DARK MODE
+   ============================================ */
+
+:global(.dark) .checkbox {
+  background-color: color-mix(in srgb, var(--input) 30%, transparent);
+}
+
+:global(.dark) .checkbox[data-state="checked"] {
+  background-color: var(--primary);
+}
+
+:global(.dark) .checkbox[aria-invalid="true"] {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--destructive) 40%, transparent);
+}

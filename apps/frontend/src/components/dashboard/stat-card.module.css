@@ -1,0 +1,62 @@
+.card {
+  overflow: hidden;
+  border-left: 3px solid;
+  padding-top: 0;
+  padding-bottom: 0;
+  transition: box-shadow 150ms;
+}
+
+.card:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -2px rgba(0, 0, 0, 0.1);
+}
+
+.content {
+  padding: 1rem;
+}
+
+.layout {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.textGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.title {
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted-foreground);
+  font-family: var(--font-mono);
+}
+
+.value {
+  font-size: 1.875rem;
+  line-height: 2.25rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+}
+
+.description {
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+  font-family: var(--font-mono);
+}
+
+.iconWrapper {
+  border-radius: calc(var(--radius) + 4px);
+  padding: 0.5rem;
+}
+
+.icon {
+  width: 1.125rem;
+  height: 1.125rem;
+}

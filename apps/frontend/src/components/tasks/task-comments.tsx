@@ -13,6 +13,8 @@ import {
 import { CommentEditor, CommentEditEditor } from "./comment-editor";
 import { CommentContent } from "./comment-content";
 import type { Comment } from "@/types/comment";
+import { getInitials } from "@/lib/utils";
+import styles from "./task-comments.module.css";
 
 export function formatRelativeTime(iso: string): string {
   const now = Date.now();
@@ -35,16 +37,6 @@ export function formatRelativeTime(iso: string): string {
   return `${months}mo ago`;
 }
 
-export function getInitials(name: string): string {
-  return name
-    .split(" ")
-    .map((w) => w[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-}
-
 interface TaskCommentsProps {
   taskId: string;
 }
@@ -56,19 +48,19 @@ export function TaskComments({ taskId }: TaskCommentsProps) {
   const { data: users = [] } = useUsers();
 
   return (
-    <div className="space-y-3">
-      <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground/50 flex items-center gap-1.5">
-        <MessageSquare className="size-3.5" />
+    <div className={styles.container}>
+      <p className={styles.sectionLabel}>
+        <MessageSquare className={styles.sectionIcon} />
         Comments ({comments.length})
       </p>
 
       {isLoading ? (
-        <div className="flex items-center gap-2 text-xs text-muted-foreground py-4">
-          <Loader2 className="size-3.5 animate-spin" />
+        <div className={styles.loadingRow}>
+          <Loader2 className={styles.spinner} />
           Loading comments...
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className={styles.commentsList}>
           {comments.map((comment) => (
             <CommentItem
               key={comment.id}
@@ -122,83 +114,83 @@ export function CommentItem({
   };
 
   return (
-    <div className="group flex gap-2.5">
-      <Avatar className="size-7 shrink-0 mt-0.5">
+    <div className={styles.commentRow}>
+      <Avatar className={styles.commentAvatar}>
         {author?.avatarUrl && <AvatarImage src={author.avatarUrl} />}
-        <AvatarFallback className="text-[10px] bg-muted">
+        <AvatarFallback className={styles.avatarFallback}>
           {getInitials(authorName)}
         </AvatarFallback>
       </Avatar>
 
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-medium">
+      <div className={styles.commentBody}>
+        <div className={styles.commentHeader}>
+          <span className={styles.authorName}>
             {authorName}
           </span>
-          <span className="text-[11px] text-muted-foreground/60">
+          <span className={styles.commentTime}>
             {formatRelativeTime(comment.commentInfo.createdAt)}
           </span>
           {isEdited && (
-            <span className="text-[10px] text-muted-foreground/40 italic">
+            <span className={styles.editedTag}>
               (edited)
             </span>
           )}
 
           {isAuthor && !isEditing && (
-            <div className="ml-auto flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className={styles.authorActions}>
               <Button
                 variant="ghost"
                 size="icon"
-                className="size-6"
+                className={styles.actionButton}
                 onClick={() => setIsEditing(true)}
               >
-                <Pencil className="size-3" />
+                <Pencil className={styles.actionIcon} />
               </Button>
               <Button
                 variant="ghost"
                 size="icon"
-                className="size-6 text-destructive hover:text-destructive"
+                className={`${styles.actionButton} ${styles.deleteAction}`}
                 onClick={handleDelete}
-                disabled={deleteComment.isPending}
+                disabled={deleteComment.isLoading}
               >
-                <Trash2 className="size-3" />
+                <Trash2 className={styles.actionIcon} />
               </Button>
             </div>
           )}
         </div>
 
         {isEditing ? (
-          <div className="mt-1.5 space-y-2">
+          <div className={styles.editingContainer}>
             <CommentEditEditor
               initialContent={comment.commentInfo.content}
               onSave={handleSaveEdit}
               onCancel={handleCancelEdit}
             />
-            <div className="flex items-center gap-1.5">
+            <div className={styles.editActions}>
               <Button
                 size="sm"
-                className="h-7 text-xs"
+                className={styles.editButton}
                 onClick={() => {
                   /* Ctrl+Enter handles save via editor */
                 }}
-                disabled={updateComment.isPending}
+                disabled={updateComment.isLoading}
               >
-                <Check className="size-3 mr-1" />
+                <Check className={styles.editButtonIcon} />
                 Save
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-7 text-xs"
+                className={styles.editButton}
                 onClick={handleCancelEdit}
               >
-                <X className="size-3 mr-1" />
+                <X className={styles.editButtonIcon} />
                 Cancel
               </Button>
             </div>
           </div>
         ) : (
-          <div className="mt-0.5">
+          <div className={styles.contentArea}>
             <CommentContent content={comment.commentInfo.content} />
           </div>
         )}
@@ -215,19 +207,21 @@ export function AddCommentForm({ taskId }: { taskId: string }) {
   };
 
   return (
-    <div className="space-y-2 pt-1">
-      <CommentEditor
-        onSubmit={handleSubmit}
-      />
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] text-muted-foreground/40">
-          Ctrl+Enter to submit &middot; Type @ to mention
-        </span>
-        <span className="text-[10px] text-muted-foreground/40">
-          {createComment.isPending && (
-            <Loader2 className="size-3 animate-spin inline mr-1" />
-          )}
-        </span>
+    <div className={styles.addCommentFormWrapper}>
+      <div className={styles.addCommentForm}>
+        <CommentEditor
+          onSubmit={handleSubmit}
+        />
+        <div className={styles.addCommentFooter}>
+          <span className={styles.addCommentHint}>
+            Ctrl+Enter to submit &middot; Type @ to mention
+          </span>
+          <span className={styles.addCommentStatus}>
+            {createComment.isLoading && (
+              <Loader2 className={styles.addCommentSpinner} />
+            )}
+          </span>
+        </div>
       </div>
     </div>
   );

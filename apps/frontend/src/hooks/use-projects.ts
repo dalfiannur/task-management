@@ -1,7 +1,6 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { coreGraphClient, graphqlClient } from "@/lib/graphql-client";
-import { gql } from "graphql-request";
-import type { CreateSubProjectInput, Project, ProjectCore } from "@/types/project";
+import { useQuery, gql } from "@/lib/graphql-client";
+import { createMutationHook, createVoidMutationHook, normalizeQueryResult } from "@/lib/hook-factories";
+import type { CreateProjectInput, CreateSubProjectInput, Project, ProjectStatus } from "@/types/project";
 
 // --- GraphQL operations ---
 
@@ -14,7 +13,7 @@ const PROJECT_FIELDS = gql`
     status {
       value
     }
-    picId {
+    projectLeaderId {
       value
     }
     name {
@@ -23,8 +22,69 @@ const PROJECT_FIELDS = gql`
     parent {
       id
     }
+    code {
+      value
+    }
+    coreName {
+      value
+    }
+    coreDescription {
+      value
+    }
+    clientName {
+      value
+    }
+    clientLegalName {
+      value
+    }
+    winStage {
+      value
+    }
+    resolvedStatus {
+      value
+    }
+    closedAt {
+      value
+    }
   }
 `;
+
+/** Raw shape from GraphQL (enrichment fields wrapped as { value }) */
+interface ProjectRaw {
+  id: string;
+  coreRef: { value: string };
+  status: { value: string };
+  projectLeaderId?: { value: string };
+  name?: { value: string };
+  parent?: { id: string } | null;
+  code?: { value: string };
+  coreName?: { value: string };
+  coreDescription?: { value: string };
+  clientName?: { value: string };
+  clientLegalName?: { value: string };
+  winStage?: { value: string };
+  resolvedStatus?: { value: string };
+  closedAt?: { value: string };
+}
+
+function mapProject(raw: ProjectRaw): Project {
+  return {
+    id: raw.id,
+    coreRef: raw.coreRef,
+    status: raw.status as { value: ProjectStatus },
+    projectLeaderId: raw.projectLeaderId,
+    name: raw.name,
+    parent: raw.parent,
+    code: raw.code?.value,
+    coreName: raw.coreName?.value,
+    coreDescription: raw.coreDescription?.value,
+    clientName: raw.clientName?.value,
+    clientLegalName: raw.clientLegalName?.value,
+    winStage: raw.winStage?.value,
+    resolvedStatus: raw.resolvedStatus?.value,
+    closedAt: raw.closedAt?.value,
+  };
+}
 
 const LIST_PROJECTS = gql`
   ${PROJECT_FIELDS}
@@ -40,19 +100,6 @@ const GET_PROJECT = gql`
   query GetProject($input: getProjectInput!) {
     getProject(input: $input) {
       ...ProjectFields
-    }
-  }
-`;
-
-const GET_PROJECT_CORE = gql`
-  query GetProjectCore($input: getProjectInput!) {
-    getProject(input: $input) {
-      id
-      name {
-        name
-        description
-      }
-      status
     }
   }
 `;
@@ -81,117 +128,93 @@ const DELETE_PROJECT = gql`
   }
 `;
 
+const CLOSE_PROJECT = gql`
+  ${PROJECT_FIELDS}
+  mutation CloseProject($input: closeProjectInput!) {
+    closeProject(input: $input) {
+      ...ProjectFields
+    }
+  }
+`;
+
+const CREATE_PROJECT = gql`
+  ${PROJECT_FIELDS}
+  mutation CreateProject($input: createProjectInput!) {
+    createProject(input: $input) {
+      ...ProjectFields
+    }
+  }
+`;
+
 // --- Hooks ---
 
 export function useProjects() {
-  return useQuery({
-    queryKey: ["projects"],
-    queryFn: async (): Promise<(Project & { coreDetail: ProjectCore | null })[]> => {
-      const projects = await graphqlClient
-        .request<{ listProjects: Project[] }>(LIST_PROJECTS)
-        .then((res) => res.listProjects);
-
-      return Promise.all(
-        projects.map((project) => {
-          if (!project.coreRef?.value) {
-            return { ...project, coreDetail: null };
-          }
-          return coreGraphClient
-            .request<{ getProject: ProjectCore | null }>(GET_PROJECT_CORE, {
-              input: { id: project.coreRef.value },
-            })
-            .then((res) => ({ ...project, coreDetail: res.getProject }))
-            .catch(() => ({ ...project, coreDetail: null }));
-        })
-      );
-    },
-  });
+  const result = useQuery<{ listProjects: ProjectRaw[] }>(LIST_PROJECTS);
+  return normalizeQueryResult(result, (d) => d.listProjects.map(mapProject));
 }
 
 export function useProject(id: string) {
-  return useQuery({
-    queryKey: ["projects", id],
-    queryFn: async (): Promise<Project & { coreDetail: ProjectCore | null } | null> => {
-      const data = await graphqlClient.request<{
-        getProject: Project | null;
-      }>(GET_PROJECT, { input: { id } });
-
-      if (!data.getProject) return null
-
-      if (!data.getProject.coreRef?.value) {
-        return { ...data.getProject, coreDetail: null };
-      }
-
-      const core = await coreGraphClient.request<{
-        getProject: ProjectCore | null
-      }>(GET_PROJECT_CORE, { input: { id: data.getProject.coreRef.value } })
-
-      return {
-        ...data.getProject,
-        coreDetail: core.getProject
-      }
-    },
-    enabled: !!id,
+  const result = useQuery<{ getProject: ProjectRaw | null }>(GET_PROJECT, {
+    variables: { input: { id } },
+    skip: !id,
   });
+  return normalizeQueryResult(result, (d) =>
+    d.getProject ? mapProject(d.getProject) : null,
+  );
 }
 
-export function useApproveProject() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (input: {
-      id: string;
-      description?: string;
-    }): Promise<Project> => {
-      const data = await graphqlClient.request<{
-        approveProject: Project;
-      }>(APPROVE_PROJECT, {
-        input: {
-          id: input.id,
-          description: input.description,
-        },
-      });
-      return data.approveProject;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-      queryClient.invalidateQueries({ queryKey: ["leads"] });
-    },
-  });
-}
+export const useCreateProject = createMutationHook<
+  CreateProjectInput,
+  ProjectRaw,
+  Project
+>({
+  mutation: CREATE_PROJECT,
+  responseKey: "createProject",
+  mapResponse: mapProject,
+  refetchQueries: [LIST_PROJECTS],
+});
 
-export function useUpdateProject() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (input: {
-      id: string;
-      description?: string;
-      status?: string;
-      picId?: string;
-    }): Promise<Project> => {
-      const data = await graphqlClient.request<{
-        updateProject: Project;
-      }>(UPDATE_PROJECT, { input });
-      return data.updateProject;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-    },
-  });
-}
+export const useApproveProject = createMutationHook<
+  { id: string; description?: string },
+  ProjectRaw,
+  Project
+>({
+  mutation: APPROVE_PROJECT,
+  responseKey: "approveProject",
+  mapVariables: (input) => ({
+    input: { id: input.id, description: input.description },
+  }),
+  mapResponse: mapProject,
+  refetchQueries: [LIST_PROJECTS, GET_PROJECT],
+});
 
-export function useDeleteProject() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: string): Promise<void> => {
-      await graphqlClient.request<{ deleteProject: boolean }>(DELETE_PROJECT, {
-        input: { id },
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-    },
-  });
-}
+export const useUpdateProject = createMutationHook<
+  { id: string; description?: string; status?: string; projectLeaderId?: string },
+  ProjectRaw,
+  Project
+>({
+  mutation: UPDATE_PROJECT,
+  responseKey: "updateProject",
+  mapResponse: mapProject,
+  refetchQueries: [LIST_PROJECTS, GET_PROJECT],
+});
+
+export const useDeleteProject = createVoidMutationHook<string>({
+  mutation: DELETE_PROJECT,
+  mapVariables: (id) => ({ input: { id } }),
+  refetchQueries: [LIST_PROJECTS],
+});
+
+export const useCloseProject = createMutationHook<
+  { id: string },
+  ProjectRaw,
+  Project
+>({
+  mutation: CLOSE_PROJECT,
+  responseKey: "closeProject",
+  mapResponse: mapProject,
+  refetchQueries: [LIST_PROJECTS, GET_PROJECT],
+});
 
 // --- Sub-Projects ---
 
@@ -214,41 +237,24 @@ const CREATE_SUB_PROJECT = gql`
 `;
 
 export function useSubProjects(parentProjectId?: string) {
-  return useQuery({
-    queryKey: ["projects", "sub", parentProjectId],
-    queryFn: async () => {
-      const data = await graphqlClient.request<{
-        listSubProjects: Project[];
-      }>(LIST_SUB_PROJECTS, { input: { parentProjectId } });
-      return data.listSubProjects.map((p) => ({
-        ...p,
-        coreDetail: null as ProjectCore | null,
-      }));
-    },
-    enabled: !!parentProjectId,
+  const result = useQuery<{ listSubProjects: ProjectRaw[] }>(LIST_SUB_PROJECTS, {
+    variables: { input: { parentProjectId } },
+    skip: !parentProjectId,
   });
+  return normalizeQueryResult(result, (d) => d.listSubProjects.map(mapProject));
 }
 
-export function useCreateSubProject() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (input: CreateSubProjectInput): Promise<Project> => {
-      const data = await graphqlClient.request<{
-        createSubProject: Project;
-      }>(CREATE_SUB_PROJECT, { input });
-      return data.createSubProject;
-    },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["projects"] });
-      queryClient.invalidateQueries({
-        queryKey: ["projects", "sub", variables.parentProjectId],
-      });
-    },
-  });
-}
+export const useCreateSubProject = createMutationHook<
+  CreateSubProjectInput,
+  ProjectRaw,
+  Project
+>({
+  mutation: CREATE_SUB_PROJECT,
+  responseKey: "createSubProject",
+  mapResponse: mapProject,
+  refetchQueries: [LIST_SUB_PROJECTS, LIST_PROJECTS],
+});
 
-export function getProjectDisplayName(
-  project: Project & { coreDetail: ProjectCore | null },
-): string {
-  return project.name?.value || project.coreDetail?.name.name || "Untitled";
+export function getProjectDisplayName(project: Project): string {
+  return project.name?.value || project.coreName || "Untitled";
 }

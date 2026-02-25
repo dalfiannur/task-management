@@ -1,8 +1,6 @@
 export type TaskStatus =
-  | "backlog"
   | "todo"
   | "in_progress"
-  | "in_review"
   | "done"
   | "cancelled";
 
@@ -12,7 +10,7 @@ export interface Module {
   id: string;
   name: string;
   description?: string;
-  // projectId: string;
+  picId?: string;
 }
 
 export interface Task {
@@ -73,32 +71,28 @@ export const TASK_STATUS_CONFIG: Record<
   TaskStatus,
   { label: string; color: string }
 > = {
-  backlog: { label: "Backlog", color: "bg-gray-100 text-gray-700" },
-  todo: { label: "Todo", color: "bg-blue-100 text-blue-700" },
+  todo: { label: "Todo", color: "status-todo" },
   in_progress: {
     label: "In Progress",
-    color: "bg-yellow-100 text-yellow-700",
+    color: "status-in-progress",
   },
-  in_review: { label: "In Review", color: "bg-purple-100 text-purple-700" },
-  done: { label: "Done", color: "bg-green-100 text-green-700" },
-  cancelled: { label: "Cancelled", color: "bg-red-100 text-red-700" },
+  done: { label: "Done", color: "status-done" },
+  cancelled: { label: "Cancelled", color: "status-cancelled" },
 };
 
 export const TASK_PRIORITY_CONFIG: Record<
   TaskPriority,
   { label: string; color: string; icon: string }
 > = {
-  none: { label: "No priority", color: "text-gray-400", icon: "Minus" },
-  low: { label: "Low", color: "text-blue-500", icon: "ArrowDown" },
-  medium: { label: "Medium", color: "text-yellow-500", icon: "ArrowRight" },
-  high: { label: "High", color: "text-orange-500", icon: "ArrowUp" },
-  urgent: { label: "Urgent", color: "text-red-500", icon: "AlertTriangle" },
+  none: { label: "No priority", color: "priority-none", icon: "Minus" },
+  low: { label: "Low", color: "priority-low", icon: "ArrowDown" },
+  medium: { label: "Medium", color: "priority-medium", icon: "ArrowRight" },
+  high: { label: "High", color: "priority-high", icon: "ArrowUp" },
+  urgent: { label: "Urgent", color: "priority-urgent", icon: "AlertTriangle" },
 };
 
 export const BOARD_COLUMNS: TaskStatus[] = [
-  "backlog",
   "todo",
   "in_progress",
-  "in_review",
   "done",
 ];

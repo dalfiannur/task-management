@@ -1,5 +1,5 @@
 import { BaseService } from "bunsane/service";
-import { GraphQLOperation } from "bunsane/gql";
+import { GraphQLOperation, GraphQLScalarType } from "bunsane/gql";
 import { Query } from "bunsane/query";
 import { z } from "zod";
 import { CommentInfo } from "../components/CommentInfo";
@@ -17,6 +17,7 @@ async function requireUser(context: { request?: Request }) {
   return user;
 }
 
+@GraphQLScalarType("JSON")
 export default class CommentService extends BaseService {
   constructor() {
     super();
@@ -163,6 +164,31 @@ export default class CommentService extends BaseService {
     }
 
     return entity;
+  }
+
+  @GraphQLOperation({
+    type: "Query",
+    input: z.object({
+      taskIds: z.array(z.string()),
+    }),
+    output: "JSON",
+  })
+  async commentCounts(input: { taskIds: string[] }) {
+    const counts: Record<string, number> = {};
+    for (const taskId of input.taskIds) {
+      counts[taskId] = 0;
+    }
+    for (const taskId of input.taskIds) {
+      const entities = await new Query()
+        .with(CommentInfo, {
+          filters: [
+            Query.typedFilter(CommentInfo, "taskId", "=", taskId),
+          ],
+        })
+        .exec();
+      counts[taskId] = entities.length;
+    }
+    return counts;
   }
 
   @GraphQLOperation({

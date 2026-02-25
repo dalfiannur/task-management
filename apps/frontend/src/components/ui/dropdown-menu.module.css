@@ -1,0 +1,383 @@
+/* ============================================
+   DropdownMenu Content
+   ============================================ */
+
+.content {
+  z-index: 50;
+  min-width: 8rem;
+  max-height: var(--radix-dropdown-menu-content-available-height);
+  overflow-x: hidden;
+  overflow-y: auto;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background-color: var(--popover);
+  color: var(--popover-foreground);
+  padding: 0.25rem;
+  box-shadow:
+    0 4px 6px -1px rgb(0 0 0 / 0.1),
+    0 2px 4px -2px rgb(0 0 0 / 0.1);
+  transform-origin: var(--radix-dropdown-menu-content-transform-origin);
+
+  /* Enter animation */
+  animation: dropdownIn 150ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Exit animation when closed */
+.content[data-state="closed"] {
+  animation: dropdownOut 150ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Slide direction based on side */
+.content[data-side="bottom"] {
+  --slide-from-y: -0.5rem;
+  --slide-from-x: 0;
+}
+
+.content[data-side="top"] {
+  --slide-from-y: 0.5rem;
+  --slide-from-x: 0;
+}
+
+.content[data-side="left"] {
+  --slide-from-x: 0.5rem;
+  --slide-from-y: 0;
+}
+
+.content[data-side="right"] {
+  --slide-from-x: -0.5rem;
+  --slide-from-y: 0;
+}
+
+/* ============================================
+   DropdownMenu Item
+   ============================================ */
+
+.item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: var(--radius-sm);
+  padding: 0.25rem 0.375rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  outline: none;
+  user-select: none;
+  cursor: default;
+}
+
+.item:focus {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.item[data-disabled] {
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.item[data-inset] {
+  padding-left: 2rem;
+}
+
+/* Nested SVG styling */
+.item svg {
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+.item svg:not([class*="size-"]) {
+  width: 1rem;
+  height: 1rem;
+}
+
+.item svg:not([class*="text-"]) {
+  color: var(--muted-foreground);
+}
+
+/* Destructive variant */
+.item[data-variant="destructive"] {
+  color: var(--destructive);
+}
+
+.item[data-variant="destructive"]:focus {
+  background-color: color-mix(in srgb, var(--destructive) 10%, transparent);
+  color: var(--destructive);
+}
+
+.item[data-variant="destructive"] svg {
+  color: var(--destructive) !important;
+}
+
+/* ============================================
+   DropdownMenu CheckboxItem
+   ============================================ */
+
+.checkboxItem {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: var(--radius-sm);
+  padding: 0.25rem 0.375rem 0.25rem 1.75rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  outline: none;
+  user-select: none;
+  cursor: default;
+}
+
+.checkboxItem:focus {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.checkboxItem[data-disabled] {
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.checkboxItem svg {
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+.checkboxItem svg:not([class*="size-"]) {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* ============================================
+   DropdownMenu RadioItem
+   ============================================ */
+
+.radioItem {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: var(--radius-sm);
+  padding: 0.25rem 0.375rem 0.25rem 1.75rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  outline: none;
+  user-select: none;
+  cursor: default;
+}
+
+.radioItem:focus {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.radioItem[data-disabled] {
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.radioItem svg {
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+.radioItem svg:not([class*="size-"]) {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* ============================================
+   Indicator Span (shared by checkbox & radio)
+   ============================================ */
+
+.indicatorSpan {
+  pointer-events: none;
+  position: absolute;
+  left: 0.5rem;
+  display: flex;
+  width: 0.875rem;
+  height: 0.875rem;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ============================================
+   DropdownMenu Label
+   ============================================ */
+
+.label {
+  padding: 0.25rem 0.375rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 500;
+}
+
+.label[data-inset] {
+  padding-left: 2rem;
+}
+
+/* ============================================
+   DropdownMenu Separator
+   ============================================ */
+
+.separator {
+  margin: 0.25rem -0.25rem;
+  height: 1px;
+  background-color: var(--border);
+}
+
+/* ============================================
+   DropdownMenu Shortcut
+   ============================================ */
+
+.shortcut {
+  margin-left: auto;
+  font-size: 0.875rem;
+  line-height: 1rem;
+  letter-spacing: 0.1em;
+  color: var(--muted-foreground);
+}
+
+/* ============================================
+   DropdownMenu SubTrigger
+   ============================================ */
+
+.subTrigger {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: var(--radius-sm);
+  padding: 0.25rem 0.375rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  outline: none;
+  user-select: none;
+  cursor: default;
+}
+
+.subTrigger:focus {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.subTrigger[data-state="open"] {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.subTrigger[data-inset] {
+  padding-left: 2rem;
+}
+
+/* Nested SVG styling */
+.subTrigger svg {
+  pointer-events: none;
+  flex-shrink: 0;
+}
+
+.subTrigger svg:not([class*="size-"]) {
+  width: 1rem;
+  height: 1rem;
+}
+
+.subTrigger svg:not([class*="text-"]) {
+  color: var(--muted-foreground);
+}
+
+/* ============================================
+   Chevron icon in SubTrigger
+   ============================================ */
+
+.chevron {
+  margin-left: auto;
+  width: 1rem;
+  height: 1rem;
+}
+
+/* ============================================
+   DropdownMenu SubContent
+   ============================================ */
+
+.subContent {
+  z-index: 50;
+  min-width: 8rem;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background-color: var(--popover);
+  color: var(--popover-foreground);
+  padding: 0.25rem;
+  box-shadow:
+    0 10px 15px -3px rgb(0 0 0 / 0.1),
+    0 4px 6px -4px rgb(0 0 0 / 0.1);
+  transform-origin: var(--radix-dropdown-menu-content-transform-origin);
+
+  /* Enter animation */
+  animation: dropdownIn 150ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Exit animation when closed */
+.subContent[data-state="closed"] {
+  animation: dropdownOut 150ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Slide direction based on side */
+.subContent[data-side="bottom"] {
+  --slide-from-y: -0.5rem;
+  --slide-from-x: 0;
+}
+
+.subContent[data-side="top"] {
+  --slide-from-y: 0.5rem;
+  --slide-from-x: 0;
+}
+
+.subContent[data-side="left"] {
+  --slide-from-x: 0.5rem;
+  --slide-from-y: 0;
+}
+
+.subContent[data-side="right"] {
+  --slide-from-x: -0.5rem;
+  --slide-from-y: 0;
+}
+
+/* ============================================
+   Icon helpers
+   ============================================ */
+
+.checkIcon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.radioIcon {
+  width: 0.5rem;
+  height: 0.5rem;
+  fill: currentColor;
+}
+
+/* ============================================
+   Keyframes
+   ============================================ */
+
+@keyframes dropdownIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translate(var(--slide-from-x, 0), var(--slide-from-y, 0));
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translate(0, 0);
+  }
+}
+
+@keyframes dropdownOut {
+  from {
+    opacity: 1;
+    transform: scale(1) translate(0, 0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.95) translate(var(--slide-from-x, 0), var(--slide-from-y, 0));
+  }
+}

@@ -1,7 +1,6 @@
 import { useEffect, useRef } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { graphqlClient } from "@/lib/graphql-client";
-import { gql } from "graphql-request";
+import { useQuery, gql } from "@/lib/graphql-client";
+import { createVoidMutationHook, normalizeQueryResult } from "@/lib/hook-factories";
 import { toast } from "sonner";
 import type { Notification } from "@/types/notification";
 
@@ -51,35 +50,28 @@ const MARK_ALL_READ = gql`
 `;
 
 export function useNotifications(limit = 50) {
-  return useQuery({
-    queryKey: ["notifications", limit],
-    queryFn: async (): Promise<Notification[]> => {
-      const data = await graphqlClient.request<{
-        listNotifications: Notification[];
-      }>(LIST_NOTIFICATIONS, { input: { limit } });
-      return data.listNotifications;
-    },
-  });
+  const result = useQuery<{ listNotifications: Notification[] }>(
+    LIST_NOTIFICATIONS,
+    { variables: { input: { limit } } },
+  );
+  return normalizeQueryResult(result, (d) => d.listNotifications);
 }
 
 export function useUnreadNotificationCount() {
   const prevCountRef = useRef<number | null>(null);
 
-  const query = useQuery({
-    queryKey: ["notifications", "unread-count"],
-    queryFn: async (): Promise<number> => {
-      const data = await graphqlClient.request<{
-        unreadNotificationCount: number;
-      }>(UNREAD_COUNT, { input: {} });
-      return data.unreadNotificationCount;
-    },
-    refetchInterval: 30_000,
+  const { data, loading, error } = useQuery<{
+    unreadNotificationCount: number;
+  }>(UNREAD_COUNT, {
+    variables: { input: {} },
+    pollInterval: 30_000,
   });
+
+  const count = data?.unreadNotificationCount;
 
   // Toast on count increase
   useEffect(() => {
-    if (query.data === undefined) return;
-    const count = query.data;
+    if (count === undefined) return;
     const prev = prevCountRef.current;
 
     if (prev !== null && count > prev) {
@@ -91,37 +83,23 @@ export function useUnreadNotificationCount() {
       );
     }
     prevCountRef.current = count;
-  }, [query.data]);
+  }, [count]);
 
-  return query;
+  return {
+    data: count,
+    isLoading: loading,
+    error: error ?? null,
+  };
 }
 
-export function useMarkNotificationsRead() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (ids: string[]): Promise<boolean> => {
-      const data = await graphqlClient.request<{
-        markNotificationsRead: boolean;
-      }>(MARK_READ, { input: { ids } });
-      return data.markNotificationsRead;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
-    },
-  });
-}
+export const useMarkNotificationsRead = createVoidMutationHook<string[]>({
+  mutation: MARK_READ,
+  mapVariables: (ids) => ({ input: { ids } }),
+  refetchQueries: [LIST_NOTIFICATIONS, UNREAD_COUNT],
+});
 
-export function useMarkAllNotificationsRead() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (): Promise<boolean> => {
-      const data = await graphqlClient.request<{
-        markAllNotificationsRead: boolean;
-      }>(MARK_ALL_READ, { input: {} });
-      return data.markAllNotificationsRead;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notifications"] });
-    },
-  });
-}
+export const useMarkAllNotificationsRead = createVoidMutationHook<void>({
+  mutation: MARK_ALL_READ,
+  mapVariables: () => ({ input: {} }),
+  refetchQueries: [LIST_NOTIFICATIONS, UNREAD_COUNT],
+});

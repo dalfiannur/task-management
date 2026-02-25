@@ -1,0 +1,117 @@
+.loadingList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.skeletonRow {
+  height: 2.5rem;
+  width: 100%;
+  border-radius: calc(var(--radius) - 2px);
+}
+
+.emptyState {
+  text-align: center;
+  padding-top: 3rem;
+  padding-bottom: 3rem;
+  color: var(--muted-foreground);
+}
+
+.emptyIcon {
+  width: 2.5rem;
+  height: 2.5rem;
+  margin-left: auto;
+  margin-right: auto;
+  margin-bottom: 0.625rem;
+  opacity: 0.5;
+}
+
+.emptyTitle {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.emptySubtitle {
+  font-size: 0.875rem;
+  line-height: 1rem;
+}
+
+.tableWrapper {
+  border-radius: calc(var(--radius) - 2px);
+  border: 1px solid var(--border);
+}
+
+.locationCol {
+  width: 160px;
+}
+
+.statusCol {
+  width: 90px;
+}
+
+.actionsCol {
+  width: 90px;
+  text-align: right;
+}
+
+.nameCell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.clientName {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 500;
+}
+
+.legalName {
+  font-size: 0.75rem;
+  line-height: 1rem;
+  color: var(--muted-foreground);
+}
+
+.locationText {
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+}
+
+.noValue {
+  color: var(--muted-foreground);
+}
+
+.statusBadge {
+  font-size: 0.75rem;
+  text-transform: capitalize;
+}
+
+.actionsCell {
+  text-align: right;
+}
+
+.actionsWrapper {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.125rem;
+}
+
+.actionBtn {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.deleteBtn {
+  composes: actionBtn;
+  color: var(--destructive);
+}
+
+.deleteBtn:hover {
+  color: var(--destructive);
+}
+
+.actionIcon {
+  width: 0.75rem;
+  height: 0.75rem;
+}

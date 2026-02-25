@@ -45,7 +45,7 @@ import {
 } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import styles from "./rich-text-editor.module.css";
 
 interface RichTextEditorProps {
   content: string;
@@ -65,7 +65,7 @@ export function RichTextEditor({
       Link.configure({
         openOnClick: false,
         HTMLAttributes: {
-          class: "text-primary underline cursor-pointer",
+          class: "tiptap-link",
         },
       }),
       Highlight,
@@ -86,20 +86,14 @@ export function RichTextEditor({
     onUpdate: ({ editor }) => {
       onChange(editor.getHTML());
     },
-    editorProps: {
-      attributes: {
-        class:
-          "prose prose-sm max-w-none min-h-[80px] px-3 py-2 focus:outline-none",
-      },
-    },
   });
 
   if (!editor) return null;
 
   return (
-    <div className="rounded-md border border-input focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 ring-offset-background">
+    <div className={styles.wrapper}>
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-0.5 border-b px-1 py-1">
+      <div className={styles.toolbar}>
         {/* History */}
         <ToolbarButton
           onClick={() => editor.chain().focus().undo().run()}
@@ -288,25 +282,7 @@ export function RichTextEditor({
       </div>
 
       {/* Editor content */}
-      <EditorContent
-        editor={editor}
-        className={cn(
-          // Placeholder styles
-          "[&_.tiptap_p.is-editor-empty:first-child::before]:text-muted-foreground/50",
-          "[&_.tiptap_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)]",
-          "[&_.tiptap_p.is-editor-empty:first-child::before]:float-left",
-          "[&_.tiptap_p.is-editor-empty:first-child::before]:h-0",
-          "[&_.tiptap_p.is-editor-empty:first-child::before]:pointer-events-none",
-          // Task list styles
-          "[&_.tiptap_ul[data-type=taskList]]:list-none",
-          "[&_.tiptap_ul[data-type=taskList]]:pl-0",
-          "[&_.tiptap_ul[data-type=taskList]_li]:flex",
-          "[&_.tiptap_ul[data-type=taskList]_li]:items-start",
-          "[&_.tiptap_ul[data-type=taskList]_li]:gap-2",
-          "[&_.tiptap_ul[data-type=taskList]_li_label]:mt-0.5",
-          "[&_.tiptap_ul[data-type=taskList]_li_div]:flex-1",
-        )}
-      />
+      <EditorContent editor={editor} className={styles.editorContent} />
     </div>
   );
 }
@@ -330,9 +306,9 @@ function ToolbarToggle({
       pressed={pressed}
       onPressedChange={onPressedChange}
       aria-label={tooltip}
-      className="size-8 p-0"
+      className={styles.toolbarToggle}
     >
-      <Icon className="size-4" />
+      <Icon className={styles.toolbarIcon} />
     </Toggle>
   );
 }
@@ -354,19 +330,15 @@ function ToolbarButton({
       onClick={onClick}
       disabled={disabled}
       aria-label={tooltip}
-      className={cn(
-        "inline-flex items-center justify-center size-8 rounded-md text-sm font-medium transition-colors",
-        "hover:bg-muted hover:text-muted-foreground",
-        "disabled:pointer-events-none disabled:opacity-50",
-      )}
+      className={styles.toolbarButton}
     >
-      <Icon className="size-4" />
+      <Icon className={styles.toolbarIcon} />
     </button>
   );
 }
 
 function ToolbarSeparator() {
-  return <div className="w-px h-6 bg-border mx-0.5" />;
+  return <div className={styles.separator} />;
 }
 
 // --- Link popover ---
@@ -405,13 +377,13 @@ function LinkButton({ editor }: { editor: Editor }) {
           size="sm"
           pressed={editor.isActive("link")}
           aria-label="Link"
-          className="size-8 p-0"
+          className={styles.toolbarToggle}
         >
-          <LinkIcon className="size-4" />
+          <LinkIcon className={styles.toolbarIcon} />
         </Toggle>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-3" align="start">
-        <div className="flex gap-2">
+      <PopoverContent className={styles.linkPopoverContent} align="start">
+        <div className={styles.linkPopoverRow}>
           <Input
             placeholder="https://..."
             value={linkUrl}
@@ -422,23 +394,23 @@ function LinkButton({ editor }: { editor: Editor }) {
                 setLink();
               }
             }}
-            className="h-8 text-sm"
+            className={styles.linkInput}
             autoFocus
           />
-          <Button size="sm" className="h-8 px-3" onClick={setLink}>
+          <Button size="sm" className={styles.linkSetButton} onClick={setLink}>
             Set
           </Button>
           {editor.isActive("link") && (
             <Button
               size="sm"
               variant="ghost"
-              className="h-8 px-2"
+              className={styles.linkUnsetButton}
               onClick={() => {
                 editor.chain().focus().unsetLink().run();
                 setOpen(false);
               }}
             >
-              <Unlink className="size-4" />
+              <Unlink className={styles.linkUnsetIcon} />
             </Button>
           )}
         </div>

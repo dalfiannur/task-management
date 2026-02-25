@@ -1,6 +1,5 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { graphqlClient } from "@/lib/graphql-client";
-import { gql } from "graphql-request";
+import { useQuery, gql } from "@/lib/graphql-client";
+import { createMutationHook, createVoidMutationHook, normalizeQueryResult } from "@/lib/hook-factories";
 import type { Label } from "@/types/task";
 
 // --- GraphQL operations ---
@@ -71,81 +70,40 @@ function mapLabel(l: LabelResponse): Label {
 // --- Hooks ---
 
 export function useLabels(projectId?: string) {
-  return useQuery({
-    queryKey: ["labels", { projectId }],
-    queryFn: async (): Promise<Label[]> => {
-      if (!projectId) return [];
-      const data = await graphqlClient.request<{
-        listLabels: LabelResponse[];
-      }>(LIST_LABELS, { input: { projectId } });
-      return data.listLabels.map(mapLabel);
-    },
-    enabled: !!projectId,
+  const result = useQuery<{ listLabels: LabelResponse[] }>(LIST_LABELS, {
+    variables: { input: { projectId } },
+    skip: !projectId,
   });
+  return normalizeQueryResult(result, (d) => d.listLabels.map(mapLabel));
 }
 
-export function useCreateLabel() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (input: {
-      name: string;
-      color: string;
-      projectId: string;
-    }): Promise<Label> => {
-      const data = await graphqlClient.request<{
-        createLabel: LabelResponse;
-      }>(CREATE_LABEL, {
-        input: {
-          name: input.name,
-          color: input.color,
-          projectId: input.projectId,
-        },
-      });
-      return mapLabel(data.createLabel);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["labels"] });
-    },
-  });
-}
+export const useCreateLabel = createMutationHook<
+  { name: string; color: string; projectId: string },
+  LabelResponse,
+  Label
+>({
+  mutation: CREATE_LABEL,
+  responseKey: "createLabel",
+  mapResponse: mapLabel,
+  refetchQueries: [LIST_LABELS],
+});
 
-export function useUpdateLabel() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({
-      id,
-      input,
-    }: {
-      id: string;
-      input: { name?: string; color?: string };
-    }): Promise<Label> => {
-      const data = await graphqlClient.request<{
-        updateLabel: LabelResponse;
-      }>(UPDATE_LABEL, {
-        input: {
-          id,
-          name: input.name,
-          color: input.color,
-        },
-      });
-      return mapLabel(data.updateLabel);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["labels"] });
-    },
-  });
-}
+export const useUpdateLabel = createMutationHook<
+  { id: string; input: { name?: string; color?: string } },
+  LabelResponse,
+  Label
+>({
+  mutation: UPDATE_LABEL,
+  responseKey: "updateLabel",
+  mapVariables: (vars) => ({
+    input: { id: vars.id, name: vars.input.name, color: vars.input.color },
+  }),
+  mapResponse: mapLabel,
+  refetchQueries: [LIST_LABELS],
+});
 
-export function useDeleteLabel() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: string): Promise<void> => {
-      await graphqlClient.request<{ deleteLabel: boolean }>(DELETE_LABEL, {
-        input: { id },
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["labels"] });
-    },
-  });
-}
+export const useDeleteLabel = createVoidMutationHook<string>({
+  mutation: DELETE_LABEL,
+  mapVariables: (id) => ({ input: { id } }),
+  refetchQueries: [LIST_LABELS],
+});

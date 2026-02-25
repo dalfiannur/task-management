@@ -1,20 +1,17 @@
-import { GraphQLClient } from "graphql-request";
+import {
+  ApolloClient,
+  InMemoryCache,
+  createHttpLink,
+  ApolloLink,
+} from "@apollo/client";
+import { setContext } from "@apollo/client/link/context";
 
-const API_URL = window.location.origin + "/api-tasks/graphql";
-const CORE_API_URL = window.location.origin + "/api-core/graphql";
-const OIDC_API_URL = window.location.origin + "/api-oidc/graphql";
+export { gql } from "@apollo/client";
+export { useQuery, useMutation, ApolloProvider } from "@apollo/client/react";
 
-export const graphqlClient = new GraphQLClient(API_URL, {
-  credentials: "include",
-});
-
-export const coreGraphClient = new GraphQLClient(CORE_API_URL, {
-  credentials: "include",
-});
-
-export const oidcGraphClient = new GraphQLClient(OIDC_API_URL, {
-  credentials: "include",
-});
+const TASKS_URL = window.location.origin + "/api-tasks/graphql";
+export const CORE_URL = window.location.origin + "/api-core/graphql";
+export const OIDC_URL = window.location.origin + "/api-oidc/graphql";
 
 let currentToken: string | null = null;
 
@@ -24,13 +21,22 @@ export function getAuthToken(): string | null {
 
 export function setAuthToken(token: string | null) {
   currentToken = token;
-  if (token) {
-    graphqlClient.setHeader("Authorization", `Bearer ${token}`);
-    coreGraphClient.setHeader("Authorization", `Bearer ${token}`);
-    oidcGraphClient.setHeader("Authorization", `Bearer ${token}`);
-  } else {
-    graphqlClient.setHeader("Authorization", "");
-    coreGraphClient.setHeader("Authorization", "");
-    oidcGraphClient.setHeader("Authorization", "");
-  }
 }
+
+const authLink = setContext((_, { headers }) => ({
+  headers: {
+    ...headers,
+    ...(currentToken ? { Authorization: `Bearer ${currentToken}` } : {}),
+  },
+}));
+
+function makeClient(uri: string) {
+  return new ApolloClient({
+    link: ApolloLink.from([authLink, createHttpLink({ uri })]),
+    cache: new InMemoryCache(),
+  });
+}
+
+export const client = makeClient(TASKS_URL);
+export const coreClient = makeClient(CORE_URL);
+export const oidcClient = makeClient(OIDC_URL);

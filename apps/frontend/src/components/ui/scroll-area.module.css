@@ -1,0 +1,59 @@
+/* ============================================
+   Scroll Area Root
+   ============================================ */
+
+.root {
+  position: relative;
+}
+
+/* ============================================
+   Scroll Area Viewport
+   ============================================ */
+
+.viewport {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  outline: none;
+  transition: color 150ms ease, box-shadow 150ms ease;
+}
+
+.viewport:focus-visible {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 50%, transparent);
+  outline: 1px solid transparent;
+}
+
+/* ============================================
+   Scroll Area Scrollbar
+   ============================================ */
+
+.scrollbar {
+  display: flex;
+  touch-action: none;
+  padding: 1px;
+  transition: background-color 150ms ease;
+  user-select: none;
+}
+
+.scrollbar[data-orientation="vertical"] {
+  height: 100%;
+  width: 0.625rem;
+  border-left: 1px solid transparent;
+}
+
+.scrollbar[data-orientation="horizontal"] {
+  height: 0.625rem;
+  flex-direction: column;
+  border-top: 1px solid transparent;
+}
+
+/* ============================================
+   Scroll Area Thumb
+   ============================================ */
+
+.thumb {
+  position: relative;
+  flex: 1;
+  border-radius: 9999px;
+  background-color: var(--border);
+}

@@ -15,6 +15,7 @@ import { useTasks, useReorderTask, useUpdateTask } from "@/hooks/use-tasks";
 import { useLabels } from "@/hooks/use-labels";
 import { BOARD_COLUMNS, type Task, type TaskStatus } from "@/types/task";
 import { Skeleton } from "@/components/ui/skeleton";
+import styles from "./task-board.module.css";
 
 interface TaskBoardProps {
   filters: {
@@ -90,9 +91,9 @@ export function TaskBoard({ filters, projectId }: TaskBoardProps) {
 
   if (isLoading) {
     return (
-      <div className="flex gap-4 p-6 overflow-x-auto">
+      <div className={styles.loadingContainer}>
         {BOARD_COLUMNS.map((col) => (
-          <div key={col} className="w-72 space-y-2">
+          <div key={col} className={styles.loadingColumn}>
             <Skeleton className="h-8 w-full" />
             <Skeleton className="h-24 w-full" />
             <Skeleton className="h-24 w-full" />
@@ -103,7 +104,7 @@ export function TaskBoard({ filters, projectId }: TaskBoardProps) {
   }
 
   return (
-    <div className="flex gap-4 p-6 overflow-x-auto h-[calc(100vh-3.5rem)]">
+    <div className={styles.container}>
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}

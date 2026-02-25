@@ -1,0 +1,40 @@
+.cardTitle {
+  font-size: 0.9375rem;
+  line-height: 1.375rem;
+}
+
+.emptyText {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--muted-foreground);
+}
+
+.taskList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.taskRow {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.taskTitle {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.taskTime {
+  flex-shrink: 0;
+  font-size: 0.875rem;
+  line-height: 1rem;
+  color: var(--muted-foreground);
+  font-family: var(--font-mono);
+}

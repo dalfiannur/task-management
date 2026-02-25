@@ -1,4 +1,4 @@
-import { useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "react-router";
 import {
   Table,
   TableBody,
@@ -21,6 +21,7 @@ import { TaskFilters } from "./task-filters";
 import { useTasks, useUpdateTask } from "@/hooks/use-tasks";
 import { TASK_STATUS_CONFIG, type TaskStatus, type UpdateTaskInput } from "@/types/task";
 import { cn } from "@/lib/utils";
+import styles from "./task-list.module.css";
 
 interface TaskListProps {
   filters: {
@@ -44,7 +45,7 @@ export function TaskList({ filters, projectId }: TaskListProps) {
 
   if (isLoading) {
     return (
-      <div className="p-6 space-y-4">
+      <div className={styles.loadingContainer}>
         <Skeleton className="h-8 w-full" />
         <Skeleton className="h-12 w-full" />
         <Skeleton className="h-12 w-full" />
@@ -54,11 +55,11 @@ export function TaskList({ filters, projectId }: TaskListProps) {
   }
 
   return (
-    <div className="p-6">
-      <div className="mb-4">
+    <div className={styles.container}>
+      <div className={styles.filtersWrapper}>
         <TaskFilters filters={filters} />
       </div>
-      <div className="rounded-md border">
+      <div className={styles.tableWrapper}>
         <Table>
           <TableHeader>
             <TableRow>
@@ -72,7 +73,7 @@ export function TaskList({ filters, projectId }: TaskListProps) {
           <TableBody>
             {tasks?.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={5} className={styles.emptyCell}>
                   No tasks found
                 </TableCell>
               </TableRow>
@@ -80,18 +81,15 @@ export function TaskList({ filters, projectId }: TaskListProps) {
             {tasks?.map((task) => (
               <TableRow
                 key={task.id}
-                className="cursor-pointer"
+                className={styles.cursorPointer}
                 onClick={() =>
-                  navigate({
-                    to: "/projects/$projectId",
-                    params: { projectId },
-                  })
+                  navigate(`/projects/${projectId}`)
                 }
               >
                 <TableCell onClick={(e) => e.stopPropagation()}>
                   <Checkbox />
                 </TableCell>
-                <TableCell className="font-medium">{task.title}</TableCell>
+                <TableCell className={styles.fontMedium}>{task.title}</TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
                   <Select
                     value={task.status}
@@ -106,7 +104,7 @@ export function TaskList({ filters, projectId }: TaskListProps) {
                   >
                     <SelectTrigger
                       className={cn(
-                        "h-auto rounded-full border-transparent px-2 py-0.5 text-xs font-medium w-fit shadow-none [&>svg]:hidden",
+                        styles.statusTrigger,
                         TASK_STATUS_CONFIG[task.status].color,
                       )}
                     >
@@ -126,7 +124,7 @@ export function TaskList({ filters, projectId }: TaskListProps) {
                 <TableCell>
                   <TaskPriorityBadge priority={task.priority} />
                 </TableCell>
-                <TableCell className="text-muted-foreground">
+                <TableCell className={styles.mutedText}>
                   {task.dueDate
                     ? new Date(task.dueDate).toLocaleDateString()
                     : "\u2014"}

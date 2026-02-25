@@ -14,6 +14,7 @@ import type { SuggestionProps, SuggestionKeyDownProps } from "@tiptap/suggestion
 import { cn } from "@/lib/utils";
 import { useUsers } from "@/hooks/use-users";
 import type { User } from "@/types/task";
+import styles from "./comment-editor.module.css";
 
 // --- Mention suggestion list component ---
 
@@ -64,23 +65,21 @@ const MentionList = forwardRef<MentionListRef, MentionListProps>(
 
     if (items.length === 0) {
       return (
-        <div className="rounded-lg border bg-popover p-2 shadow-md">
-          <p className="text-xs text-muted-foreground">No users found</p>
+        <div className={styles.mentionEmpty}>
+          <p className={styles.mentionEmptyText}>No users found</p>
         </div>
       );
     }
 
     return (
-      <div className="rounded-lg border bg-popover shadow-md overflow-hidden max-h-48 overflow-y-auto">
+      <div className={styles.mentionList}>
         {items.map((item, index) => (
           <button
             key={item.id}
             type="button"
             className={cn(
-              "flex items-center gap-2 w-full px-3 py-1.5 text-left text-xs transition-colors",
-              index === selectedIndex
-                ? "bg-accent text-accent-foreground"
-                : "hover:bg-muted",
+              styles.mentionItem,
+              index === selectedIndex && styles.mentionItemSelected,
             )}
             onClick={() => selectItem(index)}
           >
@@ -88,10 +87,10 @@ const MentionList = forwardRef<MentionListRef, MentionListProps>(
               <img
                 src={item.avatarUrl}
                 alt=""
-                className="size-5 rounded-full object-cover"
+                className={styles.mentionAvatar}
               />
             ) : (
-              <div className="size-5 rounded-full bg-muted flex items-center justify-center text-[9px] font-medium">
+              <div className={styles.mentionAvatarFallback}>
                 {item.name
                   .split(" ")
                   .map((w) => w[0])
@@ -100,7 +99,7 @@ const MentionList = forwardRef<MentionListRef, MentionListProps>(
                   .toUpperCase()}
               </div>
             )}
-            <span className="truncate">{item.name}</span>
+            <span className={styles.mentionName}>{item.name}</span>
           </button>
         ))}
       </div>
@@ -236,19 +235,7 @@ export function CommentEditor({
   if (!editor) return null;
 
   return (
-    <div
-      className={cn(
-        "rounded-md border border-input focus-within:ring-1 focus-within:ring-ring/30 transition-colors",
-        // Placeholder styles
-        "[&_.tiptap_p.is-editor-empty:first-child::before]:text-muted-foreground/50",
-        "[&_.tiptap_p.is-editor-empty:first-child::before]:content-[attr(data-placeholder)]",
-        "[&_.tiptap_p.is-editor-empty:first-child::before]:float-left",
-        "[&_.tiptap_p.is-editor-empty:first-child::before]:h-0",
-        "[&_.tiptap_p.is-editor-empty:first-child::before]:pointer-events-none",
-        // Mention styles
-        "[&_.mention]:text-primary [&_.mention]:font-medium",
-      )}
-    >
+    <div className={styles.editorWrapper}>
       <EditorContent editor={editor} />
     </div>
   );
@@ -382,12 +369,7 @@ export function CommentEditEditor({
   if (!editor) return null;
 
   return (
-    <div
-      className={cn(
-        "rounded-md border border-input focus-within:ring-1 focus-within:ring-ring/30 transition-colors",
-        "[&_.mention]:text-primary [&_.mention]:font-medium",
-      )}
-    >
+    <div className={styles.editorWrapper}>
       <EditorContent editor={editor} />
     </div>
   );

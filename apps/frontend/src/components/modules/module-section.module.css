@@ -1,0 +1,308 @@
+.container {
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  border-left-width: 4px;
+}
+
+.headerBar {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.625rem 0.875rem;
+}
+
+.trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  flex: 1;
+  border-radius: calc(var(--radius) - 2px);
+  margin: -0.1875rem;
+  padding: 0.1875rem;
+  transition: color 150ms, background-color 150ms;
+}
+
+.trigger:hover {
+  background-color: color-mix(in srgb, var(--accent) 50%, transparent);
+}
+
+.chevron {
+  width: 0.875rem;
+  height: 0.875rem;
+  flex-shrink: 0;
+  color: var(--muted-foreground);
+  transition: transform 150ms;
+}
+
+:global([data-state="open"]) > .trigger .chevron,
+:global(.group\/module[data-state="open"]) .chevron {
+  transform: rotate(90deg);
+}
+
+.moduleName {
+  font-weight: 600;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.countBadge {
+  font-family: var(--font-mono);
+  margin-left: 0.1875rem;
+  font-size: 0.875rem;
+  line-height: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.progressGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-left: auto;
+  margin-right: 0.1875rem;
+}
+
+.progressTrack {
+  height: 0.25rem;
+  width: 3.5rem;
+  border-radius: 9999px;
+  background-color: var(--muted);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 9999px;
+  transition: all 500ms;
+}
+
+.progressText {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+  width: 1.5rem;
+  text-align: right;
+}
+
+.menuButton {
+  margin-left: auto;
+  width: 1.5rem;
+  height: 1.5rem;
+  flex-shrink: 0;
+}
+
+.menuIcon {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.menuItemIcon {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.destructiveItem {
+  color: var(--destructive);
+}
+
+.destructiveItem:focus {
+  color: var(--destructive);
+}
+
+/* Inline description & PIC in header */
+.headerDescription {
+  flex: 1;
+  min-width: 0;
+  color: var(--muted-foreground);
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.headerPic {
+  display: flex;
+  align-items: center;
+  gap: 0.3125rem;
+  flex-shrink: 0;
+}
+
+.headerPicAvatar {
+  width: 1rem;
+  height: 1rem;
+}
+
+.headerPicName {
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+  color: var(--muted-foreground);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* TaskAssigneeCell */
+.assigneeDash {
+  color: var(--muted-foreground);
+}
+
+.singleAssignee {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.assigneeAvatar {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.assigneeFallback {
+  font-size: 0.5625rem;
+}
+
+.assigneeName {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.multiAssignee {
+  display: flex;
+  align-items: center;
+  gap: 0.3125rem;
+}
+
+.avatarStack {
+  display: flex;
+  align-items: center;
+}
+
+.avatarStack > * + * {
+  margin-left: -0.375rem;
+}
+
+.stackedAvatar {
+  width: 1.125rem;
+  height: 1.125rem;
+  box-shadow: 0 0 0 1px var(--background);
+}
+
+.overflowCount {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  line-height: 1rem;
+  color: var(--muted-foreground);
+}
+
+/* TaskRow */
+.taskRow {
+  cursor: pointer;
+}
+
+.taskRow:hover {
+  background-color: color-mix(in srgb, var(--accent) 50%, transparent);
+}
+
+.taskTitle {
+  padding-left: 2.125rem;
+  font-weight: 500;
+}
+
+.commentBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1875rem;
+  margin-left: 0.5rem;
+  padding: 0.0625rem 0.3125rem;
+  border-radius: 9999px;
+  border: none;
+  background: color-mix(in srgb, var(--muted) 50%, transparent);
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  transition: background-color 150ms, color 150ms;
+  vertical-align: middle;
+}
+
+.commentBadge:hover {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.commentIcon {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+.statusTrigger {
+  font-family: var(--font-mono);
+  height: auto;
+  border-radius: 9999px;
+  border-color: transparent;
+  padding: 0.0625rem 0.375rem;
+  font-size: 0.875rem;
+  line-height: 1rem;
+  font-weight: 500;
+  width: fit-content;
+  box-shadow: none;
+}
+
+.statusTrigger > svg {
+  display: none;
+}
+
+.dueDateCell {
+  font-family: var(--font-mono);
+  color: var(--muted-foreground);
+}
+
+.addTaskRow {
+  cursor: pointer;
+}
+
+.addTaskRow:hover {
+  background-color: color-mix(in srgb, var(--accent) 50%, transparent);
+}
+
+.addTaskCell {
+  padding-left: 2.125rem;
+  padding-top: 0.375rem;
+  padding-bottom: 0.375rem;
+}
+
+.addTaskLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1875rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  color: var(--muted-foreground);
+  transition: color 150ms;
+}
+
+.addTaskLabel:hover {
+  color: var(--foreground);
+}
+
+.addTaskIcon {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.emptyCell {
+  text-align: center;
+  padding-top: 1.25rem;
+  padding-bottom: 1.25rem;
+  color: var(--muted-foreground);
+}
+
+.skeletonCell {
+  padding-left: 2.125rem;
+}

@@ -1,0 +1,87 @@
+/* Task status badge colors */
+.status-todo {
+  background-color: hsl(225 50% 92%);
+  color: hsl(225 65% 42%);
+}
+
+.status-in-progress {
+  background-color: hsl(38 85% 88%);
+  color: hsl(30 80% 32%);
+}
+
+.status-done {
+  background-color: hsl(152 40% 88%);
+  color: hsl(152 55% 28%);
+}
+
+.status-cancelled {
+  background-color: hsl(8 60% 92%);
+  color: hsl(8 65% 42%);
+}
+
+/* Task priority colors */
+.priority-none {
+  color: hsl(20 8% 55%);
+}
+
+.priority-low {
+  color: hsl(225 60% 50%);
+}
+
+.priority-medium {
+  color: hsl(38 90% 42%);
+}
+
+.priority-high {
+  color: hsl(25 85% 48%);
+}
+
+.priority-urgent {
+  color: hsl(8 75% 50%);
+}
+
+/* Project status dot colors */
+.dot-pending {
+  background-color: hsl(20 8% 55%);
+}
+
+.dot-prospect {
+  background-color: hsl(38 90% 52%);
+}
+
+.dot-win {
+  background-color: hsl(152 55% 42%);
+}
+
+.dot-on-going {
+  background-color: hsl(225 60% 52%);
+}
+
+.dot-canceled {
+  background-color: hsl(8 70% 55%);
+}
+
+.dot-closed {
+  background-color: hsl(271 91% 65%);
+}
+
+/* Dark mode adjustments */
+.dark .status-todo {
+  background-color: hsla(225, 55%, 50%, 0.15);
+  color: hsl(225 55% 72%);
+}
+
+.dark .status-in-progress {
+  background-color: hsla(38, 85%, 50%, 0.15);
+  color: hsl(38 85% 65%);
+}
+
+.dark .status-done {
+  background-color: hsla(152, 50%, 40%, 0.15);
+  color: hsl(152 45% 62%);
+}
+
+.dark .status-cancelled {
+  background-color: hsla(8, 65%, 50%, 0.15);
+  color: hsl(8 60% 65%);
+}

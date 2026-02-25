@@ -11,17 +11,19 @@ import {
 } from "@/components/ui/breadcrumb";
 import { LayoutList, LayoutGrid, Plus, Search } from "lucide-react";
 import { useUIStore } from "@/stores/ui-store";
-import { Link, useNavigate, useParams } from "@tanstack/react-router";
+import { Link, useParams, useSearchParams } from "react-router";
 import { useState } from "react";
 import { TaskForm } from "@/components/tasks/task-form";
-import { useProject } from "@/hooks/use-projects";
+import { useProject, getProjectDisplayName } from "@/hooks/use-projects";
 import { useModule } from "@/hooks/use-modules";
 import { NotificationBell } from "./notification-bell";
+import { cn } from "@/lib/utils";
+import styles from "./header.module.css";
 
 export function Header() {
   const { viewMode, setViewMode } = useUIStore();
-  const navigate = useNavigate();
-  const params = useParams({ strict: false });
+  const [, setSearchParams] = useSearchParams();
+  const params = useParams();
   const projectId = (params as { projectId?: string }).projectId;
   const moduleId = (params as { moduleId?: string }).moduleId;
 
@@ -34,19 +36,24 @@ export function Header() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (projectId) {
-      navigate({
-        to: "/projects/$projectId",
-        params: { projectId },
-        search: (prev) => ({ ...prev, search: searchValue || undefined }),
+      setSearchParams((prev) => {
+        if (searchValue) {
+          prev.set("search", searchValue);
+        } else {
+          prev.delete("search");
+        }
+        return prev;
       });
     }
   };
 
+  const projectName = project ? getProjectDisplayName(project) : undefined;
+
   return (
     <>
-      <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
-        <SidebarTrigger className="-ml-1" />
-        <Separator orientation="vertical" className="mr-2 h-4" />
+      <header className={styles.header}>
+        <SidebarTrigger className={styles.triggerBtn} />
+        <Separator orientation="vertical" className={styles.separatorEl} />
 
         <Breadcrumb>
           <BreadcrumbList>
@@ -61,15 +68,12 @@ export function Header() {
                 <BreadcrumbItem>
                   {moduleId ? (
                     <BreadcrumbLink asChild>
-                      <Link
-                        to="/projects/$projectId"
-                        params={{ projectId: project.id }}
-                      >
-                        {project?.coreDetail?.name.name}
+                      <Link to={`/projects/${project.id}`}>
+                        {projectName}
                       </Link>
                     </BreadcrumbLink>
                   ) : (
-                    <BreadcrumbPage>{project.coreDetail?.name.name}</BreadcrumbPage>
+                    <BreadcrumbPage>{projectName}</BreadcrumbPage>
                   )}
                 </BreadcrumbItem>
               </>
@@ -85,12 +89,12 @@ export function Header() {
           </BreadcrumbList>
         </Breadcrumb>
 
-        <form onSubmit={handleSearch} className="flex-1 max-w-sm ml-auto">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+        <form onSubmit={handleSearch} className={styles.searchForm}>
+          <div className={styles.searchWrapper}>
+            <Search className={styles.searchIcon} />
             <input
               placeholder="Search tasks..."
-              className="w-full rounded-full bg-muted/50 border-0 pl-9 pr-4 h-8 text-sm placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-ring/30 focus:bg-muted transition-colors"
+              className={styles.searchInput}
               value={searchValue}
               onChange={(e) => setSearchValue(e.target.value)}
             />
@@ -99,31 +103,31 @@ export function Header() {
 
         <NotificationBell />
 
-        <div className="flex items-center gap-2 ml-3">
+        <div className={styles.actions}>
           {moduleId && (
             <>
-              <div className="flex items-center rounded-lg border bg-muted/30 p-0.5">
+              <div className={styles.viewToggle}>
                 <button
                   type="button"
-                  className={`inline-flex items-center justify-center rounded-md px-2 h-7 text-xs transition-colors ${viewMode === "list" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                  className={cn(styles.viewBtn, viewMode === "list" && styles.viewBtnActive)}
                   onClick={() => setViewMode("list")}
                 >
-                  <LayoutList className="size-3.5" />
+                  <LayoutList className={styles.viewIcon} />
                 </button>
                 <button
                   type="button"
-                  className={`inline-flex items-center justify-center rounded-md px-2 h-7 text-xs transition-colors ${viewMode === "board" ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                  className={cn(styles.viewBtn, viewMode === "board" && styles.viewBtnActive)}
                   onClick={() => setViewMode("board")}
                 >
-                  <LayoutGrid className="size-3.5" />
+                  <LayoutGrid className={styles.viewIcon} />
                 </button>
               </div>
               <Button
                 size="sm"
-                className="h-8 rounded-lg"
+                className={styles.newTaskBtn}
                 onClick={() => setTaskFormOpen(true)}
               >
-                <Plus className="size-4 mr-1" />
+                <Plus className={styles.newTaskIcon} />
                 New Task
               </Button>
             </>
