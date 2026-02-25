@@ -36,7 +36,6 @@ import {
 import {
   MoreHorizontal,
   Users,
-  FolderPlus,
   Trophy,
   Trash2,
   CheckCircle2,
@@ -68,6 +67,7 @@ const DOT_CLASS: Record<string, string> = {
 
 export interface ProjectLayoutContext {
   openModuleForm: () => void;
+  openSubProjectForm: () => void;
 }
 
 export function Component() {
@@ -162,6 +162,7 @@ export function Component() {
 
   const outletContext: ProjectLayoutContext = {
     openModuleForm: () => setFormOpen(true),
+    openSubProjectForm: () => setSubProjectFormOpen(true),
   };
 
   return (
@@ -194,10 +195,6 @@ export function Component() {
                 <DropdownMenuItem onClick={() => setMembersOpen(true)}>
                   <Users className={styles.menuIcon} />
                   Members
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setSubProjectFormOpen(true)}>
-                  <FolderPlus className={styles.menuIcon} />
-                  Sub-Project
                 </DropdownMenuItem>
                 {project.status.value === "on_going" && (
                   <DropdownMenuItem

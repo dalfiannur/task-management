@@ -1,3 +1,26 @@
+/* Header row */
+.header {
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+  padding-top: 0.625rem;
+  padding-bottom: 0.625rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+/* New Sub-Project button */
+.newSubProjectBtn {
+  flex-shrink: 0;
+}
+
+.newSubProjectBtnIcon {
+  width: 0.875rem;
+  height: 0.875rem;
+  margin-right: 0.25rem;
+}
+
 /* Sub-Projects Grid */
 .grid {
   display: grid;
@@ -47,4 +70,14 @@
   line-height: 1.25rem;
   color: color-mix(in srgb, var(--muted-foreground) 70%, transparent);
   margin-top: 0.125rem;
+}
+
+.emptyBtn {
+  margin-top: 0.5rem;
+}
+
+.emptyBtnIcon {
+  width: 0.875rem;
+  height: 0.875rem;
+  margin-right: 0.375rem;
 }
