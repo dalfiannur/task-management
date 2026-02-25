@@ -12,7 +12,6 @@ import { ModuleForm } from "@/components/modules/module-form";
 import { WinProjectDialog } from "@/components/projects/win-project-dialog";
 import { CloseProjectDialog } from "@/components/projects/close-project-dialog";
 import { SubProjectForm } from "@/components/projects/sub-project-form";
-import { ProjectMembersDialog } from "@/components/projects/project-members-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -84,7 +83,6 @@ export function Component() {
   const [formOpen, setFormOpen] = useState(false);
   const [winDialogOpen, setWinDialogOpen] = useState(false);
   const [subProjectFormOpen, setSubProjectFormOpen] = useState(false);
-  const [membersOpen, setMembersOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [closeDialogOpen, setCloseDialogOpen] = useState(false);
 
@@ -130,6 +128,7 @@ export function Component() {
   if (pathname.startsWith(`${basePath}/timeline`)) activeTab = "timeline";
   else if (pathname.startsWith(`${basePath}/sub-projects`)) activeTab = "sub-projects";
   else if (pathname.startsWith(`${basePath}/media`)) activeTab = "media";
+  else if (pathname.startsWith(`${basePath}/members`)) activeTab = "members";
   else if (pathname.startsWith(`${basePath}/pages`)) activeTab = "pages";
 
   const tabs = [
@@ -145,6 +144,12 @@ export function Component() {
       label: "Sub-Projects",
       to: `${basePath}/sub-projects`,
       icon: FolderOpen,
+    },
+    {
+      key: "members",
+      label: "Members",
+      to: `${basePath}/members`,
+      icon: Users,
     },
     {
       key: "media",
@@ -192,10 +197,6 @@ export function Component() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setMembersOpen(true)}>
-                  <Users className={styles.menuIcon} />
-                  Members
-                </DropdownMenuItem>
                 {project.status.value === "on_going" && (
                   <DropdownMenuItem
                     className={styles.closeItem}
@@ -352,12 +353,6 @@ export function Component() {
         open={subProjectFormOpen}
         onOpenChange={setSubProjectFormOpen}
         parentProjectId={projectId!}
-      />
-      <ProjectMembersDialog
-        open={membersOpen}
-        onOpenChange={setMembersOpen}
-        projectId={projectId!}
-        projectLeaderId={project?.projectLeaderId?.value}
       />
       {project.status.value === "on_going" && (
         <CloseProjectDialog
