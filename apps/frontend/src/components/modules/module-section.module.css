@@ -214,6 +214,33 @@
   font-weight: 500;
 }
 
+.commentBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1875rem;
+  margin-left: 0.5rem;
+  padding: 0.0625rem 0.3125rem;
+  border-radius: 9999px;
+  border: none;
+  background: color-mix(in srgb, var(--muted) 50%, transparent);
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  transition: background-color 150ms, color 150ms;
+  vertical-align: middle;
+}
+
+.commentBadge:hover {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.commentIcon {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
 .statusTrigger {
   font-family: var(--font-mono);
   height: auto;

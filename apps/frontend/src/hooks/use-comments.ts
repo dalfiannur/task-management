@@ -50,6 +50,12 @@ const DELETE_COMMENT = gql`
   }
 `;
 
+const COMMENT_COUNTS = gql`
+  query CommentCounts($input: commentCountsInput!) {
+    commentCounts(input: $input)
+  }
+`;
+
 export function useComments(taskId: string) {
   const result = useQuery<{ listComments: Comment[] }>(LIST_COMMENTS, {
     variables: { input: { taskId } },
@@ -64,7 +70,7 @@ export const useCreateComment = createMutationHook<
 >({
   mutation: CREATE_COMMENT,
   responseKey: "createComment",
-  refetchQueries: [LIST_COMMENTS],
+  refetchQueries: [LIST_COMMENTS, COMMENT_COUNTS],
 });
 
 export const useUpdateComment = createMutationHook<
@@ -83,5 +89,16 @@ export const useDeleteComment = createVoidMutationHook<{
 }>({
   mutation: DELETE_COMMENT,
   mapVariables: (input) => ({ input: { id: input.id } }),
-  refetchQueries: [LIST_COMMENTS],
+  refetchQueries: [LIST_COMMENTS, COMMENT_COUNTS],
 });
+
+export function useCommentCounts(taskIds: string[]) {
+  const result = useQuery<{ commentCounts: Record<string, number> }>(
+    COMMENT_COUNTS,
+    {
+      variables: { input: { taskIds } },
+      skip: taskIds.length === 0,
+    },
+  );
+  return normalizeQueryResult(result, (d) => d.commentCounts);
+}

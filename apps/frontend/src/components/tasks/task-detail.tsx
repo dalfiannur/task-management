@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useTask, useDeleteTask, useUpdateTask } from "@/hooks/use-tasks";
 import { useUsers } from "@/hooks/use-users";
 import { useModules } from "@/hooks/use-modules";
+import { useState } from "react";
 import {
   Trash2,
   Tag,
@@ -21,6 +22,7 @@ import {
   User as UserIcon,
   CalendarDays,
   CalendarClock,
+  MessageSquare,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -34,7 +36,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { TaskAttachments } from "./task-attachments";
-import { TaskActivityTimeline } from "./task-activity-timeline";
+import { CommentsDialog } from "./comments-dialog";
 import {
   EditableTitle,
   EditableDescription,
@@ -67,6 +69,7 @@ export function TaskDetail({
   const updateTask = useUpdateTask();
   const { data: users = [] } = useUsers();
   const { data: modules } = useModules(projectId);
+  const [commentsOpen, setCommentsOpen] = useState(false);
 
   const moduleName =
     modules?.find((m) => m.id === moduleId)?.name ?? moduleId;
@@ -135,7 +138,14 @@ export function TaskDetail({
                   />
                 </div>
 
-                <TaskActivityTimeline taskId={taskId} projectId={projectId} />
+                <Button
+                  variant="ghost"
+                  className={styles.commentsButton}
+                  onClick={() => setCommentsOpen(true)}
+                >
+                  <MessageSquare className={styles.commentsButtonIcon} />
+                  Comments
+                </Button>
               </div>
             </div>
 
@@ -296,6 +306,14 @@ export function TaskDetail({
           </div>
         )}
       </DialogContent>
+
+      <CommentsDialog
+        open={commentsOpen}
+        onOpenChange={setCommentsOpen}
+        taskId={taskId}
+        projectId={projectId}
+        taskTitle={task?.title}
+      />
     </Dialog>
   );
 }

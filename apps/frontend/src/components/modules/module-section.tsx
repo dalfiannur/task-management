@@ -45,8 +45,10 @@ import {
 import { useTasks, useUpdateTask } from "@/hooks/use-tasks";
 import { useDeleteModule } from "@/hooks/use-modules";
 import { useUsers, useUser } from "@/hooks/use-users";
-import { ChevronRight, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
+import { ChevronRight, MessageSquare, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
 import { ModuleForm } from "./module-form";
+import { CommentsDialog } from "@/components/tasks/comments-dialog";
+import { useCommentCounts } from "@/hooks/use-comments";
 import { TASK_STATUS_CONFIG, type Module, type Task, type TaskStatus, type UpdateTaskInput } from "@/types/task";
 import { type ProjectStatus, } from "@/types/project"
 import { cn, getInitials } from "@/lib/utils";
@@ -138,7 +140,10 @@ export function ModuleSection({
   const [editFormOpen, setEditFormOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [commentsTaskId, setCommentsTaskId] = useState<string | null>(null);
   const { data: picUser } = useUser(module.picId);
+  const taskIds = tasks?.map((t) => t.id) ?? [];
+  const { data: commentCounts } = useCommentCounts(taskIds);
   const color = MODULE_COLORS[colorIndex % MODULE_COLORS.length];
 
   const taskCount = tasks?.length ?? 0;
@@ -286,6 +291,8 @@ export function ModuleSection({
                       task={task}
                       updateTask={updateTask}
                       onNavigate={() => setSelectedTaskId(task.id)}
+                      commentCount={commentCounts?.[task.id] ?? 0}
+                      onOpenComments={() => setCommentsTaskId(task.id)}
                     />
                   ))}
 
@@ -330,6 +337,16 @@ export function ModuleSection({
           onClose={() => setSelectedTaskId(null)}
         />
       )}
+
+      {commentsTaskId && (
+        <CommentsDialog
+          open={!!commentsTaskId}
+          onOpenChange={(open) => !open && setCommentsTaskId(null)}
+          taskId={commentsTaskId}
+          projectId={projectId}
+          taskTitle={tasks?.find((t) => t.id === commentsTaskId)?.title}
+        />
+      )}
     </>
   );
 }
@@ -338,17 +355,32 @@ function TaskRow({
   task,
   updateTask,
   onNavigate,
+  commentCount,
+  onOpenComments,
 }: {
   task: Task;
   updateTask: ReturnType<typeof useUpdateTask>;
   onNavigate: () => void;
+  commentCount: number;
+  onOpenComments: () => void;
 }) {
   return (
     <TableRow
       className={s.taskRow}
       onClick={onNavigate}
     >
-      <TableCell className={s.taskTitle}>{task.title}</TableCell>
+      <TableCell className={s.taskTitle}>
+        {task.title}
+        {commentCount > 0 && (
+          <button
+            className={s.commentBadge}
+            onClick={(e) => { e.stopPropagation(); onOpenComments(); }}
+          >
+            <MessageSquare className={s.commentIcon} />
+            <span>{commentCount}</span>
+          </button>
+        )}
+      </TableCell>
       <TableCell onClick={(e) => e.stopPropagation()}>
         <Select
           value={task.status}
