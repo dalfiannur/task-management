@@ -124,30 +124,6 @@ function TaskAssigneeCell({ assigneeIds }: { assigneeIds: string[] }) {
   );
 }
 
-function ModuleMetaRow({ description, picId }: { description?: string; picId?: string }) {
-  const { data: picUser } = useUser(picId);
-
-  return (
-    <div className={s.metaRow}>
-      {description && (
-        <span className={s.metaDescription}>{description}</span>
-      )}
-      {picUser && (
-        <span className={s.metaPic}>
-          <span className={s.metaPicLabel}>PIC:</span>
-          <Avatar className={s.metaPicAvatar}>
-            <AvatarImage src={picUser.avatarUrl} />
-            <AvatarFallback className={s.assigneeFallback}>
-              {getInitials(picUser.name)}
-            </AvatarFallback>
-          </Avatar>
-          <span className={s.metaPicName}>{picUser.name}</span>
-        </span>
-      )}
-    </div>
-  );
-}
-
 export function ModuleSection({
   module,
   projectId,
@@ -162,6 +138,7 @@ export function ModuleSection({
   const [editFormOpen, setEditFormOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const { data: picUser } = useUser(module.picId);
   const color = MODULE_COLORS[colorIndex % MODULE_COLORS.length];
 
   const taskCount = tasks?.length ?? 0;
@@ -184,6 +161,9 @@ export function ModuleSection({
               <Badge variant="secondary" className={s.countBadge}>
                 {isLoading ? "..." : taskCount}
               </Badge>
+              {module.description && (
+                <span className={s.headerDescription}>{module.description}</span>
+              )}
               {!isLoading && taskCount > 0 && (
                 <div className={s.progressGroup}>
                   <div className={s.progressTrack}>
@@ -199,6 +179,17 @@ export function ModuleSection({
                     {progressPct}%
                   </span>
                 </div>
+              )}
+              {picUser && (
+                <span className={s.headerPic}>
+                  <Avatar className={s.headerPicAvatar}>
+                    <AvatarImage src={picUser.avatarUrl} />
+                    <AvatarFallback className={s.assigneeFallback}>
+                      {getInitials(picUser.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className={s.headerPicName}>{picUser.name}</span>
+                </span>
               )}
             </CollapsibleTrigger>
             <DropdownMenu>
@@ -240,10 +231,6 @@ export function ModuleSection({
               </AlertDialogContent>
             </AlertDialog>
           </div>
-
-          {(module.description || module.picId) && (
-            <ModuleMetaRow description={module.description} picId={module.picId} />
-          )}
 
           <CollapsibleContent>
             <Table>
