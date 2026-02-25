@@ -147,7 +147,12 @@ export default class ProjectService extends BaseService {
       const role = user.role ?? await getUserRole(user.id);
       if (role !== "manager") {
         const memberProjectIds = await this.getMemberProjectIds(user.id);
-        if (!memberProjectIds.has(input.id)) throw new Error("Access denied");
+        if (!memberProjectIds.has(input.id)) {
+          const parentRef = await entity.get(ProjectParentRefComponent);
+          if (!parentRef?.parentProjectId || !memberProjectIds.has(parentRef.parentProjectId)) {
+            throw new Error("Access denied");
+          }
+        }
       }
     }
 
@@ -383,7 +388,9 @@ export default class ProjectService extends BaseService {
       const role = user.role ?? await getUserRole(user.id);
       if (role !== "manager") {
         const memberProjectIds = await this.getMemberProjectIds(user.id);
-        filteredProjects = allSubProjects.filter((p: any) => memberProjectIds.has(p.id));
+        if (!memberProjectIds.has(input.parentProjectId)) {
+          filteredProjects = allSubProjects.filter((p: any) => memberProjectIds.has(p.id));
+        }
       }
     }
 
