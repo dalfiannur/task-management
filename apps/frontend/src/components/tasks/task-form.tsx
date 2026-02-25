@@ -150,7 +150,7 @@ export function TaskForm({ open, onOpenChange, task, moduleId, projectId }: Task
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={`sm:max-w-4xl ${styles.dialogContent}`}>
+      <DialogContent className={styles.dialogContent}>
         <form onSubmit={handleSubmit} data-task-form>
           <div className={styles.formLayout}>
             {/* Left panel -- main content */}

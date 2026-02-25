@@ -1,4 +1,5 @@
 .dialogContent {
+  max-width: 72rem;
   max-height: 85vh;
   overflow-y: auto;
   padding: 0;
@@ -83,7 +84,7 @@
 
 @media (min-width: 640px) {
   .rightPanel {
-    width: 260px;
+    width: 300px;
   }
 }
 

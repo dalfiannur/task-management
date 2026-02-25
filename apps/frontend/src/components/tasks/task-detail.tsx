@@ -92,7 +92,7 @@ export function TaskDetail({
 
   return (
     <Dialog open onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className={`sm:max-w-6xl ${styles.dialogContent}`}>
+      <DialogContent className={styles.dialogContent}>
         {isLoading ? (
           <div className={styles.loadingContainer}>
             <Skeleton className="h-8 w-3/4" />
