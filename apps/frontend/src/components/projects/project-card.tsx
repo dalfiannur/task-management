@@ -39,9 +39,11 @@ export function ProjectCard({ project, parentName }: ProjectCardProps) {
         <div className={styles.headerRow}>
           <div className={styles.infoGroup}>
             <div className={styles.badgeRow}>
-              <Badge variant="outline" className={styles.codeBadge}>
-                {getProjectDisplayName(project)}
-              </Badge>
+              {project.code && (
+                <Badge variant="outline" className={styles.codeBadge}>
+                  {project.code}
+                </Badge>
+              )}
               <Badge className={cn(statusConfig.color, styles.statusBadge)}>
                 {statusConfig.label}
               </Badge>
