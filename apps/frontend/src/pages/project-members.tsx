@@ -6,7 +6,6 @@ import {
   useAddProjectMember,
   useRemoveProjectMember,
 } from "@/hooks/use-members";
-import { useMe } from "@/hooks/use-me";
 import { useUsers } from "@/hooks/use-users";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -20,15 +19,11 @@ export function Component() {
   const { data: project } = useProject(projectId!);
   const { data: members } = useProjectMembers(projectId!);
   const { data: users } = useUsers();
-  const { data: me } = useMe();
   const addMember = useAddProjectMember();
   const removeMember = useRemoveProjectMember();
   const [selectedUserId, setSelectedUserId] = useState<string | undefined>();
 
   const projectLeaderId = project?.projectLeaderId?.value;
-
-  const canManage =
-    me?.role === "manager" || (projectLeaderId && me?.id === projectLeaderId);
 
   const memberUserIds = new Set(
     members?.map((m) => m.membership.userId) ?? [],
@@ -48,47 +43,47 @@ export function Component() {
 
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <h2 className={styles.title}>Members</h2>
-        {members && members.length > 0 && (
-          <span className={styles.count}>{members.length}</span>
-        )}
+      {/* Add member bar */}
+      <div className={styles.addBar}>
+        <div className={styles.addCombobox}>
+          <UserCombobox
+            value={selectedUserId}
+            onChange={setSelectedUserId}
+          />
+        </div>
+        <Button
+          size="sm"
+          onClick={handleAdd}
+          disabled={
+            !selectedUserId ||
+            memberUserIds.has(selectedUserId) ||
+            addMember.isLoading
+          }
+        >
+          <UserPlus className={styles.addIcon} />
+          Add
+        </Button>
       </div>
 
-      {/* Add member */}
-      {canManage && (
-        <div className={styles.addSection}>
-          <div className={styles.addCombobox}>
-            <UserCombobox
-              value={selectedUserId}
-              onChange={setSelectedUserId}
-            />
-          </div>
-          <Button
-            size="sm"
-            onClick={handleAdd}
-            disabled={
-              !selectedUserId ||
-              memberUserIds.has(selectedUserId) ||
-              addMember.isLoading
-            }
-          >
-            <UserPlus className={styles.addIcon} />
-            Add
-          </Button>
-        </div>
-      )}
-
-      {/* Member list */}
-      <div className={styles.memberList}>
-        {members?.map((member) => {
-          const user = users?.find(
-            (u) => u.id === member.membership.userId,
-          );
-          const displayName = user?.name ?? member.membership.userId;
-          return (
-            <div key={member.id} className={styles.memberRow}>
-              <div className={styles.memberInfo}>
+      {/* Member cards grid */}
+      {members && members.length > 0 ? (
+        <div className={styles.grid}>
+          {members.map((member) => {
+            const user = users?.find(
+              (u) => u.id === member.membership.userId,
+            );
+            const displayName = user?.name ?? member.membership.userId;
+            return (
+              <div key={member.id} className={styles.memberCard}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className={styles.removeButton}
+                  onClick={() => handleRemove(member.membership.userId)}
+                  disabled={removeMember.isLoading}
+                >
+                  <X className={styles.removeIcon} />
+                </Button>
                 <Avatar className={styles.memberAvatar}>
                   <AvatarImage src={user?.avatarUrl} />
                   <AvatarFallback className={styles.memberFallback}>
@@ -100,32 +95,18 @@ export function Component() {
                   <span className={styles.picBadge}>Leader</span>
                 )}
               </div>
-              {canManage && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={styles.removeButton}
-                  onClick={() => handleRemove(member.membership.userId)}
-                  disabled={removeMember.isLoading}
-                >
-                  <X className={styles.removeIcon} />
-                </Button>
-              )}
-            </div>
-          );
-        })}
-        {(!members || members.length === 0) && (
-          <div className={styles.emptyState}>
-            <Users className={styles.emptyIcon} />
-            <p className={styles.emptyMessage}>No members yet</p>
-            {canManage && (
-              <p className={styles.emptyHint}>
-                Use the form above to add members to this project.
-              </p>
-            )}
-          </div>
-        )}
-      </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className={styles.emptyState}>
+          <Users className={styles.emptyIcon} />
+          <p className={styles.emptyMessage}>No members yet</p>
+          <p className={styles.emptyHint}>
+            Use the form above to add members to this project.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

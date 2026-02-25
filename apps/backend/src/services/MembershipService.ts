@@ -74,7 +74,7 @@ export default class MembershipService extends BaseService {
     input: { projectId: string; userId: string },
     context: { request?: Request },
   ) {
-    await this.requireManagerOrLeader(context, input.projectId);
+    await this.requireMember(context, input.projectId);
     await this.ensureMembership(input.projectId, input.userId);
     return true;
   }
@@ -88,7 +88,7 @@ export default class MembershipService extends BaseService {
     input: { projectId: string; userId: string },
     context: { request?: Request },
   ) {
-    await this.requireManagerOrLeader(context, input.projectId);
+    await this.requireMember(context, input.projectId);
 
     const entities = await new Query()
       .with(ProjectMembershipData, {
@@ -107,9 +107,9 @@ export default class MembershipService extends BaseService {
   }
 
   /**
-   * Auth helper: caller must be a manager OR the project leader.
+   * Auth helper: caller must be a manager, project leader, or project member.
    */
-  private async requireManagerOrLeader(context: { request?: Request }, projectId: string) {
+  private async requireMember(context: { request?: Request }, projectId: string) {
     if (!context.request) throw new Error("Authentication required");
     const user = await AuthPlugin.extractUser(context.request);
     if (!user) throw new Error("Authentication required");
@@ -124,6 +124,17 @@ export default class MembershipService extends BaseService {
       if (leaderComponent?.value === user.id) return user;
     }
 
-    throw new Error("Manager or project leader access required");
+    // Check if user is a project member
+    const memberships = await new Query()
+      .with(ProjectMembershipData, {
+        filters: [
+          Query.typedFilter(ProjectMembershipData, "projectId", "=", projectId),
+          Query.typedFilter(ProjectMembershipData, "userId", "=", user.id),
+        ],
+      })
+      .exec();
+    if (memberships.length > 0) return user;
+
+    throw new Error("Project membership required");
   }
 }
