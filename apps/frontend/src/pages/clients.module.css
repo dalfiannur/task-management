@@ -1,0 +1,89 @@
+.page {
+  padding: 1.25rem;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.title {
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+  font-weight: 600;
+}
+
+.btnIcon {
+  width: 1rem;
+  height: 1rem;
+  margin-right: 0.25rem;
+}
+
+.toolbar {
+  margin-bottom: 0.75rem;
+}
+
+.searchWrapper {
+  position: relative;
+  max-width: 20rem;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 0.625rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0.875rem;
+  height: 0.875rem;
+  color: var(--muted-foreground);
+  pointer-events: none;
+}
+
+.searchInput {
+  padding-left: 2rem;
+}
+
+/* Filter tabs */
+.filterTabs {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.filterTab {
+  position: relative;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color 150ms;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.filterTab:hover {
+  color: var(--foreground);
+}
+
+.filterTabActive {
+  color: var(--foreground);
+}
+
+.filterTabActive::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0.5rem;
+  right: 0.5rem;
+  height: 2px;
+  background-color: var(--foreground);
+  border-radius: 1px;
+}

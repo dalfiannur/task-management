@@ -25,6 +25,7 @@ import {
   LogOut,
   ChevronsUpDown,
   LayoutDashboard,
+  Building2,
 } from "lucide-react";
 import { useProjects } from "@/hooks/use-projects";
 import { ProjectForm } from "@/components/projects/project-form";
@@ -121,6 +122,7 @@ export function AppSidebar() {
 
   const { pathname } = useLocation();
   const isDashboardActive = pathname === "/dashboard" || pathname === "/dashboard/";
+  const isClientsActive = pathname.startsWith("/clients");
   const isSettingsActive = pathname.startsWith("/settings");
 
   return (
@@ -178,6 +180,20 @@ export function AppSidebar() {
                 .map((project) => (
                   <ProjectTreeItem key={project.id} project={project} />
                 ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isClientsActive}>
+                  <Link to="/clients">
+                    <Building2 className={styles.icon} />
+                    <span>Clients</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
