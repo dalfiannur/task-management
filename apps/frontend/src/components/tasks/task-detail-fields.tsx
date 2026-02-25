@@ -225,7 +225,7 @@ export function EditableDescription({
         >
           {value ? (
             <div
-              className="prose prose-sm max-w-none"
+              className="prose"
               dangerouslySetInnerHTML={{ __html: value }}
             />
           ) : (

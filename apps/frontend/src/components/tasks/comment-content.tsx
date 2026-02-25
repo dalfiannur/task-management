@@ -29,7 +29,7 @@ export function CommentContent({ content, className }: CommentContentProps) {
   return (
     <div
       className={cn(
-        `${styles.richText} prose prose-sm max-w-none`,
+        `${styles.richText} prose`,
         className,
       )}
       dangerouslySetInnerHTML={{ __html: content }}

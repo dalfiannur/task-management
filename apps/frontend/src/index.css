@@ -12,6 +12,141 @@
   pointer-events: none;
 }
 
+/* ============================================
+   Prose: typography for rendered rich-text HTML
+   (overrides reset.css list-style/margin stripping)
+   ============================================ */
+
+.prose {
+  max-width: none;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.prose h1 {
+  font-size: 1.5rem;
+  line-height: 2rem;
+  font-weight: 700;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.prose h2 {
+  font-size: 1.25rem;
+  line-height: 1.75rem;
+  font-weight: 600;
+  margin-top: 0.875rem;
+  margin-bottom: 0.375rem;
+}
+
+.prose h3 {
+  font-size: 1.125rem;
+  line-height: 1.5rem;
+  font-weight: 600;
+  margin-top: 0.75rem;
+  margin-bottom: 0.25rem;
+}
+
+.prose p {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+}
+
+.prose p:last-child {
+  margin-bottom: 0;
+}
+
+.prose ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+}
+
+.prose ol {
+  list-style: decimal;
+  padding-left: 1.25rem;
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+}
+
+.prose li {
+  margin-bottom: 0.125rem;
+}
+
+.prose li p {
+  margin-bottom: 0;
+}
+
+.prose blockquote {
+  border-left: 3px solid var(--border);
+  padding-left: 0.75rem;
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  font-style: italic;
+  color: var(--muted-foreground);
+}
+
+.prose pre {
+  background-color: var(--muted);
+  border-radius: var(--radius-md);
+  padding: 0.5rem 0.75rem;
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  overflow-x: auto;
+}
+
+.prose pre code {
+  background: transparent;
+  padding: 0;
+  font-size: inherit;
+}
+
+.prose code {
+  background-color: var(--muted);
+  border-radius: var(--radius-sm);
+  padding: 0.125rem 0.25rem;
+  font-size: 0.875rem;
+}
+
+.prose hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 0.75rem 0;
+}
+
+.prose a {
+  color: var(--primary);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.prose mark {
+  background-color: #fef08a;
+  border-radius: 2px;
+  padding: 0.0625rem 0.125rem;
+}
+
+/* Task list inside prose */
+.prose ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+}
+
+.prose ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.prose ul[data-type="taskList"] li label {
+  margin-top: 0.125rem;
+}
+
+.prose ul[data-type="taskList"] li > div {
+  flex: 1;
+}
+
 /* Utility: screen reader only */
 .sr-only {
   position: absolute;
