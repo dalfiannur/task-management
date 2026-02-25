@@ -133,7 +133,7 @@ export function Component() {
   else if (pathname.startsWith(`${basePath}/pages`)) activeTab = "pages";
 
   const tabs = [
-    { key: "overview", label: "Overview", to: basePath, icon: LayoutList },
+    { key: "overview", label: "Tasks", to: basePath, icon: LayoutList },
     {
       key: "timeline",
       label: "Timeline",
