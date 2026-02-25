@@ -1,8 +1,6 @@
 export type TaskStatus =
-  | "backlog"
   | "todo"
   | "in_progress"
-  | "in_review"
   | "done"
   | "cancelled";
 
@@ -73,13 +71,11 @@ export const TASK_STATUS_CONFIG: Record<
   TaskStatus,
   { label: string; color: string }
 > = {
-  backlog: { label: "Backlog", color: "status-backlog" },
   todo: { label: "Todo", color: "status-todo" },
   in_progress: {
     label: "In Progress",
     color: "status-in-progress",
   },
-  in_review: { label: "In Review", color: "status-in-review" },
   done: { label: "Done", color: "status-done" },
   cancelled: { label: "Cancelled", color: "status-cancelled" },
 };
@@ -96,9 +92,7 @@ export const TASK_PRIORITY_CONFIG: Record<
 };
 
 export const BOARD_COLUMNS: TaskStatus[] = [
-  "backlog",
   "todo",
   "in_progress",
-  "in_review",
   "done",
 ];

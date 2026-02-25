@@ -66,10 +66,8 @@ interface TaskFormProps {
 }
 
 const STATUS_DOT_COLORS: Record<TaskStatus, string> = {
-  backlog: styles.dotBacklog,
   todo: styles.dotTodo,
   in_progress: styles.dotInProgress,
-  in_review: styles.dotInReview,
   done: styles.dotDone,
   cancelled: styles.dotCancelled,
 };

@@ -8,10 +8,8 @@ import { TASK_STATUS_CONFIG, type TaskStatus, type Task } from "@/types/task";
 import styles from "./task-distribution.module.css";
 
 const STATUS_COLORS: Record<TaskStatus, string> = {
-  backlog: "#94a3b8",
   todo: "#38bdf8",
   in_progress: "#fbbf24",
-  in_review: "#a78bfa",
   done: "#34d399",
   cancelled: "#fb7185",
 };

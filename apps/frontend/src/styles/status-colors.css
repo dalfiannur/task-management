@@ -1,9 +1,4 @@
 /* Task status badge colors */
-.status-backlog {
-  background-color: hsl(35 12% 92%);
-  color: hsl(20 10% 35%);
-}
-
 .status-todo {
   background-color: hsl(225 50% 92%);
   color: hsl(225 65% 42%);
@@ -12,11 +7,6 @@
 .status-in-progress {
   background-color: hsl(38 85% 88%);
   color: hsl(30 80% 32%);
-}
-
-.status-in-review {
-  background-color: hsl(275 40% 92%);
-  color: hsl(275 50% 42%);
 }
 
 .status-done {
@@ -76,11 +66,6 @@
 }
 
 /* Dark mode adjustments */
-.dark .status-backlog {
-  background-color: hsla(30, 10%, 50%, 0.15);
-  color: hsl(35 10% 72%);
-}
-
 .dark .status-todo {
   background-color: hsla(225, 55%, 50%, 0.15);
   color: hsl(225 55% 72%);
@@ -89,11 +74,6 @@
 .dark .status-in-progress {
   background-color: hsla(38, 85%, 50%, 0.15);
   color: hsl(38 85% 65%);
-}
-
-.dark .status-in-review {
-  background-color: hsla(275, 45%, 50%, 0.15);
-  color: hsl(275 45% 72%);
 }
 
 .dark .status-done {

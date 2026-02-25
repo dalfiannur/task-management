@@ -8,15 +8,15 @@ import { NewLeads } from "@/components/dashboard/new-leads";
 import { ActiveProjects } from "@/components/dashboard/active-projects";
 import { RecentTasks } from "@/components/dashboard/recent-tasks";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ListTodo, Timer, Eye, FolderOpen } from "lucide-react";
+import { ListTodo, Timer, CheckCircle2, FolderOpen } from "lucide-react";
 import { format } from "date-fns";
 import styles from "./dashboard.module.css";
 
 const STAT_ACCENTS = {
   tasks: "#3b82f6",
   progress: "#f59e0b",
-  review: "#8b5cf6",
-  projects: "#10b981",
+  done: "#10b981",
+  projects: "#8b5cf6",
 };
 
 export function Component() {
@@ -62,8 +62,8 @@ export function Component() {
   const inProgressTasks = allTasks.filter(
     (t) => t.status === "in_progress",
   ).length;
-  const inReviewTasks = allTasks.filter(
-    (t) => t.status === "in_review",
+  const doneTasks = allTasks.filter(
+    (t) => t.status === "done",
   ).length;
   const activeProjects = allProjects.filter(
     (p) => p.status.value === "on_going",
@@ -85,11 +85,11 @@ export function Component() {
       desc: "Currently active",
     },
     {
-      title: "Pending Review",
-      value: inReviewTasks,
-      icon: Eye,
-      accent: STAT_ACCENTS.review,
-      desc: "Awaiting review",
+      title: "Done",
+      value: doneTasks,
+      icon: CheckCircle2,
+      accent: STAT_ACCENTS.done,
+      desc: "Completed tasks",
     },
     {
       title: "Active Projects",

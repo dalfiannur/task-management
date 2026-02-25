@@ -158,20 +158,12 @@
 }
 
 /* Status/Priority dot colors (shared with task-detail-fields) */
-.dotBacklog {
-  background-color: #9ca3af;
-}
-
 .dotTodo {
   background-color: #60a5fa;
 }
 
 .dotInProgress {
   background-color: #fbbf24;
-}
-
-.dotInReview {
-  background-color: #a78bfa;
 }
 
 .dotDone {
