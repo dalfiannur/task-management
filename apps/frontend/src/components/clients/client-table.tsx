@@ -67,7 +67,6 @@ export function ClientTable({ clients, isLoading, onEdit }: ClientTableProps) {
         <TableHeader>
           <TableRow>
             <TableHead>Name</TableHead>
-            <TableHead className={styles.companyCol}>Company</TableHead>
             <TableHead className={styles.locationCol}>Location</TableHead>
             <TableHead className={styles.statusCol}>Status</TableHead>
             <TableHead className={styles.actionsCol}>Actions</TableHead>
@@ -85,9 +84,6 @@ export function ClientTable({ clients, isLoading, onEdit }: ClientTableProps) {
                     </span>
                   )}
                 </div>
-              </TableCell>
-              <TableCell className={styles.companyText}>
-                {client.companyName || <span className={styles.noValue}>&mdash;</span>}
               </TableCell>
               <TableCell className={styles.locationText}>
                 {formatLocation(client) || <span className={styles.noValue}>&mdash;</span>}

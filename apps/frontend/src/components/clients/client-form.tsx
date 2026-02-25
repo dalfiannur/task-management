@@ -9,7 +9,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CompanyCombobox } from "@/components/shared/company-combobox";
 import { useCreateClient, useUpdateClient } from "@/hooks/use-clients";
 import type { Client } from "@/types/client";
 import styles from "./client-form.module.css";
@@ -23,7 +22,6 @@ interface ClientFormProps {
 export function ClientForm({ open, onOpenChange, client }: ClientFormProps) {
   const [name, setName] = useState("");
   const [legalName, setLegalName] = useState("");
-  const [companyId, setCompanyId] = useState<string | undefined>();
   const [street, setStreet] = useState("");
   const [city, setCity] = useState("");
   const [state, setState] = useState("");
@@ -38,7 +36,6 @@ export function ClientForm({ open, onOpenChange, client }: ClientFormProps) {
     if (client) {
       setName(client.name);
       setLegalName(client.legalName ?? "");
-      setCompanyId(client.companyId);
       setStreet(client.street ?? "");
       setCity(client.city ?? "");
       setState(client.state ?? "");
@@ -47,7 +44,6 @@ export function ClientForm({ open, onOpenChange, client }: ClientFormProps) {
     } else {
       setName("");
       setLegalName("");
-      setCompanyId(undefined);
       setStreet("");
       setCity("");
       setState("");
@@ -64,7 +60,6 @@ export function ClientForm({ open, onOpenChange, client }: ClientFormProps) {
     const fields = {
       name: trimmedName,
       legalName: legalName.trim() || undefined,
-      companyId,
       street: street.trim() || undefined,
       city: city.trim() || undefined,
       state: state.trim() || undefined,
@@ -112,10 +107,6 @@ export function ClientForm({ open, onOpenChange, client }: ClientFormProps) {
                 onChange={(e) => setLegalName(e.target.value)}
                 placeholder="Legal name..."
               />
-            </div>
-            <div className={styles.field}>
-              <Label>Company</Label>
-              <CompanyCombobox value={companyId} onChange={setCompanyId} />
             </div>
             <div className={styles.sectionLabel}>Address</div>
             <div className={styles.field}>

@@ -15,9 +15,7 @@ const CLIENT_FIELDS = gql`
       name
       legalName
     }
-    companyRef {
-      value
-    }
+    companyRef
     companyDetail {
       name {
         name
@@ -30,9 +28,7 @@ const CLIENT_FIELDS = gql`
       postalCode
       country
     }
-    status {
-      value
-    }
+    status
   }
 `;
 
@@ -94,7 +90,7 @@ const DELETE_CLIENT = gql`
 interface ClientRaw {
   id: string;
   name: { name: string; legalName: string };
-  companyRef: { value: string } | null;
+  companyRef: string | null;
   companyDetail: { name: { name: string } } | null;
   address: {
     street: string;
@@ -103,7 +99,7 @@ interface ClientRaw {
     postalCode: string;
     country: string;
   } | null;
-  status: { value: string };
+  status: string;
 }
 
 // --- Mapper ---
@@ -113,14 +109,14 @@ function mapClient(raw: ClientRaw): Client {
     id: raw.id,
     name: raw.name.name,
     legalName: raw.name.legalName || undefined,
-    companyId: raw.companyRef?.value || undefined,
+    companyId: raw.companyRef || undefined,
     companyName: raw.companyDetail?.name?.name || undefined,
     street: raw.address?.street || undefined,
     city: raw.address?.city || undefined,
     state: raw.address?.state || undefined,
     postalCode: raw.address?.postalCode || undefined,
     country: raw.address?.country || undefined,
-    status: raw.status.value as ClientStatus,
+    status: raw.status as ClientStatus,
   };
 }
 
