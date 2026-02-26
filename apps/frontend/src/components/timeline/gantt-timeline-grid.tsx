@@ -7,6 +7,7 @@ import {
   DAY_WIDTH,
   ROW_HEIGHT,
   computeBarPosition,
+  computeBarPositionFromDates,
   groupDaysByWeek,
   isWeekend,
   isSameDay,
@@ -150,11 +151,94 @@ export function GanttTimelineGrid({
             const isLate = isDone && !!row.task.dueDate &&
               new Date(row.task.completedAt!) > new Date(row.task.dueDate);
 
-            const barClassName = isLate
-              ? styles.taskBarLate
-              : isDone
-                ? styles.taskBarDone
-                : styles.taskBar;
+            // Stacked bar for done tasks
+            if (bar && isDone && row.task.completedAt && row.task.startDate && row.task.dueDate) {
+              if (isLate) {
+                // [BLUE: start→due][RED: due→completed]
+                const fullBar = computeBarPositionFromDates(
+                  row.task.startDate, row.task.completedAt, range.start,
+                );
+                const blueWidth = bar.width;
+                const redWidth = fullBar.width - blueWidth;
+
+                return (
+                  <div
+                    key={`task-${row.task.id}`}
+                    className={styles.taskRow}
+                    style={{ height: ROW_HEIGHT }}
+                  >
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div
+                          className={styles.stackedBar}
+                          style={{ left: fullBar.left, width: fullBar.width }}
+                        >
+                          <div
+                            className={styles.barSegment}
+                            style={{ left: 0, width: blueWidth, backgroundColor: color }}
+                          />
+                          {redWidth > 0 && (
+                            <div
+                              className={styles.segmentRed}
+                              style={{ left: blueWidth, width: redWidth }}
+                            />
+                          )}
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className={styles.tooltipTitle}>{row.task.title}</p>
+                        <p className={styles.tooltipDate}>
+                          {formatDateRange(row.task.startDate, row.task.dueDate)}
+                        </p>
+                        <p className={styles.tooltipLate}>Completed late</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                );
+              } else {
+                // [GREEN: start→completed][BLUE: completed→due]
+                const completedBar = computeBarPositionFromDates(
+                  row.task.startDate, row.task.completedAt, range.start,
+                );
+                const greenWidth = completedBar.width;
+                const blueWidth = bar.width - greenWidth;
+
+                return (
+                  <div
+                    key={`task-${row.task.id}`}
+                    className={styles.taskRow}
+                    style={{ height: ROW_HEIGHT }}
+                  >
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div
+                          className={styles.stackedBar}
+                          style={{ left: bar.left, width: bar.width }}
+                        >
+                          <div
+                            className={styles.segmentGreen}
+                            style={{ left: 0, width: greenWidth }}
+                          />
+                          {blueWidth > 0 && (
+                            <div
+                              className={styles.barSegment}
+                              style={{ left: greenWidth, width: blueWidth, backgroundColor: color }}
+                            />
+                          )}
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className={styles.tooltipTitle}>{row.task.title}</p>
+                        <p className={styles.tooltipDate}>
+                          {formatDateRange(row.task.startDate, row.task.dueDate)}
+                        </p>
+                        <p className={styles.tooltipOnTime}>Completed on time</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                );
+              }
+            }
 
             return (
               <div
@@ -166,7 +250,7 @@ export function GanttTimelineGrid({
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <div
-                        className={barClassName}
+                        className={styles.taskBar}
                         style={{
                           left: bar.left,
                           width: bar.width,
@@ -177,16 +261,8 @@ export function GanttTimelineGrid({
                     <TooltipContent>
                       <p className={styles.tooltipTitle}>{row.task.title}</p>
                       <p className={styles.tooltipDate}>
-                        {formatDateRange(
-                          row.task.startDate,
-                          row.task.dueDate,
-                        )}
+                        {formatDateRange(row.task.startDate, row.task.dueDate)}
                       </p>
-                      {isDone && (
-                        <p className={isLate ? styles.tooltipLate : styles.tooltipOnTime}>
-                          {isLate ? "Completed late" : "Completed on time"}
-                        </p>
-                      )}
                     </TooltipContent>
                   </Tooltip>
                 )}
