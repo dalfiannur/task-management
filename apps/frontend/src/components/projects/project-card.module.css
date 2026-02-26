@@ -84,6 +84,12 @@
   font-size: 0.5625rem;
 }
 
+.moduleBadge {
+  font-size: 0.875rem;
+  font-family: var(--font-mono);
+  color: var(--muted-foreground);
+}
+
 .picName {
   font-size: 0.875rem;
   line-height: 1rem;

@@ -46,7 +46,7 @@ import { useTasks, useUpdateTask } from "@/hooks/use-tasks";
 import { useDeleteModule } from "@/hooks/use-modules";
 import { useLabels } from "@/hooks/use-labels";
 import { useUsers, useUser } from "@/hooks/use-users";
-import { ChevronRight, MessageSquare, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
+import { ChevronRight, FolderOpen, MessageSquare, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
 import { ModuleForm } from "./module-form";
 import { CommentsDialog } from "@/components/tasks/comments-dialog";
 import { useCommentCounts } from "@/hooks/use-comments";
@@ -73,6 +73,7 @@ interface ModuleSectionProps {
   colorIndex: number;
   filters?: { status?: string; priority?: string; search?: string };
   projectStatus?: ProjectStatus;
+  subProjectCount?: number;
 }
 
 function TaskAssigneeCell({ assigneeIds }: { assigneeIds: string[] }) {
@@ -133,6 +134,7 @@ export function ModuleSection({
   colorIndex,
   filters,
   projectStatus,
+  subProjectCount,
 }: ModuleSectionProps) {
   const { data: tasks, isLoading } = useTasks({ moduleId: module.id, ...filters });
   const updateTask = useUpdateTask();
@@ -168,6 +170,12 @@ export function ModuleSection({
               <Badge variant="secondary" className={s.countBadge}>
                 {isLoading ? "..." : taskCount}
               </Badge>
+              {subProjectCount != null && subProjectCount > 0 && (
+                <Badge variant="outline" className={s.subProjectBadge}>
+                  <FolderOpen className={s.subProjectBadgeIcon} />
+                  {subProjectCount}
+                </Badge>
+              )}
               {module.description && (
                 <span className={s.headerDescription}>{module.description}</span>
               )}

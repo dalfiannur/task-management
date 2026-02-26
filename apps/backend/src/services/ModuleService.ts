@@ -5,6 +5,7 @@ import { Query } from 'bunsane/query';
 import { z } from "zod";
 import { ModuleDescriptionComponent, ModuleNameComponent, ModulePicIdComponent, ModuleProjectRefComponent, ModuleTag } from "../components/ModuleComponents";
 import { ModuleArcheType } from "../archetypes/ModuleArcheType";
+import { ProjectTag, ProjectModuleRefComponent } from "../components/ProjectComponents";
 
 export default class ModuleService extends BaseService {
   constructor() {
@@ -139,6 +140,19 @@ export default class ModuleService extends BaseService {
   async deleteModule(input: { id: string }) {
     const entity = await new Query().findOneById(input.id);
     if (!entity) throw new Error("Module not found");
+
+    // Clear module links from sub-projects referencing this module
+    const linkedSubProjects = await new Query()
+      .with(ProjectTag)
+      .with(ProjectModuleRefComponent, {
+        filters: [Query.typedFilter(ProjectModuleRefComponent, "moduleId", "=", input.id)],
+      })
+      .exec();
+    for (const sub of linkedSubProjects) {
+      await sub.remove(ProjectModuleRefComponent);
+      await sub.save();
+    }
+
     await entity.delete();
     return true;
   }

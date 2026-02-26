@@ -34,6 +34,12 @@ export class ProjectParentRefComponent extends BaseComponent {
 }
 
 @Component
+export class ProjectModuleRefComponent extends BaseComponent {
+  @CompData({ indexed: true })
+  moduleId: string = "";
+}
+
+@Component
 export class ProjectNameComponent extends BaseComponent {
   @CompData()
   value: string = "";

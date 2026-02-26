@@ -11,9 +11,17 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { UserCombobox } from "@/components/shared/user-combobox";
 import { DatePickerField } from "@/components/shared/date-picker-field";
 import { useCreateSubProject } from "@/hooks/use-projects";
+import { useModules } from "@/hooks/use-modules";
 import styles from "./sub-project-form.module.css";
 
 interface SubProjectFormProps {
@@ -32,7 +40,9 @@ export function SubProjectForm({
   const [projectLeaderId, setProjectLeaderId] = useState<string | undefined>();
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
+  const [moduleId, setModuleId] = useState<string | undefined>();
   const createSubProject = useCreateSubProject();
+  const { data: parentModules } = useModules(parentProjectId);
 
   const resetForm = () => {
     setName("");
@@ -40,6 +50,7 @@ export function SubProjectForm({
     setProjectLeaderId(undefined);
     setStartDate(undefined);
     setEndDate(undefined);
+    setModuleId(undefined);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -52,6 +63,7 @@ export function SubProjectForm({
         projectLeaderId,
         startDate: startDate ? format(startDate, "yyyy-MM-dd") : undefined,
         endDate: endDate ? format(endDate, "yyyy-MM-dd") : undefined,
+        moduleId,
       },
       {
         onSuccess: () => {
@@ -92,6 +104,27 @@ export function SubProjectForm({
               <Label>Project Leader</Label>
               <UserCombobox value={projectLeaderId} onChange={setProjectLeaderId} />
             </div>
+            {parentModules && parentModules.length > 0 && (
+              <div className={styles.field}>
+                <Label>Linked Module</Label>
+                <Select
+                  value={moduleId ?? "__none__"}
+                  onValueChange={(v) => setModuleId(v === "__none__" ? undefined : v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select module..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">None</SelectItem>
+                    {parentModules.map((mod) => (
+                      <SelectItem key={mod.id} value={mod.id}>
+                        {mod.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className={styles.row}>
               <div className={styles.field}>
                 <Label>Start Date</Label>

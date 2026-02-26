@@ -12,7 +12,7 @@ import styles from "./project-detail.module.css";
 export function Component() {
   const { projectId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { openModuleForm } = useOutletContext<ProjectLayoutContext>();
+  const { openModuleForm, subProjectCountsByModule } = useOutletContext<ProjectLayoutContext>();
 
   const status = searchParams.get("status") ?? undefined;
   const priority = searchParams.get("priority") ?? undefined;
@@ -72,6 +72,7 @@ export function Component() {
               colorIndex={index}
               filters={{ status, priority, search }}
               projectStatus={project.status.value}
+              subProjectCount={subProjectCountsByModule.get(mod.id) ?? 0}
             />
           </div>
         ))}

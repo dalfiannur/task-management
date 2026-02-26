@@ -4,6 +4,7 @@ import {
   ProjectDescriptionComponent,
   ProjectNameComponent,
   ProjectParentRefComponent,
+  ProjectModuleRefComponent,
   ProjectLeaderIdComponent,
   ProjectStatusComponent,
   ProjectCodeComponent,
@@ -15,6 +16,7 @@ import {
   ProjectResolvedStatusComponent,
   ProjectClosedAtComponent,
 } from "~/components/ProjectComponents";
+import { type IModuleArcheType } from "./ModuleArcheType";
 import { ArcheTypeNames } from "./ArcheTypeNames";
 
 @ArcheType(ArcheTypeNames.Project)
@@ -36,6 +38,9 @@ export class ProjectArcheTypeClass extends BaseArcheType {
 
   @BelongsTo("Project", { foreignKey: "parent.parentProjectId", nullable: true })
   parent!: IProjectArcheType;
+
+  @BelongsTo("Module", { foreignKey: "linkedModule.moduleId", nullable: true })
+  linkedModule!: IModuleArcheType;
 
   // Enrichment fields — populated from Core API at query time
 
