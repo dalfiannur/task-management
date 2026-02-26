@@ -28,4 +28,7 @@ export class TaskInfo extends BaseComponent {
 
   @CompData()
   updatedAt: string = "";
+
+  @CompData()
+  completedAt: string = "";
 }

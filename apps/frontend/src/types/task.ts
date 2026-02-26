@@ -28,6 +28,7 @@ export interface Task {
   labels?: Label[];
   createdAt: string;
   updatedAt: string;
+  completedAt?: string;
 }
 
 export interface CreateTaskInput {

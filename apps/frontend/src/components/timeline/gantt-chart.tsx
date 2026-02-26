@@ -1,6 +1,6 @@
 import { useRef } from "react";
 import { useModules } from "@/hooks/use-modules";
-import { useTasks } from "@/hooks/use-tasks";
+import { useAllTasks } from "@/hooks/use-tasks";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GanttTaskPanel } from "./gantt-task-panel";
 import { GanttTimelineGrid } from "./gantt-timeline-grid";
@@ -19,7 +19,7 @@ interface GanttChartProps {
 export function GanttChart({ projectId }: GanttChartProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const { data: modules, isLoading: modulesLoading } = useModules(projectId);
-  const { data: allTasks, isLoading: tasksLoading } = useTasks({});
+  const { data: allTasks, isLoading: tasksLoading } = useAllTasks({ projectId });
 
   if (modulesLoading || tasksLoading) {
     return (

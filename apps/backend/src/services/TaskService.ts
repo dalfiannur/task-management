@@ -225,6 +225,7 @@ export default class TaskService extends BaseService {
         order: 0,
         createdAt: now,
         updatedAt: now,
+        completedAt: input.status === "done" ? now : "",
       },
       taskAssignment: {
         assigneeIds: encodeAssigneeIds(input.assigneeIds),
@@ -330,6 +331,16 @@ export default class TaskService extends BaseService {
     if (input.startDate !== undefined) taskInfoUpdates.startDate = input.startDate;
     if (input.dueDate !== undefined) taskInfoUpdates.dueDate = input.dueDate;
     taskInfoUpdates.updatedAt = new Date().toISOString();
+
+    // Auto-set completedAt when status changes to "done", clear when it changes away
+    if (input.status !== undefined) {
+      const oldStatus = oldTaskInfo?.status;
+      if (input.status === "done" && oldStatus !== "done") {
+        taskInfoUpdates.completedAt = new Date().toISOString();
+      } else if (input.status !== "done" && oldStatus === "done") {
+        taskInfoUpdates.completedAt = "";
+      }
+    }
 
     await entity.set(TaskInfo, taskInfoUpdates);
 
@@ -503,7 +514,15 @@ export default class TaskService extends BaseService {
     if (!entity) throw new Error("Task not found");
 
     const updates: Record<string, unknown> = { order: input.newOrder };
-    if (input.newStatus) updates.status = input.newStatus;
+    if (input.newStatus) {
+      updates.status = input.newStatus;
+      const oldTaskInfo = await entity.get(TaskInfo);
+      if (input.newStatus === "done" && oldTaskInfo?.status !== "done") {
+        updates.completedAt = new Date().toISOString();
+      } else if (input.newStatus !== "done" && oldTaskInfo?.status === "done") {
+        updates.completedAt = "";
+      }
+    }
 
     await entity.set(TaskInfo, updates);
     await entity.save();

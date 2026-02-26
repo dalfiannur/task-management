@@ -146,6 +146,16 @@ export function GanttTimelineGrid({
             const color =
               MODULE_COLORS[row.colorIndex % MODULE_COLORS.length];
 
+            const isDone = row.task.status === "done" && !!row.task.completedAt;
+            const isLate = isDone && !!row.task.dueDate &&
+              new Date(row.task.completedAt!) > new Date(row.task.dueDate);
+
+            const barClassName = isLate
+              ? styles.taskBarLate
+              : isDone
+                ? styles.taskBarDone
+                : styles.taskBar;
+
             return (
               <div
                 key={`task-${row.task.id}`}
@@ -156,7 +166,7 @@ export function GanttTimelineGrid({
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <div
-                        className={styles.taskBar}
+                        className={barClassName}
                         style={{
                           left: bar.left,
                           width: bar.width,
@@ -172,6 +182,11 @@ export function GanttTimelineGrid({
                           row.task.dueDate,
                         )}
                       </p>
+                      {isDone && (
+                        <p className={isLate ? styles.tooltipLate : styles.tooltipOnTime}>
+                          {isLate ? "Completed late" : "Completed on time"}
+                        </p>
+                      )}
                     </TooltipContent>
                   </Tooltip>
                 )}

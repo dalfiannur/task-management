@@ -272,6 +272,31 @@ export function TaskDetail({
                       day: "numeric",
                     })}
                   </p>
+                  {task.completedAt && (
+                    <p className={styles.timestampText}>
+                      Completed{" "}
+                      {new Date(task.completedAt).toLocaleDateString(undefined, {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      })}
+                      {task.dueDate && (
+                        <span
+                          className={
+                            new Date(task.completedAt) <=
+                            new Date(task.dueDate)
+                              ? styles.onTimeLabel
+                              : styles.lateLabel
+                          }
+                        >
+                          {new Date(task.completedAt) <=
+                          new Date(task.dueDate)
+                            ? " · on time"
+                            : " · late"}
+                        </span>
+                      )}
+                    </p>
+                  )}
                 </div>
 
                 <AlertDialog>
