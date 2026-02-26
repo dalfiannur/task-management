@@ -10,7 +10,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { UserCombobox } from "@/components/shared/user-combobox";
 import { ClientCombobox } from "@/components/shared/client-combobox";
@@ -31,7 +30,6 @@ export function ProjectForm({ open, onOpenChange }: ProjectFormProps) {
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
   const [value, setValue] = useState<string>("");
-  const [commercial, setCommercial] = useState(false);
   const createProject = useCreateProject();
 
   const resetForm = () => {
@@ -42,7 +40,6 @@ export function ProjectForm({ open, onOpenChange }: ProjectFormProps) {
     setStartDate(undefined);
     setEndDate(undefined);
     setValue("");
-    setCommercial(false);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -55,7 +52,6 @@ export function ProjectForm({ open, onOpenChange }: ProjectFormProps) {
         clientId,
         description: description || undefined,
         projectLeaderId,
-        commercial: commercial || undefined,
         value: parsedValue,
         startDate: startDate ? format(startDate, "yyyy-MM-dd") : undefined,
         endDate: endDate ? format(endDate, "yyyy-MM-dd") : undefined,
@@ -124,14 +120,6 @@ export function ProjectForm({ open, onOpenChange }: ProjectFormProps) {
                 min={0}
                 step="any"
               />
-            </div>
-            <div className={styles.checkboxField}>
-              <Checkbox
-                id="project-commercial"
-                checked={commercial}
-                onCheckedChange={(checked) => setCommercial(checked === true)}
-              />
-              <Label htmlFor="project-commercial">Commercial</Label>
             </div>
           </div>
           <DialogFooter>

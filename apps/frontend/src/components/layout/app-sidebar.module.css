@@ -101,7 +101,7 @@
   border-top: 1px solid var(--sidebar-border);
 }
 
-/* Project tree item */
+/* Project list items */
 .statusDot {
   width: 0.5rem;
   height: 0.5rem;
@@ -113,6 +113,26 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.emptyHint {
+  padding: 0.25rem 0.5rem 0.25rem 2rem;
+  font-size: 0.75rem;
+  color: color-mix(in srgb, var(--sidebar-foreground) 40%, transparent);
+}
+
+.showAllBtn {
+  opacity: 0.6;
+}
+
+.showAllBtn:hover {
+  opacity: 1;
+}
+
+.showAllText {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: color-mix(in srgb, var(--sidebar-foreground) 60%, transparent);
 }
 
 /* User menu */
