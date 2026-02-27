@@ -74,11 +74,9 @@ function LeadItem({ project, onApprove }: { project: Project; onApprove: () => v
   return (
     <SidebarMenuItem>
       <div className={styles.leadItemRow}>
-        <SidebarMenuButton asChild tooltip={project.coreName} className={styles.leadButton}>
-          <Link to="/projects?type=leads">
-            <span className={cn(styles.statusDot, "dot-pending")} />
-            <span className={styles.projectName}>{project.coreName || "Untitled"}</span>
-          </Link>
+        <SidebarMenuButton tooltip={project.coreName} className={styles.leadButton} onClick={onApprove}>
+          <span className={cn(styles.statusDot, "dot-pending")} />
+          <span className={styles.projectName}>{project.coreName || "Untitled"}</span>
         </SidebarMenuButton>
         <Button
           variant="ghost"

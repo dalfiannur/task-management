@@ -3,6 +3,7 @@ import { useProjects, getProjectDisplayName } from "@/hooks/use-projects";
 import { useNewLeads } from "@/hooks/use-leads";
 import { ProjectCard } from "@/components/projects/project-card";
 import { ProjectForm } from "@/components/projects/project-form";
+import { ApproveLeadDialog } from "@/components/dashboard/approve-lead-dialog";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -36,6 +37,8 @@ export function Component() {
   const { data: leads, isLoading: isLeadsLoading } = useNewLeads();
   const [filter, setFilter] = useState<ProjectFilter>("active");
   const [formOpen, setFormOpen] = useState(false);
+  const [approveProject, setApproveProject] = useState<Project | null>(null);
+  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
 
   const isLeadsView = projectType === "leads";
 
@@ -58,12 +61,24 @@ export function Component() {
         </div>
         <div className={styles.grid}>
           {leads?.map((lead) => (
-            <ProjectCard key={lead.id} project={lead} />
+            <ProjectCard
+              key={lead.id}
+              project={lead}
+              onClick={() => {
+                setApproveProject(lead);
+                setApproveDialogOpen(true);
+              }}
+            />
           ))}
         </div>
         {(!leads || leads.length === 0) && (
           <p className={styles.empty}>No new leads.</p>
         )}
+        <ApproveLeadDialog
+          project={approveProject}
+          open={approveDialogOpen}
+          onOpenChange={setApproveDialogOpen}
+        />
       </div>
     );
   }

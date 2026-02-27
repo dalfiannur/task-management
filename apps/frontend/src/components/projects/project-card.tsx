@@ -19,9 +19,10 @@ import styles from "./project-card.module.css";
 interface ProjectCardProps {
   project: Project;
   parentName?: string;
+  onClick?: () => void;
 }
 
-export function ProjectCard({ project, parentName }: ProjectCardProps) {
+export function ProjectCard({ project, parentName, onClick }: ProjectCardProps) {
   const navigate = useNavigate();
   const { data: modules } = useModules(project.id);
   const { data: pic } = useUser(project.projectLeaderId?.value);
@@ -35,7 +36,7 @@ export function ProjectCard({ project, parentName }: ProjectCardProps) {
     <Card
       className={styles.card}
       onClick={() =>
-        navigate(`/projects/${project.id}`)
+        onClick ? onClick() : navigate(`/projects/${project.id}`)
       }
     >
       <CardHeader>
