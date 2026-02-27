@@ -57,13 +57,22 @@
   height: 0.75rem;
 }
 
-.addButton {
+.addLabel {
+  display: flex;
+  align-items: center;
   height: 1.75rem;
   font-size: 0.875rem;
   line-height: 1rem;
   width: 100%;
-  justify-content: flex-start;
   color: var(--muted-foreground);
+  cursor: pointer;
+  border-radius: var(--radius-sm, 0.25rem);
+  padding: 0 0.5rem;
+}
+
+.addLabel:hover {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
 }
 
 .addIcon {

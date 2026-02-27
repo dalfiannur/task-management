@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useId } from "react";
 import { Button } from "@/components/ui/button";
 import {
   FileText,
@@ -7,7 +7,9 @@ import {
   Plus,
   X,
 } from "lucide-react";
-import { useMediaFiles, useUploadMedia, useDeleteMedia } from "@/hooks/use-media";
+import { useTaskMediaFiles, useUploadMedia, useDeleteMedia } from "@/hooks/use-media";
+import { useProject, getProjectDisplayName } from "@/hooks/use-projects";
+import { useResolveMediaProjectId } from "@/hooks/use-media-project";
 import { isImage, formatFileSize } from "@/types/media";
 import styles from "./task-attachments.module.css";
 
@@ -24,8 +26,13 @@ function AttachmentIcon({ mimeType }: { mimeType: string }) {
 }
 
 export function TaskAttachments({ projectId, taskId }: TaskAttachmentsProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const { data: files = [] } = useMediaFiles({ projectId, taskId });
+  const inputId = useId();
+  const { data: project } = useProject(projectId);
+  const { mediaProjectId } = useResolveMediaProjectId(
+    project?.coreRef?.value,
+    project ? getProjectDisplayName(project) : "Project",
+  );
+  const { data: files = [] } = useTaskMediaFiles(taskId, mediaProjectId ?? undefined);
   const uploadMedia = useUploadMedia();
   const deleteMedia = useDeleteMedia();
 
@@ -33,7 +40,7 @@ export function TaskAttachments({ projectId, taskId }: TaskAttachmentsProps) {
     const fileList = e.target.files;
     if (!fileList) return;
     for (const file of Array.from(fileList)) {
-      await uploadMedia.mutateAsync({ file, projectId, taskId });
+      await uploadMedia.mutateAsync({ file, mediaProjectId: mediaProjectId ?? "", projectId, taskId });
     }
     e.target.value = "";
   };
@@ -62,22 +69,17 @@ export function TaskAttachments({ projectId, taskId }: TaskAttachmentsProps) {
           </Button>
         </div>
       ))}
-      <Button
-        variant="ghost"
-        size="sm"
-        className={styles.addButton}
-        onClick={() => inputRef.current?.click()}
-      >
+      <label htmlFor={inputId} className={styles.addLabel}>
         <Plus className={styles.addIcon} />
         Attach file
-      </Button>
-      <input
-        ref={inputRef}
-        type="file"
-        multiple
-        className={styles.hiddenInput}
-        onChange={handleFileSelect}
-      />
+        <input
+          id={inputId}
+          type="file"
+          multiple
+          className={styles.hiddenInput}
+          onChange={handleFileSelect}
+        />
+      </label>
     </div>
   );
 }
