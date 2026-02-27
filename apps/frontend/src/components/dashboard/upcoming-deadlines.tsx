@@ -36,13 +36,13 @@ export function UpcomingDeadlines({ tasks }: UpcomingDeadlinesProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className={styles.cardTitle}>Upcoming Deadlines</CardTitle>
+        <CardTitle className={styles.cardTitle}>Today's Deadlines</CardTitle>
       </CardHeader>
       <CardContent>
         {tasks.length === 0 ? (
           <div className={styles.emptyState}>
             <CalendarClock className={styles.emptyIcon} />
-            <p className={styles.emptyText}>No upcoming deadlines</p>
+            <p className={styles.emptyText}>No deadlines today</p>
           </div>
         ) : (
           <div className={styles.taskList}>

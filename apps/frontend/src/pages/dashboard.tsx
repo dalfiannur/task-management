@@ -1,4 +1,4 @@
-import { useAllTasks, getUpcomingDeadlines } from "@/hooks/use-tasks";
+import { useAllTasks, getTodayDeadlines } from "@/hooks/use-tasks";
 import { useProjects } from "@/hooks/use-projects";
 import { useNewLeads } from "@/hooks/use-leads";
 import { useMe, useIsManager } from "@/hooks/use-me";
@@ -75,7 +75,7 @@ export function Component() {
   const myTasks = me
     ? allTasks.filter((t) => t.assigneeIds.includes(me.id))
     : [];
-  const deadlineTasks = getUpcomingDeadlines(allTasks);
+  const deadlineTasks = getTodayDeadlines(allTasks);
 
   const stats = [
     {

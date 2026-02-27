@@ -201,12 +201,21 @@ export function useAllTasks(filters: { projectId?: string; assigneeId?: string }
   return normalizeQueryResult(result, (d) => d.listAllTasks.map(mapTask));
 }
 
-/** Filter tasks with upcoming due dates, sorted soonest first. Excludes done/cancelled. */
-export function getUpcomingDeadlines(tasks: Task[], limit = 8): Task[] {
+/** Filter tasks due today or overdue, sorted soonest first. Excludes done/cancelled. */
+export function getTodayDeadlines(tasks: Task[]): Task[] {
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const todayEnd = new Date(todayStart);
+  todayEnd.setDate(todayEnd.getDate() + 1);
+
   return tasks
-    .filter((t) => t.dueDate && t.status !== "done" && t.status !== "cancelled")
-    .sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime())
-    .slice(0, limit);
+    .filter((t) => {
+      if (!t.dueDate || t.status === "done" || t.status === "cancelled") return false;
+      const due = new Date(t.dueDate);
+      // Include overdue (before today) and due today
+      return due < todayEnd;
+    })
+    .sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime());
 }
 
 /** Filter tasks that are past their due date and not done/cancelled. */
