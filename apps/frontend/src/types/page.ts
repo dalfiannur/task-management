@@ -12,5 +12,7 @@ export interface Page {
     lastEditedByName: string;
     createdAt: string;
     updatedAt: string;
+    linkedTaskId?: string;
+    linkedModuleId?: string;
   };
 }

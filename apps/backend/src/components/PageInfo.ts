@@ -34,4 +34,10 @@ export class PageInfo extends BaseComponent {
 
   @CompData()
   updatedAt: string = "";
+
+  @CompData({ indexed: true })
+  linkedTaskId: string = "";
+
+  @CompData({ indexed: true })
+  linkedModuleId: string = "";
 }

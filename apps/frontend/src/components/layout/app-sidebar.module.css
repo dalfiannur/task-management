@@ -115,6 +115,41 @@
   white-space: nowrap;
 }
 
+/* Lead item with approve button */
+.leadItemRow {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.leadButton {
+  flex: 1;
+  min-width: 0;
+}
+
+.approveBtn {
+  width: 1.375rem;
+  height: 1.375rem;
+  flex-shrink: 0;
+  color: color-mix(in srgb, var(--sidebar-foreground) 40%, transparent);
+  opacity: 0;
+  transition: opacity 150ms, color 150ms;
+}
+
+.leadItemRow:hover .approveBtn {
+  opacity: 1;
+}
+
+.approveBtn:hover {
+  color: #10b981;
+  background-color: color-mix(in srgb, #10b981 10%, transparent);
+}
+
+.approveIcon {
+  width: 0.8125rem;
+  height: 0.8125rem;
+}
+
 .emptyHint {
   padding: 0.25rem 0.5rem 0.25rem 2rem;
   font-size: 0.75rem;

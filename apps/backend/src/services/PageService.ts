@@ -67,20 +67,69 @@ export default class PageService extends BaseService {
   }
 
   @GraphQLOperation({
+    type: "Query",
+    input: z.object({
+      taskId: z.string(),
+    }),
+    output: [pageArcheType],
+  })
+  async listPagesByTask(input: { taskId: string }) {
+    return await new Query()
+      .with(PageInfo, {
+        filters: [
+          Query.typedFilter(PageInfo, "linkedTaskId", "=", input.taskId),
+        ],
+      })
+      .populate()
+      .exec();
+  }
+
+  @GraphQLOperation({
+    type: "Query",
+    input: z.object({
+      moduleId: z.string(),
+    }),
+    output: [pageArcheType],
+  })
+  async listPagesByModule(input: { moduleId: string }) {
+    return await new Query()
+      .with(PageInfo, {
+        filters: [
+          Query.typedFilter(PageInfo, "linkedModuleId", "=", input.moduleId),
+        ],
+      })
+      .populate()
+      .exec();
+  }
+
+  @GraphQLOperation({
     type: "Mutation",
     input: z.object({
       projectId: z.string(),
       title: z.string(),
       icon: z.string().optional(),
       content: z.string().optional(),
+      linkedTaskId: z.string().optional(),
+      linkedModuleId: z.string().optional(),
     }),
     output: pageArcheType,
   })
   async createPage(
-    input: { projectId: string; title: string; icon?: string; content?: string },
+    input: {
+      projectId: string;
+      title: string;
+      icon?: string;
+      content?: string;
+      linkedTaskId?: string;
+      linkedModuleId?: string;
+    },
     context: { request?: Request },
   ) {
     const user = await requireUser(context);
+
+    if (input.linkedTaskId && input.linkedModuleId) {
+      throw new Error("A page can only be linked to a task or a module, not both");
+    }
 
     // Determine next order value
     const existing = await new Query()
@@ -108,6 +157,8 @@ export default class PageService extends BaseService {
         lastEditedByName: user.name,
         createdAt: now,
         updatedAt: now,
+        linkedTaskId: input.linkedTaskId ?? "",
+        linkedModuleId: input.linkedModuleId ?? "",
       },
     });
 
@@ -123,14 +174,31 @@ export default class PageService extends BaseService {
       icon: z.string().optional(),
       content: z.string().optional(),
       order: z.number().optional(),
+      linkedTaskId: z.string().optional(),
+      linkedModuleId: z.string().optional(),
     }),
     output: pageArcheType,
   })
   async updatePage(
-    input: { id: string; title?: string; icon?: string; content?: string; order?: number },
+    input: {
+      id: string;
+      title?: string;
+      icon?: string;
+      content?: string;
+      order?: number;
+      linkedTaskId?: string;
+      linkedModuleId?: string;
+    },
     context: { request?: Request },
   ) {
     const user = await requireUser(context);
+
+    // Validate mutual exclusivity
+    const hasTaskLink = input.linkedTaskId !== undefined && input.linkedTaskId !== "";
+    const hasModuleLink = input.linkedModuleId !== undefined && input.linkedModuleId !== "";
+    if (hasTaskLink && hasModuleLink) {
+      throw new Error("A page can only be linked to a task or a module, not both");
+    }
 
     const entity = await new Query().findOneById(input.id);
     if (!entity) throw new Error("Page not found");
@@ -145,6 +213,16 @@ export default class PageService extends BaseService {
     if (input.icon !== undefined) updates.icon = input.icon;
     if (input.content !== undefined) updates.content = input.content;
     if (input.order !== undefined) updates.order = input.order;
+
+    // When linking to a task, clear module link and vice versa
+    if (input.linkedTaskId !== undefined) {
+      updates.linkedTaskId = input.linkedTaskId;
+      if (input.linkedTaskId !== "") updates.linkedModuleId = "";
+    }
+    if (input.linkedModuleId !== undefined) {
+      updates.linkedModuleId = input.linkedModuleId;
+      if (input.linkedModuleId !== "") updates.linkedTaskId = "";
+    }
 
     await entity.set(PageInfo, updates);
     await entity.save();

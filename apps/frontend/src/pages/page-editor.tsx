@@ -1,7 +1,9 @@
 import { Link, useParams, useNavigate } from "react-router";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { usePage, useUpdatePage, useDeletePage } from "@/hooks/use-pages";
 import { useUser } from "@/hooks/use-users";
+import { useAllTasks } from "@/hooks/use-tasks";
+import { useModules } from "@/hooks/use-modules";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,7 +23,8 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from "@/components/ui/popover";
-import { ArrowLeft, Trash2, FileText } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ArrowLeft, Trash2, FileText, Link2, X, Search, Layers, CheckSquare } from "lucide-react";
 import styles from "./page-editor.module.css";
 
 const COMMON_EMOJIS = [
@@ -43,6 +46,146 @@ function formatTimeAgo(dateStr: string) {
   const diffDays = Math.floor(diffHours / 24);
   if (diffDays < 30) return `${diffDays}d ago`;
   return date.toLocaleDateString();
+}
+
+function LinkPicker({
+  projectId,
+  linkedTaskId,
+  linkedModuleId,
+  onLink,
+  onUnlink,
+}: {
+  projectId: string;
+  linkedTaskId?: string;
+  linkedModuleId?: string;
+  onLink: (type: "task" | "module", id: string) => void;
+  onUnlink: () => void;
+}) {
+  const { data: tasks = [] } = useAllTasks({ projectId });
+  const { data: modules = [] } = useModules(projectId);
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+
+  const linkedTask = linkedTaskId
+    ? tasks.find((t) => t.id === linkedTaskId)
+    : undefined;
+  const linkedModule = linkedModuleId
+    ? modules.find((m) => m.id === linkedModuleId)
+    : undefined;
+
+  const filteredTasks = useMemo(
+    () =>
+      search
+        ? tasks.filter((t) =>
+            t.title.toLowerCase().includes(search.toLowerCase()),
+          )
+        : tasks,
+    [tasks, search],
+  );
+
+  const filteredModules = useMemo(
+    () =>
+      search
+        ? modules.filter((m) =>
+            m.name.toLowerCase().includes(search.toLowerCase()),
+          )
+        : modules,
+    [modules, search],
+  );
+
+  const handleSelect = (type: "task" | "module", id: string) => {
+    onLink(type, id);
+    setOpen(false);
+    setSearch("");
+  };
+
+  if (linkedTask || linkedModule) {
+    return (
+      <div className={styles.linkRow}>
+        <Link2 className={styles.linkIcon} />
+        <span className={styles.linkChip}>
+          {linkedTask ? (
+            <>
+              <CheckSquare className={styles.linkChipIcon} />
+              {linkedTask.title}
+            </>
+          ) : (
+            <>
+              <Layers className={styles.linkChipIcon} />
+              {linkedModule?.name}
+            </>
+          )}
+        </span>
+        <button className={styles.unlinkButton} onClick={onUnlink}>
+          <X className={styles.unlinkIcon} />
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.linkRow}>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button className={styles.addLinkButton}>
+            <Link2 className={styles.linkIcon} />
+            Link to task or module
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className={styles.linkPopover} align="start">
+          <div className={styles.linkSearchWrapper}>
+            <Search className={styles.linkSearchIcon} />
+            <input
+              placeholder="Search..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className={styles.linkSearchInput}
+            />
+          </div>
+          <Tabs defaultValue="task">
+            <TabsList className={styles.linkTabs}>
+              <TabsTrigger value="task" className={styles.linkTab}>Tasks</TabsTrigger>
+              <TabsTrigger value="module" className={styles.linkTab}>Modules</TabsTrigger>
+            </TabsList>
+            <TabsContent value="task">
+              <div className={styles.linkList}>
+                {filteredTasks.length === 0 && (
+                  <p className={styles.linkEmpty}>No tasks found</p>
+                )}
+                {filteredTasks.map((t) => (
+                  <button
+                    key={t.id}
+                    className={styles.linkOption}
+                    onClick={() => handleSelect("task", t.id)}
+                  >
+                    <CheckSquare className={styles.linkOptionIcon} />
+                    <span className={styles.linkOptionText}>{t.title}</span>
+                  </button>
+                ))}
+              </div>
+            </TabsContent>
+            <TabsContent value="module">
+              <div className={styles.linkList}>
+                {filteredModules.length === 0 && (
+                  <p className={styles.linkEmpty}>No modules found</p>
+                )}
+                {filteredModules.map((m) => (
+                  <button
+                    key={m.id}
+                    className={styles.linkOption}
+                    onClick={() => handleSelect("module", m.id)}
+                  >
+                    <Layers className={styles.linkOptionIcon} />
+                    <span className={styles.linkOptionText}>{m.name}</span>
+                  </button>
+                ))}
+              </div>
+            </TabsContent>
+          </Tabs>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
 }
 
 export function Component() {
@@ -211,6 +354,30 @@ export function Component() {
           className={styles.titleInput}
         />
       </div>
+
+      {/* Link picker */}
+      <LinkPicker
+        projectId={projectId!}
+        linkedTaskId={page.pageInfo.linkedTaskId}
+        linkedModuleId={page.pageInfo.linkedModuleId}
+        onLink={(type, id) => {
+          updatePage.mutate({
+            id: pageId!,
+            projectId: projectId!,
+            ...(type === "task"
+              ? { linkedTaskId: id, linkedModuleId: "" }
+              : { linkedModuleId: id, linkedTaskId: "" }),
+          });
+        }}
+        onUnlink={() => {
+          updatePage.mutate({
+            id: pageId!,
+            projectId: projectId!,
+            linkedTaskId: "",
+            linkedModuleId: "",
+          });
+        }}
+      />
 
       {/* Editor */}
       {initialized && (

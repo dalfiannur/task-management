@@ -26,7 +26,10 @@ export function ProjectCard({ project, parentName }: ProjectCardProps) {
   const { data: modules } = useModules(project.id);
   const { data: pic } = useUser(project.projectLeaderId?.value);
 
-  const statusConfig = PROJECT_STATUS_CONFIG[project.status.value];
+  const statusConfig = PROJECT_STATUS_CONFIG[project.status.value] ?? {
+    label: project.status.value,
+    color: "bg-gray-100 text-gray-700",
+  };
 
   return (
     <Card

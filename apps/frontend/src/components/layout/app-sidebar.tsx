@@ -26,10 +26,12 @@ import {
   ChevronsUpDown,
   LayoutDashboard,
   Building2,
+  CheckCircle2,
 } from "lucide-react";
 import { useProjects, getProjectDisplayName } from "@/hooks/use-projects";
 import { useNewLeads } from "@/hooks/use-leads";
 import { ProjectForm } from "@/components/projects/project-form";
+import { ApproveLeadDialog } from "@/components/dashboard/approve-lead-dialog";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -37,6 +39,7 @@ import type { Project, ProjectStatus } from "@/types/project";
 import styles from "./app-sidebar.module.css";
 
 const STATUS_DOT_COLORS: Record<ProjectStatus, string> = {
+  draft: "dot-draft",
   pending: "dot-pending",
   prospect: "dot-prospect",
   win: "dot-win",
@@ -67,15 +70,28 @@ function ProjectItem({ project }: { project: Project }) {
   );
 }
 
-function LeadItem({ project }: { project: Project }) {
+function LeadItem({ project, onApprove }: { project: Project; onApprove: () => void }) {
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton asChild tooltip={project.coreName}>
-        <Link to="/projects?type=leads">
-          <span className={cn(styles.statusDot, "dot-pending")} />
-          <span className={styles.projectName}>{project.coreName || "Untitled"}</span>
-        </Link>
-      </SidebarMenuButton>
+      <div className={styles.leadItemRow}>
+        <SidebarMenuButton asChild tooltip={project.coreName} className={styles.leadButton}>
+          <Link to="/projects?type=leads">
+            <span className={cn(styles.statusDot, "dot-pending")} />
+            <span className={styles.projectName}>{project.coreName || "Untitled"}</span>
+          </Link>
+        </SidebarMenuButton>
+        <Button
+          variant="ghost"
+          size="icon"
+          className={styles.approveBtn}
+          onClick={(e) => {
+            e.stopPropagation();
+            onApprove();
+          }}
+        >
+          <CheckCircle2 className={styles.approveIcon} />
+        </Button>
+      </div>
     </SidebarMenuItem>
   );
 }
@@ -155,6 +171,8 @@ export function AppSidebar() {
   const { data: allProjects } = useProjects();
   const { data: leads } = useNewLeads();
   const [projectFormOpen, setProjectFormOpen] = useState(false);
+  const [approveProject, setApproveProject] = useState<Project | null>(null);
+  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
 
   const { pathname } = useLocation();
   const isDashboardActive = pathname === "/dashboard" || pathname === "/dashboard/";
@@ -248,7 +266,14 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {leads?.slice(0, MAX_SIDEBAR_ITEMS).map((lead) => (
-                <LeadItem key={lead.id} project={lead} />
+                <LeadItem
+                  key={lead.id}
+                  project={lead}
+                  onApprove={() => {
+                    setApproveProject(lead);
+                    setApproveDialogOpen(true);
+                  }}
+                />
               ))}
               {leads && leads.length === 0 && (
                 <li className={styles.emptyHint}>No leads</li>
@@ -295,6 +320,11 @@ export function AppSidebar() {
         <UserMenu />
       </SidebarFooter>
       <ProjectForm open={projectFormOpen} onOpenChange={setProjectFormOpen} />
+      <ApproveLeadDialog
+        project={approveProject}
+        open={approveDialogOpen}
+        onOpenChange={setApproveDialogOpen}
+      />
     </Sidebar>
   );
 }

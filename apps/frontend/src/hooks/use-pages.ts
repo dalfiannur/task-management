@@ -17,6 +17,8 @@ const PAGE_FIELDS = gql`
       lastEditedByName
       createdAt
       updatedAt
+      linkedTaskId
+      linkedModuleId
     }
   }
 `;
@@ -69,6 +71,24 @@ const REORDER_PAGES = gql`
   }
 `;
 
+const LIST_PAGES_BY_TASK = gql`
+  ${PAGE_FIELDS}
+  query ListPagesByTask($input: listPagesByTaskInput!) {
+    listPagesByTask(input: $input) {
+      ...PageFields
+    }
+  }
+`;
+
+const LIST_PAGES_BY_MODULE = gql`
+  ${PAGE_FIELDS}
+  query ListPagesByModule($input: listPagesByModuleInput!) {
+    listPagesByModule(input: $input) {
+      ...PageFields
+    }
+  }
+`;
+
 export function usePages(projectId: string) {
   const result = useQuery<{ listPages: Page[] }>(LIST_PAGES, {
     variables: { input: { projectId } },
@@ -86,12 +106,19 @@ export function usePage(id: string) {
 }
 
 export const useCreatePage = createMutationHook<
-  { projectId: string; title: string; icon?: string; content?: string },
+  {
+    projectId: string;
+    title: string;
+    icon?: string;
+    content?: string;
+    linkedTaskId?: string;
+    linkedModuleId?: string;
+  },
   Page
 >({
   mutation: CREATE_PAGE,
   responseKey: "createPage",
-  refetchQueries: [LIST_PAGES],
+  refetchQueries: [LIST_PAGES, LIST_PAGES_BY_TASK, LIST_PAGES_BY_MODULE],
 });
 
 export const useUpdatePage = createMutationHook<
@@ -102,13 +129,15 @@ export const useUpdatePage = createMutationHook<
     icon?: string;
     content?: string;
     order?: number;
+    linkedTaskId?: string;
+    linkedModuleId?: string;
   },
   Page
 >({
   mutation: UPDATE_PAGE,
   responseKey: "updatePage",
   mapVariables: ({ projectId: _projectId, ...rest }) => ({ input: rest }),
-  refetchQueries: [LIST_PAGES, GET_PAGE],
+  refetchQueries: [LIST_PAGES, GET_PAGE, LIST_PAGES_BY_TASK, LIST_PAGES_BY_MODULE],
 });
 
 export const useDeletePage = createVoidMutationHook<{
@@ -127,3 +156,19 @@ export const useReorderPages = createVoidMutationHook<{
   mutation: REORDER_PAGES,
   refetchQueries: [LIST_PAGES],
 });
+
+export function usePagesByTask(taskId: string) {
+  const result = useQuery<{ listPagesByTask: Page[] }>(LIST_PAGES_BY_TASK, {
+    variables: { input: { taskId } },
+    skip: !taskId,
+  });
+  return normalizeQueryResult(result, (d) => d.listPagesByTask);
+}
+
+export function usePagesByModule(moduleId: string) {
+  const result = useQuery<{ listPagesByModule: Page[] }>(LIST_PAGES_BY_MODULE, {
+    variables: { input: { moduleId } },
+    skip: !moduleId,
+  });
+  return normalizeQueryResult(result, (d) => d.listPagesByModule);
+}

@@ -1,4 +1,4 @@
-export type ProjectStatus = "pending" | "prospect" | "win" | "won" | "on_going" | "canceled" | "closed";
+export type ProjectStatus = "draft" | "pending" | "prospect" | "win" | "won" | "on_going" | "canceled" | "closed";
 
 export interface Project {
     id: string;
@@ -69,6 +69,7 @@ export const PROJECT_STATUS_CONFIG: Record<
     ProjectStatus,
     { label: string; color: string }
 > = {
+    draft: { label: "Draft", color: "bg-slate-100 text-slate-700" },
     pending: { label: "Pending", color: "bg-gray-100 text-gray-700" },
     prospect: { label: "Prospect", color: "bg-amber-100 text-amber-700" },
     win: { label: "Win", color: "bg-emerald-100 text-emerald-700" },

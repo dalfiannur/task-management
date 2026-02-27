@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useTask, useDeleteTask, useUpdateTask } from "@/hooks/use-tasks";
 import { useUsers } from "@/hooks/use-users";
 import { useModules } from "@/hooks/use-modules";
+import { usePagesByTask, usePages, useUpdatePage } from "@/hooks/use-pages";
 import { useState } from "react";
 import {
   Trash2,
@@ -23,6 +24,9 @@ import {
   CalendarDays,
   CalendarClock,
   MessageSquare,
+  FileText,
+  Plus,
+  X,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -35,6 +39,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
 import { TaskAttachments } from "./task-attachments";
 import { CommentsDialog } from "./comments-dialog";
 import {
@@ -69,7 +78,16 @@ export function TaskDetail({
   const updateTask = useUpdateTask();
   const { data: users = [] } = useUsers();
   const { data: modules } = useModules(projectId);
+  const { data: linkedPages = [] } = usePagesByTask(taskId);
+  const { data: allPages = [] } = usePages(projectId);
+  const updatePage = useUpdatePage();
   const [commentsOpen, setCommentsOpen] = useState(false);
+  const [linkPageOpen, setLinkPageOpen] = useState(false);
+
+  // Pages available to link (not already linked to a task)
+  const availablePages = allPages.filter(
+    (p) => !p.pageInfo.linkedTaskId && !p.pageInfo.linkedModuleId,
+  );
 
   const moduleName =
     modules?.find((m) => m.id === moduleId)?.name ?? moduleId;
@@ -248,6 +266,81 @@ export function TaskDetail({
                     projectId={projectId}
                     taskId={taskId}
                   />
+                </PropertyRow>
+
+                {/* Linked Pages */}
+                <PropertyRow icon={FileText} label="Pages">
+                  <div className={styles.linkedPages}>
+                    {linkedPages.map((page) => (
+                      <a
+                        key={page.id}
+                        href={`/projects/${projectId}/pages/${page.id}`}
+                        className={styles.linkedPageLink}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          navigate(`/projects/${projectId}/pages/${page.id}`);
+                        }}
+                      >
+                        {page.pageInfo.icon || <FileText className={styles.linkedPageIcon} />}
+                        <span className={styles.linkedPageName}>
+                          {page.pageInfo.title || "Untitled"}
+                        </span>
+                        <button
+                          className={styles.unlinkPageBtn}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            updatePage.mutate({
+                              id: page.id,
+                              projectId,
+                              linkedTaskId: "",
+                            });
+                          }}
+                        >
+                          <X className={styles.unlinkPageIcon} />
+                        </button>
+                      </a>
+                    ))}
+                    <Popover open={linkPageOpen} onOpenChange={setLinkPageOpen}>
+                      <PopoverTrigger asChild>
+                        <button className={styles.addPageBtn}>
+                          <Plus className={styles.addPageBtnIcon} />
+                          Link page
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className={styles.linkPagePopover} align="start">
+                        {availablePages.length === 0 ? (
+                          <p className={styles.linkPageEmpty}>
+                            No available pages
+                          </p>
+                        ) : (
+                          <div className={styles.linkPageList}>
+                            {availablePages.map((page) => (
+                              <button
+                                key={page.id}
+                                className={styles.linkPageOption}
+                                onClick={() => {
+                                  updatePage.mutate({
+                                    id: page.id,
+                                    projectId,
+                                    linkedTaskId: taskId,
+                                  });
+                                  setLinkPageOpen(false);
+                                }}
+                              >
+                                <span className={styles.linkPageOptionIcon}>
+                                  {page.pageInfo.icon || <FileText className={styles.linkedPageIcon} />}
+                                </span>
+                                <span className={styles.linkPageOptionText}>
+                                  {page.pageInfo.title || "Untitled"}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </PopoverContent>
+                    </Popover>
+                  </div>
                 </PropertyRow>
               </div>
 

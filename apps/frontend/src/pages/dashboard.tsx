@@ -1,6 +1,5 @@
 import { useAllTasks, getTodayDeadlines } from "@/hooks/use-tasks";
 import { useProjects } from "@/hooks/use-projects";
-import { useNewLeads } from "@/hooks/use-leads";
 import { useMe, useIsManager } from "@/hooks/use-me";
 import { useAllModules } from "@/hooks/use-modules";
 import { StatCard } from "@/components/dashboard/stat-card";
@@ -8,7 +7,6 @@ import { MyAssignedTasks } from "@/components/dashboard/my-assigned-tasks";
 import { UpcomingDeadlines } from "@/components/dashboard/upcoming-deadlines";
 import { ProjectProgress } from "@/components/dashboard/project-progress";
 import { TeamActivityFeed } from "@/components/dashboard/team-activity-feed";
-import { NewLeads } from "@/components/dashboard/new-leads";
 import { ActiveProjects } from "@/components/dashboard/active-projects";
 import { RecentTasks } from "@/components/dashboard/recent-tasks";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -29,10 +27,8 @@ export function Component() {
   const { data: projects, isLoading: projectsLoading } = useProjects();
   const { data: modules, isLoading: modulesLoading } = useAllModules();
   const isManager = useIsManager();
-  const { data: leads, isLoading: leadsLoading } = useNewLeads();
 
-  const isLoading =
-    tasksLoading || projectsLoading || modulesLoading || (isManager && leadsLoading);
+  const isLoading = tasksLoading || projectsLoading || modulesLoading;
 
   if (isLoading) {
     return (
@@ -158,7 +154,7 @@ export function Component() {
             </div>
             <div className={styles.contentGrid}>
               <div className={styles.mainCol} style={{ animationDelay: "550ms" }}>
-                <NewLeads projects={leads ?? []} />
+                <TeamActivityFeed />
               </div>
               <div className={styles.sideCol} style={{ animationDelay: "600ms" }}>
                 <ActiveProjects projects={allProjects} />
@@ -166,9 +162,6 @@ export function Component() {
             </div>
             <div className={styles.contentGrid}>
               <div className={styles.mainCol} style={{ animationDelay: "650ms" }}>
-                <TeamActivityFeed />
-              </div>
-              <div className={styles.sideCol} style={{ animationDelay: "700ms" }}>
                 <RecentTasks tasks={allTasks} />
               </div>
             </div>

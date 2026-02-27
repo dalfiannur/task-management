@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router";
 import {
   Collapsible,
   CollapsibleContent,
@@ -42,11 +43,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
 import { useTasks, useUpdateTask } from "@/hooks/use-tasks";
 import { useDeleteModule } from "@/hooks/use-modules";
+import { usePagesByModule, usePages, useUpdatePage } from "@/hooks/use-pages";
 import { useLabels } from "@/hooks/use-labels";
 import { useUsers, useUser } from "@/hooks/use-users";
-import { ChevronRight, FolderOpen, MessageSquare, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
+import { ChevronRight, FileText, FolderOpen, MessageSquare, MoreHorizontal, Pencil, Plus, Trash2, X } from "lucide-react";
 import { ModuleForm } from "./module-form";
 import { CommentsDialog } from "@/components/tasks/comments-dialog";
 import { useCommentCounts } from "@/hooks/use-comments";
@@ -136,14 +143,23 @@ export function ModuleSection({
   projectStatus,
   subProjectCount,
 }: ModuleSectionProps) {
+  const navigate = useNavigate();
   const { data: tasks, isLoading } = useTasks({ moduleId: module.id, ...filters });
   const updateTask = useUpdateTask();
   const deleteModule = useDeleteModule();
+  const { data: linkedPages = [] } = usePagesByModule(module.id);
+  const { data: allPages = [] } = usePages(projectId);
+  const updatePage = useUpdatePage();
   const [taskFormOpen, setTaskFormOpen] = useState(false);
   const [editFormOpen, setEditFormOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [commentsTaskId, setCommentsTaskId] = useState<string | null>(null);
+  const [pagesPopoverOpen, setPagesPopoverOpen] = useState(false);
+
+  const availablePages = allPages.filter(
+    (p) => !p.pageInfo.linkedTaskId && !p.pageInfo.linkedModuleId,
+  );
   const { data: picUser } = useUser(module.picId);
   const { data: labels = [] } = useLabels(projectId);
   const taskIds = tasks?.map((t) => t.id) ?? [];
@@ -174,6 +190,12 @@ export function ModuleSection({
                 <Badge variant="outline" className={s.subProjectBadge}>
                   <FolderOpen className={s.subProjectBadgeIcon} />
                   {subProjectCount}
+                </Badge>
+              )}
+              {linkedPages.length > 0 && (
+                <Badge variant="outline" className={s.subProjectBadge}>
+                  <FileText className={s.subProjectBadgeIcon} />
+                  {linkedPages.length}
                 </Badge>
               )}
               {module.description && (
@@ -218,6 +240,13 @@ export function ModuleSection({
                   <Pencil className={s.menuItemIcon} />
                   Edit
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setPagesPopoverOpen(true)}>
+                  <FileText className={s.menuItemIcon} />
+                  Pages
+                  {linkedPages.length > 0 && (
+                    <span className={s.menuItemCount}>{linkedPages.length}</span>
+                  )}
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   className={s.destructiveItem}
@@ -245,6 +274,80 @@ export function ModuleSection({
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+
+            <Popover open={pagesPopoverOpen} onOpenChange={setPagesPopoverOpen}>
+              <PopoverTrigger asChild>
+                <span />
+              </PopoverTrigger>
+              <PopoverContent className={s.pagesPopover} align="end">
+                <p className={s.pagesPopoverTitle}>Linked Pages</p>
+                {linkedPages.length > 0 && (
+                  <div className={s.pagesPopoverList}>
+                    {linkedPages.map((page) => (
+                      <div key={page.id} className={s.pagesPopoverItem}>
+                        <button
+                          className={s.pagesPopoverLink}
+                          onClick={() => {
+                            navigate(`/projects/${projectId}/pages/${page.id}`);
+                            setPagesPopoverOpen(false);
+                          }}
+                        >
+                          <span className={s.pagesPopoverIcon}>
+                            {page.pageInfo.icon || <FileText className={s.pagesPopoverFileIcon} />}
+                          </span>
+                          <span className={s.pagesPopoverName}>
+                            {page.pageInfo.title || "Untitled"}
+                          </span>
+                        </button>
+                        <button
+                          className={s.pagesPopoverUnlink}
+                          onClick={() =>
+                            updatePage.mutate({
+                              id: page.id,
+                              projectId,
+                              linkedModuleId: "",
+                            })
+                          }
+                        >
+                          <X className={s.pagesPopoverUnlinkIcon} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {linkedPages.length === 0 && (
+                  <p className={s.pagesPopoverEmpty}>No pages linked</p>
+                )}
+                {availablePages.length > 0 && (
+                  <>
+                    <div className={s.pagesPopoverDivider} />
+                    <p className={s.pagesPopoverSubtitle}>Link a page</p>
+                    <div className={s.pagesPopoverList}>
+                      {availablePages.map((page) => (
+                        <button
+                          key={page.id}
+                          className={s.pagesPopoverLink}
+                          onClick={() => {
+                            updatePage.mutate({
+                              id: page.id,
+                              projectId,
+                              linkedModuleId: module.id,
+                            });
+                          }}
+                        >
+                          <span className={s.pagesPopoverIcon}>
+                            {page.pageInfo.icon || <FileText className={s.pagesPopoverFileIcon} />}
+                          </span>
+                          <span className={s.pagesPopoverName}>
+                            {page.pageInfo.title || "Untitled"}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </PopoverContent>
+            </Popover>
           </div>
 
           <CollapsibleContent>

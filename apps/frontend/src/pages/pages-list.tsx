@@ -1,5 +1,5 @@
 import { Link, useParams, useNavigate } from "react-router";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   usePages,
   useCreatePage,
@@ -28,7 +28,11 @@ import {
   FileText,
   GripVertical,
   Search,
+  CheckSquare,
+  Layers,
 } from "lucide-react";
+import { useAllTasks } from "@/hooks/use-tasks";
+import { useModules } from "@/hooks/use-modules";
 import type { Page } from "@/types/page";
 import type { User } from "@/types/task";
 import styles from "./pages-list.module.css";
@@ -51,10 +55,14 @@ function SortablePageRow({
   page,
   projectId,
   users,
+  taskNameMap,
+  moduleNameMap,
 }: {
   page: Page;
   projectId: string;
   users: User[];
+  taskNameMap: Record<string, string>;
+  moduleNameMap: Record<string, string>;
 }) {
   const {
     attributes,
@@ -94,9 +102,23 @@ function SortablePageRow({
           )}
         </span>
         <div className={styles.pageContent}>
-          <p className={styles.pageTitle}>
-            {page.pageInfo.title || "Untitled"}
-          </p>
+          <div className={styles.pageTitleRow}>
+            <p className={styles.pageTitle}>
+              {page.pageInfo.title || "Untitled"}
+            </p>
+            {page.pageInfo.linkedTaskId && taskNameMap[page.pageInfo.linkedTaskId] && (
+              <span className={styles.linkBadge}>
+                <CheckSquare className={styles.linkBadgeIcon} />
+                {taskNameMap[page.pageInfo.linkedTaskId]}
+              </span>
+            )}
+            {page.pageInfo.linkedModuleId && moduleNameMap[page.pageInfo.linkedModuleId] && (
+              <span className={styles.linkBadge}>
+                <Layers className={styles.linkBadgeIcon} />
+                {moduleNameMap[page.pageInfo.linkedModuleId]}
+              </span>
+            )}
+          </div>
           <p className={styles.pageMeta}>
             Last edited by{" "}
             {users.find((u) => u.id === page.pageInfo.lastEditedById)?.name ||
@@ -115,7 +137,18 @@ export function Component() {
   const navigate = useNavigate();
   const { data: pages = [], isLoading } = usePages(projectId!);
   const { data: users = [] } = useUsers();
+  const { data: tasks = [] } = useAllTasks({ projectId });
+  const { data: modules = [] } = useModules(projectId);
   const createPage = useCreatePage();
+
+  const taskNameMap = useMemo(
+    () => Object.fromEntries(tasks.map((t) => [t.id, t.title])),
+    [tasks],
+  );
+  const moduleNameMap = useMemo(
+    () => Object.fromEntries(modules.map((m) => [m.id, m.name])),
+    [modules],
+  );
   const reorderPages = useReorderPages();
   const [orderedPages, setOrderedPages] = useState<Page[] | null>(null);
   const [search, setSearch] = useState("");
@@ -243,6 +276,8 @@ export function Component() {
                   page={page}
                   projectId={projectId!}
                   users={users}
+                  taskNameMap={taskNameMap}
+                  moduleNameMap={moduleNameMap}
                 />
               ))}
             </div>

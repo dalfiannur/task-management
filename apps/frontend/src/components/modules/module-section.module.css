@@ -336,3 +336,127 @@
   width: 0.6875rem;
   height: 0.6875rem;
 }
+
+/* Menu item count */
+.menuItemCount {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+}
+
+/* Pages popover */
+.pagesPopover {
+  width: 16rem;
+  padding: 0.5rem;
+}
+
+.pagesPopoverTitle {
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted-foreground);
+  padding: 0.1875rem 0.375rem;
+  margin-bottom: 0.25rem;
+}
+
+.pagesPopoverSubtitle {
+  font-size: 0.6875rem;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: color-mix(in srgb, var(--muted-foreground) 70%, transparent);
+  padding: 0.1875rem 0.375rem;
+  margin-bottom: 0.125rem;
+}
+
+.pagesPopoverList {
+  max-height: 10rem;
+  overflow-y: auto;
+}
+
+.pagesPopoverItem {
+  display: flex;
+  align-items: center;
+}
+
+.pagesPopoverLink {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  flex: 1;
+  min-width: 0;
+  padding: 0.3125rem 0.375rem;
+  font-size: 0.8125rem;
+  background: none;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 150ms;
+}
+
+.pagesPopoverLink:hover {
+  background-color: var(--accent);
+}
+
+.pagesPopoverIcon {
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
+.pagesPopoverFileIcon {
+  width: 0.75rem;
+  height: 0.75rem;
+  color: var(--muted-foreground);
+}
+
+.pagesPopoverName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pagesPopoverUnlink {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: var(--radius);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--muted-foreground);
+  opacity: 0;
+  flex-shrink: 0;
+  transition: opacity 150ms, color 150ms;
+}
+
+.pagesPopoverItem:hover .pagesPopoverUnlink {
+  opacity: 1;
+}
+
+.pagesPopoverUnlink:hover {
+  color: var(--destructive);
+}
+
+.pagesPopoverUnlinkIcon {
+  width: 0.625rem;
+  height: 0.625rem;
+}
+
+.pagesPopoverEmpty {
+  font-size: 0.8125rem;
+  color: var(--muted-foreground);
+  text-align: center;
+  padding: 0.5rem 0;
+}
+
+.pagesPopoverDivider {
+  height: 1px;
+  background-color: var(--border);
+  margin: 0.375rem 0;
+}
