@@ -23,6 +23,7 @@ const TASK_FIELDS = gql`
       order
       createdAt
       updatedAt
+      completedAt
     }
     taskAssignment {
       assigneeIds
@@ -108,6 +109,7 @@ interface TaskResponse {
     order: number;
     createdAt: string;
     updatedAt: string;
+    completedAt: string;
   };
   taskAssignment: {
     assigneeIds: string;
@@ -147,6 +149,7 @@ function mapTask(t: TaskResponse): Task {
     labelIds,
     createdAt: t.taskInfo.createdAt || new Date().toISOString(),
     updatedAt: t.taskInfo.updatedAt || new Date().toISOString(),
+    completedAt: t.taskInfo.completedAt || undefined,
   };
 }
 

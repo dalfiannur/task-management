@@ -130,3 +130,55 @@
   color: var(--muted-foreground);
   font-family: var(--font-mono);
 }
+
+/* Stacked bar container for done tasks */
+.stackedBar {
+  position: absolute;
+  top: 0.375rem;
+  height: 1.125rem;
+  border-radius: calc(var(--radius) - 2px);
+  overflow: hidden;
+  cursor: default;
+  transition: opacity 150ms;
+  opacity: 0.85;
+}
+
+.stackedBar:hover {
+  opacity: 0.68;
+}
+
+.barSegment {
+  position: absolute;
+  top: 0;
+  height: 100%;
+}
+
+.segmentGreen {
+  composes: barSegment;
+  background-color: #22c55e;
+}
+
+:global(.dark) .segmentGreen {
+  background-color: #4ade80;
+}
+
+.segmentRed {
+  composes: barSegment;
+  background-color: var(--destructive);
+}
+
+.tooltipStatus {
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-family: var(--font-mono);
+}
+
+.tooltipOnTime {
+  composes: tooltipStatus;
+  color: #22c55e;
+}
+
+.tooltipLate {
+  composes: tooltipStatus;
+  color: var(--destructive);
+}

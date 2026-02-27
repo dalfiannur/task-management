@@ -18,6 +18,10 @@ export interface Project {
     parent?: {
         id: string;
     } | null;
+    linkedModule?: {
+        id: string;
+        name: string;
+    } | null;
     // Enrichment fields from Core (populated by backend)
     code?: string;
     coreName?: string;
@@ -36,7 +40,6 @@ export interface CreateProjectInput {
     projectLeaderId?: string;
     ownerId?: string;
     divisionId?: string;
-    commercial?: boolean;
     value?: number;
     startDate?: string;
     endDate?: string;
@@ -56,10 +59,10 @@ export interface CreateSubProjectInput {
     projectLeaderId?: string;
     ownerId?: string;
     divisionId?: string;
-    commercial?: boolean;
     value?: number;
     startDate?: string;
     endDate?: string;
+    moduleId?: string;
 }
 
 export const PROJECT_STATUS_CONFIG: Record<

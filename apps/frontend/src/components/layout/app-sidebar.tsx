@@ -1,4 +1,4 @@
-import { Link, useParams, useLocation } from "react-router";
+import { Link, useParams, useLocation, useSearchParams } from "react-router";
 import { useAuth } from "react-oidc-context";
 import {
   Sidebar,
@@ -27,7 +27,8 @@ import {
   LayoutDashboard,
   Building2,
 } from "lucide-react";
-import { useProjects } from "@/hooks/use-projects";
+import { useProjects, getProjectDisplayName } from "@/hooks/use-projects";
+import { useNewLeads } from "@/hooks/use-leads";
 import { ProjectForm } from "@/components/projects/project-form";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -45,19 +46,53 @@ const STATUS_DOT_COLORS: Record<ProjectStatus, string> = {
   closed: "dot-closed",
 };
 
-function ProjectTreeItem({ project }: { project: Project }) {
+const MAX_SIDEBAR_ITEMS = 5;
+
+function ProjectItem({ project }: { project: Project }) {
   const params = useParams();
   const activeProjectId = (params as { projectId?: string }).projectId;
-  const isProjectActive = activeProjectId === project.id;
+  const isActive = activeProjectId === project.id;
 
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton asChild isActive={isProjectActive} tooltip={project.coreName}>
+      <SidebarMenuButton asChild isActive={isActive} tooltip={getProjectDisplayName(project)}>
         <Link to={`/projects/${project.id}`}>
           <span
             className={cn(styles.statusDot, STATUS_DOT_COLORS[project.status.value] ?? "dot-pending")}
           />
-          <span className={styles.projectName}>{project.coreName}</span>
+          <span className={styles.projectName}>{getProjectDisplayName(project)}</span>
+        </Link>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  );
+}
+
+function LeadItem({ project }: { project: Project }) {
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton asChild tooltip={project.coreName}>
+        <Link to="/projects?type=leads">
+          <span className={cn(styles.statusDot, "dot-pending")} />
+          <span className={styles.projectName}>{project.coreName || "Untitled"}</span>
+        </Link>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  );
+}
+
+function ShowAllButton({ to }: { to: string }) {
+  const { pathname } = useLocation();
+  const [searchParams] = useSearchParams();
+  const url = new URL(to, "http://x");
+  const isActive =
+    pathname === url.pathname &&
+    searchParams.get("type") === url.searchParams.get("type");
+
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton asChild isActive={isActive} className={styles.showAllBtn}>
+        <Link to={to}>
+          <span className={styles.showAllText}>Show All</span>
         </Link>
       </SidebarMenuButton>
     </SidebarMenuItem>
@@ -117,13 +152,22 @@ function UserMenu() {
 }
 
 export function AppSidebar() {
-  const { data: projects } = useProjects();
+  const { data: allProjects } = useProjects();
+  const { data: leads } = useNewLeads();
   const [projectFormOpen, setProjectFormOpen] = useState(false);
 
   const { pathname } = useLocation();
   const isDashboardActive = pathname === "/dashboard" || pathname === "/dashboard/";
   const isClientsActive = pathname.startsWith("/clients");
   const isSettingsActive = pathname.startsWith("/settings");
+
+  const rootProjects = allProjects?.filter(
+    (p) => !p.parent?.id && p.status.value !== "pending" && p.status.value !== "closed",
+  );
+  const internalProjects = rootProjects?.filter((p) => !p.winStage);
+  const commercialProjects = rootProjects?.filter(
+    (p) => p.winStage && p.winStage !== "pending",
+  );
 
   return (
     <Sidebar>
@@ -156,13 +200,23 @@ export function AppSidebar() {
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isClientsActive}>
+                  <Link to="/clients">
+                    <Building2 className={styles.icon} />
+                    <span>Clients</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Internal Projects */}
         <SidebarGroup>
           <div className={styles.projectsHeader}>
             <SidebarGroupLabel className={styles.projectsLabel}>
-              Projects
+              Internal Project
             </SidebarGroupLabel>
             <Button
               variant="ghost"
@@ -175,28 +229,53 @@ export function AppSidebar() {
           </div>
           <SidebarGroupContent>
             <SidebarMenu>
-              {projects
-                ?.filter((project) => !project.parent?.id && project.status.value !== "closed")
-                .map((project) => (
-                  <ProjectTreeItem key={project.id} project={project} />
-                ))}
+              {internalProjects?.slice(0, MAX_SIDEBAR_ITEMS).map((project) => (
+                <ProjectItem key={project.id} project={project} />
+              ))}
+              {internalProjects && internalProjects.length === 0 && (
+                <li className={styles.emptyHint}>No projects</li>
+              )}
+              <ShowAllButton to="/projects?type=internal" />
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* New Leads */}
         <SidebarGroup>
+          <SidebarGroupLabel className={styles.projectsLabel}>
+            New Leads
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isClientsActive}>
-                  <Link to="/clients">
-                    <Building2 className={styles.icon} />
-                    <span>Clients</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {leads?.slice(0, MAX_SIDEBAR_ITEMS).map((lead) => (
+                <LeadItem key={lead.id} project={lead} />
+              ))}
+              {leads && leads.length === 0 && (
+                <li className={styles.emptyHint}>No leads</li>
+              )}
+              <ShowAllButton to="/projects?type=leads" />
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* Commercial Projects */}
+        <SidebarGroup>
+          <SidebarGroupLabel className={styles.projectsLabel}>
+            Commercial Project
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {commercialProjects?.slice(0, MAX_SIDEBAR_ITEMS).map((project) => (
+                <ProjectItem key={project.id} project={project} />
+              ))}
+              {commercialProjects && commercialProjects.length === 0 && (
+                <li className={styles.emptyHint}>No projects</li>
+              )}
+              <ShowAllButton to="/projects?type=commercial" />
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
         <SidebarGroup className={styles.settingsGroup}>
           <SidebarGroupContent>
             <SidebarMenu>

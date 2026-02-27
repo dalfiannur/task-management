@@ -105,4 +105,17 @@ export function formatDateRange(startDate?: string, dueDate?: string): string {
   return `${s} - ${e}`;
 }
 
+export function computeBarPositionFromDates(
+  startDate: string,
+  endDate: string,
+  timelineStart: Date,
+): BarPosition {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const left = differenceInCalendarDays(start, timelineStart) * DAY_WIDTH;
+  const span = differenceInCalendarDays(end, start) + 1;
+  const width = Math.max(span * DAY_WIDTH, DAY_WIDTH);
+  return { left, width };
+}
+
 export { isWeekend, isSameDay, format };

@@ -9,6 +9,7 @@ import {
   ProjectDescriptionComponent,
   ProjectNameComponent,
   ProjectParentRefComponent,
+  ProjectModuleRefComponent,
   ProjectLeaderIdComponent,
   ProjectStatusComponent,
   ProjectTag,
@@ -273,6 +274,7 @@ export default class ProjectService extends BaseService {
       value: z.number().optional(),
       startDate: z.string().optional(),
       endDate: z.string().optional(),
+      moduleId: z.string().optional(),
     }),
     output: ProjectArcheType,
   })
@@ -288,6 +290,7 @@ export default class ProjectService extends BaseService {
       value?: number;
       startDate?: string;
       endDate?: string;
+      moduleId?: string;
     },
     context: { request?: Request },
   ) {
@@ -335,7 +338,17 @@ export default class ProjectService extends BaseService {
       authToken,
     );
 
-    // 5. Create local entity with coreRef pointing to new Core project
+    // 5. Validate moduleId belongs to parent project if provided
+    if (input.moduleId) {
+      const moduleEntity = await new Query().findOneById(input.moduleId);
+      if (!moduleEntity) throw new Error("Module not found");
+      const moduleProjectRef = await moduleEntity.get(ModuleProjectRefComponent);
+      if (moduleProjectRef?.projectId !== input.parentProjectId) {
+        throw new Error("Module does not belong to the parent project");
+      }
+    }
+
+    // 6. Create local entity with coreRef pointing to new Core project
     const entity = Entity.Create()
       .add(ProjectTag, {})
       .add(ProjectNameComponent, { value: input.name })
@@ -346,6 +359,10 @@ export default class ProjectService extends BaseService {
 
     if (input.projectLeaderId) {
       entity.add(ProjectLeaderIdComponent, { value: input.projectLeaderId });
+    }
+
+    if (input.moduleId) {
+      entity.add(ProjectModuleRefComponent, { moduleId: input.moduleId });
     }
 
     await entity.save();
@@ -429,6 +446,7 @@ export default class ProjectService extends BaseService {
       description: z.string().optional(),
       status: z.string().optional(),
       projectLeaderId: z.string().optional(),
+      moduleId: z.string().nullable().optional(),
     }),
     output: ProjectArcheType,
   })
@@ -438,6 +456,7 @@ export default class ProjectService extends BaseService {
     description?: string;
     status?: string;
     projectLeaderId?: string;
+    moduleId?: string | null;
   }, context: { request?: Request }) {
     const entity = await new Query().findOneById(input.id);
     if (!entity) throw new Error("Project not found");
@@ -458,6 +477,25 @@ export default class ProjectService extends BaseService {
       await entity.set(ProjectLeaderIdComponent, { value: input.projectLeaderId });
       // Auto-add leader as member
       await MembershipService.getInstance().ensureMembership(input.id, input.projectLeaderId);
+    }
+
+    // Handle moduleId: string → set, null → remove, undefined → no change
+    if (input.moduleId !== undefined) {
+      if (input.moduleId === null) {
+        await entity.remove(ProjectModuleRefComponent);
+      } else {
+        // Validate module belongs to the sub-project's parent project
+        const parentRef = await entity.get(ProjectParentRefComponent);
+        if (parentRef?.parentProjectId) {
+          const moduleEntity = await new Query().findOneById(input.moduleId);
+          if (!moduleEntity) throw new Error("Module not found");
+          const moduleProjectRef = await moduleEntity.get(ModuleProjectRefComponent);
+          if (moduleProjectRef?.projectId !== parentRef.parentProjectId) {
+            throw new Error("Module does not belong to the parent project");
+          }
+        }
+        await entity.set(ProjectModuleRefComponent, { moduleId: input.moduleId });
+      }
     }
 
     await entity.save();

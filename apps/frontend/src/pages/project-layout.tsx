@@ -2,7 +2,9 @@ import { Link, Outlet, useLocation, useNavigate, useParams } from "react-router"
 import { useState } from "react";
 import {
   useProject,
+  useSubProjects,
   useDeleteProject,
+  useUpdateProject,
   getProjectDisplayName,
 } from "@/hooks/use-projects";
 import { useModules } from "@/hooks/use-modules";
@@ -33,6 +35,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   MoreHorizontal,
   Users,
   Trophy,
@@ -49,6 +58,7 @@ import {
   FileText,
   FolderOpen,
   Lock,
+  Layers,
 } from "lucide-react";
 import { PROJECT_STATUS_CONFIG, type ProjectStatus } from "@/types/project";
 import { cn, getInitials } from "@/lib/utils";
@@ -67,6 +77,7 @@ const DOT_CLASS: Record<string, string> = {
 export interface ProjectLayoutContext {
   openModuleForm: () => void;
   openSubProjectForm: () => void;
+  subProjectCountsByModule: Map<string, number>;
 }
 
 export function Component() {
@@ -78,7 +89,10 @@ export function Component() {
   const { data: modules } = useModules(projectId);
   const { data: pic } = useUser(project?.projectLeaderId?.value);
   const { data: allTasks } = useTasks();
+  const { data: subProjects } = useSubProjects(projectId);
   const deleteProject = useDeleteProject();
+  const updateProject = useUpdateProject();
+  const { data: parentModules } = useModules(project?.parent?.id);
 
   const [formOpen, setFormOpen] = useState(false);
   const [winDialogOpen, setWinDialogOpen] = useState(false);
@@ -144,6 +158,7 @@ export function Component() {
       label: "Sub-Projects",
       to: `${basePath}/sub-projects`,
       icon: FolderOpen,
+      count: subProjects?.length,
     },
     {
       key: "members",
@@ -165,9 +180,21 @@ export function Component() {
     },
   ];
 
+  // Compute sub-project counts by linked module
+  const subProjectCountsByModule = new Map<string, number>();
+  for (const sp of subProjects ?? []) {
+    if (sp.linkedModule?.id) {
+      subProjectCountsByModule.set(
+        sp.linkedModule.id,
+        (subProjectCountsByModule.get(sp.linkedModule.id) ?? 0) + 1,
+      );
+    }
+  }
+
   const outletContext: ProjectLayoutContext = {
     openModuleForm: () => setFormOpen(true),
     openSubProjectForm: () => setSubProjectFormOpen(true),
+    subProjectCountsByModule,
   };
 
   return (
@@ -243,6 +270,32 @@ export function Component() {
         </h1>
 
         <div className={styles.metaRow}>
+          {project.parent && parentModules && parentModules.length > 0 && (
+            <div className={styles.moduleLinkInfo}>
+              <Layers className={styles.moduleLinkIcon} />
+              <Select
+                value={project.linkedModule?.id ?? "__none__"}
+                onValueChange={(v) => {
+                  updateProject.mutate({
+                    id: project.id,
+                    moduleId: v === "__none__" ? null : v,
+                  });
+                }}
+              >
+                <SelectTrigger className={styles.moduleLinkTrigger}>
+                  <SelectValue placeholder="Link module..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">No module</SelectItem>
+                  {parentModules.map((mod) => (
+                    <SelectItem key={mod.id} value={mod.id}>
+                      {mod.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           {pic && (
             <div className={styles.picInfo}>
               <span className={styles.picLabel}>Leader</span>
@@ -326,6 +379,11 @@ export function Component() {
             >
               <tab.icon className={styles.tabIcon} />
               {tab.label}
+              {tab.count != null && tab.count > 0 && (
+                <Badge variant="secondary" className={styles.tabCountBadge}>
+                  {tab.count}
+                </Badge>
+              )}
             </Link>
           ))}
         </nav>

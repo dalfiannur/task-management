@@ -22,6 +22,10 @@ const PROJECT_FIELDS = gql`
     parent {
       id
     }
+    linkedModule {
+      id
+      name
+    }
     code {
       value
     }
@@ -57,6 +61,7 @@ interface ProjectRaw {
   projectLeaderId?: { value: string };
   name?: { value: string };
   parent?: { id: string } | null;
+  linkedModule?: { id: string; name: string } | null;
   code?: { value: string };
   coreName?: { value: string };
   coreDescription?: { value: string };
@@ -75,6 +80,7 @@ function mapProject(raw: ProjectRaw): Project {
     projectLeaderId: raw.projectLeaderId,
     name: raw.name,
     parent: raw.parent,
+    linkedModule: raw.linkedModule ?? null,
     code: raw.code?.value,
     coreName: raw.coreName?.value,
     coreDescription: raw.coreDescription?.value,
@@ -189,7 +195,7 @@ export const useApproveProject = createMutationHook<
 });
 
 export const useUpdateProject = createMutationHook<
-  { id: string; description?: string; status?: string; projectLeaderId?: string },
+  { id: string; description?: string; status?: string; projectLeaderId?: string; moduleId?: string | null },
   ProjectRaw,
   Project
 >({

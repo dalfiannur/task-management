@@ -44,12 +44,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useTasks, useUpdateTask } from "@/hooks/use-tasks";
 import { useDeleteModule } from "@/hooks/use-modules";
+import { useLabels } from "@/hooks/use-labels";
 import { useUsers, useUser } from "@/hooks/use-users";
-import { ChevronRight, MessageSquare, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
+import { ChevronRight, FolderOpen, MessageSquare, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
 import { ModuleForm } from "./module-form";
 import { CommentsDialog } from "@/components/tasks/comments-dialog";
 import { useCommentCounts } from "@/hooks/use-comments";
-import { TASK_STATUS_CONFIG, type Module, type Task, type TaskStatus, type UpdateTaskInput } from "@/types/task";
+import { TASK_STATUS_CONFIG, type Label, type Module, type Task, type TaskStatus, type UpdateTaskInput } from "@/types/task";
 import { type ProjectStatus, } from "@/types/project"
 import { cn, getInitials } from "@/lib/utils";
 import { Button } from "../ui/button";
@@ -72,6 +73,7 @@ interface ModuleSectionProps {
   colorIndex: number;
   filters?: { status?: string; priority?: string; search?: string };
   projectStatus?: ProjectStatus;
+  subProjectCount?: number;
 }
 
 function TaskAssigneeCell({ assigneeIds }: { assigneeIds: string[] }) {
@@ -132,6 +134,7 @@ export function ModuleSection({
   colorIndex,
   filters,
   projectStatus,
+  subProjectCount,
 }: ModuleSectionProps) {
   const { data: tasks, isLoading } = useTasks({ moduleId: module.id, ...filters });
   const updateTask = useUpdateTask();
@@ -142,6 +145,7 @@ export function ModuleSection({
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [commentsTaskId, setCommentsTaskId] = useState<string | null>(null);
   const { data: picUser } = useUser(module.picId);
+  const { data: labels = [] } = useLabels(projectId);
   const taskIds = tasks?.map((t) => t.id) ?? [];
   const { data: commentCounts } = useCommentCounts(taskIds);
   const color = MODULE_COLORS[colorIndex % MODULE_COLORS.length];
@@ -166,6 +170,12 @@ export function ModuleSection({
               <Badge variant="secondary" className={s.countBadge}>
                 {isLoading ? "..." : taskCount}
               </Badge>
+              {subProjectCount != null && subProjectCount > 0 && (
+                <Badge variant="outline" className={s.subProjectBadge}>
+                  <FolderOpen className={s.subProjectBadgeIcon} />
+                  {subProjectCount}
+                </Badge>
+              )}
               {module.description && (
                 <span className={s.headerDescription}>{module.description}</span>
               )}
@@ -244,6 +254,8 @@ export function ModuleSection({
                   <TableHead className={s.skeletonCell}>Task</TableHead>
                   <TableHead className="w-[120px]">Status</TableHead>
                   <TableHead className="w-[120px]">Priority</TableHead>
+                  <TableHead className="w-[150px]">Labels</TableHead>
+                  <TableHead className="w-[120px]">Start Date</TableHead>
                   <TableHead className="w-[120px]">Due Date</TableHead>
                   <TableHead className="w-[150px]">Assignee</TableHead>
                 </TableRow>
@@ -263,6 +275,12 @@ export function ModuleSection({
                           <Skeleton className="h-4 w-16" />
                         </TableCell>
                         <TableCell>
+                          <Skeleton className="h-4 w-16" />
+                        </TableCell>
+                        <TableCell>
+                          <Skeleton className="h-4 w-20" />
+                        </TableCell>
+                        <TableCell>
                           <Skeleton className="h-4 w-20" />
                         </TableCell>
                         <TableCell>
@@ -276,7 +294,7 @@ export function ModuleSection({
                 {!isLoading && tasks?.length === 0 && (
                   <TableRow>
                     <TableCell
-                      colSpan={5}
+                      colSpan={7}
                       className={s.emptyCell}
                     >
                       No tasks in this module
@@ -289,6 +307,7 @@ export function ModuleSection({
                     <TaskRow
                       key={task.id}
                       task={task}
+                      labels={labels}
                       updateTask={updateTask}
                       onNavigate={() => setSelectedTaskId(task.id)}
                       commentCount={commentCounts?.[task.id] ?? 0}
@@ -301,7 +320,7 @@ export function ModuleSection({
                     className={s.addTaskRow}
                     onClick={() => setTaskFormOpen(true)}
                   >
-                    <TableCell colSpan={5} className={s.addTaskCell}>
+                    <TableCell colSpan={7} className={s.addTaskCell}>
                       <span className={s.addTaskLabel}>
                         <Plus className={s.addTaskIcon} />
                         Add task
@@ -353,17 +372,20 @@ export function ModuleSection({
 
 function TaskRow({
   task,
+  labels,
   updateTask,
   onNavigate,
   commentCount,
   onOpenComments,
 }: {
   task: Task;
+  labels: Label[];
   updateTask: ReturnType<typeof useUpdateTask>;
   onNavigate: () => void;
   commentCount: number;
   onOpenComments: () => void;
 }) {
+  const taskLabels = labels.filter((l) => task.labelIds.includes(l.id));
   return (
     <TableRow
       className={s.taskRow}
@@ -414,6 +436,26 @@ function TaskRow({
       </TableCell>
       <TableCell>
         <TaskPriorityBadge priority={task.priority} />
+      </TableCell>
+      <TableCell>
+        <div className={s.labelsList}>
+          {taskLabels.map((label) => (
+            <Badge
+              key={label.id}
+              variant="outline"
+              className={s.labelBadge}
+              style={{ borderColor: label.color, color: label.color }}
+            >
+              {label.name}
+            </Badge>
+          ))}
+          {taskLabels.length === 0 && (
+            <span className={s.assigneeDash}>&mdash;</span>
+          )}
+        </div>
+      </TableCell>
+      <TableCell className={s.dueDateCell}>
+        {task.startDate ? new Date(task.startDate).toLocaleDateString() : "\u2014"}
       </TableCell>
       <TableCell className={s.dueDateCell}>
         {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "\u2014"}

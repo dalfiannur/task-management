@@ -52,6 +52,11 @@ export function ProjectCard({ project, parentName }: ProjectCardProps) {
                   Sub: {parentName}
                 </Badge>
               )}
+              {project.linkedModule && (
+                <Badge variant="outline" className={styles.moduleBadge}>
+                  {project.linkedModule.name}
+                </Badge>
+              )}
             </div>
             <CardTitle className={styles.title}>{getProjectDisplayName(project)}</CardTitle>
             {project.description && (

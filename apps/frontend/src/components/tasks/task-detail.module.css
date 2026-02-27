@@ -177,6 +177,18 @@
   color: color-mix(in srgb, var(--muted-foreground) 60%, transparent);
 }
 
+.onTimeLabel {
+  color: #22c55e;
+}
+
+:global(.dark) .onTimeLabel {
+  color: #4ade80;
+}
+
+.lateLabel {
+  color: var(--destructive);
+}
+
 .deleteButton {
   width: 100%;
   color: var(--destructive);

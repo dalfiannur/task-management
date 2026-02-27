@@ -355,6 +355,16 @@
   vertical-align: -2px;
 }
 
+.tabCountBadge {
+  margin-left: 0.375rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  line-height: 1rem;
+  padding: 0 0.375rem;
+  font-variant-numeric: tabular-nums;
+  vertical-align: 1px;
+}
+
 /* Content area */
 .content {
   flex: 1;
@@ -418,4 +428,27 @@
 
 .closeItem:focus {
   color: #7c3aed;
+}
+
+/* Module link selector for sub-projects */
+.moduleLinkInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+.moduleLinkIcon {
+  width: 0.8125rem;
+  height: 0.8125rem;
+  color: var(--muted-foreground);
+  flex-shrink: 0;
+}
+
+.moduleLinkTrigger {
+  height: 1.5rem;
+  font-size: 0.875rem;
+  border-color: color-mix(in srgb, var(--border) 60%, transparent);
+  width: auto;
+  min-width: 8rem;
+  box-shadow: none;
 }
