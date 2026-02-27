@@ -71,7 +71,7 @@ interface ModuleSectionProps {
   module: Module;
   projectId: string;
   colorIndex: number;
-  filters?: { status?: string; priority?: string; search?: string };
+  filters?: { status?: string; priority?: string; search?: string; assignee?: string };
   projectStatus?: ProjectStatus;
   subProjectCount?: number;
 }

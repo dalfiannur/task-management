@@ -53,6 +53,7 @@ import {
   ArrowLeft,
   Loader2,
   LayoutList,
+  UserCircle,
   GanttChart as GanttChartIcon,
   Image as ImageIcon,
   FileText,
@@ -138,15 +139,18 @@ export function Component() {
   const isPageEditor = !!pageId;
   const pathname = location.pathname;
 
-  let activeTab = "overview";
-  if (pathname.startsWith(`${basePath}/timeline`)) activeTab = "timeline";
+  let activeTab = "my-tasks";
+  if (pathname.startsWith(`${basePath}/all-tasks`)) activeTab = "all-tasks";
+  else if (pathname.startsWith(`${basePath}/my-tasks`)) activeTab = "my-tasks";
+  else if (pathname.startsWith(`${basePath}/timeline`)) activeTab = "timeline";
   else if (pathname.startsWith(`${basePath}/sub-projects`)) activeTab = "sub-projects";
   else if (pathname.startsWith(`${basePath}/media`)) activeTab = "media";
   else if (pathname.startsWith(`${basePath}/members`)) activeTab = "members";
   else if (pathname.startsWith(`${basePath}/pages`)) activeTab = "pages";
 
   const tabs = [
-    { key: "overview", label: "Tasks", to: basePath, icon: LayoutList },
+    { key: "my-tasks", label: "My Tasks", to: `${basePath}/my-tasks`, icon: UserCircle },
+    { key: "all-tasks", label: "All Tasks", to: `${basePath}/all-tasks`, icon: LayoutList },
     {
       key: "timeline",
       label: "Timeline",
