@@ -1,219 +1,141 @@
-import { BaseService, Options, Post } from "bunsane/service";
-import { GraphQLOperation } from 'bunsane/gql';
-import { Entity } from 'bunsane/core/Entity';
-import { Query } from 'bunsane/query';
-import { UploadManager } from "bunsane/upload";
+import { BaseService } from "bunsane/service";
+import { GraphQLOperation } from "bunsane/gql";
+import { Query } from "bunsane/query";
 import { z } from "zod";
-import { MediaFileInfo } from "../components/MediaFileInfo";
-import { MediaFileArcheType } from "../archetypes/MediaFileArcheType";
-import { AuthPlugin } from "../plugins/AuthPlugin";
-import { ApiTags } from "bunsane/swagger";
+import { TaskMediaLinkTag, TaskMediaLinkData } from "../components/TaskMediaLink";
+import { TaskMediaLinkArcheType } from "../archetypes/TaskMediaLinkArcheType";
 
-const mediaFileArcheType = new MediaFileArcheType();
+const taskMediaLinkArcheType = new TaskMediaLinkArcheType();
 
-const corsHeaders: Record<string, string> = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-};
-
-function jsonWithCors(body: unknown, init?: ResponseInit): Response {
-  const res = Response.json(body, init);
-  for (const [k, v] of Object.entries(corsHeaders)) {
-    res.headers.set(k, v);
-  }
-  return res;
-}
-
-@ApiTags("Media")
 export default class MediaService extends BaseService {
   constructor() {
     super();
-    mediaFileArcheType.registerFieldResolvers(this);
+    taskMediaLinkArcheType.registerFieldResolvers(this);
   }
 
-  @Options("/api/media/upload")
-  async uploadPreflight(_req: Request): Promise<Response> {
-    return new Response(null, { status: 204, headers: corsHeaders });
-  }
+  @GraphQLOperation({
+    type: "Mutation",
+    input: z.object({
+      mediaFileId: z.string(),
+      taskId: z.string(),
+      projectId: z.string(),
+    }),
+    output: taskMediaLinkArcheType,
+  })
+  async linkMediaFile(input: {
+    mediaFileId: string;
+    taskId: string;
+    projectId: string;
+  }) {
+    // Check for existing link to avoid duplicates
+    const existing = await new Query()
+      .with(TaskMediaLinkTag)
+      .with(TaskMediaLinkData, {
+        filters: [
+          Query.typedFilter(TaskMediaLinkData, "mediaFileId", "=", input.mediaFileId),
+          Query.typedFilter(TaskMediaLinkData, "taskId", "=", input.taskId),
+        ],
+      })
+      .exec();
 
-  @Post("/api/media/upload")
-  async uploadFile(req: Request): Promise<Response> {
-    try {
-      const user = await AuthPlugin.extractUser(req);
-      const formData = await req.formData();
-      const file = formData.get("file") as File | null;
-      const projectId = formData.get("projectId") as string | null;
-      const taskId = (formData.get("taskId") as string) ?? "";
-
-      if (!file || !projectId) {
-        return jsonWithCors(
-          { error: "file and projectId are required" },
-          { status: 400 },
-        );
-      }
-
-      const uploadManager = UploadManager.getInstance();
-      const result = await uploadManager.uploadFile(file, {
-        uploadPath: `projects/${projectId}`,
-      });
-
-      if (!result.success) {
-        return jsonWithCors(
-          { error: result.error?.message ?? "Upload failed" },
-          { status: 400 },
-        );
-      }
-
-      const archetype = new MediaFileArcheType();
-      archetype.fill({
-        mediaFileInfo: {
-          fileName: result.fileName ?? file.name,
-          originalFileName: result.originalFileName ?? file.name,
-          mimeType: result.mimeType ?? file.type,
-          size: result.size ?? file.size,
-          storageKey: result.path ?? "",
-          url: result.url ?? "",
-          projectId,
-          taskId,
-          uploadedBy: user?.id ?? "",
-        },
-      });
-
-      const entity = await archetype.createAndSaveEntity();
-
-      return jsonWithCors({
-        id: entity.id,
-        mediaFileInfo: {
-          fileName: result.fileName ?? file.name,
-          originalFileName: result.originalFileName ?? file.name,
-          mimeType: result.mimeType ?? file.type,
-          size: result.size ?? file.size,
-          storageKey: result.path ?? "",
-          url: result.url ?? "",
-          projectId,
-          taskId,
-          uploadedBy: user?.id ?? "",
-        },
-      }, { status: 201 });
-    } catch (err: any) {
-      return jsonWithCors(
-        { error: err.message ?? "Upload failed" },
-        { status: 500 },
-      );
+    if (existing.length > 0) {
+      return existing[0];
     }
+
+    const archetype = new TaskMediaLinkArcheType();
+    archetype.fill({
+      taskMediaLinkData: {
+        mediaFileId: input.mediaFileId,
+        taskId: input.taskId,
+        projectId: input.projectId,
+      },
+    });
+    return await archetype.createAndSaveEntity();
+  }
+
+  @GraphQLOperation({
+    type: "Mutation",
+    input: z.object({
+      mediaFileId: z.string(),
+      taskId: z.string(),
+    }),
+    output: "Boolean",
+  })
+  async unlinkMediaFile(input: { mediaFileId: string; taskId: string }) {
+    const links = await new Query()
+      .with(TaskMediaLinkTag)
+      .with(TaskMediaLinkData, {
+        filters: [
+          Query.typedFilter(TaskMediaLinkData, "mediaFileId", "=", input.mediaFileId),
+          Query.typedFilter(TaskMediaLinkData, "taskId", "=", input.taskId),
+        ],
+      })
+      .exec();
+
+    for (const link of links) {
+      await link.delete();
+    }
+    return true;
+  }
+
+  @GraphQLOperation({
+    type: "Query",
+    input: z.object({
+      taskId: z.string(),
+    }),
+    output: [taskMediaLinkArcheType],
+  })
+  async listTaskMediaLinks(input: { taskId: string }) {
+    return await new Query()
+      .with(TaskMediaLinkTag)
+      .with(TaskMediaLinkData, {
+        filters: [
+          Query.typedFilter(TaskMediaLinkData, "taskId", "=", input.taskId),
+        ],
+      })
+      .populate()
+      .exec();
   }
 
   @GraphQLOperation({
     type: "Query",
     input: z.object({
       projectId: z.string(),
-      taskId: z.string().optional(),
-      mimeType: z.string().optional(),
-      page: z.number().optional(),
-      pageSize: z.number().optional(),
     }),
-    output: [mediaFileArcheType],
+    output: [taskMediaLinkArcheType],
   })
-  async listMediaFiles(
-    input: {
-      projectId: string;
-      taskId?: string;
-      mimeType?: string;
-      page?: number;
-      pageSize?: number;
-    },
-    _context: unknown,
-  ) {
-    const query = new Query().with(MediaFileInfo, {
-      filters: [
-        Query.typedFilter(MediaFileInfo, "projectId", "=", input.projectId),
-      ],
-    });
-
-    if (input.taskId) {
-      query.with(MediaFileInfo, {
+  async listProjectMediaLinks(input: { projectId: string }) {
+    return await new Query()
+      .with(TaskMediaLinkTag)
+      .with(TaskMediaLinkData, {
         filters: [
-          Query.typedFilter(MediaFileInfo, "taskId", "=", input.taskId),
+          Query.typedFilter(TaskMediaLinkData, "projectId", "=", input.projectId),
         ],
-      });
-    }
-
-    if (input.mimeType) {
-      query.with(MediaFileInfo, {
-        filters: [
-          Query.typedFilter(
-            MediaFileInfo,
-            "mimeType",
-            "LIKE",
-            `${input.mimeType}%`,
-          ),
-        ],
-      });
-    }
-
-    const page = input.page ?? 1;
-    const pageSize = input.pageSize ?? 50;
-    query.take(pageSize).offset((page - 1) * pageSize);
-
-    return await query.populate().exec();
-  }
-
-  @GraphQLOperation({
-    type: "Query",
-    input: z.object({
-      id: z.string(),
-    }),
-    output: mediaFileArcheType,
-  })
-  async getMediaFile(input: { id: string }) {
-    return await Entity.FindById(input.id);
+      })
+      .populate()
+      .exec();
   }
 
   @GraphQLOperation({
     type: "Mutation",
     input: z.object({
-      id: z.string(),
-      taskId: z.string().optional(),
-    }),
-    output: mediaFileArcheType,
-  })
-  async updateMediaFile(input: { id: string; taskId?: string }) {
-    const entity = await new Query().findOneById(input.id);
-    if (!entity) throw new Error("Media file not found");
-
-    if (input.taskId !== undefined) {
-      await entity.set(MediaFileInfo, { taskId: input.taskId });
-    }
-
-    await entity.save();
-    return entity;
-  }
-
-  @GraphQLOperation({
-    type: "Mutation",
-    input: z.object({
-      id: z.string(),
+      mediaFileId: z.string(),
     }),
     output: "Boolean",
   })
-  async deleteMediaFile(input: { id: string }) {
-    const entity = await new Query().findOneById(input.id);
-    if (!entity) throw new Error("Media file not found");
+  async unlinkAllForMediaFile(input: { mediaFileId: string }) {
+    const links = await new Query()
+      .with(TaskMediaLinkTag)
+      .with(TaskMediaLinkData, {
+        filters: [
+          Query.typedFilter(TaskMediaLinkData, "mediaFileId", "=", input.mediaFileId),
+        ],
+      })
+      .exec();
 
-    const mediaInfo = await entity.get(MediaFileInfo);
-    const storageKey = mediaInfo?.storageKey;
-
-    if (storageKey) {
-      try {
-        const uploadManager = UploadManager.getInstance();
-        await uploadManager.deleteFile(storageKey);
-      } catch {
-        // Storage deletion failed, still delete entity
-      }
+    for (const link of links) {
+      await link.delete();
     }
-
-    await entity.delete();
     return true;
   }
 }

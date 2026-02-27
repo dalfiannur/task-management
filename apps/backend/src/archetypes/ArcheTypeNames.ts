@@ -10,4 +10,5 @@ export const ArcheTypeNames = {
     Notification: "Notification",
     Page: "Page",
     ProjectMembership: "ProjectMembership",
+    TaskMediaLink: "TaskMediaLink",
 } as const;

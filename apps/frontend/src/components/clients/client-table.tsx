@@ -66,15 +66,18 @@ export function ClientTable({ clients, isLoading, onEdit }: ClientTableProps) {
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead className={styles.noCol}>No</TableHead>
             <TableHead>Name</TableHead>
             <TableHead className={styles.locationCol}>Location</TableHead>
+            <TableHead className={styles.contactCol}>Contact</TableHead>
             <TableHead className={styles.statusCol}>Status</TableHead>
             <TableHead className={styles.actionsCol}>Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {clients.map((client) => (
+          {clients.map((client, index) => (
             <TableRow key={client.id}>
+              <TableCell className={styles.noCell}>{index + 1}</TableCell>
               <TableCell>
                 <div className={styles.nameCell}>
                   <span className={styles.clientName}>{client.name}</span>
@@ -87,6 +90,20 @@ export function ClientTable({ clients, isLoading, onEdit }: ClientTableProps) {
               </TableCell>
               <TableCell className={styles.locationText}>
                 {formatLocation(client) || <span className={styles.noValue}>&mdash;</span>}
+              </TableCell>
+              <TableCell>
+                {client.attentionName || client.email ? (
+                  <div className={styles.contactCell}>
+                    {client.attentionName && (
+                      <span className={styles.contactName}>{client.attentionName}</span>
+                    )}
+                    {client.email && (
+                      <span className={styles.contactEmail}>{client.email}</span>
+                    )}
+                  </div>
+                ) : (
+                  <span className={styles.noValue}>&mdash;</span>
+                )}
               </TableCell>
               <TableCell>
                 <Badge

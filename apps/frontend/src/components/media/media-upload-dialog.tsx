@@ -17,6 +17,7 @@ interface MediaUploadDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   projectId: string;
+  mediaProjectId?: string;
   taskId?: string;
 }
 
@@ -24,6 +25,7 @@ export function MediaUploadDialog({
   open,
   onOpenChange,
   projectId,
+  mediaProjectId,
   taskId,
 }: MediaUploadDialogProps) {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -45,7 +47,7 @@ export function MediaUploadDialog({
     setUploading(true);
     try {
       for (const file of selectedFiles) {
-        await uploadMedia.mutateAsync({ file, projectId, taskId });
+        await uploadMedia.mutateAsync({ file, mediaProjectId: mediaProjectId ?? "", projectId, taskId });
       }
       setSelectedFiles([]);
       onOpenChange(false);

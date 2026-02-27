@@ -8,8 +8,9 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { useCloseProject } from "@/hooks/use-projects";
+import { useCloseProject, getProjectDisplayName } from "@/hooks/use-projects";
 import { useUploadMedia, useDeleteMedia } from "@/hooks/use-media";
+import { useResolveMediaProjectId } from "@/hooks/use-media-project";
 import { isImage, formatFileSize, type MediaFile } from "@/types/media";
 import type { Project } from "@/types/project";
 import { FileText, ImageIcon, File, Plus, X } from "lucide-react";
@@ -36,6 +37,10 @@ export function CloseProjectDialog({
   const inputRef = useRef<HTMLInputElement>(null);
   const closeProject = useCloseProject();
   const [reportFiles, setReportFiles] = useState<MediaFile[]>([]);
+  const { mediaProjectId } = useResolveMediaProjectId(
+    project.coreRef?.value,
+    getProjectDisplayName(project),
+  );
 
   const uploadMedia = useUploadMedia();
   const deleteMedia = useDeleteMedia();
@@ -44,7 +49,7 @@ export function CloseProjectDialog({
     const fileList = e.target.files;
     if (!fileList) return;
     for (const file of Array.from(fileList)) {
-      const uploaded = await uploadMedia.mutateAsync({ file, projectId: project.id });
+      const uploaded = await uploadMedia.mutateAsync({ file, mediaProjectId: mediaProjectId ?? "", projectId: project.id });
       setReportFiles((prev) => [...prev, uploaded]);
     }
     e.target.value = "";

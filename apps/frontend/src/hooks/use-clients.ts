@@ -28,6 +28,11 @@ const CLIENT_FIELDS = gql`
       postalCode
       country
     }
+    contact {
+      attentionName
+      email
+      phoneNumber
+    }
     status
   }
 `;
@@ -99,6 +104,11 @@ interface ClientRaw {
     postalCode: string;
     country: string;
   } | null;
+  contact: {
+    attentionName: string;
+    email: string;
+    phoneNumber: string;
+  } | null;
   status: string;
 }
 
@@ -116,6 +126,9 @@ function mapClient(raw: ClientRaw): Client {
     state: raw.address?.state || undefined,
     postalCode: raw.address?.postalCode || undefined,
     country: raw.address?.country || undefined,
+    attentionName: raw.contact?.attentionName || undefined,
+    email: raw.contact?.email || undefined,
+    phoneNumber: raw.contact?.phoneNumber || undefined,
     status: raw.status as ClientStatus,
   };
 }
@@ -171,6 +184,9 @@ interface CreateClientInput {
   state?: string;
   postalCode?: string;
   country?: string;
+  attentionName?: string;
+  email?: string;
+  phoneNumber?: string;
 }
 
 export const useCreateClient = createMutationHook<
@@ -195,6 +211,9 @@ interface UpdateClientInput {
   state?: string;
   postalCode?: string;
   country?: string;
+  attentionName?: string;
+  email?: string;
+  phoneNumber?: string;
   status?: ClientStatus;
 }
 

@@ -41,8 +41,22 @@
   border: 1px solid var(--border);
 }
 
+.noCol {
+  width: 48px;
+}
+
+.noCell {
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+  text-align: center;
+}
+
 .locationCol {
   width: 160px;
+}
+
+.contactCol {
+  width: 200px;
 }
 
 .statusCol {
@@ -74,6 +88,23 @@
 
 .locationText {
   font-size: 0.875rem;
+  color: var(--muted-foreground);
+}
+
+.contactCell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.contactName {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.contactEmail {
+  font-size: 0.75rem;
+  line-height: 1rem;
   color: var(--muted-foreground);
 }
 

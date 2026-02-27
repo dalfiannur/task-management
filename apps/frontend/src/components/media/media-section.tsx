@@ -14,6 +14,7 @@ import styles from "./media-section.module.css";
 
 interface MediaSectionProps {
   projectId: string;
+  mediaProjectId?: string;
   projectName: string;
   defaultOpen?: boolean;
   readOnly?: boolean;
@@ -24,6 +25,7 @@ interface MediaSectionProps {
 
 export function MediaSection({
   projectId,
+  mediaProjectId,
   projectName,
   defaultOpen,
   readOnly,
@@ -34,6 +36,7 @@ export function MediaSection({
   const { mediaViewMode } = useUIStore();
   const { data: files = [], isLoading } = useMediaFiles({
     projectId,
+    mediaProjectId,
     taskId,
     mimeType,
   });

@@ -10,8 +10,9 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { UserCombobox } from "@/components/shared/user-combobox";
-import { useUpdateProject } from "@/hooks/use-projects";
+import { useUpdateProject, getProjectDisplayName } from "@/hooks/use-projects";
 import { useMediaFiles, useUploadMedia, useDeleteMedia } from "@/hooks/use-media";
+import { useResolveMediaProjectId } from "@/hooks/use-media-project";
 import { isImage, formatFileSize } from "@/types/media";
 import type { Project } from "@/types/project";
 import { FileText, ImageIcon, File, Plus, X } from "lucide-react";
@@ -39,8 +40,12 @@ export function WinProjectDialog({
   const [description, setDescription] = useState(project.description ?? "");
   const inputRef = useRef<HTMLInputElement>(null);
   const updateProject = useUpdateProject();
+  const { mediaProjectId } = useResolveMediaProjectId(
+    project.coreRef?.value,
+    getProjectDisplayName(project),
+  );
 
-  const { data: files = [] } = useMediaFiles({ projectId: project.id });
+  const { data: files = [] } = useMediaFiles({ projectId: project.id, mediaProjectId: mediaProjectId ?? undefined });
   const uploadMedia = useUploadMedia();
   const deleteMedia = useDeleteMedia();
 
@@ -48,7 +53,7 @@ export function WinProjectDialog({
     const fileList = e.target.files;
     if (!fileList) return;
     for (const file of Array.from(fileList)) {
-      await uploadMedia.mutateAsync({ file, projectId: project.id });
+      await uploadMedia.mutateAsync({ file, mediaProjectId: mediaProjectId ?? "", projectId: project.id });
     }
     e.target.value = "";
   };

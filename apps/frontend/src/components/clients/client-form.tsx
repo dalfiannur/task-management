@@ -27,6 +27,9 @@ export function ClientForm({ open, onOpenChange, client }: ClientFormProps) {
   const [state, setState] = useState("");
   const [postalCode, setPostalCode] = useState("");
   const [country, setCountry] = useState("");
+  const [attentionName, setAttentionName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
 
   const createClient = useCreateClient();
   const updateClient = useUpdateClient();
@@ -41,6 +44,9 @@ export function ClientForm({ open, onOpenChange, client }: ClientFormProps) {
       setState(client.state ?? "");
       setPostalCode(client.postalCode ?? "");
       setCountry(client.country ?? "");
+      setAttentionName(client.attentionName ?? "");
+      setEmail(client.email ?? "");
+      setPhoneNumber(client.phoneNumber ?? "");
     } else {
       setName("");
       setLegalName("");
@@ -49,6 +55,9 @@ export function ClientForm({ open, onOpenChange, client }: ClientFormProps) {
       setState("");
       setPostalCode("");
       setCountry("");
+      setAttentionName("");
+      setEmail("");
+      setPhoneNumber("");
     }
   }, [client, open]);
 
@@ -65,6 +74,9 @@ export function ClientForm({ open, onOpenChange, client }: ClientFormProps) {
       state: state.trim() || undefined,
       postalCode: postalCode.trim() || undefined,
       country: country.trim() || undefined,
+      attentionName: attentionName.trim() || undefined,
+      email: email.trim() || undefined,
+      phoneNumber: phoneNumber.trim() || undefined,
     };
 
     if (isEdit) {
@@ -155,6 +167,38 @@ export function ClientForm({ open, onOpenChange, client }: ClientFormProps) {
                   value={country}
                   onChange={(e) => setCountry(e.target.value)}
                   placeholder="Country..."
+                />
+              </div>
+            </div>
+            <div className={styles.sectionLabel}>Contact</div>
+            <div className={styles.field}>
+              <Label htmlFor="client-attention-name">Attention Name</Label>
+              <Input
+                id="client-attention-name"
+                value={attentionName}
+                onChange={(e) => setAttentionName(e.target.value)}
+                placeholder="Contact person name..."
+              />
+            </div>
+            <div className={styles.row}>
+              <div className={styles.field}>
+                <Label htmlFor="client-email">Email</Label>
+                <Input
+                  id="client-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Email address..."
+                />
+              </div>
+              <div className={styles.field}>
+                <Label htmlFor="client-phone">Phone Number</Label>
+                <Input
+                  id="client-phone"
+                  type="tel"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  placeholder="Phone number..."
                 />
               </div>
             </div>

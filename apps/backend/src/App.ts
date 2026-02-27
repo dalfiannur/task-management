@@ -11,6 +11,7 @@ import "./components/ProjectComponents";
 import "./components/ModuleComponents";
 import "./components/UserProfile";
 import "./components/MediaFileInfo";
+import "./components/TaskMediaLink";
 import "./components/CommentInfo";
 import "./components/NotificationInfo";
 import "./components/ActivityInfo";
@@ -29,8 +30,6 @@ import ActivityService from "./services/ActivityService";
 import PageService from "./services/PageService";
 import MembershipService from "./services/MembershipService";
 import { AuthPlugin } from "./plugins/AuthPlugin";
-import { S3StorageProvider } from "./storage/S3StorageProvider";
-import { UploadManager } from "bunsane/upload";
 import { PermissionRestService } from "./services/PermissionService";
 
 export default class TasksAPI extends App {
@@ -66,25 +65,6 @@ export default class TasksAPI extends App {
       credentials: true,
       methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
       allowedHeaders: ["Content-Type", "Authorization"],
-    });
-
-    // Initialize S3 storage provider
-    const s3Provider = new S3StorageProvider({
-      endpoint: process.env.S3_ENDPOINT ?? "http://localhost:9000",
-      accessKeyId: process.env.S3_ACCESS_KEY ?? "rustfsadmin",
-      secretAccessKey: process.env.S3_SECRET_KEY ?? "rustfsadmin",
-      bucket: process.env.S3_BUCKET ?? "tasks-media",
-      publicUrl:
-        process.env.S3_PUBLIC_URL ?? "http://localhost:9000/tasks-media",
-    });
-    const uploadManager = UploadManager.getInstance();
-    uploadManager.registerStorageProvider("s3", s3Provider);
-    uploadManager.setDefaultStorageProvider("s3");
-    uploadManager.updateConfiguration({
-      allowedMimeTypes: [],
-      allowedExtensions: [],
-      validateFileSignature: false,
-      maxFileSize: 50 * 1024 * 1024,
     });
 
     // Register services

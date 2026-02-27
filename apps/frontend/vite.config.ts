@@ -30,6 +30,11 @@ export default defineConfig({
         target: process.env.VITE_OIDC_API_BASE_URL ?? "http://localhost:3100",
         changeOrigin: true,
       },
+      "/api-media/": {
+        target: process.env.VITE_MEDIA_API_BASE_URL ?? "http://localhost:3500",
+        changeOrigin: true,
+        rewrite: (path: string) => path.replace(/^\/api-media/, ""),
+      },
     },
   },
 });

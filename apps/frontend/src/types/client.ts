@@ -11,5 +11,8 @@ export interface Client {
   state?: string;
   postalCode?: string;
   country?: string;
+  attentionName?: string;
+  email?: string;
+  phoneNumber?: string;
   status: ClientStatus;
 }

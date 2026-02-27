@@ -12,6 +12,8 @@ export { useQuery, useMutation, ApolloProvider } from "@apollo/client/react";
 const TASKS_URL = window.location.origin + "/api-tasks/graphql";
 export const CORE_URL = window.location.origin + "/api-core/graphql";
 export const OIDC_URL = window.location.origin + "/api-oidc/graphql";
+export const MEDIA_URL = window.location.origin + "/api-media/graphql";
+export const MEDIA_API_BASE = window.location.origin + "/api-media";
 
 let currentToken: string | null = null;
 
@@ -40,3 +42,4 @@ function makeClient(uri: string) {
 export const client = makeClient(TASKS_URL);
 export const coreClient = makeClient(CORE_URL);
 export const oidcClient = makeClient(OIDC_URL);
+export const mediaClient = makeClient(MEDIA_URL);
