@@ -26,3 +26,9 @@ export class ModulePicIdComponent extends BaseComponent {
   @CompData()
   value: string = "";
 }
+
+@Component
+export class ModuleOrderComponent extends BaseComponent {
+  @CompData()
+  value: number = 0;
+}

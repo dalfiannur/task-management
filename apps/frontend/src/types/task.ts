@@ -11,6 +11,7 @@ export interface Module {
   name: string;
   description?: string;
   picId?: string;
+  order: number;
 }
 
 export interface Task {

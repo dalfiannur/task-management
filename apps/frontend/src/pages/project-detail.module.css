@@ -80,7 +80,33 @@
 }
 
 .moduleItem {
+  display: flex;
+  align-items: flex-start;
   animation: fade-up 0.4s ease-out both;
+}
+
+.moduleDragHandle {
+  cursor: grab;
+  color: color-mix(in srgb, var(--muted-foreground) 40%, transparent);
+  touch-action: none;
+  background: none;
+  border: none;
+  padding: 0.5rem 0.25rem 0 0;
+  flex-shrink: 0;
+}
+
+.moduleDragHandle:hover {
+  color: var(--muted-foreground);
+}
+
+.moduleDragIcon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.moduleItemContent {
+  flex: 1;
+  min-width: 0;
 }
 
 /* Empty state */

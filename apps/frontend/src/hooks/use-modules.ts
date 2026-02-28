@@ -12,6 +12,7 @@ const MODULE_FIELDS = gql`
     picId {
       value
     }
+    order
     project {
       id
     }
@@ -72,6 +73,12 @@ const DELETE_MODULE = gql`
   }
 `;
 
+const REORDER_MODULES = gql`
+  mutation ReorderModules($input: reorderModulesInput!) {
+    reorderModules(input: $input)
+  }
+`;
+
 // --- Response types & mappers ---
 
 interface ModuleResponse {
@@ -79,6 +86,7 @@ interface ModuleResponse {
   name: string;
   description?: string;
   picId?: { value: string };
+  order?: number | null;
 }
 
 function mapModule(raw: ModuleResponse): Module {
@@ -87,6 +95,7 @@ function mapModule(raw: ModuleResponse): Module {
     name: raw.name,
     description: raw.description,
     picId: raw.picId?.value || undefined,
+    order: raw.order ?? 0,
   };
 }
 
@@ -136,6 +145,14 @@ export const useUpdateModule = createMutationHook<
 export const useDeleteModule = createVoidMutationHook<string>({
   mutation: DELETE_MODULE,
   mapVariables: (id) => ({ input: { id } }),
+  refetchQueries: [LIST_MODULES],
+});
+
+export const useReorderModules = createVoidMutationHook<{
+  projectId: string;
+  moduleIds: string[];
+}>({
+  mutation: REORDER_MODULES,
   refetchQueries: [LIST_MODULES],
 });
 

@@ -3,7 +3,7 @@ import { GraphQLOperation } from 'bunsane/gql';
 import { Entity } from 'bunsane/core/Entity';
 import { Query } from 'bunsane/query';
 import { z } from "zod";
-import { ModuleDescriptionComponent, ModuleNameComponent, ModulePicIdComponent, ModuleProjectRefComponent, ModuleTag } from "../components/ModuleComponents";
+import { ModuleDescriptionComponent, ModuleNameComponent, ModuleOrderComponent, ModulePicIdComponent, ModuleProjectRefComponent, ModuleTag } from "../components/ModuleComponents";
 import { ModuleArcheType } from "../archetypes/ModuleArcheType";
 import { ProjectTag, ProjectModuleRefComponent } from "../components/ProjectComponents";
 
@@ -40,15 +40,23 @@ export default class ModuleService extends BaseService {
     const query = new Query()
       .with(ModuleTag)
       .with(ModuleNameComponent)
-      .with(ModuleDescriptionComponent)
-      .with(ModulePicIdComponent)
       .with(ModuleProjectRefComponent, {
         filters: [
           Query.filter("projectId", Query.filterOp.EQ, input.projectId),
         ],
       })
 
-    return await query.populate().exec()
+    const entities = await query.populate().exec();
+
+    // Sort by order ASC
+    const sorted = await Promise.all(
+      entities.map(async (e: any) => ({
+        entity: e,
+        order: (await e.get(ModuleOrderComponent))?.value ?? 0,
+      })),
+    );
+    sorted.sort((a, b) => a.order - b.order);
+    return sorted.map((s) => s.entity);
   }
 
   @GraphQLOperation({
@@ -80,10 +88,26 @@ export default class ModuleService extends BaseService {
     projectId: string;
     picId?: string;
   }) {
+    // Shift existing modules' order +1 so new module appears at top
+    const existing = await new Query()
+      .with(ModuleTag)
+      .with(ModuleProjectRefComponent, {
+        filters: [
+          Query.filter("projectId", Query.filterOp.EQ, input.projectId),
+        ],
+      })
+      .exec();
+    for (const e of existing) {
+      const currentOrder = (await e.get(ModuleOrderComponent))?.value ?? 0;
+      await e.set(ModuleOrderComponent, { value: currentOrder + 1 });
+      await e.save();
+    }
+
     const entity = Entity.Create()
       .add(ModuleTag, {})
       .add(ModuleNameComponent, { value: input.name })
       .add(ModuleDescriptionComponent, { value: input.description ?? "" })
+      .add(ModuleOrderComponent, { value: 0 })
       .add(ModuleProjectRefComponent, { projectId: input.projectId });
 
     if (input.picId) {
@@ -154,6 +178,25 @@ export default class ModuleService extends BaseService {
     }
 
     await entity.delete();
+    return true;
+  }
+
+  @GraphQLOperation({
+    type: "Mutation",
+    input: z.object({
+      projectId: z.string(),
+      moduleIds: z.array(z.string()),
+    }),
+    output: "Boolean",
+  })
+  async reorderModules(input: { projectId: string; moduleIds: string[] }) {
+    for (let i = 0; i < input.moduleIds.length; i++) {
+      const entity = await new Query().findOneById(input.moduleIds[i]);
+      if (entity) {
+        await entity.set(ModuleOrderComponent, { value: i });
+        await entity.save();
+      }
+    }
     return true;
   }
 }
