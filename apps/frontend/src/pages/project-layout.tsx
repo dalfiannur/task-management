@@ -113,7 +113,10 @@ export function Component() {
   }
 
   const resolvedStatus = (project.resolvedStatus ?? project.status.value) as ProjectStatus;
-  const statusConfig = PROJECT_STATUS_CONFIG[resolvedStatus];
+  const statusConfig = PROJECT_STATUS_CONFIG[resolvedStatus] ?? {
+    label: resolvedStatus,
+    color: "bg-gray-100 text-gray-700",
+  };
   const dotClass = DOT_CLASS[resolvedStatus] ?? DOT_CLASS.pending;
 
   // Task stats

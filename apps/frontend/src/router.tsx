@@ -1,4 +1,4 @@
-import { createBrowserRouter, Outlet, Navigate } from "react-router";
+import { createBrowserRouter, Outlet, Navigate, useLocation } from "react-router";
 import { useAuth } from "react-oidc-context";
 import { AppLayout } from "@/components/layout/app-layout";
 import { Loader2 } from "lucide-react";
@@ -20,6 +20,7 @@ function NotFound() {
 
 function AuthenticatedLayout() {
   const auth = useAuth();
+  const location = useLocation();
 
   if (auth.isLoading) {
     return (
@@ -30,7 +31,8 @@ function AuthenticatedLayout() {
   }
 
   if (!auth.isAuthenticated) {
-    return <Navigate to="/callback" replace />;
+    const redirectTo = `/callback?redirect=${encodeURIComponent(location.pathname)}`;
+    return <Navigate to={redirectTo} replace />;
   }
 
   return (

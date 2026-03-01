@@ -17,6 +17,9 @@ COPY task-management/bun.lock ./task-management/
 COPY task-management/apps/frontend/package.json ./task-management/apps/frontend/
 COPY task-management/apps/backend/package.json ./task-management/apps/backend/
 
+# sedjiwa-permissions is a file: dep of backend — must be present for workspace install
+COPY sedjiwa-permissions/ ./sedjiwa-permissions/
+
 WORKDIR /build/task-management
 
 # Install all deps (devDeps needed for vite build + tsc)
