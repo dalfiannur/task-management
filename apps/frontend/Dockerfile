@@ -1,23 +1,31 @@
 # task-management frontend (Vite + React SPA)
-# Build context: task-management/apps/frontend directory
+# Build context: monorepo root (workspace-aware build)
 # docker-compose usage:
 #   build:
-#     context: ./apps/frontend
-#     dockerfile: Dockerfile
+#     context: ..
+#     dockerfile: task-management/apps/frontend/Dockerfile
 
 # ─── Stage 1: Build the SPA ─────────────────────────────────────────────────
-FROM oven/bun:1.2-alpine AS builder
+FROM oven/bun:1.3.8-alpine AS builder
 
-WORKDIR /app
+WORKDIR /build
 
-# Copy manifest files first for optimal layer caching
-COPY package.json bun.lock* ./
+# task-management is a bun workspace — must replicate full workspace structure
+# so the workspace lockfile resolves correctly with --frozen-lockfile
+COPY task-management/package.json ./task-management/
+COPY task-management/bun.lock ./task-management/
+COPY task-management/apps/frontend/package.json ./task-management/apps/frontend/
+COPY task-management/apps/backend/package.json ./task-management/apps/backend/
+
+WORKDIR /build/task-management
 
 # Install all deps (devDeps needed for vite build + tsc)
 RUN bun install --frozen-lockfile
 
+WORKDIR /build/task-management/apps/frontend
+
 # Copy application source
-COPY . .
+COPY task-management/apps/frontend/ .
 
 # Use relative API URLs — nginx proxies at runtime
 ENV VITE_API_URL=""
@@ -43,10 +51,10 @@ FROM nginx:1.27-alpine AS runtime
 RUN rm -f /etc/nginx/conf.d/default.conf
 
 # Copy built SPA assets
-COPY --from=builder /app/dist /usr/share/nginx/html
+COPY --from=builder /build/task-management/apps/frontend/dist /usr/share/nginx/html
 
 # Copy custom nginx configuration
-COPY nginx.conf /etc/nginx/nginx.conf
+COPY task-management/apps/frontend/nginx.conf /etc/nginx/nginx.conf
 
 EXPOSE 80
 

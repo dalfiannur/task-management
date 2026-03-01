@@ -1,33 +1,45 @@
 # task-management backend
-# Build context: task-management/apps/backend directory
+# Build context: monorepo root
 # docker-compose usage:
 #   build:
-#     context: ./apps/backend
-#     dockerfile: Dockerfile
+#     context: ..
+#     dockerfile: task-management/apps/backend/Dockerfile
 
 # ─── Stage 1: Install dependencies ─────────────────────────────────────────
-FROM oven/bun:1.2-alpine AS deps
+FROM oven/bun:1.3.8-alpine AS deps
 
 WORKDIR /build
 
-# Copy only manifest files for layer caching
-COPY package.json bun.lock* ./
+# Copy sedjiwa-permissions at its monorepo-relative path so the backend's
+# "file:../../../sedjiwa-permissions" dependency resolves correctly.
+COPY sedjiwa-permissions/ ./sedjiwa-permissions/
 
-# Install production deps only (no devDeps needed at runtime)
-RUN bun install --frozen-lockfile --production
+# Copy ONLY the backend's package.json (no workspace root package.json).
+# Without a workspace root, bun treats this as a standalone package and
+# produces a flat node_modules with all transitive deps at the top level.
+COPY task-management/apps/backend/package.json ./task-management/apps/backend/
+
+WORKDIR /build/task-management/apps/backend
+
+RUN bun install --production
+
+# Dereference symlinks and flatten nested node_modules to prevent duplicate
+# package instances at runtime.
+RUN cp -rL node_modules /build/resolved_node_modules \
+    && find /build/resolved_node_modules -mindepth 2 -name node_modules -type d -exec rm -rf {} + 2>/dev/null || true
 
 # ─── Stage 2: Runtime image ─────────────────────────────────────────────────
-FROM oven/bun:1.2-alpine AS runtime
+FROM oven/bun:1.3.8-alpine AS runtime
 
 RUN apk add --no-cache wget
 
 WORKDIR /app
 
-# Copy production node_modules from deps stage
-COPY --from=deps /build/node_modules ./node_modules/
+# Copy dereferenced node_modules (no dangling symlinks)
+COPY --from=deps /build/resolved_node_modules ./node_modules/
 
 # Copy application source
-COPY . .
+COPY task-management/apps/backend/ .
 
 RUN chown -R bun:bun /app 2>/dev/null || true
 USER bun
