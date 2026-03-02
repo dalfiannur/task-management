@@ -1,4 +1,4 @@
-import { Link, useParams, useLocation, useSearchParams } from "react-router";
+import { Link, useNavigate, useParams, useLocation, useSearchParams } from "react-router";
 import { useAuth } from "react-oidc-context";
 import {
   Sidebar,
@@ -115,6 +115,7 @@ function ShowAllButton({ to }: { to: string }) {
 
 function UserMenu() {
   const auth = useAuth();
+  const navigate = useNavigate();
   const name = (auth.user?.profile?.name as string) ?? "";
   const email = (auth.user?.profile?.email as string) ?? "";
   const initials = name
@@ -154,7 +155,7 @@ function UserMenu() {
             align="start"
             sideOffset={4}
           >
-            <DropdownMenuItem onClick={() => auth.signoutRedirect()}>
+            <DropdownMenuItem onSelect={() => navigate("/logout")}>
               <LogOut className={styles.logoutIcon} />
               Sign out
             </DropdownMenuItem>

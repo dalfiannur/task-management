@@ -36,10 +36,16 @@ export class ProjectArcheTypeClass extends BaseArcheType {
   @ArcheTypeField(ProjectNameComponent, { nullable: true })
   name!: ProjectNameComponent;
 
-  @BelongsTo("Project", { foreignKey: "parent.parentProjectId", nullable: true })
+  @ArcheTypeField(ProjectParentRefComponent, { nullable: true })
+  parentRef!: ProjectParentRefComponent;
+
+  @ArcheTypeField(ProjectModuleRefComponent, { nullable: true })
+  moduleRef!: ProjectModuleRefComponent;
+
+  @BelongsTo("Project", { foreignKey: "parentRef.parentProjectId", nullable: true })
   parent!: IProjectArcheType;
 
-  @BelongsTo("Module", { foreignKey: "linkedModule.moduleId", nullable: true })
+  @BelongsTo("Module", { foreignKey: "moduleRef.moduleId", nullable: true })
   linkedModule!: IModuleArcheType;
 
   // Enrichment fields — populated from Core API at query time

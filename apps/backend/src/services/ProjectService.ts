@@ -2,6 +2,7 @@ import { BaseService } from "bunsane/service";
 import { GraphQLOperation } from 'bunsane/gql';
 import { Entity } from 'bunsane/core/Entity';
 import { Query } from 'bunsane/query';
+import { GraphQLError } from "graphql";
 import { z } from "zod";
 import { ProjectArcheType } from "../archetypes/ProjectArcheType";
 import {
@@ -142,7 +143,9 @@ export default class ProjectService extends BaseService {
   })
   async getProject(input: { id: string }, context: { user?: AuthUser; request?: Request }) {
     const entity = await Entity.FindById(input.id);
-    if (!entity) throw new Error("Project not found");
+    if (!entity) {
+      return new GraphQLError("Project not found", { extensions: { code: "NOT_FOUND" } });
+    }
 
     const user = this.extractUser(context);
     if (user) {
@@ -152,7 +155,7 @@ export default class ProjectService extends BaseService {
         if (!memberProjectIds.has(input.id)) {
           const parentRef = await entity.get(ProjectParentRefComponent);
           if (!parentRef?.parentProjectId || !memberProjectIds.has(parentRef.parentProjectId)) {
-            throw new Error("Access denied");
+            return new GraphQLError("Access denied", { extensions: { code: "FORBIDDEN" } });
           }
         }
       }
@@ -215,7 +218,9 @@ export default class ProjectService extends BaseService {
     context: { user?: AuthUser; request?: Request },
   ) {
     const user = this.extractUser(context);
-    if (!user) throw new Error("Authentication required");
+    if (!user) {
+      return new GraphQLError("Authentication required", { extensions: { code: "UNAUTHENTICATED" } });
+    }
 
     const authToken = extractAuthToken(context.request);
 
@@ -297,28 +302,32 @@ export default class ProjectService extends BaseService {
   ) {
     // 1. Find parent project and get its coreRef
     const parent = await new Query().findOneById(input.parentProjectId);
-    if (!parent) throw new Error("Parent project not found");
+    if (!parent) {
+      return new GraphQLError("Parent project not found", { extensions: { code: "NOT_FOUND" } });
+    }
 
     const parentCoreRef = await parent.get(ProjectCoreRefComponent);
     if (!parentCoreRef?.value) {
-      throw new Error("Parent project has no Core reference — cannot create sub-project in Core");
+      return new GraphQLError("Parent project has no Core reference", { extensions: { code: "BAD_USER_INPUT" } });
     }
 
     // 2. Fetch parent Core data to inherit clientId
     const authToken = extractAuthToken(context.request);
     const parentCoreData = await fetchCoreProject(parentCoreRef.value, authToken);
     if (!parentCoreData) {
-      throw new Error("Could not fetch parent project data from Core");
+      return new GraphQLError("Could not fetch parent project data from Core", { extensions: { code: "INTERNAL_ERROR" } });
     }
 
     const clientId = parentCoreData.ref.clientId;
     if (!clientId) {
-      throw new Error("Parent project has no clientId in Core");
+      return new GraphQLError("Parent project has no clientId in Core", { extensions: { code: "BAD_USER_INPUT" } });
     }
 
     // 3. Extract user for authorId
     const user = this.extractUser(context);
-    if (!user) throw new Error("Authentication required");
+    if (!user) {
+      return new GraphQLError("Authentication required", { extensions: { code: "UNAUTHENTICATED" } });
+    }
 
     // 4. Create project in Core with parentId
     const coreProject = await createCoreProject(
@@ -342,10 +351,12 @@ export default class ProjectService extends BaseService {
     // 5. Validate moduleId belongs to parent project if provided
     if (input.moduleId) {
       const moduleEntity = await new Query().findOneById(input.moduleId);
-      if (!moduleEntity) throw new Error("Module not found");
+      if (!moduleEntity) {
+        return new GraphQLError("Module not found", { extensions: { code: "NOT_FOUND" } });
+      }
       const moduleProjectRef = await moduleEntity.get(ModuleProjectRefComponent);
       if (moduleProjectRef?.projectId !== input.parentProjectId) {
-        throw new Error("Module does not belong to the parent project");
+        return new GraphQLError("Module does not belong to the parent project", { extensions: { code: "BAD_USER_INPUT" } });
       }
     }
 
@@ -460,7 +471,9 @@ export default class ProjectService extends BaseService {
     moduleId?: string | null;
   }, context: { user?: AuthUser; request?: Request }) {
     const entity = await new Query().findOneById(input.id);
-    if (!entity) throw new Error("Project not found");
+    if (!entity) {
+      return new GraphQLError("Project not found", { extensions: { code: "NOT_FOUND" } });
+    }
 
     if (input.name) {
       await entity.set(ProjectNameComponent, { value: input.name });
@@ -489,10 +502,12 @@ export default class ProjectService extends BaseService {
         const parentRef = await entity.get(ProjectParentRefComponent);
         if (parentRef?.parentProjectId) {
           const moduleEntity = await new Query().findOneById(input.moduleId);
-          if (!moduleEntity) throw new Error("Module not found");
+          if (!moduleEntity) {
+            return new GraphQLError("Module not found", { extensions: { code: "NOT_FOUND" } });
+          }
           const moduleProjectRef = await moduleEntity.get(ModuleProjectRefComponent);
           if (moduleProjectRef?.projectId !== parentRef.parentProjectId) {
-            throw new Error("Module does not belong to the parent project");
+            return new GraphQLError("Module does not belong to the parent project", { extensions: { code: "BAD_USER_INPUT" } });
           }
         }
         await entity.set(ProjectModuleRefComponent, { moduleId: input.moduleId });
@@ -568,11 +583,13 @@ export default class ProjectService extends BaseService {
   })
   async closeProject(input: { id: string }, context: { user?: AuthUser; request?: Request }) {
     const entity = await new Query().findOneById(input.id);
-    if (!entity) throw new Error("Project not found");
+    if (!entity) {
+      return new GraphQLError("Project not found", { extensions: { code: "NOT_FOUND" } });
+    }
 
     const statusComp = await entity.get(ProjectStatusComponent);
     if (statusComp?.value !== "on_going") {
-      throw new Error("Only on_going projects can be closed");
+      return new GraphQLError("Only on_going projects can be closed", { extensions: { code: "BAD_USER_INPUT" } });
     }
 
     await entity.set(ProjectStatusComponent, { value: "closed" });
@@ -601,7 +618,9 @@ export default class ProjectService extends BaseService {
   })
   async deleteProject(input: { id: string }) {
     const entity = await new Query().findOneById(input.id);
-    if (!entity) throw new Error("Project not found");
+    if (!entity) {
+      return new GraphQLError("Project not found", { extensions: { code: "NOT_FOUND" } });
+    }
 
     // Cascade delete sub-projects
     const subProjects = await new Query()
@@ -632,7 +651,9 @@ export default class ProjectService extends BaseService {
   })
   async updateProjectStatus(input: { id: string; status: string }) {
     const entity = await new Query().findOneById(input.id);
-    if (!entity) throw new Error("Project not found");
+    if (!entity) {
+      return new GraphQLError("Project not found", { extensions: { code: "NOT_FOUND" } });
+    }
     await entity.set(ProjectStatusComponent, { value: input.status });
     await entity.save();
     return true;
