@@ -35,11 +35,18 @@ export class AuthPlugin extends BasePlugin {
 
       if (!payload.sub) return null;
 
+      const email = typeof (payload as any).email === "string" ? (payload as any).email.trim() : "";
+      const tokenName = typeof (payload as any).name === "string" ? (payload as any).name.trim() : "";
+      const preferredUsername = typeof (payload as any).preferred_username === "string"
+        ? (payload as any).preferred_username.trim()
+        : "";
+      const displayName = tokenName || preferredUsername || email || payload.sub;
+
       return {
         id: payload.sub,
         sub: payload.sub,
-        email: (payload as any).email ?? "",
-        name: (payload as any).name ?? (payload as any).preferred_username ?? "",
+        email,
+        name: displayName,
         picture: (payload as any).picture,
         role: (payload as any).role,
       };

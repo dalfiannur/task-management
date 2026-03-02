@@ -11,7 +11,10 @@ type AuthUser = { id: string; sub: string; email: string; name: string; picture?
 
 function requireUser(context: { user?: AuthUser }) {
   if (!context.user) throw new Error("Authentication required");
-  return context.user;
+  const user = context.user;
+  const id = user.id || user.sub;
+  const name = user.name?.trim() || user.email?.trim() || user.sub;
+  return { ...user, id, name };
 }
 
 export default class PageService extends BaseService {

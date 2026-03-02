@@ -122,6 +122,7 @@ function SortablePageRow({
           <p className={styles.pageMeta}>
             Last edited by{" "}
             {users.find((u) => u.id === page.pageInfo.lastEditedById)?.name ||
+              users.find((u) => u.id === page.pageInfo.lastEditedById)?.email ||
               page.pageInfo.lastEditedByName ||
               "Unknown"}{" "}
             {formatTimeAgo(page.pageInfo.updatedAt)}

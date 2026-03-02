@@ -391,7 +391,7 @@ export function Component() {
       {/* Footer */}
       <p className={styles.footer}>
         Last edited by{" "}
-        {lastEditor?.name || page.pageInfo.lastEditedByName || "Unknown"},{" "}
+        {lastEditor?.name || lastEditor?.email || page.pageInfo.lastEditedByName || "Unknown"},{" "}
         {formatTimeAgo(page.pageInfo.updatedAt)}
       </p>
     </div>

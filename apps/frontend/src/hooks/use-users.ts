@@ -1,37 +1,40 @@
-import { useQuery, gql, oidcClient } from "@/lib/graphql-client";
+import { useQuery, gql, client } from "@/lib/graphql-client";
 import { useAuth } from "react-oidc-context";
 import type { User } from "@/types/task";
 
-interface OidcUser {
+interface TaskUser {
   id: string;
-  profile: {
-    displayName: string;
+  userProfile: {
+    externalId: string;
+    email: string;
+    name: string;
     avatarUrl: string;
+    role: string;
   };
 }
 
-const SEARCH_USERS = gql`
-  query SearchUsers($input: searchUsersInput!) {
-    searchUsers(input: $input) {
-      users {
-        id
-        profile {
-          displayName
-          avatarUrl
-        }
+const LIST_USERS = gql`
+  query ListUsers {
+    listUsers {
+      id
+      userProfile {
+        externalId
+        email
+        name
+        avatarUrl
+        role
       }
-      total
     }
   }
 `;
 
-function mapOidcUser(u: OidcUser): User {
+function mapTaskUser(u: TaskUser): User {
   return {
-    id: u.id,
-    externalId: u.id,
-    email: "",
-    name: u.profile.displayName,
-    avatarUrl: u.profile.avatarUrl || undefined,
+    id: u.userProfile.externalId,
+    externalId: u.userProfile.externalId,
+    email: u.userProfile.email,
+    name: u.userProfile.name,
+    avatarUrl: u.userProfile.avatarUrl || undefined,
   };
 }
 
@@ -40,15 +43,15 @@ export function useUsers() {
   const token = auth.user?.access_token;
 
   const { data, loading, error } = useQuery<{
-    searchUsers: { users: OidcUser[]; total: number };
-  }>(SEARCH_USERS, {
-    variables: { input: {} },
+    listUsers: TaskUser[];
+  }>(LIST_USERS, {
+    variables: {},
     skip: !token,
-    client: oidcClient,
+    client: client,
   });
 
   return {
-    data: data?.searchUsers.users.map(mapOidcUser),
+    data: data?.listUsers.map(mapTaskUser),
     isLoading: loading,
     error: error ?? null,
   };
