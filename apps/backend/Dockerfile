@@ -23,6 +23,17 @@ WORKDIR /build/task-management/apps/backend
 
 RUN bun install --production
 
+# Patch bunsane maskError to pass through known safe GraphQLError codes in production
+# (bunsane blindly masks ALL errors as INTERNAL_SERVER_ERROR in production mode)
+RUN bun -e '\
+  const f = "node_modules/bunsane/gql/index.ts"; \
+  let s = await Bun.file(f).text(); \
+  s = s.replace( \
+    /if \(process\.env\.NODE_ENV === .production.\) \{/, \
+    `const SAFE_CODES = new Set(["NOT_FOUND","BAD_USER_INPUT","FORBIDDEN","UNAUTHENTICATED","BAD_REQUEST","VALIDATION_ERROR","CONFLICT","INTERNAL_ERROR"]);\n    if (error instanceof GraphQLError && SAFE_CODES.has(error.extensions?.code)) { return error; }\n    if (process.env.NODE_ENV === "production") {` \
+  ); \
+  await Bun.write(f, s);'
+
 # Dereference symlinks and flatten nested node_modules to prevent duplicate
 # package instances at runtime.
 RUN cp -rL node_modules /build/resolved_node_modules \
