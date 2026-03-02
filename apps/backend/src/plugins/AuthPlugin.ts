@@ -40,7 +40,7 @@ export class AuthPlugin extends BasePlugin {
       const preferredUsername = typeof (payload as any).preferred_username === "string"
         ? (payload as any).preferred_username.trim()
         : "";
-      const displayName = tokenName || preferredUsername || email || payload.sub;
+      const displayName = tokenName || email || preferredUsername || payload.sub;
 
       return {
         id: payload.sub,

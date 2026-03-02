@@ -34,6 +34,16 @@ const COMMON_EMOJIS = [
   "\u{1F50D}", "\u{1F4AC}", "\u{1F4CA}", "\u{1F4C8}", "\u{1F5D3}\uFE0F", "\u{1F3F7}\uFE0F", "\u{1F517}", "\u{1F5C2}\uFE0F",
 ];
 
+function resolveDisplayName(params: { name?: string; email?: string; snapshotName?: string }) {
+  const name = params.name?.trim();
+  if (name) return name;
+  const email = params.email?.trim();
+  if (email) return email;
+  const snapshotName = params.snapshotName?.trim();
+  if (snapshotName) return snapshotName;
+  return "Unknown";
+}
+
 function formatTimeAgo(dateStr: string) {
   const date = new Date(dateStr);
   const now = new Date();
@@ -391,7 +401,11 @@ export function Component() {
       {/* Footer */}
       <p className={styles.footer}>
         Last edited by{" "}
-        {lastEditor?.name || lastEditor?.email || page.pageInfo.lastEditedByName || "Unknown"},{" "}
+        {resolveDisplayName({
+          name: lastEditor?.name,
+          email: lastEditor?.email,
+          snapshotName: page.pageInfo.lastEditedByName,
+        })},{" "}
         {formatTimeAgo(page.pageInfo.updatedAt)}
       </p>
     </div>

@@ -51,6 +51,16 @@ function formatTimeAgo(dateStr: string) {
   return date.toLocaleDateString();
 }
 
+function resolveDisplayName(params: { name?: string; email?: string; snapshotName?: string }) {
+  const name = params.name?.trim();
+  if (name) return name;
+  const email = params.email?.trim();
+  if (email) return email;
+  const snapshotName = params.snapshotName?.trim();
+  if (snapshotName) return snapshotName;
+  return "Unknown";
+}
+
 function SortablePageRow({
   page,
   projectId,
@@ -78,6 +88,8 @@ function SortablePageRow({
     transition,
     opacity: isDragging ? 0.5 : 1,
   };
+
+  const matchedUser = users.find((u) => u.id === page.pageInfo.lastEditedById);
 
   return (
     <div
@@ -121,10 +133,11 @@ function SortablePageRow({
           </div>
           <p className={styles.pageMeta}>
             Last edited by{" "}
-            {users.find((u) => u.id === page.pageInfo.lastEditedById)?.name ||
-              users.find((u) => u.id === page.pageInfo.lastEditedById)?.email ||
-              page.pageInfo.lastEditedByName ||
-              "Unknown"}{" "}
+            {resolveDisplayName({
+              name: matchedUser?.name,
+              email: matchedUser?.email,
+              snapshotName: page.pageInfo.lastEditedByName,
+            })}{" "}
             {formatTimeAgo(page.pageInfo.updatedAt)}
           </p>
         </div>
