@@ -1,8 +1,8 @@
 import { BaseService } from "bunsane/service";
 import { GraphQLOperation } from 'bunsane/gql';
+import { t } from 'bunsane/gql/schema';
 import { Entity } from 'bunsane/core/Entity';
 import { Query } from 'bunsane/query';
-import { z } from "zod";
 import { TaskInfo } from "../components/TaskInfo";
 import { TaskAssignment } from "../components/TaskAssignment";
 import { TaskLabels } from "../components/TaskLabels";
@@ -32,16 +32,16 @@ export default class TaskService extends BaseService {
 
   @GraphQLOperation({
     type: "Query",
-    input: z.object({
-      moduleId: z.string(),
-      status: z.string().optional(),
-      priority: z.string().optional(),
-      assigneeId: z.string().optional(),
-      search: z.string().optional(),
-      sort: z.string().optional(),
-      page: z.number().optional(),
-      pageSize: z.number().optional(),
-    }),
+    input: {
+      moduleId: t.string().required(),
+      status: t.string(),
+      priority: t.string(),
+      assigneeId: t.string(),
+      search: t.string(),
+      sort: t.string(),
+      page: t.int(),
+      pageSize: t.int(),
+    },
     output: [taskArcheType],
   })
   async listTasks(
@@ -113,14 +113,14 @@ export default class TaskService extends BaseService {
 
   @GraphQLOperation({
     type: "Query",
-    input: z.object({
-      projectId: z.string().optional(),
-      status: z.string().optional(),
-      priority: z.string().optional(),
-      assigneeId: z.string().optional(),
-      page: z.number().optional(),
-      pageSize: z.number().optional(),
-    }),
+    input: {
+      projectId: t.string(),
+      status: t.string(),
+      priority: t.string(),
+      assigneeId: t.string(),
+      page: t.int(),
+      pageSize: t.int(),
+    },
     output: [taskArcheType],
   })
   async listAllTasks(
@@ -175,9 +175,9 @@ export default class TaskService extends BaseService {
 
   @GraphQLOperation({
     type: "Query",
-    input: z.object({
-      id: z.string(),
-    }),
+    input: {
+      id: t.string().required(),
+    },
     output: taskArcheType,
   })
   async getTask(input: { id: string }) {
@@ -186,17 +186,17 @@ export default class TaskService extends BaseService {
 
   @GraphQLOperation({
     type: "Mutation",
-    input: z.object({
-      title: z.string(),
-      description: z.string().optional(),
-      status: z.string().optional(),
-      priority: z.string().optional(),
-      startDate: z.string().optional(),
-      dueDate: z.string().optional(),
-      assigneeIds: z.array(z.string()).optional(),
-      moduleId: z.string(),
-      labelIds: z.array(z.string()).optional(),
-    }),
+    input: {
+      title: t.string().required(),
+      description: t.string(),
+      status: t.string(),
+      priority: t.string(),
+      startDate: t.string(),
+      dueDate: t.string(),
+      assigneeIds: t.list(t.string()),
+      moduleId: t.string().required(),
+      labelIds: t.list(t.string()),
+    },
     output: taskArcheType,
   })
   async createTask(
@@ -268,17 +268,17 @@ export default class TaskService extends BaseService {
 
   @GraphQLOperation({
     type: "Mutation",
-    input: z.object({
-      id: z.string(),
-      title: z.string().optional(),
-      description: z.string().optional(),
-      status: z.string().optional(),
-      priority: z.string().optional(),
-      startDate: z.string().optional(),
-      dueDate: z.string().optional(),
-      assigneeIds: z.array(z.string()).optional(),
-      labelIds: z.array(z.string()).optional(),
-    }),
+    input: {
+      id: t.string().required(),
+      title: t.string(),
+      description: t.string(),
+      status: t.string(),
+      priority: t.string(),
+      startDate: t.string(),
+      dueDate: t.string(),
+      assigneeIds: t.list(t.string()),
+      labelIds: t.list(t.string()),
+    },
     output: taskArcheType,
   })
   async updateTask(
@@ -457,9 +457,9 @@ export default class TaskService extends BaseService {
 
   @GraphQLOperation({
     type: "Mutation",
-    input: z.object({
-      id: z.string(),
-    }),
+    input: {
+      id: t.string().required(),
+    },
     output: "Boolean",
   })
   async deleteTask(
@@ -492,11 +492,11 @@ export default class TaskService extends BaseService {
 
   @GraphQLOperation({
     type: "Mutation",
-    input: z.object({
-      id: z.string(),
-      newOrder: z.number(),
-      newStatus: z.string().optional(),
-    }),
+    input: {
+      id: t.string().required(),
+      newOrder: t.int().required(),
+      newStatus: t.string(),
+    },
     output: taskArcheType,
   })
   async reorderTask(input: {

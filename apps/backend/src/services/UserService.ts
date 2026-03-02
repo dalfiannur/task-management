@@ -2,7 +2,7 @@ import { BaseService } from "bunsane/service";
 import { Entity } from 'bunsane/core/Entity';
 import { Query } from 'bunsane/query';
 import { GraphQLOperation } from "bunsane/gql";
-import { z } from "zod";
+import { t } from "bunsane/gql/schema";
 import { UserProfile } from "../components/UserProfile";
 import { UserArcheType } from "../archetypes/UserArcheType";
 
@@ -37,6 +37,11 @@ export function requireManager(context: { user?: AuthUser }) {
 }
 
 export default class UserService extends BaseService {
+  constructor() {
+    super();
+    userArcheType.registerFieldResolvers(this);
+  }
+
   @GraphQLOperation({
     type: "Query",
     output: [userArcheType],
@@ -61,7 +66,10 @@ export default class UserService extends BaseService {
 
   @GraphQLOperation({
     type: "Mutation",
-    input: z.object({ userId: z.string(), role: z.enum(["manager", "member"]) }),
+    input: {
+      userId: t.string().required(),
+      role: t.enum(["manager", "member"] as const, "UserRole").required(),
+    },
     output: "Boolean",
   })
   async setUserRole(

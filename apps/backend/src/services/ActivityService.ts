@@ -1,7 +1,7 @@
 import { BaseService } from "bunsane/service";
 import { GraphQLOperation } from "bunsane/gql";
+import { t } from "bunsane/gql/schema";
 import { Query } from "bunsane/query";
-import { z } from "zod";
 import { ActivityInfo } from "../components/ActivityInfo";
 import { ActivityArcheType } from "../archetypes/ActivityArcheType";
 
@@ -49,9 +49,9 @@ export default class ActivityService extends BaseService {
 
   @GraphQLOperation({
     type: "Query",
-    input: z.object({
-      limit: z.number().optional(),
-    }),
+    input: {
+      limit: t.int(),
+    },
     output: [activityArcheType],
   })
   async listRecentActivities(input: { limit?: number }) {
@@ -67,9 +67,9 @@ export default class ActivityService extends BaseService {
 
   @GraphQLOperation({
     type: "Query",
-    input: z.object({
-      taskId: z.string(),
-    }),
+    input: {
+      taskId: t.string().required(),
+    },
     output: [activityArcheType],
   })
   async listActivities(input: { taskId: string }) {

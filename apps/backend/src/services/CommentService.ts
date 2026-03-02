@@ -1,7 +1,7 @@
 import { BaseService } from "bunsane/service";
 import { GraphQLOperation, GraphQLScalarType } from "bunsane/gql";
+import { t } from "bunsane/gql/schema";
 import { Query } from "bunsane/query";
-import { z } from "zod";
 import { CommentInfo } from "../components/CommentInfo";
 import { CommentArcheType } from "../archetypes/CommentArcheType";
 import { TaskInfo } from "../components/TaskInfo";
@@ -25,9 +25,9 @@ export default class CommentService extends BaseService {
 
   @GraphQLOperation({
     type: "Query",
-    input: z.object({
-      taskId: z.string(),
-    }),
+    input: {
+      taskId: t.string().required(),
+    },
     output: [commentArcheType],
   })
   async listComments(input: { taskId: string }) {
@@ -44,11 +44,11 @@ export default class CommentService extends BaseService {
 
   @GraphQLOperation({
     type: "Mutation",
-    input: z.object({
-      taskId: z.string(),
-      content: z.string(),
-      mentionedUserIds: z.array(z.string()).optional(),
-    }),
+    input: {
+      taskId: t.string().required(),
+      content: t.string().required(),
+      mentionedUserIds: t.list(t.string()),
+    },
     output: commentArcheType,
   })
   async createComment(
@@ -100,11 +100,11 @@ export default class CommentService extends BaseService {
 
   @GraphQLOperation({
     type: "Mutation",
-    input: z.object({
-      id: z.string(),
-      content: z.string(),
-      mentionedUserIds: z.array(z.string()).optional(),
-    }),
+    input: {
+      id: t.string().required(),
+      content: t.string().required(),
+      mentionedUserIds: t.list(t.string()),
+    },
     output: commentArcheType,
   })
   async updateComment(
@@ -167,9 +167,9 @@ export default class CommentService extends BaseService {
 
   @GraphQLOperation({
     type: "Query",
-    input: z.object({
-      taskIds: z.array(z.string()),
-    }),
+    input: {
+      taskIds: t.list(t.string()).required(),
+    },
     output: "JSON",
   })
   async commentCounts(input: { taskIds: string[] }) {
@@ -177,24 +177,34 @@ export default class CommentService extends BaseService {
     for (const taskId of input.taskIds) {
       counts[taskId] = 0;
     }
-    for (const taskId of input.taskIds) {
-      const entities = await new Query()
-        .with(CommentInfo, {
-          filters: [
-            Query.typedFilter(CommentInfo, "taskId", "=", taskId),
-          ],
-        })
-        .exec();
-      counts[taskId] = entities.length;
+
+    if (input.taskIds.length === 0) return counts;
+
+    // Batch query: fetch all comments for all taskIds in one query
+    const entities = await new Query()
+      .with(CommentInfo, {
+        filters: [
+          Query.filter("taskId", Query.filterOp.IN, input.taskIds),
+        ],
+      })
+      .populate()
+      .exec();
+
+    // Group counts by taskId
+    for (const entity of entities) {
+      const info = entity.getInMemory(CommentInfo);
+      if (info?.taskId && counts[info.taskId] !== undefined) {
+        counts[info.taskId]++;
+      }
     }
     return counts;
   }
 
   @GraphQLOperation({
     type: "Mutation",
-    input: z.object({
-      id: z.string(),
-    }),
+    input: {
+      id: t.string().required(),
+    },
     output: "Boolean",
   })
   async deleteComment(

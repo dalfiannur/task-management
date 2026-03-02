@@ -1,7 +1,7 @@
 import { BaseService } from "bunsane/service";
 import { GraphQLOperation } from "bunsane/gql";
+import { t } from "bunsane/gql/schema";
 import { Query } from "bunsane/query";
-import { z } from "zod";
 import { TaskMediaLinkTag, TaskMediaLinkData } from "../components/TaskMediaLink";
 import { TaskMediaLinkArcheType } from "../archetypes/TaskMediaLinkArcheType";
 
@@ -15,11 +15,11 @@ export default class MediaService extends BaseService {
 
   @GraphQLOperation({
     type: "Mutation",
-    input: z.object({
-      mediaFileId: z.string(),
-      taskId: z.string(),
-      projectId: z.string(),
-    }),
+    input: {
+      mediaFileId: t.string().required(),
+      taskId: t.string().required(),
+      projectId: t.string().required(),
+    },
     output: taskMediaLinkArcheType,
   })
   async linkMediaFile(input: {
@@ -55,10 +55,10 @@ export default class MediaService extends BaseService {
 
   @GraphQLOperation({
     type: "Mutation",
-    input: z.object({
-      mediaFileId: z.string(),
-      taskId: z.string(),
-    }),
+    input: {
+      mediaFileId: t.string().required(),
+      taskId: t.string().required(),
+    },
     output: "Boolean",
   })
   async unlinkMediaFile(input: { mediaFileId: string; taskId: string }) {
@@ -80,9 +80,9 @@ export default class MediaService extends BaseService {
 
   @GraphQLOperation({
     type: "Query",
-    input: z.object({
-      taskId: z.string(),
-    }),
+    input: {
+      taskId: t.string().required(),
+    },
     output: [taskMediaLinkArcheType],
   })
   async listTaskMediaLinks(input: { taskId: string }) {
@@ -99,9 +99,9 @@ export default class MediaService extends BaseService {
 
   @GraphQLOperation({
     type: "Query",
-    input: z.object({
-      projectId: z.string(),
-    }),
+    input: {
+      projectId: t.string().required(),
+    },
     output: [taskMediaLinkArcheType],
   })
   async listProjectMediaLinks(input: { projectId: string }) {
@@ -118,9 +118,9 @@ export default class MediaService extends BaseService {
 
   @GraphQLOperation({
     type: "Mutation",
-    input: z.object({
-      mediaFileId: z.string(),
-    }),
+    input: {
+      mediaFileId: t.string().required(),
+    },
     output: "Boolean",
   })
   async unlinkAllForMediaFile(input: { mediaFileId: string }) {

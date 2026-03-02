@@ -1,8 +1,8 @@
 import { BaseService } from "bunsane/service";
 import { GraphQLOperation } from 'bunsane/gql';
+import { t } from 'bunsane/gql/schema';
 import { Entity } from 'bunsane/core/Entity';
 import { Query } from 'bunsane/query';
-import { z } from "zod";
 import { ModuleDescriptionComponent, ModuleNameComponent, ModuleOrderComponent, ModulePicIdComponent, ModuleProjectRefComponent, ModuleTag } from "../components/ModuleComponents";
 import { ModuleArcheType } from "../archetypes/ModuleArcheType";
 import { ProjectTag, ProjectModuleRefComponent } from "../components/ProjectComponents";
@@ -15,9 +15,9 @@ export default class ModuleService extends BaseService {
 
   @GraphQLOperation({
     type: "Query",
-    input: z.object({
-      _dummy: z.string().optional(),
-    }),
+    input: {
+      _dummy: t.string(),
+    },
     output: [ModuleArcheType],
   })
   async listAllModules() {
@@ -31,39 +31,31 @@ export default class ModuleService extends BaseService {
 
   @GraphQLOperation({
     type: "Query",
-    input: z.object({
-      projectId: z.string(),
-    }),
+    input: {
+      projectId: t.string().required(),
+    },
     output: [ModuleArcheType],
   })
   async listModules(input: { projectId: string }) {
-    const query = new Query()
+    return await new Query()
       .with(ModuleTag)
       .with(ModuleNameComponent)
+      .with(ModuleOrderComponent)
       .with(ModuleProjectRefComponent, {
         filters: [
           Query.filter("projectId", Query.filterOp.EQ, input.projectId),
         ],
       })
-
-    const entities = await query.populate().exec();
-
-    // Sort by order ASC
-    const sorted = await Promise.all(
-      entities.map(async (e: any) => ({
-        entity: e,
-        order: (await e.get(ModuleOrderComponent))?.value ?? 0,
-      })),
-    );
-    sorted.sort((a, b) => a.order - b.order);
-    return sorted.map((s) => s.entity);
+      .sortBy(ModuleOrderComponent, "value", "ASC")
+      .populate()
+      .exec();
   }
 
   @GraphQLOperation({
     type: "Query",
-    input: z.object({
-      id: z.string(),
-    }),
+    input: {
+      id: t.string().required(),
+    },
     output: ModuleArcheType,
   })
   async getModule(input: { id: string }) {
@@ -74,12 +66,12 @@ export default class ModuleService extends BaseService {
 
   @GraphQLOperation({
     type: "Mutation",
-    input: z.object({
-      name: z.string(),
-      description: z.string().optional(),
-      projectId: z.string(),
-      picId: z.string().optional(),
-    }),
+    input: {
+      name: t.string().required(),
+      description: t.string(),
+      projectId: t.string().required(),
+      picId: t.string(),
+    },
     output: ModuleArcheType,
   })
   async createModule(input: {
@@ -123,12 +115,12 @@ export default class ModuleService extends BaseService {
 
   @GraphQLOperation({
     type: "Mutation",
-    input: z.object({
-      id: z.string(),
-      name: z.string().optional(),
-      description: z.string().optional(),
-      picId: z.string().optional(),
-    }),
+    input: {
+      id: t.string().required(),
+      name: t.string(),
+      description: t.string(),
+      picId: t.string(),
+    },
     output: ModuleArcheType,
   })
   async updateModule(input: {
@@ -156,9 +148,9 @@ export default class ModuleService extends BaseService {
 
   @GraphQLOperation({
     type: "Mutation",
-    input: z.object({
-      id: z.string(),
-    }),
+    input: {
+      id: t.string().required(),
+    },
     output: "Boolean",
   })
   async deleteModule(input: { id: string }) {
@@ -183,15 +175,23 @@ export default class ModuleService extends BaseService {
 
   @GraphQLOperation({
     type: "Mutation",
-    input: z.object({
-      projectId: z.string(),
-      moduleIds: z.array(z.string()),
-    }),
+    input: {
+      projectId: t.string().required(),
+      moduleIds: t.list(t.string()).required(),
+    },
     output: "Boolean",
   })
   async reorderModules(input: { projectId: string; moduleIds: string[] }) {
-    for (let i = 0; i < input.moduleIds.length; i++) {
-      const entity = await new Query().findOneById(input.moduleIds[i]);
+    if (input.moduleIds.length === 0) return true;
+
+    // Fetch all modules in parallel
+    const entities = await Promise.all(
+      input.moduleIds.map((id) => Entity.FindById(id))
+    );
+
+    // Update order for each module
+    for (let i = 0; i < entities.length; i++) {
+      const entity = entities[i];
       if (entity) {
         await entity.set(ModuleOrderComponent, { value: i });
         await entity.save();

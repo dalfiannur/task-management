@@ -1,19 +1,24 @@
 import { BaseService } from "bunsane/service";
 import { GraphQLOperation } from 'bunsane/gql';
+import { t } from 'bunsane/gql/schema';
 import { Entity } from 'bunsane/core/Entity';
 import { Query } from 'bunsane/query';
-import { z } from "zod";
 import { LabelInfo } from "../components/LabelInfo";
 import { LabelArcheType } from "../archetypes/LabelArcheType";
 
 const labelArcheType = new LabelArcheType();
 
 export default class LabelService extends BaseService {
+  constructor() {
+    super();
+    labelArcheType.registerFieldResolvers(this);
+  }
+
   @GraphQLOperation({
     type: "Query",
-    input: z.object({
-      projectId: z.string(),
-    }),
+    input: {
+      projectId: t.string().required(),
+    },
     output: [labelArcheType],
   })
   async listLabels(input: { projectId: string }) {
@@ -26,21 +31,20 @@ export default class LabelService extends BaseService {
       .populate()
       .exec();
 
-    return await Promise.all(
-      entities.map(async (e: Entity) => {
-        const info = await e.get(LabelInfo);
-        return { id: e.id, labelInfo: info ? { name: info.name, color: info.color, projectId: info.projectId } : null };
-      }),
-    );
+    // Components already cached after populate - use getInMemory
+    return entities.map((e: Entity) => {
+      const info = e.getInMemory(LabelInfo);
+      return { id: e.id, labelInfo: info ? { name: info.name, color: info.color, projectId: info.projectId } : null };
+    });
   }
 
   @GraphQLOperation({
     type: "Mutation",
-    input: z.object({
-      name: z.string(),
-      color: z.string(),
-      projectId: z.string(),
-    }),
+    input: {
+      name: t.string().required(),
+      color: t.string().required(),
+      projectId: t.string().required(),
+    },
     output: labelArcheType,
   })
   async createLabel(input: {
@@ -65,11 +69,11 @@ export default class LabelService extends BaseService {
 
   @GraphQLOperation({
     type: "Mutation",
-    input: z.object({
-      id: z.string(),
-      name: z.string().optional(),
-      color: z.string().optional(),
-    }),
+    input: {
+      id: t.string().required(),
+      name: t.string(),
+      color: t.string(),
+    },
     output: labelArcheType,
   })
   async updateLabel(input: { id: string; name?: string; color?: string }) {
@@ -93,9 +97,9 @@ export default class LabelService extends BaseService {
 
   @GraphQLOperation({
     type: "Mutation",
-    input: z.object({
-      id: z.string(),
-    }),
+    input: {
+      id: t.string().required(),
+    },
     output: "Boolean",
   })
   async deleteLabel(input: { id: string }) {

@@ -11,7 +11,7 @@ export class ProjectCoreRefComponent extends BaseComponent {
 
 @Component
 export class ProjectStatusComponent extends BaseComponent {
-  @CompData()
+  @CompData({ indexed: true })
   value: string = "prospect"
 }
 

@@ -1,7 +1,7 @@
 import { BaseService } from "bunsane/service";
 import { GraphQLOperation } from "bunsane/gql";
+import { t } from "bunsane/gql/schema";
 import { Query } from "bunsane/query";
-import { z } from "zod";
 import { NotificationInfo } from "../components/NotificationInfo";
 import { NotificationArcheType } from "../archetypes/NotificationArcheType";
 
@@ -65,10 +65,10 @@ export default class NotificationService extends BaseService {
 
   @GraphQLOperation({
     type: "Query",
-    input: z.object({
-      limit: z.number().optional(),
-      offset: z.number().optional(),
-    }),
+    input: {
+      limit: t.int(),
+      offset: t.int(),
+    },
     output: [notificationArcheType],
   })
   async listNotifications(
@@ -92,9 +92,9 @@ export default class NotificationService extends BaseService {
 
   @GraphQLOperation({
     type: "Query",
-    input: z.object({
-      _dummy: z.boolean().optional(),
-    }),
+    input: {
+      _dummy: t.boolean(),
+    },
     output: "Int",
   })
   async unreadNotificationCount(
@@ -117,9 +117,9 @@ export default class NotificationService extends BaseService {
 
   @GraphQLOperation({
     type: "Mutation",
-    input: z.object({
-      ids: z.array(z.string()),
-    }),
+    input: {
+      ids: t.list(t.string()).required(),
+    },
     output: "Boolean",
   })
   async markNotificationsRead(
@@ -128,8 +128,14 @@ export default class NotificationService extends BaseService {
   ) {
     const user = requireUser(context);
 
-    for (const id of input.ids) {
-      const entity = await new Query().findOneById(id);
+    if (input.ids.length === 0) return true;
+
+    // Fetch all notifications in parallel
+    const entities = await Promise.all(
+      input.ids.map((id) => new Query().findOneById(id))
+    );
+
+    for (const entity of entities) {
       if (!entity) continue;
 
       const info = await entity.get(NotificationInfo);
@@ -144,9 +150,9 @@ export default class NotificationService extends BaseService {
 
   @GraphQLOperation({
     type: "Mutation",
-    input: z.object({
-      _dummy: z.boolean().optional(),
-    }),
+    input: {
+      _dummy: t.boolean(),
+    },
     output: "Boolean",
   })
   async markAllNotificationsRead(

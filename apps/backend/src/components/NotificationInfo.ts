@@ -29,6 +29,6 @@ export class NotificationInfo extends BaseComponent {
   @CompData({ indexed: true })
   read: string = "false";
 
-  @CompData()
+  @CompData({ indexed: true })
   createdAt: string = "";
 }

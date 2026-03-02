@@ -1,7 +1,6 @@
 import {
   ArcheType,
   ArcheTypeField,
-  BelongsTo,
   BaseArcheType,
   type ArcheTypeOwnProperties,
 } from "bunsane/core/ArcheType";
@@ -13,3 +12,5 @@ export class MediaFileArcheType extends BaseArcheType {
   @ArcheTypeField(MediaFileInfo)
   mediaFileInfo!: MediaFileInfo;
 }
+
+export type IMediaFileArcheType = ArcheTypeOwnProperties<MediaFileArcheType>;
