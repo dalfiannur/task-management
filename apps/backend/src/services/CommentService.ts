@@ -5,16 +5,15 @@ import { z } from "zod";
 import { CommentInfo } from "../components/CommentInfo";
 import { CommentArcheType } from "../archetypes/CommentArcheType";
 import { TaskInfo } from "../components/TaskInfo";
-import { AuthPlugin } from "../plugins/AuthPlugin";
 import NotificationService from "./NotificationService";
 
 const commentArcheType = new CommentArcheType();
 
-async function requireUser(context: { request?: Request }) {
-  if (!context.request) throw new Error("Authentication required");
-  const user = await AuthPlugin.extractUser(context.request);
-  if (!user) throw new Error("Authentication required");
-  return user;
+type AuthUser = { id: string; sub: string; email: string; name: string; picture?: string; role?: string };
+
+function requireUser(context: { user?: AuthUser }) {
+  if (!context.user) throw new Error("Authentication required");
+  return context.user;
 }
 
 @GraphQLScalarType("JSON")
@@ -54,9 +53,9 @@ export default class CommentService extends BaseService {
   })
   async createComment(
     input: { taskId: string; content: string; mentionedUserIds?: string[] },
-    context: { request?: Request },
+    context: { user?: AuthUser },
   ) {
-    const user = await requireUser(context);
+    const user = requireUser(context);
     const mentionedIds = input.mentionedUserIds ?? [];
 
     const now = new Date().toISOString();
@@ -110,9 +109,9 @@ export default class CommentService extends BaseService {
   })
   async updateComment(
     input: { id: string; content: string; mentionedUserIds?: string[] },
-    context: { request?: Request },
+    context: { user?: AuthUser },
   ) {
-    const user = await requireUser(context);
+    const user = requireUser(context);
 
     const entity = await new Query().findOneById(input.id);
     if (!entity) throw new Error("Comment not found");
@@ -200,9 +199,9 @@ export default class CommentService extends BaseService {
   })
   async deleteComment(
     input: { id: string },
-    context: { request?: Request },
+    context: { user?: AuthUser },
   ) {
-    const user = await requireUser(context);
+    const user = requireUser(context);
 
     const entity = await new Query().findOneById(input.id);
     if (!entity) throw new Error("Comment not found");

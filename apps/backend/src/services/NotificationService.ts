@@ -4,15 +4,14 @@ import { Query } from "bunsane/query";
 import { z } from "zod";
 import { NotificationInfo } from "../components/NotificationInfo";
 import { NotificationArcheType } from "../archetypes/NotificationArcheType";
-import { AuthPlugin } from "../plugins/AuthPlugin";
 
 const notificationArcheType = new NotificationArcheType();
 
-async function requireUser(context: { request?: Request }) {
-  if (!context.request) throw new Error("Authentication required");
-  const user = await AuthPlugin.extractUser(context.request);
-  if (!user) throw new Error("Authentication required");
-  return user;
+type AuthUser = { id: string; sub: string; email: string; name: string; picture?: string; role?: string };
+
+function requireUser(context: { user?: AuthUser }) {
+  if (!context.user) throw new Error("Authentication required");
+  return context.user;
 }
 
 export default class NotificationService extends BaseService {
@@ -74,9 +73,9 @@ export default class NotificationService extends BaseService {
   })
   async listNotifications(
     input: { limit?: number; offset?: number },
-    context: { request?: Request },
+    context: { user?: AuthUser },
   ) {
-    const user = await requireUser(context);
+    const user = requireUser(context);
 
     const query = new Query()
       .with(NotificationInfo, {
@@ -100,9 +99,9 @@ export default class NotificationService extends BaseService {
   })
   async unreadNotificationCount(
     _input: { _dummy?: boolean },
-    context: { request?: Request },
+    context: { user?: AuthUser },
   ) {
-    const user = await requireUser(context);
+    const user = requireUser(context);
 
     const entities = await new Query()
       .with(NotificationInfo, {
@@ -125,9 +124,9 @@ export default class NotificationService extends BaseService {
   })
   async markNotificationsRead(
     input: { ids: string[] },
-    context: { request?: Request },
+    context: { user?: AuthUser },
   ) {
-    const user = await requireUser(context);
+    const user = requireUser(context);
 
     for (const id of input.ids) {
       const entity = await new Query().findOneById(id);
@@ -152,9 +151,9 @@ export default class NotificationService extends BaseService {
   })
   async markAllNotificationsRead(
     _input: { _dummy?: boolean },
-    context: { request?: Request },
+    context: { user?: AuthUser },
   ) {
-    const user = await requireUser(context);
+    const user = requireUser(context);
 
     const entities = await new Query()
       .with(NotificationInfo, {

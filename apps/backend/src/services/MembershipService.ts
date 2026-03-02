@@ -5,8 +5,9 @@ import { z } from "zod";
 import { ProjectMembershipData } from "~/components/ProjectMembership";
 import { ProjectMembershipArcheTypeClass } from "~/archetypes/ProjectMembershipArcheType";
 import { ProjectLeaderIdComponent } from "~/components/ProjectComponents";
-import { AuthPlugin } from "~/plugins/AuthPlugin";
 import { getUserRole } from "./UserService";
+
+type AuthUser = { id: string; sub: string; email: string; name: string; picture?: string; role?: string };
 
 const membershipArcheType = new ProjectMembershipArcheTypeClass();
 
@@ -72,7 +73,7 @@ export default class MembershipService extends BaseService {
   })
   async addProjectMember(
     input: { projectId: string; userId: string },
-    context: { request?: Request },
+    context: { user?: AuthUser },
   ) {
     await this.requireMember(context, input.projectId);
     await this.ensureMembership(input.projectId, input.userId);
@@ -86,7 +87,7 @@ export default class MembershipService extends BaseService {
   })
   async removeProjectMember(
     input: { projectId: string; userId: string },
-    context: { request?: Request },
+    context: { user?: AuthUser },
   ) {
     await this.requireMember(context, input.projectId);
 
@@ -109,10 +110,9 @@ export default class MembershipService extends BaseService {
   /**
    * Auth helper: caller must be a manager, project leader, or project member.
    */
-  private async requireMember(context: { request?: Request }, projectId: string) {
-    if (!context.request) throw new Error("Authentication required");
-    const user = await AuthPlugin.extractUser(context.request);
-    if (!user) throw new Error("Authentication required");
+  private async requireMember(context: { user?: AuthUser }, projectId: string) {
+    if (!context.user) throw new Error("Authentication required");
+    const user = context.user;
 
     const role = user.role ?? await getUserRole(user.id);
     if (role === "manager") return user;

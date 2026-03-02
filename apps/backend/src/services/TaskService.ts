@@ -7,11 +7,12 @@ import { TaskInfo } from "../components/TaskInfo";
 import { TaskAssignment } from "../components/TaskAssignment";
 import { TaskLabels } from "../components/TaskLabels";
 import { TaskArcheType } from "../archetypes/TaskArcheType";
-import { AuthPlugin } from "../plugins/AuthPlugin";
 import NotificationService from "./NotificationService";
 import ActivityService from "./ActivityService";
 import MembershipService from "./MembershipService";
 import { ModuleProjectRefComponent } from "../components/ModuleComponents";
+
+type AuthUser = { id: string; sub: string; email: string; name: string; picture?: string; role?: string };
 
 function encodeLabelIds(ids?: string[]): string {
   return JSON.stringify(ids ?? []);
@@ -210,7 +211,7 @@ export default class TaskService extends BaseService {
       moduleId: string;
       labelIds?: string[];
     },
-    context: { request?: Request },
+    context: { user?: AuthUser },
   ) {
     const archetype = new TaskArcheType();
     const now = new Date().toISOString();
@@ -250,18 +251,16 @@ export default class TaskService extends BaseService {
     }
 
     // Record activity
-    if (context?.request) {
-      const user = await AuthPlugin.extractUser(context.request);
-      if (user) {
-        await ActivityService.getInstance().recordActivity({
-          taskId: entity.id,
-          actorId: user.id,
-          actorName: user.name,
-          action: "created",
-          changes: [],
-          taskTitle: input.title,
-        });
-      }
+    if (context?.user) {
+      const user = context.user;
+      await ActivityService.getInstance().recordActivity({
+        taskId: entity.id,
+        actorId: user.id,
+        actorName: user.name,
+        action: "created",
+        changes: [],
+        taskTitle: input.title,
+      });
     }
 
     return entity;
@@ -294,7 +293,7 @@ export default class TaskService extends BaseService {
       assigneeIds?: string[];
       labelIds?: string[];
     },
-    context: { request?: Request },
+    context: { user?: AuthUser },
   ) {
     const entity = await new Query().findOneById(input.id);
     if (!entity) throw new Error("Task not found");
@@ -357,12 +356,9 @@ export default class TaskService extends BaseService {
     // Extract user for notifications and activity
     let actorId = "";
     let actorName = "Someone";
-    if (context?.request) {
-      const user = await AuthPlugin.extractUser(context.request);
-      if (user) {
-        actorId = user.id;
-        actorName = user.name;
-      }
+    if (context?.user) {
+      actorId = context.user.id;
+      actorName = context.user.name;
     }
 
     // Build activity changes
@@ -468,7 +464,7 @@ export default class TaskService extends BaseService {
   })
   async deleteTask(
     input: { id: string },
-    context: { request?: Request },
+    context: { user?: AuthUser },
   ) {
     const entity = await new Query().findOneById(input.id);
     if (!entity) throw new Error("Task not found");
@@ -478,18 +474,16 @@ export default class TaskService extends BaseService {
     const taskTitle = taskInfo?.title ?? "";
 
     // Record activity before deleting
-    if (context?.request) {
-      const user = await AuthPlugin.extractUser(context.request);
-      if (user) {
-        await ActivityService.getInstance().recordActivity({
-          taskId: input.id,
-          actorId: user.id,
-          actorName: user.name,
-          action: "deleted",
-          changes: [{ field: "title", from: taskTitle, to: "" }],
-          taskTitle,
-        });
-      }
+    if (context?.user) {
+      const user = context.user;
+      await ActivityService.getInstance().recordActivity({
+        taskId: input.id,
+        actorId: user.id,
+        actorName: user.name,
+        action: "deleted",
+        changes: [{ field: "title", from: taskTitle, to: "" }],
+        taskTitle,
+      });
     }
 
     await entity.delete();

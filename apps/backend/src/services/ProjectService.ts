@@ -29,7 +29,6 @@ import {
   ModuleTag,
 } from "~/components/ModuleComponents";
 import { ProjectMembershipData } from "~/components/ProjectMembership";
-import { AuthPlugin } from "~/plugins/AuthPlugin";
 import { getUserRole, requireManager } from "./UserService";
 import MembershipService from "./MembershipService";
 import {
@@ -39,6 +38,8 @@ import {
   extractAuthToken,
   type CoreProject,
 } from "~/lib/core-client";
+
+type AuthUser = { id: string; sub: string; email: string; name: string; picture?: string; role?: string };
 
 function computeResolvedStatus(localStatus: string, coreWinStage?: string): string {
   if (coreWinStage === "won" && localStatus === "prospect") return "won";
@@ -66,7 +67,7 @@ export default class ProjectService extends BaseService {
     type: "Query",
     output: [ProjectArcheType],
   })
-  async listProjects(_input: unknown, context: { request?: Request }) {
+  async listProjects(_input: unknown, context: { user?: AuthUser; request?: Request }) {
     const allProjects = await new Query()
       .with(ProjectTag)
       .with(ProjectCoreRefComponent)
@@ -83,7 +84,7 @@ export default class ProjectService extends BaseService {
       }
     }
 
-    const user = await this.extractUser(context);
+    const user = this.extractUser(context);
     let filteredProjects = rootProjects;
     if (user) {
       const role = user.role ?? await getUserRole(user.id);
@@ -139,11 +140,11 @@ export default class ProjectService extends BaseService {
     }),
     output: ProjectArcheType,
   })
-  async getProject(input: { id: string }, context: { request?: Request }) {
+  async getProject(input: { id: string }, context: { user?: AuthUser; request?: Request }) {
     const entity = await Entity.FindById(input.id);
     if (!entity) throw new Error("Project not found");
 
-    const user = await this.extractUser(context);
+    const user = this.extractUser(context);
     if (user) {
       const role = user.role ?? await getUserRole(user.id);
       if (role !== "manager") {
@@ -211,9 +212,9 @@ export default class ProjectService extends BaseService {
       startDate?: string;
       endDate?: string;
     },
-    context: { request?: Request },
+    context: { user?: AuthUser; request?: Request },
   ) {
-    const user = await this.extractUser(context);
+    const user = this.extractUser(context);
     if (!user) throw new Error("Authentication required");
 
     const authToken = extractAuthToken(context.request);
@@ -292,7 +293,7 @@ export default class ProjectService extends BaseService {
       endDate?: string;
       moduleId?: string;
     },
-    context: { request?: Request },
+    context: { user?: AuthUser; request?: Request },
   ) {
     // 1. Find parent project and get its coreRef
     const parent = await new Query().findOneById(input.parentProjectId);
@@ -316,7 +317,7 @@ export default class ProjectService extends BaseService {
     }
 
     // 3. Extract user for authorId
-    const user = await this.extractUser(context);
+    const user = this.extractUser(context);
     if (!user) throw new Error("Authentication required");
 
     // 4. Create project in Core with parentId
@@ -385,7 +386,7 @@ export default class ProjectService extends BaseService {
   })
   async listSubProjects(
     input: { parentProjectId: string },
-    context: { request?: Request },
+    context: { user?: AuthUser; request?: Request },
   ) {
     const allSubProjects = await new Query()
       .with(ProjectTag)
@@ -399,7 +400,7 @@ export default class ProjectService extends BaseService {
       .populate()
       .exec();
 
-    const user = await this.extractUser(context);
+    const user = this.extractUser(context);
     let filteredProjects = allSubProjects;
     if (user) {
       const role = user.role ?? await getUserRole(user.id);
@@ -457,7 +458,7 @@ export default class ProjectService extends BaseService {
     status?: string;
     projectLeaderId?: string;
     moduleId?: string | null;
-  }, context: { request?: Request }) {
+  }, context: { user?: AuthUser; request?: Request }) {
     const entity = await new Query().findOneById(input.id);
     if (!entity) throw new Error("Project not found");
 
@@ -526,10 +527,10 @@ export default class ProjectService extends BaseService {
   })
   async approveProject(
     args: { id: string; description?: string },
-    context: { request?: Request },
+    context: { user?: AuthUser; request?: Request },
   ) {
     // Manager only
-    const user = await requireManager(context);
+    const user = requireManager(context);
 
     const project = Entity.Create()
       .add(ProjectTag, {})
@@ -565,7 +566,7 @@ export default class ProjectService extends BaseService {
     }),
     output: ProjectArcheType,
   })
-  async closeProject(input: { id: string }, context: { request?: Request }) {
+  async closeProject(input: { id: string }, context: { user?: AuthUser; request?: Request }) {
     const entity = await new Query().findOneById(input.id);
     if (!entity) throw new Error("Project not found");
 
@@ -637,10 +638,9 @@ export default class ProjectService extends BaseService {
     return true;
   }
 
-  /** Extract authenticated user from request (nullable, non-throwing). */
-  private async extractUser(context: { request?: Request }) {
-    if (!context.request) return null;
-    return await AuthPlugin.extractUser(context.request);
+  /** Extract authenticated user from context (nullable, non-throwing). */
+  private extractUser(context: { user?: AuthUser }) {
+    return context.user ?? null;
   }
 
   /** Get set of project IDs the user is a member of. */

@@ -4,15 +4,14 @@ import { Query } from "bunsane/query";
 import { z } from "zod";
 import { PageInfo } from "../components/PageInfo";
 import { PageArcheType } from "../archetypes/PageArcheType";
-import { AuthPlugin } from "../plugins/AuthPlugin";
 
 const pageArcheType = new PageArcheType();
 
-async function requireUser(context: { request?: Request }) {
-  if (!context.request) throw new Error("Authentication required");
-  const user = await AuthPlugin.extractUser(context.request);
-  if (!user) throw new Error("Authentication required");
-  return user;
+type AuthUser = { id: string; sub: string; email: string; name: string; picture?: string; role?: string };
+
+function requireUser(context: { user?: AuthUser }) {
+  if (!context.user) throw new Error("Authentication required");
+  return context.user;
 }
 
 export default class PageService extends BaseService {
@@ -123,9 +122,9 @@ export default class PageService extends BaseService {
       linkedTaskId?: string;
       linkedModuleId?: string;
     },
-    context: { request?: Request },
+    context: { user?: AuthUser },
   ) {
-    const user = await requireUser(context);
+    const user = requireUser(context);
 
     if (input.linkedTaskId && input.linkedModuleId) {
       throw new Error("A page can only be linked to a task or a module, not both");
@@ -189,9 +188,9 @@ export default class PageService extends BaseService {
       linkedTaskId?: string;
       linkedModuleId?: string;
     },
-    context: { request?: Request },
+    context: { user?: AuthUser },
   ) {
-    const user = await requireUser(context);
+    const user = requireUser(context);
 
     // Validate mutual exclusivity
     const hasTaskLink = input.linkedTaskId !== undefined && input.linkedTaskId !== "";
@@ -239,9 +238,9 @@ export default class PageService extends BaseService {
   })
   async deletePage(
     input: { id: string },
-    context: { request?: Request },
+    context: { user?: AuthUser },
   ) {
-    await requireUser(context);
+    requireUser(context);
 
     const entity = await new Query().findOneById(input.id);
     if (!entity) throw new Error("Page not found");
@@ -260,9 +259,9 @@ export default class PageService extends BaseService {
   })
   async reorderPages(
     input: { projectId: string; pageIds: string[] },
-    context: { request?: Request },
+    context: { user?: AuthUser },
   ) {
-    await requireUser(context);
+    requireUser(context);
 
     for (let i = 0; i < input.pageIds.length; i++) {
       const entity = await new Query().findOneById(input.pageIds[i]);

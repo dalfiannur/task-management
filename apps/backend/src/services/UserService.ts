@@ -5,9 +5,10 @@ import { GraphQLOperation } from "bunsane/gql";
 import { z } from "zod";
 import { UserProfile } from "../components/UserProfile";
 import { UserArcheType } from "../archetypes/UserArcheType";
-import { AuthPlugin } from "../plugins/AuthPlugin";
 
 const userArcheType = new UserArcheType();
+
+type AuthUser = { id: string; sub: string; email: string; name: string; picture?: string; role?: string };
 
 export async function findUserByExternalId(externalId: string) {
   const entities = await new Query()
@@ -28,13 +29,11 @@ export async function getUserRole(externalId: string): Promise<string> {
   return profile?.role ?? "member";
 }
 
-export async function requireManager(context: { request?: Request }) {
-  if (!context.request) throw new Error("Authentication required");
-  const user = await AuthPlugin.extractUser(context.request);
-  if (!user) throw new Error("Authentication required");
-  // const role = user.role ?? await getUserRole(user.id);
+export function requireManager(context: { user?: AuthUser }) {
+  if (!context.user) throw new Error("Authentication required");
+  // const role = context.user.role ?? await getUserRole(context.user.id);
   // if (role !== "manager") throw new Error("Manager access required");
-  return user;
+  return context.user;
 }
 
 export default class UserService extends BaseService {
@@ -67,9 +66,9 @@ export default class UserService extends BaseService {
   })
   async setUserRole(
     input: { userId: string; role: string },
-    context: { request?: Request },
+    context: { user?: AuthUser },
   ) {
-    await requireManager(context);
+    requireManager(context);
 
     const user = await findUserByExternalId(input.userId);
     if (!user) throw new Error("User not found");
