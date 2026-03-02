@@ -547,11 +547,21 @@ export default class ProjectService extends BaseService {
     // Manager only
     const user = requireManager(context);
 
+    // Fetch Core data first to get the project name
+    const authToken = extractAuthToken(context.request);
+    const coreData = await fetchCoreProject(args.id, authToken);
+    const projectName = coreData?.name.name ?? "";
+
     const project = Entity.Create()
       .add(ProjectTag, {})
+      .add(ProjectNameComponent, { value: projectName })
       .add(ProjectCoreRefComponent, { value: args.id })
       .add(ProjectDescriptionComponent, { value: args.description || "" })
       .add(ProjectStatusComponent, { value: "prospect" });
+
+    if (coreData?.ref?.leaderId) {
+      project.add(ProjectLeaderIdComponent, { value: coreData.ref.leaderId });
+    }
 
     await project.save();
 
@@ -563,12 +573,13 @@ export default class ProjectService extends BaseService {
 
     await module.save();
 
-    // Auto-add approver as member
+    // Auto-add approver and leader as members
     await MembershipService.getInstance().ensureMembership(project.id, user.id);
+    if (coreData?.ref?.leaderId) {
+      await MembershipService.getInstance().ensureMembership(project.id, coreData.ref.leaderId);
+    }
 
-    // Enrich with Core data
-    const authToken = extractAuthToken(context.request);
-    const coreData = await fetchCoreProject(args.id, authToken);
+    // Enrich with Core data (already fetched above)
     enrichEntity(project, coreData, "prospect");
 
     return project;

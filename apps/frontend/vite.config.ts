@@ -16,11 +16,6 @@ export default defineConfig(({ mode }) => {
       alias: {
         "@": path.resolve(__dirname, "./src"),
       },
-      "/api-media/": {
-        target: process.env.VITE_MEDIA_API_BASE_URL ?? "http://localhost:3500",
-        changeOrigin: true,
-        rewrite: (path: string) => path.replace(/^\/api-media/, ""),
-      },
     },
     server: {
       host: '0.0.0.0',
@@ -38,6 +33,11 @@ export default defineConfig(({ mode }) => {
         "/api-oidc/": {
           target: env.VITE_OIDC_API_BASE_URL ?? "http://localhost:3100",
           changeOrigin: true,
+        },
+        "/api-media/": {
+          target: env.VITE_MEDIA_API_BASE_URL ?? "http://localhost:3103",
+          changeOrigin: true,
+          rewrite: (path: string) => path.replace(/^\/api-media/, ""),
         },
       },
     },
