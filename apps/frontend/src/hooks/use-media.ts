@@ -19,7 +19,7 @@ import { mapRemoteToMediaFile } from "@/types/media";
 const MEDIA_FILE_FIELDS = gql`
   fragment MediaFileFields on MediaFile {
     id
-    publicUrl
+    url
     info {
       fileName
       originalFileName
@@ -288,7 +288,7 @@ export function useUploadMedia() {
         mimeType: info.mimeType ?? vars.file.type,
         size: info.size ?? vars.file.size,
         storageKey: info.storageKey ?? "",
-        url: uploaded.publicUrl ?? "",
+        url: uploaded.url ?? "",
         projectId: vars.mediaProjectId,
         taskId: vars.taskId ?? "",
         uploadedBy: info.uploadedBy ?? "",

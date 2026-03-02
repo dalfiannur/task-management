@@ -39,6 +39,10 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           rewrite: (path: string) => path.replace(/^\/api-media/, ""),
         },
+        "/api-sales/": {
+          target: env.VITE_SALES_API_BASE_URL ?? "http://localhost:3102",
+          changeOrigin: true,
+        },
       },
     },
   };
