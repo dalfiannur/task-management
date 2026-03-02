@@ -43,20 +43,23 @@ export default class TasksAPI extends App {
     // Set up auth context from OIDC token + auto-sync user
     this.setGraphQLContextFactory(async (context: { request: Request }) => {
       const user = await AuthPlugin.extractUser(context.request);
-      if (user) {
-        try {
-          const userService = new UserService();
-          await userService.syncFromOIDC({
-            sub: user.sub,
-            email: user.email,
-            name: user.name,
-            picture: user.picture,
-            role: user.role,
-          });
-        } catch (err) {
-          console.error("[AuthPlugin] Failed to sync user from OIDC:", err);
-        }
+      if (!user) {
+        throw new Error("Authentication required");
       }
+
+      try {
+        const userService = new UserService();
+        await userService.syncFromOIDC({
+          sub: user.sub,
+          email: user.email,
+          name: user.name,
+          picture: user.picture,
+          role: user.role,
+        });
+      } catch (err) {
+        console.error("[AuthPlugin] Failed to sync user from OIDC:", err);
+      }
+
       return { user, request: context.request };
     });
 
