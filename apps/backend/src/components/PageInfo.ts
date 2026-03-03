@@ -14,7 +14,7 @@ export class PageInfo extends BaseComponent {
   @CompData()
   content: string = "";
 
-  @CompData()
+  @CompData({ indexed: true })
   order: number = 0;
 
   @CompData({ indexed: true })
@@ -29,7 +29,7 @@ export class PageInfo extends BaseComponent {
   @CompData()
   lastEditedByName: string = "";
 
-  @CompData()
+  @CompData({ indexed: true })
   createdAt: string = "";
 
   @CompData()

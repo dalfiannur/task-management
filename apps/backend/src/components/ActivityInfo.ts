@@ -20,6 +20,6 @@ export class ActivityInfo extends BaseComponent {
   @CompData()
   changes: string = "[]";
 
-  @CompData()
+  @CompData({ indexed: true })
   createdAt: string = "";
 }

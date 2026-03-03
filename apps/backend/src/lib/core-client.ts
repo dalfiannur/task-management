@@ -1,4 +1,4 @@
-const CORE_API_URL = process.env.CORE_API_URL ?? "http://localhost:3200/graphql";
+const CORE_API_URL = process.env.CORE_API_URL ?? "http://localhost:3101/graphql";
 
 const CACHE_TTL_MS = 60_000;
 

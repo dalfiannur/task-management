@@ -1,4 +1,4 @@
-import { ArcheType, ArcheTypeField, BaseArcheType } from "bunsane/core/ArcheType";
+import { ArcheType, ArcheTypeField, BaseArcheType, type ArcheTypeOwnProperties } from "bunsane/core/ArcheType";
 import { ProjectMembershipData } from "~/components/ProjectMembership";
 import { ArcheTypeNames } from "./ArcheTypeNames";
 
@@ -8,4 +8,5 @@ export class ProjectMembershipArcheTypeClass extends BaseArcheType {
   membership!: ProjectMembershipData;
 }
 
+export type IProjectMembershipArcheType = ArcheTypeOwnProperties<ProjectMembershipArcheTypeClass>;
 export const ProjectMembershipArcheType = new ProjectMembershipArcheTypeClass();

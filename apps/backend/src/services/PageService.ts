@@ -1,7 +1,7 @@
 import { BaseService } from "bunsane/service";
 import { GraphQLOperation } from "bunsane/gql";
+import { t } from "bunsane/gql/schema";
 import { Query } from "bunsane/query";
-import { z } from "zod";
 import { PageInfo } from "../components/PageInfo";
 import { PageArcheType } from "../archetypes/PageArcheType";
 
@@ -11,7 +11,16 @@ type AuthUser = { id: string; sub: string; email: string; name: string; picture?
 
 function requireUser(context: { user?: AuthUser }) {
   if (!context.user) throw new Error("Authentication required");
-  return context.user;
+  const user = context.user;
+  const id = user.id?.trim() || user.sub?.trim();
+  if (!id) throw new Error("Authentication required");
+  const name =
+    user.name?.trim() ||
+    user.email?.trim() ||
+    user.sub?.trim() ||
+    id ||
+    "Unknown";
+  return { ...user, id, name };
 }
 
 export default class PageService extends BaseService {
@@ -22,41 +31,28 @@ export default class PageService extends BaseService {
 
   @GraphQLOperation({
     type: "Query",
-    input: z.object({
-      projectId: z.string(),
-    }),
+    input: {
+      projectId: t.string().required(),
+    },
     output: [pageArcheType],
   })
   async listPages(input: { projectId: string }) {
-    const entities = await new Query()
+    return await new Query()
       .with(PageInfo, {
         filters: [
           Query.typedFilter(PageInfo, "projectId", "=", input.projectId),
         ],
       })
+      .sortBy(PageInfo, "order", "ASC")
       .populate()
       .exec();
-
-    // Sort by order ASC, then createdAt ASC
-    const sorted = await Promise.all(
-      entities.map(async (e: any) => ({
-        entity: e,
-        info: await e.get(PageInfo),
-      })),
-    );
-    sorted.sort((a, b) => {
-      const orderDiff = (a.info?.order ?? 0) - (b.info?.order ?? 0);
-      if (orderDiff !== 0) return orderDiff;
-      return (a.info?.createdAt ?? "").localeCompare(b.info?.createdAt ?? "");
-    });
-    return sorted.map((s) => s.entity);
   }
 
   @GraphQLOperation({
     type: "Query",
-    input: z.object({
-      id: z.string(),
-    }),
+    input: {
+      id: t.string().required(),
+    },
     output: pageArcheType,
   })
   async getPage(input: { id: string }) {
@@ -67,9 +63,9 @@ export default class PageService extends BaseService {
 
   @GraphQLOperation({
     type: "Query",
-    input: z.object({
-      taskId: z.string(),
-    }),
+    input: {
+      taskId: t.string().required(),
+    },
     output: [pageArcheType],
   })
   async listPagesByTask(input: { taskId: string }) {
@@ -85,9 +81,9 @@ export default class PageService extends BaseService {
 
   @GraphQLOperation({
     type: "Query",
-    input: z.object({
-      moduleId: z.string(),
-    }),
+    input: {
+      moduleId: t.string().required(),
+    },
     output: [pageArcheType],
   })
   async listPagesByModule(input: { moduleId: string }) {
@@ -103,14 +99,14 @@ export default class PageService extends BaseService {
 
   @GraphQLOperation({
     type: "Mutation",
-    input: z.object({
-      projectId: z.string(),
-      title: z.string(),
-      icon: z.string().optional(),
-      content: z.string().optional(),
-      linkedTaskId: z.string().optional(),
-      linkedModuleId: z.string().optional(),
-    }),
+    input: {
+      projectId: t.string().required(),
+      title: t.string().required(),
+      icon: t.string(),
+      content: t.string(),
+      linkedTaskId: t.string(),
+      linkedModuleId: t.string(),
+    },
     output: pageArcheType,
   })
   async createPage(
@@ -167,15 +163,15 @@ export default class PageService extends BaseService {
 
   @GraphQLOperation({
     type: "Mutation",
-    input: z.object({
-      id: z.string(),
-      title: z.string().optional(),
-      icon: z.string().optional(),
-      content: z.string().optional(),
-      order: z.number().optional(),
-      linkedTaskId: z.string().optional(),
-      linkedModuleId: z.string().optional(),
-    }),
+    input: {
+      id: t.string().required(),
+      title: t.string(),
+      icon: t.string(),
+      content: t.string(),
+      order: t.int(),
+      linkedTaskId: t.string(),
+      linkedModuleId: t.string(),
+    },
     output: pageArcheType,
   })
   async updatePage(
@@ -231,9 +227,9 @@ export default class PageService extends BaseService {
 
   @GraphQLOperation({
     type: "Mutation",
-    input: z.object({
-      id: z.string(),
-    }),
+    input: {
+      id: t.string().required(),
+    },
     output: "Boolean",
   })
   async deletePage(
@@ -251,10 +247,10 @@ export default class PageService extends BaseService {
 
   @GraphQLOperation({
     type: "Mutation",
-    input: z.object({
-      projectId: z.string(),
-      pageIds: z.array(z.string()),
-    }),
+    input: {
+      projectId: t.string().required(),
+      pageIds: t.list(t.string()).required(),
+    },
     output: "Boolean",
   })
   async reorderPages(
@@ -263,8 +259,16 @@ export default class PageService extends BaseService {
   ) {
     requireUser(context);
 
-    for (let i = 0; i < input.pageIds.length; i++) {
-      const entity = await new Query().findOneById(input.pageIds[i]);
+    if (input.pageIds.length === 0) return true;
+
+    // Fetch all pages in parallel
+    const entities = await Promise.all(
+      input.pageIds.map((id) => new Query().findOneById(id))
+    );
+
+    // Update order for each page
+    for (let i = 0; i < entities.length; i++) {
+      const entity = entities[i];
       if (entity) {
         await entity.set(PageInfo, { order: i });
         await entity.save();

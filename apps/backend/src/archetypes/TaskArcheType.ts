@@ -1,7 +1,6 @@
 import {
   ArcheType,
   ArcheTypeField,
-  BelongsTo,
   BaseArcheType,
   type ArcheTypeOwnProperties,
 } from "bunsane/core/ArcheType";
@@ -21,3 +20,5 @@ export class TaskArcheType extends BaseArcheType {
   @ArcheTypeField(TaskLabels)
   taskLabels!: TaskLabels;
 }
+
+export type ITaskArcheType = ArcheTypeOwnProperties<TaskArcheType>;

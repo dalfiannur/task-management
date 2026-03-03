@@ -20,10 +20,10 @@ export class TaskInfo extends BaseComponent {
   @CompData()
   dueDate: string = "";
 
-  @CompData()
+  @CompData({ indexed: true })
   order: number = 0;
 
-  @CompData()
+  @CompData({ indexed: true })
   createdAt: string = "";
 
   @CompData()

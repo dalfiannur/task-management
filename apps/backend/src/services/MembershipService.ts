@@ -1,7 +1,7 @@
 import { BaseService } from "bunsane/service";
 import { GraphQLOperation } from "bunsane/gql";
+import { t } from "bunsane/gql/schema";
 import { Query } from "bunsane/query";
-import { z } from "zod";
 import { ProjectMembershipData } from "~/components/ProjectMembership";
 import { ProjectMembershipArcheTypeClass } from "~/archetypes/ProjectMembershipArcheType";
 import { ProjectLeaderIdComponent } from "~/components/ProjectComponents";
@@ -16,6 +16,7 @@ export default class MembershipService extends BaseService {
 
   constructor() {
     super();
+    membershipArcheType.registerFieldResolvers(this);
     MembershipService.instance = this;
   }
 
@@ -46,7 +47,7 @@ export default class MembershipService extends BaseService {
 
   @GraphQLOperation({
     type: "Query",
-    input: z.object({ projectId: z.string() }),
+    input: { projectId: t.string().required() },
     output: [membershipArcheType],
   })
   async listProjectMembers(input: { projectId: string }) {
@@ -58,17 +59,16 @@ export default class MembershipService extends BaseService {
       })
       .populate()
       .exec();
-    return await Promise.all(
-      entities.map(async (e: any) => {
-        const data = await e.get(ProjectMembershipData);
-        return { id: e.id, membership: data };
-      }),
-    );
+    // Components already cached after populate - use getInMemory
+    return entities.map((e: any) => {
+      const data = e.getInMemory(ProjectMembershipData);
+      return { id: e.id, membership: data };
+    });
   }
 
   @GraphQLOperation({
     type: "Mutation",
-    input: z.object({ projectId: z.string(), userId: z.string() }),
+    input: { projectId: t.string().required(), userId: t.string().required() },
     output: "Boolean",
   })
   async addProjectMember(
@@ -82,7 +82,7 @@ export default class MembershipService extends BaseService {
 
   @GraphQLOperation({
     type: "Mutation",
-    input: z.object({ projectId: z.string(), userId: z.string() }),
+    input: { projectId: t.string().required(), userId: t.string().required() },
     output: "Boolean",
   })
   async removeProjectMember(

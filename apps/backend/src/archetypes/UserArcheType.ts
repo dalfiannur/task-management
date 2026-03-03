@@ -1,7 +1,6 @@
 import {
   ArcheType,
   ArcheTypeField,
-  BelongsTo,
   BaseArcheType,
   type ArcheTypeOwnProperties,
 } from "bunsane/core/ArcheType";
@@ -13,3 +12,5 @@ export class UserArcheType extends BaseArcheType {
   @ArcheTypeField(UserProfile)
   userProfile!: UserProfile;
 }
+
+export type IUserArcheType = ArcheTypeOwnProperties<UserArcheType>;

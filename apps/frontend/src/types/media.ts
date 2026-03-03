@@ -17,13 +17,13 @@ export interface MediaFile {
 /** Raw shape returned by sedjiwa-media GraphQL */
 export interface MediaFileRemote {
   id: string;
+  url: string;
   info: {
     fileName: string;
     originalFileName: string;
     mimeType: string;
     size: number;
     storageKey: string;
-    url: string;
     projectId: string;
     uploadedBy: string;
   };
@@ -52,7 +52,7 @@ export function mapRemoteToMediaFile(
       mimeType: remote.info.mimeType,
       size: remote.info.size,
       storageKey: remote.info.storageKey,
-      url: remote.info.url,
+      url: remote.url ?? '',
       projectId: remote.info.projectId,
       taskId: taskId ?? "",
       uploadedBy: remote.info.uploadedBy,

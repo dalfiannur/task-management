@@ -1,4 +1,3 @@
-import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -7,12 +6,12 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { RichTextEditor } from "@/components/ui/rich-text-editor";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 import { useApproveProject } from "@/hooks/use-projects";
+import { client } from "@/lib/graphql-client";
 import type { Project } from "@/types/project";
-import { useApproveLead } from "@/hooks/use-leads";
+import { useApproveLead, useDealBrief, useProjectMediaFiles } from "@/hooks/use-leads";
+import { FileText } from "lucide-react";
 import styles from "./approve-lead-dialog.module.css";
 
 interface ApproveLeadDialogProps {
@@ -26,30 +25,23 @@ export function ApproveLeadDialog({
   open,
   onOpenChange,
 }: ApproveLeadDialogProps) {
-  const [description, setDescription] = useState("");
   const approveProject = useApproveProject();
   const approveLead = useApproveLead();
+  const { data: dealBrief, isLoading: briefLoading } = useDealBrief(project?.id, project?.companyId);
+  const { files: mediaFiles, isLoading: mediaLoading } = useProjectMediaFiles(project?.id);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!project) return;
-
-    approveProject.mutate(
-      { id: project.id, description },
-      {
-        onSuccess: () => {
-          approveLead.mutate(
-            { id: project.id, winStage: "inactive" },
-            {
-              onSuccess: () => {
-                setDescription("");
-                onOpenChange(false);
-              }
-            }
-          )
-        },
-      },
-    );
+    try {
+      await approveProject.mutateAsync({ id: project.id, description: dealBrief?.briefDescription });
+      await approveLead.mutateAsync({ id: project.id, winStage: "inactive" });
+      // Refetch tasks project list after Core winStage is updated so commercial section shows it
+      await client.refetchQueries({ include: ['ListProjects'] });
+      onOpenChange(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to approve lead. Please try again.");
+    }
   }
 
   return (
@@ -60,20 +52,44 @@ export function ApproveLeadDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit} className={styles.form}>
           <div className={styles.fieldGroup}>
-            <Label htmlFor="description">Description / Brief</Label>
-            <RichTextEditor
-              content={description}
-              onChange={setDescription}
-              placeholder="Enter project brief..."
-            />
+            <span className={styles.label}>Description / Brief</span>
+            {briefLoading ? (
+              <p className={styles.hint}>Loading brief...</p>
+            ) : dealBrief?.briefDescription ? (
+              <div
+                className={styles.briefContent}
+                dangerouslySetInnerHTML={{ __html: dealBrief.briefDescription }}
+              />
+            ) : (
+              <p className={styles.hint}>No brief provided from Sales Pipeline.</p>
+            )}
           </div>
+
           <div className={styles.fieldGroup}>
-            <Label htmlFor="attachments">Attachment Files</Label>
-            <Input id="attachments" type="file" multiple />
-            <p className={styles.hint}>
-              Optional. Upload relevant documents.
-            </p>
+            <span className={styles.label}>Attachments</span>
+            {mediaLoading ? (
+              <p className={styles.hint}>Loading attachments...</p>
+            ) : mediaFiles.length > 0 ? (
+              <ul className={styles.fileList}>
+                {mediaFiles.map((file) => (
+                  <li key={file.id} className={styles.fileItem}>
+                    <FileText size={16} />
+                    <a
+                      href={file.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={styles.fileLink}
+                    >
+                      {file.fileName}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className={styles.hint}>No attachments.</p>
+            )}
           </div>
+
           <DialogFooter>
             <Button
               type="button"
@@ -82,7 +98,7 @@ export function ApproveLeadDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={approveProject.isLoading}>
+            <Button type="submit" disabled={approveProject.isLoading || briefLoading}>
               {approveProject.isLoading ? "Approving..." : "Approve"}
             </Button>
           </DialogFooter>

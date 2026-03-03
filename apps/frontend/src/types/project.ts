@@ -31,6 +31,7 @@ export interface Project {
     winStage?: string;
     resolvedStatus?: string;
     closedAt?: string;
+    companyId?: string;
 }
 
 export interface CreateProjectInput {

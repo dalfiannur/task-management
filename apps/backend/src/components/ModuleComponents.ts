@@ -29,6 +29,6 @@ export class ModulePicIdComponent extends BaseComponent {
 
 @Component
 export class ModuleOrderComponent extends BaseComponent {
-  @CompData()
+  @CompData({ indexed: true })
   value: number = 0;
 }

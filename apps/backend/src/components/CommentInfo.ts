@@ -14,7 +14,7 @@ export class CommentInfo extends BaseComponent {
   @CompData()
   content: string = "";
 
-  @CompData()
+  @CompData({ indexed: true })
   createdAt: string = "";
 
   @CompData()

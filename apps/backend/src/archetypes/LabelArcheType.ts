@@ -1,7 +1,6 @@
 import {
   ArcheType,
   ArcheTypeField,
-  BelongsTo,
   BaseArcheType,
   type ArcheTypeOwnProperties,
 } from "bunsane/core/ArcheType";
@@ -13,3 +12,5 @@ export class LabelArcheType extends BaseArcheType {
   @ArcheTypeField(LabelInfo)
   labelInfo!: LabelInfo;
 }
+
+export type ILabelArcheType = ArcheTypeOwnProperties<LabelArcheType>;

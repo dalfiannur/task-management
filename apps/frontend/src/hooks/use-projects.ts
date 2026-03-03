@@ -191,7 +191,7 @@ export const useApproveProject = createMutationHook<
     input: { id: input.id, description: input.description },
   }),
   mapResponse: mapProject,
-  refetchQueries: [LIST_PROJECTS, GET_PROJECT],
+  refetchQueries: [LIST_PROJECTS],
 });
 
 export const useUpdateProject = createMutationHook<

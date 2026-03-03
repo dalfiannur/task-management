@@ -1,9 +1,9 @@
 import { BaseService } from "bunsane/service";
 import { GraphQLOperation } from 'bunsane/gql';
+import { t } from 'bunsane/gql/schema';
 import { Entity } from 'bunsane/core/Entity';
 import { Query } from 'bunsane/query';
 import { GraphQLError } from "graphql";
-import { z } from "zod";
 import { ProjectArcheType } from "../archetypes/ProjectArcheType";
 import {
   ProjectCoreRefComponent,
@@ -136,9 +136,9 @@ export default class ProjectService extends BaseService {
 
   @GraphQLOperation({
     type: "Query",
-    input: z.object({
-      id: z.string(),
-    }),
+    input: {
+      id: t.string().required(),
+    },
     output: ProjectArcheType,
   })
   async getProject(input: { id: string }, context: { user?: AuthUser; request?: Request }) {
@@ -188,18 +188,18 @@ export default class ProjectService extends BaseService {
 
   @GraphQLOperation({
     type: "Mutation",
-    input: z.object({
-      name: z.string(),
-      clientId: z.string(),
-      description: z.string().optional(),
-      projectLeaderId: z.string().optional(),
-      ownerId: z.string().optional(),
-      divisionId: z.string().optional(),
-      commercial: z.boolean().optional(),
-      value: z.number().optional(),
-      startDate: z.string().optional(),
-      endDate: z.string().optional(),
-    }),
+    input: {
+      name: t.string().required(),
+      clientId: t.string().required(),
+      description: t.string(),
+      projectLeaderId: t.string(),
+      ownerId: t.string(),
+      divisionId: t.string(),
+      commercial: t.boolean(),
+      value: t.float(),
+      startDate: t.string(),
+      endDate: t.string(),
+    },
     output: ProjectArcheType,
   })
   async createProject(
@@ -269,19 +269,19 @@ export default class ProjectService extends BaseService {
 
   @GraphQLOperation({
     type: "Mutation",
-    input: z.object({
-      parentProjectId: z.string(),
-      name: z.string(),
-      description: z.string().optional(),
-      projectLeaderId: z.string().optional(),
-      ownerId: z.string().optional(),
-      divisionId: z.string().optional(),
-      commercial: z.boolean().optional(),
-      value: z.number().optional(),
-      startDate: z.string().optional(),
-      endDate: z.string().optional(),
-      moduleId: z.string().optional(),
-    }),
+    input: {
+      parentProjectId: t.string().required(),
+      name: t.string().required(),
+      description: t.string(),
+      projectLeaderId: t.string(),
+      ownerId: t.string(),
+      divisionId: t.string(),
+      commercial: t.boolean(),
+      value: t.float(),
+      startDate: t.string(),
+      endDate: t.string(),
+      moduleId: t.string(),
+    },
     output: ProjectArcheType,
   })
   async createSubProject(
@@ -392,7 +392,7 @@ export default class ProjectService extends BaseService {
 
   @GraphQLOperation({
     type: "Query",
-    input: z.object({ parentProjectId: z.string() }),
+    input: { parentProjectId: t.string().required() },
     output: [ProjectArcheType],
   })
   async listSubProjects(
@@ -452,14 +452,14 @@ export default class ProjectService extends BaseService {
 
   @GraphQLOperation({
     type: "Mutation",
-    input: z.object({
-      id: z.string(),
-      name: z.string().optional(),
-      description: z.string().optional(),
-      status: z.string().optional(),
-      projectLeaderId: z.string().optional(),
-      moduleId: z.string().nullable().optional(),
-    }),
+    input: {
+      id: t.string().required(),
+      name: t.string(),
+      description: t.string(),
+      status: t.string(),
+      projectLeaderId: t.string(),
+      moduleId: t.string(),
+    },
     output: ProjectArcheType,
   })
   async updateProject(input: {
@@ -534,10 +534,10 @@ export default class ProjectService extends BaseService {
 
   @GraphQLOperation({
     type: "Mutation",
-    input: z.object({
-      id: z.string(),
-      description: z.string().optional(),
-    }),
+    input: {
+      id: t.string().required(),
+      description: t.string(),
+    },
     output: ProjectArcheType,
   })
   async approveProject(
@@ -547,11 +547,21 @@ export default class ProjectService extends BaseService {
     // Manager only
     const user = requireManager(context);
 
+    // Fetch Core data first to get the project name
+    const authToken = extractAuthToken(context.request);
+    const coreData = await fetchCoreProject(args.id, authToken);
+    const projectName = coreData?.name.name ?? "";
+
     const project = Entity.Create()
       .add(ProjectTag, {})
+      .add(ProjectNameComponent, { value: projectName })
       .add(ProjectCoreRefComponent, { value: args.id })
       .add(ProjectDescriptionComponent, { value: args.description || "" })
       .add(ProjectStatusComponent, { value: "prospect" });
+
+    if (coreData?.ref?.leaderId) {
+      project.add(ProjectLeaderIdComponent, { value: coreData.ref.leaderId });
+    }
 
     await project.save();
 
@@ -563,12 +573,13 @@ export default class ProjectService extends BaseService {
 
     await module.save();
 
-    // Auto-add approver as member
+    // Auto-add approver and leader as members
     await MembershipService.getInstance().ensureMembership(project.id, user.id);
+    if (coreData?.ref?.leaderId) {
+      await MembershipService.getInstance().ensureMembership(project.id, coreData.ref.leaderId);
+    }
 
-    // Enrich with Core data
-    const authToken = extractAuthToken(context.request);
-    const coreData = await fetchCoreProject(args.id, authToken);
+    // Enrich with Core data (already fetched above)
     enrichEntity(project, coreData, "prospect");
 
     return project;
@@ -576,9 +587,9 @@ export default class ProjectService extends BaseService {
 
   @GraphQLOperation({
     type: "Mutation",
-    input: z.object({
-      id: z.string(),
-    }),
+    input: {
+      id: t.string().required(),
+    },
     output: ProjectArcheType,
   })
   async closeProject(input: { id: string }, context: { user?: AuthUser; request?: Request }) {
@@ -611,9 +622,9 @@ export default class ProjectService extends BaseService {
 
   @GraphQLOperation({
     type: "Mutation",
-    input: z.object({
-      id: z.string(),
-    }),
+    input: {
+      id: t.string().required(),
+    },
     output: "Boolean",
   })
   async deleteProject(input: { id: string }) {
@@ -643,10 +654,10 @@ export default class ProjectService extends BaseService {
 
   @GraphQLOperation({
     type: "Mutation",
-    input: z.object({
-      id: z.string(),
-      status: z.enum(['prospect', 'win', 'on_going'])
-    }),
+    input: {
+      id: t.string().required(),
+      status: t.enum(['prospect', 'win', 'on_going'] as const, 'ProjectStatusEnum').required(),
+    },
     output: "Boolean",
   })
   async updateProjectStatus(input: { id: string; status: string }) {

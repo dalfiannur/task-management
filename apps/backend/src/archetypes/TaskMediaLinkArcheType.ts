@@ -2,6 +2,7 @@ import {
   ArcheType,
   ArcheTypeField,
   BaseArcheType,
+  type ArcheTypeOwnProperties,
 } from "bunsane/core/ArcheType";
 import { TaskMediaLinkTag, TaskMediaLinkData } from "../components/TaskMediaLink";
 import { ArcheTypeNames } from "./ArcheTypeNames";
@@ -14,3 +15,5 @@ export class TaskMediaLinkArcheType extends BaseArcheType {
   @ArcheTypeField(TaskMediaLinkData)
   taskMediaLinkData!: TaskMediaLinkData;
 }
+
+export type ITaskMediaLinkArcheType = ArcheTypeOwnProperties<TaskMediaLinkArcheType>;
