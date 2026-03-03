@@ -1,18 +1,13 @@
+import { useMemo } from "react";
 import { useAuth } from "react-oidc-context";
-import {
-  History,
-  MessageSquare,
-  Plus,
-  ArrowRight,
-  Loader2,
-} from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useComments } from "@/hooks/use-comments";
 import { useActivities } from "@/hooks/use-activities";
 import { useUsers } from "@/hooks/use-users";
 import { useLabels } from "@/hooks/use-labels";
+import { resolveDisplayName } from "@/lib/utils";
 import {
   CommentItem,
-  AddCommentForm,
   formatRelativeTime,
 } from "./task-comments";
 import {
@@ -22,7 +17,12 @@ import {
   type TaskPriority,
 } from "@/types/task";
 import type { Activity, FieldChange } from "@/types/activity";
+import type { Comment } from "@/types/comment";
 import styles from "./task-activity-timeline.module.css";
+
+type TimelineEntry =
+  | { kind: "comment"; timestamp: number; data: Comment }
+  | { kind: "activity"; timestamp: number; data: Activity; changes: FieldChange[] };
 
 interface TaskActivityTimelineProps {
   taskId: string;
@@ -42,160 +42,142 @@ export function TaskActivityTimeline({
   const { data: users = [] } = useUsers();
   const { data: labels = [] } = useLabels(projectId);
 
-  const sortedComments = [...comments].sort(
-    (a, b) =>
-      new Date(a.commentInfo.createdAt).getTime() -
-      new Date(b.commentInfo.createdAt).getTime(),
-  );
+  const timeline = useMemo<TimelineEntry[]>(() => {
+    const entries: TimelineEntry[] = [];
 
-  const sortedActivities = [...activities].sort(
-    (a, b) =>
-      new Date(a.activityInfo.createdAt).getTime() -
-      new Date(b.activityInfo.createdAt).getTime(),
-  );
+    for (const comment of comments) {
+      entries.push({
+        kind: "comment",
+        timestamp: new Date(comment.commentInfo.createdAt).getTime(),
+        data: comment,
+      });
+    }
+
+    for (const activity of activities) {
+      let changes: FieldChange[] = [];
+      try {
+        changes = JSON.parse(activity.activityInfo.changes);
+      } catch {
+        changes = [];
+      }
+      entries.push({
+        kind: "activity",
+        timestamp: new Date(activity.activityInfo.createdAt).getTime(),
+        data: activity,
+        changes,
+      });
+    }
+
+    entries.sort((a, b) => a.timestamp - b.timestamp);
+    return entries;
+  }, [comments, activities]);
+
+  const isLoading = commentsLoading || activitiesLoading;
+
+  if (isLoading) {
+    return (
+      <div className={styles.loadingRow}>
+        <Loader2 className={styles.spinner} />
+        Loading...
+      </div>
+    );
+  }
+
+  if (timeline.length === 0) {
+    return (
+      <p className={styles.emptyText}>No comments or activity yet</p>
+    );
+  }
 
   return (
-    <div className={styles.container}>
-      {/* Comments Section */}
-      <div className={styles.section}>
-        <p className={styles.sectionLabel}>
-          <MessageSquare className={styles.sectionIcon} />
-          Comments ({comments.length})
-        </p>
+    <div className={styles.timeline}>
+      {timeline.map((entry) => {
+        if (entry.kind === "comment") {
+          return (
+            <CommentItem
+              key={`c-${entry.data.id}`}
+              comment={entry.data}
+              isAuthor={entry.data.commentInfo.authorId === currentUserId}
+              taskId={taskId}
+              users={users}
+            />
+          );
+        }
 
-        {commentsLoading ? (
-          <div className={styles.loadingRow}>
-            <Loader2 className={styles.spinner} />
-            Loading comments...
-          </div>
-        ) : sortedComments.length === 0 ? (
-          <p className={styles.emptyText}>
-            No comments yet
-          </p>
-        ) : (
-          <div className={styles.commentsList}>
-            {sortedComments.map((comment) => (
-              <CommentItem
-                key={comment.id}
-                comment={comment}
-                isAuthor={comment.commentInfo.authorId === currentUserId}
-                taskId={taskId}
-                users={users}
-              />
-            ))}
-          </div>
-        )}
+        const { data: activity, changes } = entry;
+        const { activityInfo } = activity;
 
-        <AddCommentForm taskId={taskId} />
-      </div>
+        if (activityInfo.action === "created") {
+          return (
+            <ActivityEntry
+              key={`a-${activity.id}`}
+              color="green"
+              actorId={activityInfo.actorId}
+              actorName={activityInfo.actorName}
+              users={users}
+              time={activityInfo.createdAt}
+              text="created this task"
+            />
+          );
+        }
 
-      {/* Activity Section */}
-      <div className={styles.section}>
-        <p className={styles.sectionLabel}>
-          <History className={styles.sectionIcon} />
-          Activity ({activities.length})
-        </p>
+        if (activityInfo.action === "deleted") {
+          return (
+            <ActivityEntry
+              key={`a-${activity.id}`}
+              color="red"
+              actorId={activityInfo.actorId}
+              actorName={activityInfo.actorName}
+              users={users}
+              time={activityInfo.createdAt}
+              text="deleted this task"
+            />
+          );
+        }
 
-        {activitiesLoading ? (
-          <div className={styles.loadingRow}>
-            <Loader2 className={styles.spinner} />
-            Loading activity...
-          </div>
-        ) : sortedActivities.length === 0 ? (
-          <p className={styles.emptyText}>
-            No activity yet
-          </p>
-        ) : (
-          <div className={styles.activityList}>
-            {sortedActivities.map((activity) => (
-              <ActivityItem
-                key={activity.id}
-                activity={activity}
-                users={users}
-                labels={labels}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+        // "updated" — one row per change
+        return changes.map((change, i) => (
+          <ActivityEntry
+            key={`a-${activity.id}-${i}`}
+            color="muted"
+            actorId={activityInfo.actorId}
+            actorName={activityInfo.actorName}
+            users={users}
+            time={activityInfo.createdAt}
+            text={formatFieldChange(change, users, labels)}
+          />
+        ));
+      })}
     </div>
   );
 }
 
-function ActivityItem({
-  activity,
+function ActivityEntry({
+  color,
+  actorId,
+  actorName,
   users,
-  labels,
+  time,
+  text,
 }: {
-  activity: Activity;
+  color: "green" | "red" | "muted";
+  actorId: string;
+  actorName: string;
   users: Array<{ id: string; name: string }>;
-  labels: Array<{ id: string; name: string; color: string }>;
+  time: string;
+  text: string;
 }) {
-  const { activityInfo } = activity;
+  const displayName = resolveDisplayName(actorId, actorName, users);
 
-  let changes: FieldChange[] = [];
-  try {
-    changes = JSON.parse(activityInfo.changes);
-  } catch {
-    changes = [];
-  }
-
-  if (activityInfo.action === "created") {
-    return (
-      <div className={styles.activityRow}>
-        <Plus className={`${styles.activityIcon} ${styles.iconGreen}`} />
-        <span>
-          <span className={styles.actorName}>
-            {activityInfo.actorName}
-          </span>{" "}
-          created this task
-        </span>
-        <span className={styles.activityTime}>
-          {formatRelativeTime(activityInfo.createdAt)}
-        </span>
-      </div>
-    );
-  }
-
-  if (activityInfo.action === "deleted") {
-    return (
-      <div className={styles.activityRow}>
-        <span className={styles.deletedIcon}>
-          &times;
-        </span>
-        <span>
-          <span className={styles.actorName}>
-            {activityInfo.actorName}
-          </span>{" "}
-          deleted this task
-        </span>
-        <span className={styles.activityTime}>
-          {formatRelativeTime(activityInfo.createdAt)}
-        </span>
-      </div>
-    );
-  }
-
-  // "updated" action -- one row per change
   return (
-    <div className={styles.activityChanges}>
-      {changes.map((change, i) => (
-        <div
-          key={i}
-          className={styles.activityRow}
-        >
-          <ArrowRight className={`${styles.activityIcon} ${styles.iconBlue}`} />
-          <span>
-            <span className={styles.actorName}>
-              {activityInfo.actorName}
-            </span>{" "}
-            {formatFieldChange(change, users, labels)}
-          </span>
-          <span className={styles.activityTime}>
-            {formatRelativeTime(activityInfo.createdAt)}
-          </span>
-        </div>
-      ))}
+    <div className={styles.activityRow}>
+      <span className={styles.activityDot} data-color={color} />
+      <span className={styles.activityText}>
+        <span className={styles.actorName}>{displayName}</span> {text}
+      </span>
+      <span className={styles.activityTime}>
+        {formatRelativeTime(time)}
+      </span>
     </div>
   );
 }

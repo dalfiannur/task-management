@@ -6,6 +6,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { TaskActivityTimeline } from "./task-activity-timeline";
+import { AddCommentForm } from "./task-comments";
 import styles from "./comments-dialog.module.css";
 
 interface CommentsDialogProps {
@@ -33,7 +34,12 @@ export function CommentsDialog({
           </DialogDescription>
         </DialogHeader>
         <div className={styles.body}>
-          <TaskActivityTimeline taskId={taskId} projectId={projectId} />
+          <div className={styles.timelineScroll}>
+            <TaskActivityTimeline taskId={taskId} projectId={projectId} />
+          </div>
+          <div className={styles.inputArea}>
+            <AddCommentForm taskId={taskId} />
+          </div>
         </div>
       </DialogContent>
     </Dialog>

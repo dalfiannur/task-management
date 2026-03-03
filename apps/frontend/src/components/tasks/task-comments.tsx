@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useAuth } from "react-oidc-context";
 import { MessageSquare, Pencil, Trash2, X, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,9 +11,10 @@ import {
   useDeleteComment,
 } from "@/hooks/use-comments";
 import { CommentEditor, CommentEditEditor } from "./comment-editor";
+import type { CommentEditorHandle } from "./comment-editor";
 import { CommentContent } from "./comment-content";
 import type { Comment } from "@/types/comment";
-import { getInitials } from "@/lib/utils";
+import { getInitials, resolveDisplayName } from "@/lib/utils";
 import styles from "./task-comments.module.css";
 
 export function formatRelativeTime(iso: string): string {
@@ -90,7 +91,7 @@ export function CommentItem({
   users: Array<{ id: string; name: string; avatarUrl?: string }>;
 }) {
   const author = users.find((u) => u.id === comment.commentInfo.authorId);
-  const authorName = author?.name || comment.commentInfo.authorName || "Unknown";
+  const authorName = resolveDisplayName(comment.commentInfo.authorId, comment.commentInfo.authorName, users);
 
   const [isEditing, setIsEditing] = useState(false);
   const updateComment = useUpdateComment();
@@ -200,7 +201,14 @@ export function CommentItem({
 }
 
 export function AddCommentForm({ taskId }: { taskId: string }) {
+  const auth = useAuth();
+  const { data: users = [] } = useUsers();
   const createComment = useCreateComment();
+  const editorRef = useRef<CommentEditorHandle>(null);
+
+  const currentUserId = auth.user?.profile?.sub as string | undefined;
+  const currentUser = users.find((u) => u.id === currentUserId);
+  const displayName = currentUser?.name ?? "You";
 
   const handleSubmit = (html: string, mentionedUserIds: string[]) => {
     createComment.mutate({ taskId, content: html, mentionedUserIds });
@@ -208,20 +216,32 @@ export function AddCommentForm({ taskId }: { taskId: string }) {
 
   return (
     <div className={styles.addCommentFormWrapper}>
-      <div className={styles.addCommentForm}>
-        <CommentEditor
-          onSubmit={handleSubmit}
-        />
-        <div className={styles.addCommentFooter}>
-          <span className={styles.addCommentHint}>
-            Ctrl+Enter to submit &middot; Type @ to mention
-          </span>
-          <span className={styles.addCommentStatus}>
-            {createComment.isLoading && (
-              <Loader2 className={styles.addCommentSpinner} />
-            )}
-          </span>
+      <div className={styles.addCommentRow}>
+        <Avatar className={styles.addCommentAvatar}>
+          {currentUser?.avatarUrl && <AvatarImage src={currentUser.avatarUrl} />}
+          <AvatarFallback className={styles.avatarFallback}>
+            {getInitials(displayName)}
+          </AvatarFallback>
+        </Avatar>
+        <div className={styles.addCommentEditorArea}>
+          <CommentEditor
+            ref={editorRef}
+            onSubmit={handleSubmit}
+            placeholder="Write a comment..."
+          />
         </div>
+        <Button
+          variant="secondary"
+          className={styles.sendButton}
+          onClick={() => editorRef.current?.submit()}
+          disabled={createComment.isLoading}
+        >
+          {createComment.isLoading ? (
+            <Loader2 className={styles.sendIcon} />
+          ) : (
+            <>Send</>
+          )}
+        </Button>
       </div>
     </div>
   );
