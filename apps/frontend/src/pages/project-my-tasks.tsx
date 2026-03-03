@@ -57,14 +57,16 @@ export function Component() {
             className={styles.moduleItem}
             style={{ animationDelay: `${index * 75 + 200}ms` }}
           >
-            <ModuleSection
-              module={mod}
-              projectId={projectId!}
-              colorIndex={index}
-              filters={{ status, priority, search, assignee: me.id }}
-              projectStatus={project.status.value}
-              subProjectCount={subProjectCountsByModule.get(mod.id) ?? 0}
-            />
+            <div className={styles.moduleItemContent}>
+              <ModuleSection
+                module={mod}
+                projectId={projectId!}
+                colorIndex={index}
+                filters={{ status, priority, search, assignee: me.id }}
+                projectStatus={project.status.value}
+                subProjectCount={subProjectCountsByModule.get(mod.id) ?? 0}
+              />
+            </div>
           </div>
         ))}
       </div>
