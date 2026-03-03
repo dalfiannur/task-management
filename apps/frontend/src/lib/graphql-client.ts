@@ -11,12 +11,12 @@ import { toast } from "sonner";
 export { gql } from "@apollo/client";
 export { useQuery, useMutation, ApolloProvider } from "@apollo/client/react";
 
-const TASKS_URL = window.location.origin + "/api-tasks/graphql";
-export const CORE_URL = window.location.origin + "/api-core/graphql";
-export const OIDC_URL = window.location.origin + "/api-oidc/graphql";
-export const MEDIA_URL = window.location.origin + "/api-media/graphql";
-export const MEDIA_API_BASE = window.location.origin + "/api-media";
-export const SALES_URL = window.location.origin + "/api-sales/graphql";
+const TASKS_URL = window.location.origin + "/api/tasks/graphql";
+export const CORE_URL = window.location.origin + "/api/core/graphql";
+export const OIDC_URL = window.location.origin + "/api/oidc/graphql";
+export const MEDIA_URL = window.location.origin + "/api/media/graphql";
+export const MEDIA_API_BASE = window.location.origin + "/api/media";
+export const SALES_URL = window.location.origin + "/api/sales/graphql";
 
 let currentToken: string | null = null;
 
