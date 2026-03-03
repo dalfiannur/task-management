@@ -1,27 +1,26 @@
 .plainText {
-  font-size: 0.875rem;
-  line-height: 1rem;
-  color: color-mix(in srgb, var(--foreground) 80%, transparent);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--foreground) 85%, transparent);
   white-space: pre-wrap;
   word-wrap: break-word;
   overflow-wrap: break-word;
 }
 
 .richText {
-  font-size: 0.875rem;
-  line-height: 1rem;
-  color: color-mix(in srgb, var(--foreground) 80%, transparent);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--foreground) 85%, transparent);
   word-wrap: break-word;
   overflow-wrap: break-word;
 }
 
 /* Mention styling inside rich text */
-.richText :global([data-type="mention"]) {
-  color: var(--primary);
-  font-weight: 500;
-}
-
+.richText :global([data-type="mention"]),
 .richText :global(.mention) {
   color: var(--primary);
-  font-weight: 500;
+  font-weight: 600;
+  background-color: color-mix(in srgb, var(--primary) 12%, transparent);
+  padding: 0.0625rem 0.25rem;
+  border-radius: calc(var(--radius) - 2px);
 }

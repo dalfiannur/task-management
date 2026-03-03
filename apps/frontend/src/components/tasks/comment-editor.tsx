@@ -123,17 +123,21 @@ function extractMentionIds(editor: ReturnType<typeof useEditor>): string[] {
 
 // --- Main CommentEditor ---
 
+export interface CommentEditorHandle {
+  submit: () => void;
+}
+
 interface CommentEditorProps {
   onSubmit: (html: string, mentionedUserIds: string[]) => void;
   initialContent?: string;
   placeholder?: string;
 }
 
-export function CommentEditor({
+export const CommentEditor = forwardRef<CommentEditorHandle, CommentEditorProps>(function CommentEditor({
   onSubmit,
   initialContent = "",
   placeholder = "Write a comment... Use @ to mention someone",
-}: CommentEditorProps) {
+}, ref) {
   const { data: users = [] } = useUsers();
   const usersRef = useRef<User[]>(users);
   useEffect(() => {
@@ -207,7 +211,7 @@ export function CommentEditor({
     content: initialContent,
     editorProps: {
       attributes: {
-        class: "prose prose-sm max-w-none min-h-[48px] px-3 py-2 focus:outline-none text-xs",
+        class: styles.editorContent,
       },
       handleKeyDown: (_view, event) => {
         if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
@@ -232,6 +236,10 @@ export function CommentEditor({
     editor.commands.clearContent();
   }, [editor, onSubmit]);
 
+  useImperativeHandle(ref, () => ({
+    submit: () => handleSubmit(),
+  }), [handleSubmit]);
+
   if (!editor) return null;
 
   return (
@@ -239,7 +247,7 @@ export function CommentEditor({
       <EditorContent editor={editor} />
     </div>
   );
-}
+});
 
 // --- Position helper ---
 
@@ -337,7 +345,7 @@ export function CommentEditEditor({
     content: initialContent,
     editorProps: {
       attributes: {
-        class: "prose prose-sm max-w-none min-h-[48px] px-3 py-2 focus:outline-none text-xs",
+        class: styles.editorContent,
       },
       handleKeyDown: (_view, event) => {
         if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
