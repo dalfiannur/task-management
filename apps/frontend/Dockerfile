@@ -42,8 +42,8 @@ ENV VITE_OIDC_CLIENT_ID=$VITE_OIDC_CLIENT_ID
 RUN test -n "$VITE_OIDC_AUTHORITY" || (echo "ERROR: VITE_OIDC_AUTHORITY build arg is required" && exit 1)
 
 # Media upload base URL — must match nginx proxy prefix for tasks-backend
-# use-media.ts strips "/graphql" to get "/api-tasks" for REST upload endpoints
-ENV VITE_API_BASE_URL="/api-tasks/graphql"
+# use-media.ts strips "/graphql" to get "/api/tasks" for REST upload endpoints
+ENV VITE_API_BASE_URL="/api/tasks/graphql"
 
 RUN bun run build
 
