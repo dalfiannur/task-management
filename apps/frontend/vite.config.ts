@@ -22,26 +22,30 @@ export default defineConfig(({ mode }) => {
       port: 3001,
       allowedHosts: true,
       proxy: {
-        "/api-tasks/": {
+        "/api/tasks/": {
           target: env.VITE_API_BASE_URL ?? "http://localhost:3000",
           changeOrigin: true,
+          rewrite: (path: string) => path.replace(/^\/api\/tasks/, ""),
         },
-        "/api-core/": {
+        "/api/core/": {
           target: env.VITE_CORE_API_BASE_URL ?? "http://localhost:3101",
           changeOrigin: true,
+          rewrite: (path: string) => path.replace(/^\/api\/core/, ""),
         },
-        "/api-oidc/": {
+        "/api/oidc/": {
           target: env.VITE_OIDC_API_BASE_URL ?? "http://localhost:3100",
           changeOrigin: true,
+          rewrite: (path: string) => path.replace(/^\/api\/oidc/, ""),
         },
-        "/api-media/": {
+        "/api/media/": {
           target: env.VITE_MEDIA_API_BASE_URL ?? "http://localhost:3103",
           changeOrigin: true,
-          rewrite: (path: string) => path.replace(/^\/api-media/, ""),
+          rewrite: (path: string) => path.replace(/^\/api\/media/, ""),
         },
-        "/api-sales/": {
+        "/api/sales/": {
           target: env.VITE_SALES_API_BASE_URL ?? "http://localhost:3102",
           changeOrigin: true,
+          rewrite: (path: string) => path.replace(/^\/api\/sales/, ""),
         },
       },
     },
