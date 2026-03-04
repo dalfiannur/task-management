@@ -41,28 +41,32 @@
 }
 
 /* Project status dot colors */
+.dot-draft {
+  background-color: hsl(20 8% 55%);
+}
+
 .dot-pending {
   background-color: hsl(20 8% 55%);
 }
 
-.dot-prospect {
+.dot-proposal {
   background-color: hsl(38 90% 52%);
 }
 
-.dot-win {
-  background-color: hsl(152 55% 42%);
-}
-
-.dot-on-going {
+.dot-active {
   background-color: hsl(225 60% 52%);
 }
 
-.dot-canceled {
+.dot-completed {
+  background-color: hsl(271 91% 65%);
+}
+
+.dot-archived {
   background-color: hsl(8 70% 55%);
 }
 
-.dot-closed {
-  background-color: hsl(271 91% 65%);
+.dot-lost {
+  background-color: hsl(8 70% 55%);
 }
 
 /* Dark mode adjustments */

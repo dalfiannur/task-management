@@ -35,23 +35,23 @@ import { ApproveLeadDialog } from "@/components/dashboard/approve-lead-dialog";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { Project, ProjectStatus } from "@/types/project";
+import type { CoreProject, ProjectDisplayStatus } from "@/types/project";
+import { getDisplayStatus } from "@/types/project";
 import styles from "./app-sidebar.module.css";
 
-const STATUS_DOT_COLORS: Record<ProjectStatus, string> = {
+const STATUS_DOT_COLORS: Record<ProjectDisplayStatus, string> = {
   draft: "dot-draft",
   pending: "dot-pending",
-  prospect: "dot-prospect",
-  win: "dot-win",
-  won: "dot-won",
-  on_going: "dot-on-going",
-  canceled: "dot-canceled",
-  closed: "dot-closed",
+  proposal: "dot-proposal",
+  active: "dot-active",
+  completed: "dot-completed",
+  archived: "dot-archived",
+  lost: "dot-lost",
 };
 
 const MAX_SIDEBAR_ITEMS = 5;
 
-function ProjectItem({ project }: { project: Project }) {
+function ProjectItem({ project }: { project: CoreProject }) {
   const params = useParams();
   const activeProjectId = (params as { projectId?: string }).projectId;
   const isActive = activeProjectId === project.id;
@@ -61,7 +61,7 @@ function ProjectItem({ project }: { project: Project }) {
       <SidebarMenuButton asChild isActive={isActive} tooltip={getProjectDisplayName(project)}>
         <Link to={`/projects/${project.id}`}>
           <span
-            className={cn(styles.statusDot, STATUS_DOT_COLORS[project.status.value] ?? "dot-pending")}
+            className={cn(styles.statusDot, STATUS_DOT_COLORS[getDisplayStatus(project)] ?? "dot-pending")}
           />
           <span className={styles.projectName}>{getProjectDisplayName(project)}</span>
         </Link>
@@ -70,13 +70,13 @@ function ProjectItem({ project }: { project: Project }) {
   );
 }
 
-function LeadItem({ project, onApprove }: { project: Project; onApprove: () => void }) {
+function LeadItem({ project, onApprove }: { project: CoreProject; onApprove: () => void }) {
   return (
     <SidebarMenuItem>
       <div className={styles.leadItemRow}>
-        <SidebarMenuButton tooltip={project.coreName} className={styles.leadButton} onClick={onApprove}>
+        <SidebarMenuButton tooltip={getProjectDisplayName(project)} className={styles.leadButton} onClick={onApprove}>
           <span className={cn(styles.statusDot, "dot-pending")} />
-          <span className={styles.projectName}>{project.coreName || "Untitled"}</span>
+          <span className={styles.projectName}>{getProjectDisplayName(project)}</span>
         </SidebarMenuButton>
         <Button
           variant="ghost"
@@ -170,7 +170,7 @@ export function AppSidebar() {
   const { data: allProjects } = useProjects();
   const { data: leads } = useNewLeads();
   const [projectFormOpen, setProjectFormOpen] = useState(false);
-  const [approveProject, setApproveProject] = useState<Project | null>(null);
+  const [approveProject, setApproveProject] = useState<CoreProject | null>(null);
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
 
   const { pathname } = useLocation();
@@ -179,12 +179,10 @@ export function AppSidebar() {
   const isSettingsActive = pathname.startsWith("/settings");
 
   const rootProjects = allProjects?.filter(
-    (p) => !p.parent?.id && p.status.value !== "pending" && p.status.value !== "closed",
+    (p) => !p.ref?.parentId,
   );
-  const internalProjects = rootProjects?.filter((p) => !p.winStage);
-  const commercialProjects = rootProjects?.filter(
-    (p) => p.winStage && p.winStage !== "pending",
-  );
+  const internalProjects = rootProjects?.filter((p) => !p.commercial);
+  const commercialProjects = allProjects?.filter((p) => p.commercial)
 
   return (
     <Sidebar>
@@ -289,8 +287,8 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {commercialProjects?.slice(0, MAX_SIDEBAR_ITEMS).map((project) => (
-                <ProjectItem key={project.id} project={project} />
+              {commercialProjects?.slice(0, MAX_SIDEBAR_ITEMS).map((project, index) => (
+                <ProjectItem key={project.id + index} project={project} />
               ))}
               {commercialProjects && commercialProjects.length === 0 && (
                 <li className={styles.emptyHint}>No projects</li>
