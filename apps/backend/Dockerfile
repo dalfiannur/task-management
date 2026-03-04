@@ -8,20 +8,14 @@
 # ─── Stage 1: Install dependencies ─────────────────────────────────────────
 FROM oven/bun:1.3.8-alpine AS deps
 
-WORKDIR /build
+WORKDIR /build/app
 
-# Copy sedjiwa-permissions at its monorepo-relative path so the backend's
-# "file:../../../sedjiwa-permissions" dependency resolves correctly.
-COPY sedjiwa-permissions/ ./sedjiwa-permissions/
+# Copy only manifest files for layer caching
+COPY task-management/apps/backend/package.json ./
 
-# Copy ONLY the backend's package.json (no workspace root package.json).
-# Without a workspace root, bun treats this as a standalone package and
-# produces a flat node_modules with all transitive deps at the top level.
-COPY task-management/apps/backend/package.json ./task-management/apps/backend/
-
-WORKDIR /build/task-management/apps/backend
-
-RUN bun install --production
+# Install production deps; .npmrc secret provides private registry auth
+RUN --mount=type=secret,id=npmrc,target=/root/.npmrc \
+    bun install --production
 
 # Patch bunsane maskError to pass through known safe GraphQLError codes in production
 # (bunsane blindly masks ALL errors as INTERNAL_SERVER_ERROR in production mode)

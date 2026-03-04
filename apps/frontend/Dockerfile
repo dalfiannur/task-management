@@ -17,13 +17,12 @@ COPY task-management/bun.lock ./task-management/
 COPY task-management/apps/frontend/package.json ./task-management/apps/frontend/
 COPY task-management/apps/backend/package.json ./task-management/apps/backend/
 
-# sedjiwa-permissions is a file: dep of backend — must be present for workspace install
-COPY sedjiwa-permissions/ ./sedjiwa-permissions/
-
 WORKDIR /build/task-management
 
 # Install all deps (devDeps needed for vite build + tsc)
-RUN bun install --frozen-lockfile
+# .npmrc secret provides private registry auth
+RUN --mount=type=secret,id=npmrc,target=/root/.npmrc \
+    bun install --frozen-lockfile
 
 WORKDIR /build/task-management/apps/frontend
 
@@ -42,8 +41,8 @@ ENV VITE_OIDC_CLIENT_ID=$VITE_OIDC_CLIENT_ID
 RUN test -n "$VITE_OIDC_AUTHORITY" || (echo "ERROR: VITE_OIDC_AUTHORITY build arg is required" && exit 1)
 
 # Media upload base URL — must match nginx proxy prefix for tasks-backend
-# use-media.ts strips "/graphql" to get "/api-tasks" for REST upload endpoints
-ENV VITE_API_BASE_URL="/api-tasks/graphql"
+# use-media.ts strips "/graphql" to get "/api/tasks" for REST upload endpoints
+ENV VITE_API_BASE_URL="/api/tasks/graphql"
 
 RUN bun run build
 

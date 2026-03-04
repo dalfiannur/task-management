@@ -1,5 +1,5 @@
 import { BaseService, Get } from "bunsane/service";
-import { Action, PermissionManifest } from 'sedjiwa-permissions';
+import { Action, PermissionManifest } from '@qyubit/sedjiwa-permissions';
 
 export class PermissionRestService extends BaseService {
     constructor() {
