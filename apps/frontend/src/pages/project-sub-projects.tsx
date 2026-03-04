@@ -22,7 +22,7 @@ export function Component() {
             Create a sub-project to break this project into smaller parts.
           </p>
         </div>
-        {project?.status.value === "on_going" && (
+        {project?.status === "active" && (
           <Button
             size="sm"
             variant="outline"
@@ -39,7 +39,7 @@ export function Component() {
 
   return (
     <div>
-      {project?.status.value === "on_going" && (
+      {project?.status === "active" && (
         <div className={styles.header}>
           <Button
             size="sm"

@@ -6,6 +6,7 @@ import { useMe } from "@/hooks/use-me";
 import { ModuleSection } from "@/components/modules/module-section";
 import { TaskFilters } from "@/components/tasks/task-filters";
 import { Search, CircleDot } from "lucide-react";
+import { getDisplayStatus } from "@/types/project";
 import type { ProjectLayoutContext } from "./project-layout";
 import styles from "./project-detail.module.css";
 
@@ -63,7 +64,7 @@ export function Component() {
                 projectId={projectId!}
                 colorIndex={index}
                 filters={{ status, priority, search, assignee: me.id }}
-                projectStatus={project.status.value}
+                projectStatus={getDisplayStatus(project)}
                 subProjectCount={subProjectCountsByModule.get(mod.id) ?? 0}
               />
             </div>

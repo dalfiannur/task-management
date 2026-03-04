@@ -23,7 +23,8 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { Plus, Search, CircleDot, GripVertical } from "lucide-react";
 import type { Module } from "@/types/task";
-import type { ProjectStatus } from "@/types/project";
+import type { ProjectDisplayStatus } from "@/types/project";
+import { getDisplayStatus } from "@/types/project";
 import type { ProjectLayoutContext } from "./project-layout";
 import styles from "./project-detail.module.css";
 
@@ -39,7 +40,7 @@ function SortableModuleItem({
   projectId: string;
   colorIndex: number;
   filters: { status?: string; priority?: string; search?: string };
-  projectStatus: ProjectStatus;
+  projectStatus: ProjectDisplayStatus;
   subProjectCount: number;
 }) {
   const {
@@ -141,7 +142,7 @@ export function Component() {
             className={styles.searchInput}
           />
         </div>
-        {project.status.value === "on_going" && (
+        {project.status === "active" && (
           <Button
             size="sm"
             className={styles.newModuleBtn}
@@ -172,7 +173,7 @@ export function Component() {
                   projectId={projectId!}
                   colorIndex={index}
                   filters={{ status, priority, search }}
-                  projectStatus={project.status.value}
+                  projectStatus={getDisplayStatus(project)}
                   subProjectCount={subProjectCountsByModule.get(mod.id) ?? 0}
                 />
               ))}
@@ -188,7 +189,7 @@ export function Component() {
               Create a module to start organizing tasks.
             </p>
           </div>
-          {project.status.value === "on_going" && (
+          {project.status === "active" && (
             <Button
               size="sm"
               variant="outline"
