@@ -30,7 +30,7 @@ export function createMutationHook<TInput, TRaw, TMapped = TRaw>(
       mutation,
       {
         ...(client ? { client } : {}),
-        ...(refetchQueries ? { refetchQueries, awaitRefetchQueries: true } : {}),
+        ...(refetchQueries ? { refetchQueries } : {}),
       },
     );
 
@@ -77,7 +77,7 @@ export function createVoidMutationHook<TInput>(
       mutation,
       {
         ...(client ? { client } : {}),
-        ...(refetchQueries ? { refetchQueries, awaitRefetchQueries: true } : {}),
+        ...(refetchQueries ? { refetchQueries } : {}),
       },
     );
 
