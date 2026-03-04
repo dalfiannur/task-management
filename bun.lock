@@ -17,7 +17,7 @@
       "dependencies": {
         "@aws-sdk/client-s3": "^3.993.0",
         "@qyubit/sedjiwa-permissions": "^0.2.0",
-        "bunsane": "^0.2.0",
+        "bunsane": "^0.2.2",
         "graphql": "^16.13.0",
         "jose": "^6.1.3",
         "reflect-metadata": "^0.2.0",
@@ -799,7 +799,7 @@
 
     "bun-types": ["bun-types@1.3.9", "", { "dependencies": { "@types/node": "*" } }, "sha512-+UBWWOakIP4Tswh0Bt0QD0alpTY8cb5hvgiYeWCMet9YukHbzuruIEeXC2D7nMJPB12kbh8C7XJykSexEqGKJg=="],
 
-    "bunsane": ["bunsane@0.2.0", "", { "dependencies": { "@gqloom/core": "^0.12.0", "@gqloom/zod": "^0.12.2", "dataloader": "2.2.2", "graphql": "16.11.0", "graphql-yoga": "5.15.1", "ioredis": "5.8.2", "pino": "9.9.0", "pino-pretty": "13.1.1", "reflect-metadata": "0.2.2", "zod": "4.1.5" }, "peerDependencies": { "typescript": "^5.9.3" } }, "sha512-jHdbO+q4FmxWIGfMFM1zTTJVz1BXZ2Maukf8+jcr8WEpd6Z9uV8G3UVSz320oGKv2f3B0W0YnO/0MZj2TxDEOw=="],
+    "bunsane": ["bunsane@0.2.2", "", { "dependencies": { "@gqloom/core": "^0.12.0", "@gqloom/zod": "^0.12.2", "dataloader": "2.2.2", "graphql": "16.11.0", "graphql-yoga": "5.15.1", "ioredis": "5.8.2", "pino": "9.9.0", "pino-pretty": "13.1.1", "reflect-metadata": "0.2.2", "zod": "4.1.5" }, "peerDependencies": { "typescript": "^5.9.3" } }, "sha512-BS0Ysn1YrXGcNwH53mU2L377uY2oEo2DnrQnNPygbl9NL7P8TrjCvejSDquoaee+Kj7A2ltc0x3lm9pAyi1Kqw=="],
 
     "callsites": ["callsites@3.1.0", "", {}, "sha512-P8BjAsXvZS+VIDUI11hHCQEv74YT67YUi5JJFNWIqL235sBmjX4+qx9Muvls5ivyNENctx46xQLQ3aTuE7ssaQ=="],
 
