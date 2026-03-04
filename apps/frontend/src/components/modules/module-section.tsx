@@ -58,7 +58,7 @@ import { ModuleForm } from "./module-form";
 import { CommentsDialog } from "@/components/tasks/comments-dialog";
 import { useCommentCounts } from "@/hooks/use-comments";
 import { TASK_STATUS_CONFIG, type Label, type Module, type Task, type TaskStatus, type UpdateTaskInput } from "@/types/task";
-import { type ProjectStatus, } from "@/types/project"
+import { type ProjectDisplayStatus } from "@/types/project"
 import { cn, getInitials } from "@/lib/utils";
 import { Button } from "../ui/button";
 import s from "./module-section.module.css";
@@ -79,7 +79,7 @@ interface ModuleSectionProps {
   projectId: string;
   colorIndex: number;
   filters?: { status?: string; priority?: string; search?: string; assignee?: string };
-  projectStatus?: ProjectStatus;
+  projectStatus?: ProjectDisplayStatus;
   subProjectCount?: number;
 }
 
@@ -408,7 +408,7 @@ export function ModuleSection({
                     />
                   ))}
 
-                {!((projectStatus === "prospect" || projectStatus === "win") && module.name !== "Proposal") && (
+                {!(projectStatus === "proposal" && module.name !== "Proposal") && (
                   <TableRow
                     className={s.addTaskRow}
                     onClick={() => setTaskFormOpen(true)}
