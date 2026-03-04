@@ -15,7 +15,7 @@ import { coreClient, gql } from "@/lib/graphql-client";
 import styles from "./comment-editor.module.css";
 
 const SEARCH_USERS = gql`
-  query SearchUsersForMention($input: SearchUsersInput!) {
+  query SearchUsersForMention($input: searchUsersInput!) {
     searchUsers(input: $input) {
       id
       info { displayName }

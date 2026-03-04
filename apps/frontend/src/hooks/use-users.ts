@@ -4,7 +4,7 @@ import type { User } from "@/types/task";
 // --- GraphQL operations (Core Portal) ---
 
 const SEARCH_USERS = gql`
-  query SearchUsers($input: SearchUsersInput!) {
+  query SearchUsers($input: searchUsersInput!) {
     searchUsers(input: $input) {
       id
       info {
@@ -17,7 +17,7 @@ const SEARCH_USERS = gql`
 `;
 
 const GET_USER = gql`
-  query GetUser($input: GetUserInput!) {
+  query GetUser($input: getUserInput!) {
     getUser(input: $input) {
       id
       info {
