@@ -2,9 +2,11 @@ import { Link, Outlet, useLocation, useNavigate, useParams } from "react-router"
 import { useState } from "react";
 import {
   useProject,
+  useLocalProject,
   useSubProjects,
+  useLocalSubProjects,
   useDeleteProject,
-  useUpdateProject,
+  useUpdateLocalProject,
   getProjectDisplayName,
 } from "@/hooks/use-projects";
 import { useModules } from "@/hooks/use-modules";
@@ -61,18 +63,18 @@ import {
   Lock,
   Layers,
 } from "lucide-react";
-import { PROJECT_STATUS_CONFIG, type ProjectStatus } from "@/types/project";
+import { PROJECT_STATUS_CONFIG, getDisplayStatus } from "@/types/project";
 import { cn, getInitials } from "@/lib/utils";
 import styles from "./project-layout.module.css";
 
 const DOT_CLASS: Record<string, string> = {
+  draft: styles.dotPending,
   pending: styles.dotPending,
-  prospect: styles.dotProspect,
-  win: styles.dotWin,
-  won: styles.dotWon,
-  on_going: styles.dotOnGoing,
-  canceled: styles.dotCanceled,
-  closed: styles.dotClosed,
+  proposal: styles.dotProspect,
+  active: styles.dotOnGoing,
+  completed: styles.dotClosed,
+  archived: styles.dotCanceled,
+  lost: styles.dotCanceled,
 };
 
 export interface ProjectLayoutContext {
@@ -87,13 +89,15 @@ export function Component() {
   const navigate = useNavigate();
 
   const { data: project, isLoading } = useProject(projectId!);
+  const { data: localProject } = useLocalProject(projectId!);
   const { data: modules } = useModules(projectId);
-  const { data: pic } = useUser(project?.projectLeaderId?.value);
+  const { data: pic } = useUser(project?.ref?.leaderId);
   const { data: allTasks } = useAllTasks({ projectId });
   const { data: subProjects } = useSubProjects(projectId);
+  const { data: localSubProjects } = useLocalSubProjects(projectId);
   const deleteProject = useDeleteProject();
-  const updateProject = useUpdateProject();
-  const { data: parentModules } = useModules(project?.parent?.id);
+  const updateLocalProject = useUpdateLocalProject();
+  const { data: parentModules } = useModules(project?.ref?.parentId);
 
   const [formOpen, setFormOpen] = useState(false);
   const [winDialogOpen, setWinDialogOpen] = useState(false);
@@ -113,7 +117,7 @@ export function Component() {
     return <div className={styles.notFound}>Project not found</div>;
   }
 
-  const resolvedStatus = (project.resolvedStatus ?? project.status.value) as ProjectStatus;
+  const resolvedStatus = getDisplayStatus(project);
   const statusConfig = PROJECT_STATUS_CONFIG[resolvedStatus] ?? {
     label: resolvedStatus,
     color: "bg-gray-100 text-gray-700",
@@ -133,9 +137,7 @@ export function Component() {
   const completionPct =
     totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
 
-  const showWin =
-    project.winStage === "won" &&
-    project.status.value === "prospect";
+  const showWin = project.winStage === "proposal";
 
   // Active tab detection
   const basePath = `/projects/${projectId}`;
@@ -187,9 +189,9 @@ export function Component() {
     },
   ];
 
-  // Compute sub-project counts by linked module
+  // Compute sub-project counts by linked module (uses local data)
   const subProjectCountsByModule = new Map<string, number>();
-  for (const sp of subProjects ?? []) {
+  for (const sp of localSubProjects ?? []) {
     if (sp.linkedModule?.id) {
       subProjectCountsByModule.set(
         sp.linkedModule.id,
@@ -231,7 +233,7 @@ export function Component() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                {project.status.value === "on_going" && (
+                {project.winStage === "won" && (
                   <DropdownMenuItem
                     className={styles.closeItem}
                     onClick={() => setCloseDialogOpen(true)}
@@ -262,9 +264,9 @@ export function Component() {
           </div>
         </div>
 
-        {project.parent && (
+        {project.ref?.parentId && (
           <Link
-            to={`/projects/${project.parent.id}`}
+            to={`/projects/${project.ref.parentId}`}
             className={styles.parentLink}
           >
             <ArrowLeft className={styles.parentLinkIcon} />
@@ -277,14 +279,14 @@ export function Component() {
         </h1>
 
         <div className={styles.metaRow}>
-          {project.parent && parentModules && parentModules.length > 0 && (
+          {project.ref?.parentId && parentModules && parentModules.length > 0 && (
             <div className={styles.moduleLinkInfo}>
               <Layers className={styles.moduleLinkIcon} />
               <Select
-                value={project.linkedModule?.id ?? "__none__"}
+                value={localProject?.linkedModule?.id ?? "__none__"}
                 onValueChange={(v) => {
-                  updateProject.mutate({
-                    id: project.id,
+                  updateLocalProject.mutate({
+                    id: localProject!.id,
                     moduleId: v === "__none__" ? null : v,
                   });
                 }}
@@ -315,20 +317,20 @@ export function Component() {
               <span className={styles.picName}>{pic.name}</span>
             </div>
           )}
-          {project.clientName && (
+          {project.clientDetail?.name.name && (
             <div className={styles.clientInfo}>
               <span className={styles.descSeparator}>&middot;</span>
               <Building className={styles.clientIcon} />
               <span className={styles.clientName}>
-                {project.clientName}
+                {project.clientDetail.name.name}
               </span>
             </div>
           )}
-          {project.coreDescription && (
+          {project.name?.description && (
             <div className={styles.descriptionRow}>
               <span className={styles.descSeparator}>&middot;</span>
               <span className={styles.descClamp}>
-                {project.coreDescription}
+                {project.name.description}
               </span>
             </div>
           )}
@@ -419,7 +421,7 @@ export function Component() {
         onOpenChange={setSubProjectFormOpen}
         parentProjectId={projectId!}
       />
-      {project.status.value === "on_going" && (
+      {project.status === "active" && project.winStage === "won" && (
         <CloseProjectDialog
           project={project}
           open={closeDialogOpen}
