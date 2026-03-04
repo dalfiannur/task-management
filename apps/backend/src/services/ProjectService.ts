@@ -26,6 +26,7 @@ import {
 import {
   ModuleDescriptionComponent,
   ModuleNameComponent,
+  ModuleOrderComponent,
   ModuleProjectRefComponent,
   ModuleTag,
 } from "~/components/ModuleComponents";
@@ -569,7 +570,8 @@ export default class ProjectService extends BaseService {
       .add(ModuleTag, {})
       .add(ModuleProjectRefComponent, { projectId: project.id })
       .add(ModuleNameComponent, { value: "Proposal" })
-      .add(ModuleDescriptionComponent, { value: "" });
+      .add(ModuleDescriptionComponent, { value: "" })
+      .add(ModuleOrderComponent, { value: 0 });
 
     await module.save();
 
