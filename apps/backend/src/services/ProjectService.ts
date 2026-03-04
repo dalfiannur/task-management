@@ -7,21 +7,10 @@ import { GraphQLError } from "graphql";
 import { ProjectArcheType } from "../archetypes/ProjectArcheType";
 import {
   ProjectCoreRefComponent,
-  ProjectDescriptionComponent,
-  ProjectNameComponent,
   ProjectParentRefComponent,
   ProjectModuleRefComponent,
   ProjectLeaderIdComponent,
-  ProjectStatusComponent,
   ProjectTag,
-  ProjectCodeComponent,
-  ProjectCoreNameComponent,
-  ProjectCoreDescriptionComponent,
-  ProjectClientNameComponent,
-  ProjectClientLegalNameComponent,
-  ProjectWinStageComponent,
-  ProjectResolvedStatusComponent,
-  ProjectClosedAtComponent,
 } from "~/components/ProjectComponents";
 import {
   ModuleDescriptionComponent,
@@ -35,29 +24,11 @@ import { requireAuth, checkPermission, Resources, type TaskAuthUser } from "~/li
 import MembershipService from "./MembershipService";
 import {
   fetchCoreProject,
-  fetchCoreProjects,
   createCoreProject,
   extractAuthToken,
-  type CoreProject,
 } from "~/lib/core-client";
 
 type AuthUser = TaskAuthUser;
-
-function computeResolvedStatus(localStatus: string, coreWinStage?: string): string {
-  if (coreWinStage === "won" && localStatus === "prospect") return "won";
-  return localStatus;
-}
-
-/** Add enrichment components in memory (not persisted). */
-function enrichEntity(entity: Entity, coreData: CoreProject | null, localStatus: string) {
-  entity.add(ProjectCodeComponent, { value: coreData?.code ?? "" });
-  entity.add(ProjectCoreNameComponent, { value: coreData?.name.name ?? "" });
-  entity.add(ProjectCoreDescriptionComponent, { value: coreData?.name.description ?? "" });
-  entity.add(ProjectClientNameComponent, { value: coreData?.clientDetail?.name.name ?? "" });
-  entity.add(ProjectClientLegalNameComponent, { value: coreData?.clientDetail?.name.legalName ?? "" });
-  entity.add(ProjectWinStageComponent, { value: coreData?.winStage ?? "" });
-  entity.add(ProjectResolvedStatusComponent, { value: computeResolvedStatus(localStatus, coreData?.winStage) });
-}
 
 export default class ProjectService extends BaseService {
   constructor() {
@@ -73,7 +44,6 @@ export default class ProjectService extends BaseService {
     const allProjects = await new Query()
       .with(ProjectTag)
       .with(ProjectCoreRefComponent)
-      .with(ProjectStatusComponent)
       .populate()
       .exec();
 
@@ -94,42 +64,6 @@ export default class ProjectService extends BaseService {
         const memberProjectIds = await this.getMemberProjectIds(user.id);
         filteredProjects = rootProjects.filter((p: any) => memberProjectIds.has(p.id));
       }
-    }
-
-    // Collect coreRef IDs for enrichment
-    const coreRefEntries: { entity: any; coreRefId: string }[] = [];
-    for (const entity of filteredProjects) {
-      const coreRef = entity.getInMemory(ProjectCoreRefComponent);
-      if (coreRef?.value && coreRef.value !== "") {
-        coreRefEntries.push({ entity, coreRefId: coreRef.value });
-      }
-    }
-    const uniqueIds = [...new Set(coreRefEntries.map((e) => e.coreRefId))];
-
-    const authToken = extractAuthToken(context.request);
-    const coreMap = uniqueIds.length > 0
-      ? await fetchCoreProjects(uniqueIds, authToken)
-      : new Map<string, CoreProject>();
-
-    // Sync leader from Core and enrich entities in memory
-    for (const entity of filteredProjects) {
-      const coreRef = entity.getInMemory(ProjectCoreRefComponent);
-      const coreRefId = coreRef?.value;
-      const coreData = coreRefId ? coreMap.get(coreRefId) ?? null : null;
-      const statusComp = entity.getInMemory(ProjectStatusComponent);
-      const localStatus = statusComp?.value ?? "prospect";
-
-      // Sync leader from Core if different
-      if (coreData?.ref?.leaderId) {
-        const leaderComp = entity.getInMemory(ProjectLeaderIdComponent);
-        if (leaderComp?.value !== coreData.ref.leaderId) {
-          await entity.set(ProjectLeaderIdComponent, { value: coreData.ref.leaderId });
-          await entity.save();
-        }
-      }
-
-      // Add enrichment components (in memory only, not saved)
-      enrichEntity(entity, coreData, localStatus);
     }
 
     return filteredProjects;
@@ -160,28 +94,6 @@ export default class ProjectService extends BaseService {
           }
         }
       }
-    }
-
-    const coreRef = await entity.get(ProjectCoreRefComponent);
-    const statusComp = await entity.get(ProjectStatusComponent);
-    const localStatus = statusComp?.value ?? "prospect";
-
-    if (coreRef?.value) {
-      const authToken = extractAuthToken(context.request);
-      const coreData = await fetchCoreProject(coreRef.value, authToken);
-
-      // Sync leader from Core
-      if (coreData?.ref?.leaderId) {
-        const leaderComp = await entity.get(ProjectLeaderIdComponent);
-        if (leaderComp?.value !== coreData.ref.leaderId) {
-          await entity.set(ProjectLeaderIdComponent, { value: coreData.ref.leaderId });
-          await entity.save();
-        }
-      }
-
-      enrichEntity(entity, coreData, localStatus);
-    } else {
-      enrichEntity(entity, null, localStatus);
     }
 
     return entity;
@@ -246,10 +158,7 @@ export default class ProjectService extends BaseService {
     // Create local entity
     const entity = Entity.Create()
       .add(ProjectTag, {})
-      .add(ProjectNameComponent, { value: input.name })
       .add(ProjectCoreRefComponent, { value: coreProject.id })
-      .add(ProjectDescriptionComponent, { value: input.description || "" })
-      .add(ProjectStatusComponent, { value: "on_going" });
 
     if (input.projectLeaderId) {
       entity.add(ProjectLeaderIdComponent, { value: input.projectLeaderId });
@@ -263,8 +172,6 @@ export default class ProjectService extends BaseService {
       await MembershipService.getInstance().ensureMembership(entity.id, input.projectLeaderId);
     }
 
-    // Enrich with Core data and return
-    enrichEntity(entity, coreProject, "on_going");
     return entity;
   }
 
@@ -364,11 +271,8 @@ export default class ProjectService extends BaseService {
     // 6. Create local entity with coreRef pointing to new Core project
     const entity = Entity.Create()
       .add(ProjectTag, {})
-      .add(ProjectNameComponent, { value: input.name })
       .add(ProjectParentRefComponent, { parentProjectId: input.parentProjectId })
       .add(ProjectCoreRefComponent, { value: coreProject.id })
-      .add(ProjectDescriptionComponent, { value: input.description || "" })
-      .add(ProjectStatusComponent, { value: "on_going" });
 
     if (input.projectLeaderId) {
       entity.add(ProjectLeaderIdComponent, { value: input.projectLeaderId });
@@ -386,8 +290,6 @@ export default class ProjectService extends BaseService {
       await MembershipService.getInstance().ensureMembership(entity.id, input.projectLeaderId);
     }
 
-    // 7. Enrich with Core data and return
-    enrichEntity(entity, coreProject, "on_going");
     return entity;
   }
 
@@ -403,7 +305,6 @@ export default class ProjectService extends BaseService {
     const allSubProjects = await new Query()
       .with(ProjectTag)
       .with(ProjectCoreRefComponent)
-      .with(ProjectStatusComponent)
       .with(ProjectParentRefComponent, {
         filters: [
           Query.typedFilter(ProjectParentRefComponent, "parentProjectId", "=", input.parentProjectId),
@@ -422,30 +323,6 @@ export default class ProjectService extends BaseService {
           filteredProjects = allSubProjects.filter((p: any) => memberProjectIds.has(p.id));
         }
       }
-    }
-
-    // Collect coreRef IDs for enrichment (sub-projects with Core refs)
-    const coreRefEntries: { entity: any; coreRefId: string }[] = [];
-    for (const entity of filteredProjects) {
-      const coreRef = entity.getInMemory(ProjectCoreRefComponent);
-      if (coreRef?.value && coreRef.value !== "") {
-        coreRefEntries.push({ entity, coreRefId: coreRef.value });
-      }
-    }
-
-    const uniqueIds = [...new Set(coreRefEntries.map((e) => e.coreRefId))];
-    const authToken = extractAuthToken(context.request);
-    const coreMap = uniqueIds.length > 0
-      ? await fetchCoreProjects(uniqueIds, authToken)
-      : new Map<string, CoreProject>();
-
-    // Enrich each entity — Core-backed sub-projects get real data, legacy ones get null
-    for (const entity of filteredProjects) {
-      const coreRef = entity.getInMemory(ProjectCoreRefComponent);
-      const coreRefId = coreRef?.value;
-      const coreData = coreRefId ? coreMap.get(coreRefId) ?? null : null;
-      const statusComp = entity.getInMemory(ProjectStatusComponent);
-      enrichEntity(entity, coreData, statusComp?.value ?? "on_going");
     }
 
     return filteredProjects;
@@ -476,18 +353,6 @@ export default class ProjectService extends BaseService {
       return new GraphQLError("Project not found", { extensions: { code: "NOT_FOUND" } });
     }
 
-    if (input.name) {
-      await entity.set(ProjectNameComponent, { value: input.name });
-    }
-
-    if (input.status) {
-      await entity.set(ProjectStatusComponent, { value: input.status });
-    }
-
-    if (input.description) {
-      await entity.set(ProjectDescriptionComponent, { value: input.description });
-    }
-
     if (input.projectLeaderId) {
       await entity.set(ProjectLeaderIdComponent, { value: input.projectLeaderId });
       // Auto-add leader as member
@@ -497,7 +362,7 @@ export default class ProjectService extends BaseService {
     // Handle moduleId: string → set, null → remove, undefined → no change
     if (input.moduleId !== undefined) {
       if (input.moduleId === null) {
-        await entity.remove(ProjectModuleRefComponent);
+        entity.remove(ProjectModuleRefComponent);
       } else {
         // Validate module belongs to the sub-project's parent project
         const parentRef = await entity.get(ProjectParentRefComponent);
@@ -516,19 +381,6 @@ export default class ProjectService extends BaseService {
     }
 
     await entity.save();
-
-    // Enrich with Core data
-    const coreRef = await entity.get(ProjectCoreRefComponent);
-    const statusComp = await entity.get(ProjectStatusComponent);
-    const localStatus = statusComp?.value ?? "prospect";
-
-    if (coreRef?.value) {
-      const authToken = extractAuthToken(context.request);
-      const coreData = await fetchCoreProject(coreRef.value, authToken);
-      enrichEntity(entity, coreData, localStatus);
-    } else {
-      enrichEntity(entity, null, localStatus);
-    }
 
     return entity;
   }
@@ -551,21 +403,9 @@ export default class ProjectService extends BaseService {
       throw new Error("Permission denied: project manage required");
     }
 
-    // Fetch Core data first to get the project name
-    const authToken = extractAuthToken(context.request);
-    const coreData = await fetchCoreProject(args.id, authToken);
-    const projectName = coreData?.name.name ?? "";
-
     const project = Entity.Create()
       .add(ProjectTag, {})
-      .add(ProjectNameComponent, { value: projectName })
       .add(ProjectCoreRefComponent, { value: args.id })
-      .add(ProjectDescriptionComponent, { value: args.description || "" })
-      .add(ProjectStatusComponent, { value: "prospect" });
-
-    if (coreData?.ref?.leaderId) {
-      project.add(ProjectLeaderIdComponent, { value: coreData.ref.leaderId });
-    }
 
     await project.save();
 
@@ -580,49 +420,8 @@ export default class ProjectService extends BaseService {
 
     // Auto-add approver and leader as members
     await MembershipService.getInstance().ensureMembership(project.id, user.id);
-    if (coreData?.ref?.leaderId) {
-      await MembershipService.getInstance().ensureMembership(project.id, coreData.ref.leaderId);
-    }
-
-    // Enrich with Core data (already fetched above)
-    enrichEntity(project, coreData, "prospect");
 
     return project;
-  }
-
-  @GraphQLOperation({
-    type: "Mutation",
-    input: {
-      id: t.string().required(),
-    },
-    output: ProjectArcheType,
-  })
-  async closeProject(input: { id: string }, context: { user?: AuthUser; request?: Request }) {
-    const entity = await new Query().findOneById(input.id);
-    if (!entity) {
-      return new GraphQLError("Project not found", { extensions: { code: "NOT_FOUND" } });
-    }
-
-    const statusComp = await entity.get(ProjectStatusComponent);
-    if (statusComp?.value !== "on_going") {
-      return new GraphQLError("Only on_going projects can be closed", { extensions: { code: "BAD_USER_INPUT" } });
-    }
-
-    await entity.set(ProjectStatusComponent, { value: "closed" });
-    await entity.set(ProjectClosedAtComponent, { value: new Date().toISOString() });
-    await entity.save();
-
-    // Enrich with Core data
-    const coreRef = await entity.get(ProjectCoreRefComponent);
-    if (coreRef?.value) {
-      const authToken = extractAuthToken(context.request);
-      const coreData = await fetchCoreProject(coreRef.value, authToken);
-      enrichEntity(entity, coreData, "closed");
-    } else {
-      enrichEntity(entity, null, "closed");
-    }
-
-    return entity;
   }
 
   @GraphQLOperation({
@@ -654,24 +453,6 @@ export default class ProjectService extends BaseService {
     }
 
     await entity.delete();
-    return true;
-  }
-
-  @GraphQLOperation({
-    type: "Mutation",
-    input: {
-      id: t.string().required(),
-      status: t.enum(['prospect', 'win', 'on_going'] as const, 'ProjectStatusEnum').required(),
-    },
-    output: "Boolean",
-  })
-  async updateProjectStatus(input: { id: string; status: string }) {
-    const entity = await new Query().findOneById(input.id);
-    if (!entity) {
-      return new GraphQLError("Project not found", { extensions: { code: "NOT_FOUND" } });
-    }
-    await entity.set(ProjectStatusComponent, { value: input.status });
-    await entity.save();
     return true;
   }
 
