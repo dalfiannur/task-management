@@ -9,7 +9,7 @@ import {
 } from "@/hooks/use-projects";
 import { useModules } from "@/hooks/use-modules";
 import { useUser } from "@/hooks/use-users";
-import { useTasks } from "@/hooks/use-tasks";
+import { useAllTasks } from "@/hooks/use-tasks";
 import { ModuleForm } from "@/components/modules/module-form";
 import { WinProjectDialog } from "@/components/projects/win-project-dialog";
 import { CloseProjectDialog } from "@/components/projects/close-project-dialog";
@@ -89,7 +89,7 @@ export function Component() {
   const { data: project, isLoading } = useProject(projectId!);
   const { data: modules } = useModules(projectId);
   const { data: pic } = useUser(project?.projectLeaderId?.value);
-  const { data: allTasks } = useTasks();
+  const { data: allTasks } = useAllTasks({ projectId });
   const { data: subProjects } = useSubProjects(projectId);
   const deleteProject = useDeleteProject();
   const updateProject = useUpdateProject();
