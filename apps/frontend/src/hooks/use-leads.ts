@@ -1,79 +1,57 @@
 import { useQuery, gql, coreClient, salesClient, mediaClient } from "@/lib/graphql-client";
 import { createMutationHook, normalizeQueryResult } from "@/lib/hook-factories";
-import type { Project, ProjectStatus } from "@/types/project";
+import type { CoreProject } from "@/types/project";
 
-const LIST_PROJECTS = gql`
+const LIST_LEADS = gql`
   query ListLeadProjects {
     listProjects(input: {winStage: pending}) {
       id
       code
+      status
+      winStage
+      commercial
       name {
         description
         name
       }
-      status
-      winStage
       ref {
         companyId
+        leaderId
       }
     }
   }
 `;
 
-const APPROVE_PROJECT = gql`
+const APPROVE_LEAD = gql`
   mutation ApproveLeadProject($input: updateProjectInput!) {
     updateProject(input: $input) {
       id
       code
+      status
+      winStage
       name {
         description
         name
       }
-      status
-      winStage
     }
   }
 `;
 
-/** Raw Core project shape from the Core GraphQL API. */
-interface CoreProjectRaw {
-  id: string;
-  code: string;
-  name: { name: string; description: string };
-  status: string;
-  winStage: string;
-  ref?: { companyId: string };
-}
-
-function mapCoreProject(p: CoreProjectRaw): Project {
-  return {
-    id: p.id,
-    coreRef: { value: p.id },
-    status: { value: p.status as ProjectStatus },
-    description: p.name.description,
-    code: p.code,
-    coreName: p.name.name,
-    coreDescription: p.name.description,
-    winStage: p.winStage,
-    companyId: p.ref?.companyId,
-  };
-}
-
 export function useNewLeads() {
-  const result = useQuery<{ listProjects: CoreProjectRaw[] }>(LIST_PROJECTS, {
+  const result = useQuery<{ listProjects: CoreProject[] }>(LIST_LEADS, {
     client: coreClient,
   });
-  return normalizeQueryResult(result, (d) => d.listProjects.map(mapCoreProject));
+  return normalizeQueryResult(result, (d) => d.listProjects);
 }
 
 export const useApproveLead = createMutationHook<
   { id: string; winStage: string },
-  CoreProjectRaw
+  CoreProject
 >({
-  mutation: APPROVE_PROJECT,
+  mutation: APPROVE_LEAD,
   responseKey: "updateProject",
   client: coreClient,
-  refetchQueries: [LIST_PROJECTS],
+  refetchQueries: [LIST_LEADS],
 });
 
 const GET_DEAL_BY_PROJECT_ID = gql`
