@@ -10,8 +10,9 @@ import { TaskArcheType } from "../archetypes/TaskArcheType";
 import NotificationService from "./NotificationService";
 import ActivityService from "./ActivityService";
 import MembershipService from "./MembershipService";
-import { ModuleProjectRefComponent } from "../components/ModuleComponents";
+import { ModuleProjectRefComponent, ModuleTag } from "../components/ModuleComponents";
 import { type TaskAuthUser } from "~/lib/auth-context";
+import { resolveLocalProjectId } from "~/lib/resolve-project-id";
 
 function encodeLabelIds(ids?: string[]): string {
   return JSON.stringify(ids ?? []);
@@ -133,6 +134,57 @@ export default class TaskService extends BaseService {
     },
     _context: unknown,
   ) {
+    // Resolve project → modules → tasks per module
+    if (input.projectId) {
+      const localProjectId = await resolveLocalProjectId(input.projectId);
+      const modules = await new Query()
+        .with(ModuleTag)
+        .with(ModuleProjectRefComponent, {
+          filters: [
+            Query.filter("projectId", Query.filterOp.EQ, localProjectId),
+          ],
+        })
+        .exec();
+      if (modules.length === 0) return [];
+
+      const allTasks = await Promise.all(
+        modules.map((mod) => {
+          const query = new Query()
+            .with(TaskAssignment, {
+              filters: [
+                Query.typedFilter(TaskAssignment, "moduleId", "=", mod.id),
+              ],
+            })
+            .with(TaskInfo)
+            .with(TaskLabels);
+
+          if (input.status) {
+            query.with(TaskInfo, {
+              filters: [Query.typedFilter(TaskInfo, "status", "=", input.status)],
+            });
+          }
+          if (input.priority) {
+            query.with(TaskInfo, {
+              filters: [Query.typedFilter(TaskInfo, "priority", "=", input.priority)],
+            });
+          }
+          if (input.assigneeId) {
+            query.with(TaskAssignment, {
+              filters: [
+                Query.typedFilter(TaskAssignment, "assigneeIds", "LIKE", `%"${input.assigneeId}"%`),
+              ],
+            });
+          }
+
+          query.sortBy(TaskInfo, "order", "ASC");
+          return query.populate().exec();
+        }),
+      );
+
+      return allTasks.flat();
+    }
+
+    // No projectId — return all tasks (dashboard use case)
     const query = new Query().with(TaskInfo).with(TaskAssignment).with(TaskLabels);
 
     if (input.status) {

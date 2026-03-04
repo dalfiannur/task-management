@@ -61,8 +61,7 @@ export const router = createBrowserRouter([
             path: "projects/:projectId",
             lazy: () => import("./pages/project-layout"),
             children: [
-              { index: true, element: <Navigate to="my-tasks" replace /> },
-              { path: "my-tasks", lazy: () => import("./pages/project-my-tasks") },
+              { index: true, element: <Navigate to="all-tasks" replace /> },
               { path: "all-tasks", lazy: () => import("./pages/project-detail") },
               { path: "sub-projects", lazy: () => import("./pages/project-sub-projects") },
               { path: "members", lazy: () => import("./pages/project-members") },

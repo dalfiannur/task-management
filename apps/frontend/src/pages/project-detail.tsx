@@ -39,7 +39,7 @@ function SortableModuleItem({
   module: Module;
   projectId: string;
   colorIndex: number;
-  filters: { status?: string; priority?: string; search?: string };
+  filters: { status?: string; priority?: string; search?: string; assignees?: string[] };
   projectStatus: ProjectDisplayStatus;
   subProjectCount: number;
 }) {
@@ -89,6 +89,8 @@ export function Component() {
   const status = searchParams.get("status") ?? undefined;
   const priority = searchParams.get("priority") ?? undefined;
   const search = searchParams.get("search") ?? undefined;
+  const assigneeParam = searchParams.get("assignee");
+  const assignees = assigneeParam ? assigneeParam.split(",") : undefined;
 
   const { data: project } = useProject(projectId!);
   const { data: modules } = useModules(projectId);
@@ -125,7 +127,7 @@ export function Component() {
     <div>
       {/* Filters Row */}
       <div className={styles.filtersRow}>
-        <TaskFilters filters={{ status, priority }} />
+        <TaskFilters projectId={projectId} filters={{ status, priority, assignees }} />
         <div className={styles.searchWrapper}>
           <Search className={styles.searchIcon} />
           <input
@@ -172,7 +174,7 @@ export function Component() {
                   module={mod}
                   projectId={projectId!}
                   colorIndex={index}
-                  filters={{ status, priority, search }}
+                  filters={{ status, priority, search, assignees }}
                   projectStatus={getDisplayStatus(project)}
                   subProjectCount={subProjectCountsByModule.get(mod.id) ?? 0}
                 />

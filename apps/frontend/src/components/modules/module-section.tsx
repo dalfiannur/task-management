@@ -78,7 +78,7 @@ interface ModuleSectionProps {
   module: Module;
   projectId: string;
   colorIndex: number;
-  filters?: { status?: string; priority?: string; search?: string; assignee?: string };
+  filters?: { status?: string; priority?: string; search?: string; assignees?: string[] };
   projectStatus?: ProjectDisplayStatus;
   subProjectCount?: number;
 }
@@ -134,7 +134,11 @@ export function ModuleSection({
   subProjectCount,
 }: ModuleSectionProps) {
   const navigate = useNavigate();
-  const { data: tasks, isLoading } = useTasks({ moduleId: module.id, ...filters });
+  const { assignees, ...backendFilters } = filters ?? {};
+  const { data: rawTasks, isLoading } = useTasks({ moduleId: module.id, ...backendFilters });
+  const tasks = assignees && assignees.length > 0
+    ? rawTasks?.filter((t) => t.assigneeIds.some((id) => assignees.includes(id)))
+    : rawTasks;
   const updateTask = useUpdateTask();
   const deleteModule = useDeleteModule();
   const { data: linkedPages = [] } = usePagesByModule(module.id);

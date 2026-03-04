@@ -4,6 +4,7 @@ import { t } from "bunsane/gql/schema";
 import { Query } from "bunsane/query";
 import { PageInfo } from "../components/PageInfo";
 import { PageArcheType } from "../archetypes/PageArcheType";
+import { resolveLocalProjectId } from "~/lib/resolve-project-id";
 
 import { requireAuth, type TaskAuthUser } from "~/lib/auth-context";
 
@@ -23,10 +24,11 @@ export default class PageService extends BaseService {
     output: [pageArcheType],
   })
   async listPages(input: { projectId: string }) {
+    const localProjectId = await resolveLocalProjectId(input.projectId);
     return await new Query()
       .with(PageInfo, {
         filters: [
-          Query.typedFilter(PageInfo, "projectId", "=", input.projectId),
+          Query.typedFilter(PageInfo, "projectId", "=", localProjectId),
         ],
       })
       .sortBy(PageInfo, "order", "ASC")
@@ -112,11 +114,13 @@ export default class PageService extends BaseService {
       throw new Error("A page can only be linked to a task or a module, not both");
     }
 
+    const localProjectId = await resolveLocalProjectId(input.projectId);
+
     // Determine next order value
     const existing = await new Query()
       .with(PageInfo, {
         filters: [
-          Query.typedFilter(PageInfo, "projectId", "=", input.projectId),
+          Query.typedFilter(PageInfo, "projectId", "=", localProjectId),
         ],
       })
       .populate()
@@ -127,7 +131,7 @@ export default class PageService extends BaseService {
     const archetype = new PageArcheType();
     archetype.fill({
       pageInfo: {
-        projectId: input.projectId,
+        projectId: localProjectId,
         title: input.title,
         icon: input.icon ?? "",
         content: input.content ?? "",

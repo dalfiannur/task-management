@@ -4,6 +4,7 @@ import { t } from "bunsane/gql/schema";
 import { Query } from "bunsane/query";
 import { TaskMediaLinkTag, TaskMediaLinkData } from "../components/TaskMediaLink";
 import { TaskMediaLinkArcheType } from "../archetypes/TaskMediaLinkArcheType";
+import { resolveLocalProjectId } from "~/lib/resolve-project-id";
 
 const taskMediaLinkArcheType = new TaskMediaLinkArcheType();
 
@@ -42,12 +43,13 @@ export default class MediaService extends BaseService {
       return existing[0];
     }
 
+    const localProjectId = await resolveLocalProjectId(input.projectId);
     const archetype = new TaskMediaLinkArcheType();
     archetype.fill({
       taskMediaLinkData: {
         mediaFileId: input.mediaFileId,
         taskId: input.taskId,
-        projectId: input.projectId,
+        projectId: localProjectId,
       },
     });
     return await archetype.createAndSaveEntity();
@@ -105,11 +107,12 @@ export default class MediaService extends BaseService {
     output: [taskMediaLinkArcheType],
   })
   async listProjectMediaLinks(input: { projectId: string }) {
+    const localProjectId = await resolveLocalProjectId(input.projectId);
     return await new Query()
       .with(TaskMediaLinkTag)
       .with(TaskMediaLinkData, {
         filters: [
-          Query.typedFilter(TaskMediaLinkData, "projectId", "=", input.projectId),
+          Query.typedFilter(TaskMediaLinkData, "projectId", "=", localProjectId),
         ],
       })
       .populate()

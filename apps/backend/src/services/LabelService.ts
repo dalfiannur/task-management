@@ -5,6 +5,7 @@ import { Entity } from 'bunsane/core/Entity';
 import { Query } from 'bunsane/query';
 import { LabelInfo } from "../components/LabelInfo";
 import { LabelArcheType } from "../archetypes/LabelArcheType";
+import { resolveLocalProjectId } from "~/lib/resolve-project-id";
 
 const labelArcheType = new LabelArcheType();
 
@@ -22,10 +23,11 @@ export default class LabelService extends BaseService {
     output: [labelArcheType],
   })
   async listLabels(input: { projectId: string }) {
+    const localProjectId = await resolveLocalProjectId(input.projectId);
     const entities = await new Query()
       .with(LabelInfo, {
         filters: [
-          Query.typedFilter(LabelInfo, "projectId", "=", input.projectId),
+          Query.typedFilter(LabelInfo, "projectId", "=", localProjectId),
         ],
       })
       .populate()
@@ -52,12 +54,13 @@ export default class LabelService extends BaseService {
     color: string;
     projectId: string;
   }) {
+    const localProjectId = await resolveLocalProjectId(input.projectId);
     const archetype = new LabelArcheType();
     archetype.fill({
       labelInfo: {
         name: input.name,
         color: input.color,
-        projectId: input.projectId,
+        projectId: localProjectId,
       },
     });
     const entity = await archetype.createAndSaveEntity();

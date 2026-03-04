@@ -63,7 +63,7 @@ export function Component() {
                 module={mod}
                 projectId={projectId!}
                 colorIndex={index}
-                filters={{ status, priority, search, assignee: me.id }}
+                filters={{ status, priority, search, assignees: [me.id] }}
                 projectStatus={getDisplayStatus(project)}
                 subProjectCount={subProjectCountsByModule.get(mod.id) ?? 0}
               />

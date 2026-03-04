@@ -5,7 +5,8 @@ import { Entity } from 'bunsane/core/Entity';
 import { Query } from 'bunsane/query';
 import { ModuleDescriptionComponent, ModuleNameComponent, ModuleOrderComponent, ModulePicIdComponent, ModuleProjectRefComponent, ModuleTag } from "../components/ModuleComponents";
 import { ModuleArcheType } from "../archetypes/ModuleArcheType";
-import { ProjectTag, ProjectModuleRefComponent, ProjectCoreRefComponent } from "../components/ProjectComponents";
+import { ProjectTag, ProjectModuleRefComponent } from "../components/ProjectComponents";
+import { resolveLocalProjectId } from "~/lib/resolve-project-id";
 
 export default class ModuleService extends BaseService {
   constructor() {
@@ -13,21 +14,6 @@ export default class ModuleService extends BaseService {
     ModuleArcheType.registerFieldResolvers(this);
   }
 
-  /** Resolve a project ID that may be a Core Portal ID to the local entity ID. */
-  private async resolveLocalProjectId(id: string): Promise<string> {
-    const entity = await Entity.FindById(id);
-    if (entity) return id;
-    const results = await new Query()
-      .with(ProjectTag)
-      .with(ProjectCoreRefComponent)
-      .populate({
-        filters: [
-          Query.filter("value", Query.filterOp.EQ, id),
-        ],
-      })
-      .exec();
-    return results[0]?.id ?? id;
-  }
 
   @GraphQLOperation({
     type: "Query",
@@ -53,7 +39,7 @@ export default class ModuleService extends BaseService {
     output: [ModuleArcheType],
   })
   async listModules(input: { projectId: string }) {
-    const localProjectId = await this.resolveLocalProjectId(input.projectId);
+    const localProjectId = await resolveLocalProjectId(input.projectId);
     return await new Query()
       .with(ModuleTag)
       .with(ModuleNameComponent)
@@ -97,7 +83,7 @@ export default class ModuleService extends BaseService {
     projectId: string;
     picId?: string;
   }) {
-    const localProjectId = await this.resolveLocalProjectId(input.projectId);
+    const localProjectId = await resolveLocalProjectId(input.projectId);
     // Shift existing modules' order +1 so new module appears at top
     const existing = await new Query()
       .with(ModuleTag)

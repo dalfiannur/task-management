@@ -6,6 +6,7 @@ import { ProjectMembershipData } from "~/components/ProjectMembership";
 import { ProjectMembershipArcheTypeClass } from "~/archetypes/ProjectMembershipArcheType";
 import { ProjectLeaderIdComponent } from "~/components/ProjectComponents";
 import { checkPermission, Resources, type TaskAuthUser } from "~/lib/auth-context";
+import { resolveLocalProjectId } from "~/lib/resolve-project-id";
 
 type AuthUser = TaskAuthUser;
 
@@ -51,10 +52,11 @@ export default class MembershipService extends BaseService {
     output: [membershipArcheType],
   })
   async listProjectMembers(input: { projectId: string }) {
+    const localProjectId = await resolveLocalProjectId(input.projectId);
     const entities = await new Query()
       .with(ProjectMembershipData, {
         filters: [
-          Query.typedFilter(ProjectMembershipData, "projectId", "=", input.projectId),
+          Query.typedFilter(ProjectMembershipData, "projectId", "=", localProjectId),
         ],
       })
       .populate()
@@ -75,8 +77,9 @@ export default class MembershipService extends BaseService {
     input: { projectId: string; userId: string },
     context: { user?: AuthUser },
   ) {
-    await this.requireMember(context, input.projectId);
-    await this.ensureMembership(input.projectId, input.userId);
+    const localProjectId = await resolveLocalProjectId(input.projectId);
+    await this.requireMember(context, localProjectId);
+    await this.ensureMembership(localProjectId, input.userId);
     return true;
   }
 
@@ -89,12 +92,13 @@ export default class MembershipService extends BaseService {
     input: { projectId: string; userId: string },
     context: { user?: AuthUser },
   ) {
-    await this.requireMember(context, input.projectId);
+    const localProjectId = await resolveLocalProjectId(input.projectId);
+    await this.requireMember(context, localProjectId);
 
     const entities = await new Query()
       .with(ProjectMembershipData, {
         filters: [
-          Query.typedFilter(ProjectMembershipData, "projectId", "=", input.projectId),
+          Query.typedFilter(ProjectMembershipData, "projectId", "=", localProjectId),
           Query.typedFilter(ProjectMembershipData, "userId", "=", input.userId),
         ],
       })

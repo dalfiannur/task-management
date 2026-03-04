@@ -12,6 +12,7 @@ import {
   ProjectLeaderIdComponent,
   ProjectTag,
 } from "~/components/ProjectComponents";
+import { resolveLocalProjectId } from "~/lib/resolve-project-id";
 import {
   ModuleDescriptionComponent,
   ModuleNameComponent,
@@ -38,18 +39,8 @@ export default class ProjectService extends BaseService {
 
   /** Find a local project entity by local ID or Core Portal ID (coreRef). */
   private async findProjectEntity(id: string) {
-    const entity = await Entity.FindById(id);
-    if (entity) return entity;
-    const results = await new Query()
-      .with(ProjectTag)
-      .with(ProjectCoreRefComponent)
-      .populate({
-        filters: [
-          Query.filter("value", Query.filterOp.EQ, id),
-        ],
-      })
-      .exec();
-    return results[0] ?? null;
+    const localId = await resolveLocalProjectId(id);
+    return await Entity.FindById(localId) ?? null;
   }
 
   @GraphQLOperation({
@@ -318,12 +309,13 @@ export default class ProjectService extends BaseService {
     input: { parentProjectId: string },
     context: { user?: AuthUser; request?: Request },
   ) {
+    const localParentId = await resolveLocalProjectId(input.parentProjectId);
     const allSubProjects = await new Query()
       .with(ProjectTag)
       .with(ProjectCoreRefComponent)
       .with(ProjectParentRefComponent, {
         filters: [
-          Query.typedFilter(ProjectParentRefComponent, "parentProjectId", "=", input.parentProjectId),
+          Query.typedFilter(ProjectParentRefComponent, "parentProjectId", "=", localParentId),
         ],
       })
       .populate()
@@ -335,7 +327,7 @@ export default class ProjectService extends BaseService {
       const canManage = checkPermission({ user }, Resources.Projects, "manage");
       if (!canManage) {
         const memberProjectIds = await this.getMemberProjectIds(user.id);
-        if (!memberProjectIds.has(input.parentProjectId)) {
+        if (!memberProjectIds.has(localParentId)) {
           filteredProjects = allSubProjects.filter((p: any) => memberProjectIds.has(p.id));
         }
       }
