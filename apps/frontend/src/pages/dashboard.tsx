@@ -1,5 +1,6 @@
 import { useAllTasks, getTodayDeadlines } from "@/hooks/use-tasks";
 import { useProjects } from "@/hooks/use-projects";
+import type { CoreProject } from "@/types/project";
 import { useMe, useIsManager } from "@/hooks/use-me";
 import { useAllModules } from "@/hooks/use-modules";
 import { StatCard } from "@/components/dashboard/stat-card";
@@ -61,9 +62,11 @@ export function Component() {
   const allModules = modules ?? [];
   const today = new Date();
 
-  // Filter to tasks from active (on_going) projects only
+  // Filter to tasks from active projects (on_going status or proposal winStage)
+  const isActiveProject = (p: CoreProject) =>
+    p.status === "active"
   const activeProjectIds = new Set(
-    allProjects.filter((p) => p.status.value === "on_going").map((p) => p.id),
+    allProjects.filter(isActiveProject).map((p) => p.id),
   );
   const activeModuleIds = new Set(
     allModules.filter((m) => activeProjectIds.has(m.projectId)).map((m) => m.id),
@@ -109,7 +112,7 @@ export function Component() {
       value: activeProjectCount,
       icon: FolderOpen,
       accent: STAT_ACCENTS.projects,
-      desc: "On-going",
+      desc: "On-going & Proposal",
     },
   ];
 

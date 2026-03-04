@@ -9,7 +9,7 @@ import { Plus } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import type { Project } from "@/types/project";
+import type { CoreProject } from "@/types/project";
 import styles from "./projects.module.css";
 
 type ProjectFilter = "active" | "closed" | "all";
@@ -21,12 +21,12 @@ const TYPE_TITLES: Record<ProjectType, string> = {
   commercial: "Commercial Projects",
 };
 
-function isInternalProject(p: Project): boolean {
-  return !p.winStage;
+function isInternalProject(p: CoreProject): boolean {
+  return !p.commercial;
 }
 
-function isCommercialProject(p: Project): boolean {
-  return !!p.winStage && p.winStage !== "pending";
+function isCommercialProject(p: CoreProject): boolean {
+  return p.commercial;
 }
 
 export function Component() {
@@ -37,7 +37,7 @@ export function Component() {
   const { data: leads, isLoading: isLeadsLoading } = useNewLeads();
   const [filter, setFilter] = useState<ProjectFilter>("active");
   const [formOpen, setFormOpen] = useState(false);
-  const [approveProject, setApproveProject] = useState<Project | null>(null);
+  const [approveProject, setApproveProject] = useState<CoreProject | null>(null);
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
 
   const isLeadsView = projectType === "leads";
@@ -84,7 +84,7 @@ export function Component() {
   }
 
   // For internal/commercial/all views, use allProjects
-  const rootProjects = allProjects?.filter((p) => !p.parent?.id && p.status.value !== "pending");
+  const rootProjects = allProjects?.filter((p) => !p.ref?.parentId && p.winStage !== "pending");
 
   const typeFiltered = rootProjects?.filter((p) => {
     if (projectType === "internal") return isInternalProject(p);
@@ -93,8 +93,8 @@ export function Component() {
   });
 
   const projects = typeFiltered?.filter((p) => {
-    if (filter === "active") return p.status.value !== "closed";
-    if (filter === "closed") return p.status.value === "closed";
+    if (filter === "active") return p.status !== "completed";
+    if (filter === "closed") return p.status === "completed";
     return true;
   });
 
@@ -102,7 +102,7 @@ export function Component() {
     rootProjects?.map((p) => [p.id, getProjectDisplayName(p)]),
   );
 
-  const closedCount = typeFiltered?.filter((p) => p.status.value === "closed").length ?? 0;
+  const closedCount = typeFiltered?.filter((p) => p.status === "completed").length ?? 0;
   const title = projectType ? TYPE_TITLES[projectType] : "Projects";
   const showNewButton = !projectType || projectType === "internal";
 
@@ -153,7 +153,7 @@ export function Component() {
             key={project.id}
             project={project}
             parentName={
-              project.parent ? nameMap.get(project.parent.id) : undefined
+              project.ref?.parentId ? nameMap.get(project.ref.parentId) : undefined
             }
           />
         ))}

@@ -61,7 +61,7 @@ export function Component() {
   const removeMember = useRemoveProjectMember();
   const [selectedUserId, setSelectedUserId] = useState<string | undefined>();
 
-  const projectLeaderId = project?.projectLeaderId?.value;
+  const projectLeaderId = project?.ref?.leaderId;
 
   const memberUserIds = new Set(
     members?.map((m) => m.membership.userId) ?? [],
