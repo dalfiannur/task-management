@@ -1,6 +1,7 @@
 import App from "bunsane/core/App";
 import BasePlugin from "bunsane/plugins";
 import * as jose from "jose";
+import type { SedjiwaTokenPayload } from "@qyubit/sedjiwa-permissions";
 
 const OIDC_ISSUER = process.env.OIDC_ISSUER || process.env.OIDC_ISSUER_URL || "http://localhost:4000";
 const OIDC_JWKS_URL = process.env.OIDC_JWKS_URL || `${OIDC_ISSUER}/.well-known/jwks.json`;
@@ -23,42 +24,15 @@ export class AuthPlugin extends BasePlugin {
     }
   }
 
-  static async extractUser(
-    request: Request,
-  ): Promise<{ id: string; sub: string; email: string; name: string; picture?: string; role?: string; permissions: string[] } | null> {
+  static async extractUser(request: Request): Promise<SedjiwaTokenPayload | null> {
     const authHeader = request.headers.get("authorization");
     if (!authHeader?.startsWith("Bearer ")) return null;
 
     const token = authHeader.slice(7);
     try {
       const { payload } = await jose.jwtVerify(token, jwks, { issuer: OIDC_ISSUER });
-
       if (!payload.sub) return null;
-
-      const email = typeof (payload as any).email === "string" ? (payload as any).email.trim() : "";
-      const tokenName = typeof (payload as any).name === "string" ? (payload as any).name.trim() : "";
-      const preferredUsername = typeof (payload as any).preferred_username === "string"
-        ? (payload as any).preferred_username.trim()
-        : "";
-      const displayName = tokenName || email || preferredUsername || payload.sub;
-
-      const role: string | undefined = (payload as any).role;
-      let permissions: string[] = Array.isArray((payload as any).permissions) ? (payload as any).permissions : [];
-
-      // Backward-compat: if role is "manager" and no permissions in JWT, grant wildcard
-      if (role === "manager" && permissions.length === 0) {
-        permissions = ["*"];
-      }
-
-      return {
-        id: payload.sub,
-        sub: payload.sub,
-        email,
-        name: displayName,
-        picture: (payload as any).picture,
-        role,
-        permissions,
-      };
+      return payload as unknown as SedjiwaTokenPayload;
     } catch (err) {
       console.warn("[AuthPlugin] Token verification failed:", (err as Error).message);
       return null;

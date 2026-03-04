@@ -5,7 +5,8 @@ import { Query } from "bunsane/query";
 import { PageInfo } from "../components/PageInfo";
 import { PageArcheType } from "../archetypes/PageArcheType";
 
-import { requireAuth, type TaskAuthUser } from "~/lib/auth-context";
+import { requirePermission, type AuthContext } from "~/utils/auth";
+import { TaskResources, Action } from "@qyubit/sedjiwa-permissions";
 
 const pageArcheType = new PageArcheType();
 
@@ -22,7 +23,8 @@ export default class PageService extends BaseService {
     },
     output: [pageArcheType],
   })
-  async listPages(input: { projectId: string }) {
+  async listPages(input: { projectId: string }, context: AuthContext) {
+    requirePermission(context, TaskResources.Tasks, Action.Read);
     return await new Query()
       .with(PageInfo, {
         filters: [
@@ -41,7 +43,8 @@ export default class PageService extends BaseService {
     },
     output: pageArcheType,
   })
-  async getPage(input: { id: string }) {
+  async getPage(input: { id: string }, context: AuthContext) {
+    requirePermission(context, TaskResources.Tasks, Action.Read);
     const entity = await new Query().findOneById(input.id);
     if (!entity) throw new Error("Page not found");
     return entity;
@@ -54,7 +57,8 @@ export default class PageService extends BaseService {
     },
     output: [pageArcheType],
   })
-  async listPagesByTask(input: { taskId: string }) {
+  async listPagesByTask(input: { taskId: string }, context: AuthContext) {
+    requirePermission(context, TaskResources.Tasks, Action.Read);
     return await new Query()
       .with(PageInfo, {
         filters: [
@@ -72,7 +76,8 @@ export default class PageService extends BaseService {
     },
     output: [pageArcheType],
   })
-  async listPagesByModule(input: { moduleId: string }) {
+  async listPagesByModule(input: { moduleId: string }, context: AuthContext) {
+    requirePermission(context, TaskResources.Tasks, Action.Read);
     return await new Query()
       .with(PageInfo, {
         filters: [
@@ -104,9 +109,9 @@ export default class PageService extends BaseService {
       linkedTaskId?: string;
       linkedModuleId?: string;
     },
-    context: { user?: TaskAuthUser | null },
+    context: AuthContext,
   ) {
-    const user = requireAuth(context);
+    const user = requirePermission(context, TaskResources.Tasks, Action.Create);
 
     if (input.linkedTaskId && input.linkedModuleId) {
       throw new Error("A page can only be linked to a task or a module, not both");
@@ -123,6 +128,7 @@ export default class PageService extends BaseService {
       .exec();
     const maxOrder = existing.length;
 
+    const displayName = user.name ?? user.email ?? user.sub;
     const now = new Date().toISOString();
     const archetype = new PageArcheType();
     archetype.fill({
@@ -132,10 +138,10 @@ export default class PageService extends BaseService {
         icon: input.icon ?? "",
         content: input.content ?? "",
         order: maxOrder,
-        createdById: user.id,
-        createdByName: user.name,
-        lastEditedById: user.id,
-        lastEditedByName: user.name,
+        createdById: user.sub,
+        createdByName: displayName,
+        lastEditedById: user.sub,
+        lastEditedByName: displayName,
         createdAt: now,
         updatedAt: now,
         linkedTaskId: input.linkedTaskId ?? "",
@@ -170,9 +176,9 @@ export default class PageService extends BaseService {
       linkedTaskId?: string;
       linkedModuleId?: string;
     },
-    context: { user?: TaskAuthUser | null },
+    context: AuthContext,
   ) {
-    const user = requireAuth(context);
+    const user = requirePermission(context, TaskResources.Tasks, Action.Update);
 
     // Validate mutual exclusivity
     const hasTaskLink = input.linkedTaskId !== undefined && input.linkedTaskId !== "";
@@ -185,8 +191,8 @@ export default class PageService extends BaseService {
     if (!entity) throw new Error("Page not found");
 
     const updates: Record<string, unknown> = {
-      lastEditedById: user.id,
-      lastEditedByName: user.name,
+      lastEditedById: user.sub,
+      lastEditedByName: user.name ?? user.email ?? user.sub,
       updatedAt: new Date().toISOString(),
     };
 
@@ -220,9 +226,9 @@ export default class PageService extends BaseService {
   })
   async deletePage(
     input: { id: string },
-    context: { user?: TaskAuthUser | null },
+    context: AuthContext,
   ) {
-    requireAuth(context);
+    requirePermission(context, TaskResources.Tasks, Action.Delete);
 
     const entity = await new Query().findOneById(input.id);
     if (!entity) throw new Error("Page not found");
@@ -241,9 +247,9 @@ export default class PageService extends BaseService {
   })
   async reorderPages(
     input: { projectId: string; pageIds: string[] },
-    context: { user?: TaskAuthUser | null },
+    context: AuthContext,
   ) {
-    requireAuth(context);
+    requirePermission(context, TaskResources.Tasks, Action.Update);
 
     if (input.pageIds.length === 0) return true;
 

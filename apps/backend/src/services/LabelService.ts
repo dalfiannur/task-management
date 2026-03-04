@@ -5,6 +5,8 @@ import { Entity } from 'bunsane/core/Entity';
 import { Query } from 'bunsane/query';
 import { LabelInfo } from "../components/LabelInfo";
 import { LabelArcheType } from "../archetypes/LabelArcheType";
+import { requirePermission, type AuthContext } from "~/utils/auth";
+import { TaskResources, Action } from "@qyubit/sedjiwa-permissions";
 
 const labelArcheType = new LabelArcheType();
 
@@ -21,7 +23,8 @@ export default class LabelService extends BaseService {
     },
     output: [labelArcheType],
   })
-  async listLabels(input: { projectId: string }) {
+  async listLabels(input: { projectId: string }, context: AuthContext) {
+    requirePermission(context, TaskResources.Tasks, Action.Read);
     const entities = await new Query()
       .with(LabelInfo, {
         filters: [
@@ -51,7 +54,8 @@ export default class LabelService extends BaseService {
     name: string;
     color: string;
     projectId: string;
-  }) {
+  }, context: AuthContext) {
+    requirePermission(context, TaskResources.Tasks, Action.Create);
     const archetype = new LabelArcheType();
     archetype.fill({
       labelInfo: {
@@ -76,7 +80,8 @@ export default class LabelService extends BaseService {
     },
     output: labelArcheType,
   })
-  async updateLabel(input: { id: string; name?: string; color?: string }) {
+  async updateLabel(input: { id: string; name?: string; color?: string }, context: AuthContext) {
+    requirePermission(context, TaskResources.Tasks, Action.Update);
     const entity = await Entity.FindById(input.id);
     if (!entity) throw new Error("Label not found");
 
@@ -102,7 +107,8 @@ export default class LabelService extends BaseService {
     },
     output: "Boolean",
   })
-  async deleteLabel(input: { id: string }) {
+  async deleteLabel(input: { id: string }, context: AuthContext) {
+    requirePermission(context, TaskResources.Tasks, Action.Delete);
     const entity = await new Query().findOneById(input.id);
     if (!entity) throw new Error("Label not found");
     await entity.delete();

@@ -4,10 +4,8 @@ import { t } from "bunsane/gql/schema";
 import { Query } from "bunsane/query";
 import { ProjectMembershipData } from "~/components/ProjectMembership";
 import { ProjectMembershipArcheTypeClass } from "~/archetypes/ProjectMembershipArcheType";
-import { ProjectLeaderIdComponent } from "~/components/ProjectComponents";
-import { checkPermission, Resources, type TaskAuthUser } from "~/lib/auth-context";
-
-type AuthUser = TaskAuthUser;
+import { requirePermission, type AuthContext } from "~/utils/auth";
+import { TaskResources, Action } from "@qyubit/sedjiwa-permissions";
 
 const membershipArcheType = new ProjectMembershipArcheTypeClass();
 
@@ -50,7 +48,8 @@ export default class MembershipService extends BaseService {
     input: { projectId: t.string().required() },
     output: [membershipArcheType],
   })
-  async listProjectMembers(input: { projectId: string }) {
+  async listProjectMembers(input: { projectId: string }, context: AuthContext) {
+    requirePermission(context, TaskResources.Projects, Action.Read);
     const entities = await new Query()
       .with(ProjectMembershipData, {
         filters: [
@@ -73,9 +72,9 @@ export default class MembershipService extends BaseService {
   })
   async addProjectMember(
     input: { projectId: string; userId: string },
-    context: { user?: AuthUser },
+    context: AuthContext,
   ) {
-    await this.requireMember(context, input.projectId);
+    requirePermission(context, TaskResources.Projects, Action.Update);
     await this.ensureMembership(input.projectId, input.userId);
     return true;
   }
@@ -87,9 +86,9 @@ export default class MembershipService extends BaseService {
   })
   async removeProjectMember(
     input: { projectId: string; userId: string },
-    context: { user?: AuthUser },
+    context: AuthContext,
   ) {
-    await this.requireMember(context, input.projectId);
+    requirePermission(context, TaskResources.Projects, Action.Update);
 
     const entities = await new Query()
       .with(ProjectMembershipData, {
@@ -107,34 +106,4 @@ export default class MembershipService extends BaseService {
     return true;
   }
 
-  /**
-   * Auth helper: caller must be a manager, project leader, or project member.
-   */
-  private async requireMember(context: { user?: AuthUser }, projectId: string) {
-    if (!context.user) throw new Error("Authentication required");
-    const user = context.user;
-
-    const canManage = checkPermission({ user }, Resources.Projects, "manage");
-    if (canManage) return user;
-
-    // Check if user is the project leader
-    const projectEntity = await new Query().findOneById(projectId);
-    if (projectEntity) {
-      const leaderComponent = await projectEntity.get(ProjectLeaderIdComponent);
-      if (leaderComponent?.value === user.id) return user;
-    }
-
-    // Check if user is a project member
-    const memberships = await new Query()
-      .with(ProjectMembershipData, {
-        filters: [
-          Query.typedFilter(ProjectMembershipData, "projectId", "=", projectId),
-          Query.typedFilter(ProjectMembershipData, "userId", "=", user.id),
-        ],
-      })
-      .exec();
-    if (memberships.length > 0) return user;
-
-    throw new Error("Project membership required");
-  }
 }

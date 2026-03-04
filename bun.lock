@@ -16,7 +16,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@aws-sdk/client-s3": "^3.993.0",
-        "@qyubit/sedjiwa-permissions": "^0.1.0",
+        "@qyubit/sedjiwa-permissions": "^0.2.0",
         "bunsane": "^0.2.0",
         "graphql": "^16.13.0",
         "jose": "^6.1.3",
@@ -333,7 +333,7 @@
 
     "@nodelib/fs.walk": ["@nodelib/fs.walk@1.2.8", "", { "dependencies": { "@nodelib/fs.scandir": "2.1.5", "fastq": "^1.6.0" } }, "sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg=="],
 
-    "@qyubit/sedjiwa-permissions": ["@qyubit/sedjiwa-permissions@0.1.0", "https://git.rubick.qyubit.io/api/packages/Qyubit/npm/%40qyubit%2Fsedjiwa-permissions/-/0.1.0/sedjiwa-permissions-0.1.0.tgz", { "dependencies": { "graphql": ">=16" }, "peerDependencies": { "jose": ">=4", "typescript": "^5" } }, "sha512-Y3W7jfzYi6G2sXznIdbvoQCX1P9dUK3whfxj1Nbi0wGydcQqWRMXnGq1dO+i2RWw+OmB0x3J3S3uPqU5eQPtGQ=="],
+    "@qyubit/sedjiwa-permissions": ["@qyubit/sedjiwa-permissions@0.2.0", "https://git.rubick.qyubit.io/api/packages/Qyubit/npm/%40qyubit%2Fsedjiwa-permissions/-/0.2.0/sedjiwa-permissions-0.2.0.tgz", { "dependencies": { "graphql": ">=16" }, "peerDependencies": { "jose": ">=4", "typescript": "^5" } }, "sha512-wOrqKIGk+4mUrYOTQAJ3ag/js2UkRLznCAqW2Xf3GgvapTtY7DtKiILx5tFNS4tbB5QI6xgD9MAOtIxPHXlHYA=="],
 
     "@radix-ui/number": ["@radix-ui/number@1.1.1", "", {}, "sha512-MkKCwxlXTgz6CFoJx3pCwn07GKp36+aZyu/u2Ln2VrA5DcdyCZkASEDBTd8x5whTQQL5CiYf4prXKLcgQdv29g=="],
 

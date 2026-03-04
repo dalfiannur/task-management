@@ -4,6 +4,8 @@ import { t } from "bunsane/gql/schema";
 import { Query } from "bunsane/query";
 import { TaskMediaLinkTag, TaskMediaLinkData } from "../components/TaskMediaLink";
 import { TaskMediaLinkArcheType } from "../archetypes/TaskMediaLinkArcheType";
+import { requirePermission, type AuthContext } from "~/utils/auth";
+import { TaskResources, Action } from "@qyubit/sedjiwa-permissions";
 
 const taskMediaLinkArcheType = new TaskMediaLinkArcheType();
 
@@ -26,7 +28,8 @@ export default class MediaService extends BaseService {
     mediaFileId: string;
     taskId: string;
     projectId: string;
-  }) {
+  }, context: AuthContext) {
+    requirePermission(context, TaskResources.Tasks, Action.Update);
     // Check for existing link to avoid duplicates
     const existing = await new Query()
       .with(TaskMediaLinkTag)
@@ -61,7 +64,8 @@ export default class MediaService extends BaseService {
     },
     output: "Boolean",
   })
-  async unlinkMediaFile(input: { mediaFileId: string; taskId: string }) {
+  async unlinkMediaFile(input: { mediaFileId: string; taskId: string }, context: AuthContext) {
+    requirePermission(context, TaskResources.Tasks, Action.Update);
     const links = await new Query()
       .with(TaskMediaLinkTag)
       .with(TaskMediaLinkData, {
@@ -85,7 +89,8 @@ export default class MediaService extends BaseService {
     },
     output: [taskMediaLinkArcheType],
   })
-  async listTaskMediaLinks(input: { taskId: string }) {
+  async listTaskMediaLinks(input: { taskId: string }, context: AuthContext) {
+    requirePermission(context, TaskResources.Tasks, Action.Read);
     return await new Query()
       .with(TaskMediaLinkTag)
       .with(TaskMediaLinkData, {
@@ -104,7 +109,8 @@ export default class MediaService extends BaseService {
     },
     output: [taskMediaLinkArcheType],
   })
-  async listProjectMediaLinks(input: { projectId: string }) {
+  async listProjectMediaLinks(input: { projectId: string }, context: AuthContext) {
+    requirePermission(context, TaskResources.Tasks, Action.Read);
     return await new Query()
       .with(TaskMediaLinkTag)
       .with(TaskMediaLinkData, {
@@ -123,7 +129,8 @@ export default class MediaService extends BaseService {
     },
     output: "Boolean",
   })
-  async unlinkAllForMediaFile(input: { mediaFileId: string }) {
+  async unlinkAllForMediaFile(input: { mediaFileId: string }, context: AuthContext) {
+    requirePermission(context, TaskResources.Tasks, Action.Delete);
     const links = await new Query()
       .with(TaskMediaLinkTag)
       .with(TaskMediaLinkData, {
