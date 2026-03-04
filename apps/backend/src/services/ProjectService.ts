@@ -36,6 +36,22 @@ export default class ProjectService extends BaseService {
     ProjectArcheType.registerFieldResolvers(this);
   }
 
+  /** Find a local project entity by local ID or Core Portal ID (coreRef). */
+  private async findProjectEntity(id: string) {
+    const entity = await Entity.FindById(id);
+    if (entity) return entity;
+    const results = await new Query()
+      .with(ProjectTag)
+      .with(ProjectCoreRefComponent)
+      .populate({
+        filters: [
+          Query.filter("value", Query.filterOp.EQ, id),
+        ],
+      })
+      .exec();
+    return results[0] ?? null;
+  }
+
   @GraphQLOperation({
     type: "Query",
     output: [ProjectArcheType],
@@ -77,7 +93,7 @@ export default class ProjectService extends BaseService {
     output: ProjectArcheType,
   })
   async getProject(input: { id: string }, context: { user?: AuthUser; request?: Request }) {
-    const entity = await Entity.FindById(input.id);
+    const entity = await this.findProjectEntity(input.id);
     if (!entity) {
       return new GraphQLError("Project not found", { extensions: { code: "NOT_FOUND" } });
     }
@@ -87,7 +103,7 @@ export default class ProjectService extends BaseService {
       const canManage = checkPermission({ user }, Resources.Projects, "manage");
       if (!canManage) {
         const memberProjectIds = await this.getMemberProjectIds(user.id);
-        if (!memberProjectIds.has(input.id)) {
+        if (!memberProjectIds.has(entity.id)) {
           const parentRef = await entity.get(ProjectParentRefComponent);
           if (!parentRef?.parentProjectId || !memberProjectIds.has(parentRef.parentProjectId)) {
             return new GraphQLError("Access denied", { extensions: { code: "FORBIDDEN" } });
@@ -348,7 +364,7 @@ export default class ProjectService extends BaseService {
     projectLeaderId?: string;
     moduleId?: string | null;
   }, context: { user?: AuthUser; request?: Request }) {
-    const entity = await new Query().findOneById(input.id);
+    const entity = await this.findProjectEntity(input.id);
     if (!entity) {
       return new GraphQLError("Project not found", { extensions: { code: "NOT_FOUND" } });
     }
@@ -432,7 +448,7 @@ export default class ProjectService extends BaseService {
     output: "Boolean",
   })
   async deleteProject(input: { id: string }) {
-    const entity = await new Query().findOneById(input.id);
+    const entity = await this.findProjectEntity(input.id);
     if (!entity) {
       return new GraphQLError("Project not found", { extensions: { code: "NOT_FOUND" } });
     }
