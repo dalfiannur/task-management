@@ -1,129 +1,101 @@
-import { useQuery, gql } from "@/lib/graphql-client";
+import { useQuery, gql, coreClient } from "@/lib/graphql-client";
 import { createMutationHook, createVoidMutationHook, normalizeQueryResult } from "@/lib/hook-factories";
-import type { CreateProjectInput, CreateSubProjectInput, Project, ProjectStatus } from "@/types/project";
+import type { CoreProject, CreateProjectInput, CreateSubProjectInput, LocalProjectRef } from "@/types/project";
 
-// --- GraphQL operations ---
+// --- GraphQL: Core Portal queries ---
 
-const PROJECT_FIELDS = gql`
-  fragment ProjectFields on Project {
+const CORE_PROJECT_FIELDS = gql`
+  fragment CoreProjectFields on Project {
     id
-    coreRef {
-      value
-    }
-    status {
-      value
-    }
-    projectLeaderId {
-      value
-    }
+    code
+    winStage
+    commercial
+    status
     name {
-      value
-    }
-    parent {
-      id
-    }
-    linkedModule {
-      id
       name
+      description
     }
-    code {
-      value
+    ref {
+      divisionId
+      eventId
+      parentId
+      companyId
+      clientId
+      leaderId
     }
-    coreName {
-      value
-    }
-    coreDescription {
-      value
-    }
-    clientName {
-      value
-    }
-    clientLegalName {
-      value
-    }
-    winStage {
-      value
-    }
-    resolvedStatus {
-      value
-    }
-    closedAt {
-      value
+    clientDetail {
+      name {
+        name
+        legalName
+      }
     }
   }
 `;
 
-/** Raw shape from GraphQL (enrichment fields wrapped as { value }) */
-interface ProjectRaw {
-  id: string;
-  coreRef: { value: string };
-  status: { value: string };
-  projectLeaderId?: { value: string };
-  name?: { value: string };
-  parent?: { id: string } | null;
-  linkedModule?: { id: string; name: string } | null;
-  code?: { value: string };
-  coreName?: { value: string };
-  coreDescription?: { value: string };
-  clientName?: { value: string };
-  clientLegalName?: { value: string };
-  winStage?: { value: string };
-  resolvedStatus?: { value: string };
-  closedAt?: { value: string };
-}
-
-function mapProject(raw: ProjectRaw): Project {
-  return {
-    id: raw.id,
-    coreRef: raw.coreRef,
-    status: raw.status as { value: ProjectStatus },
-    projectLeaderId: raw.projectLeaderId,
-    name: raw.name,
-    parent: raw.parent,
-    linkedModule: raw.linkedModule ?? null,
-    code: raw.code?.value,
-    coreName: raw.coreName?.value,
-    coreDescription: raw.coreDescription?.value,
-    clientName: raw.clientName?.value,
-    clientLegalName: raw.clientLegalName?.value,
-    winStage: raw.winStage?.value,
-    resolvedStatus: raw.resolvedStatus?.value,
-    closedAt: raw.closedAt?.value,
-  };
-}
-
-const LIST_PROJECTS = gql`
-  ${PROJECT_FIELDS}
-  query ListProjects {
-    listProjects {
-      ...ProjectFields
+const LIST_CORE_PROJECTS = gql`
+  ${CORE_PROJECT_FIELDS}
+  query ListCoreProjects($input: listProjectsInput) {
+    listProjects(input: $input) {
+      ...CoreProjectFields
     }
   }
 `;
 
-const GET_PROJECT = gql`
-  ${PROJECT_FIELDS}
-  query GetProject($input: getProjectInput!) {
+const GET_CORE_PROJECT = gql`
+  ${CORE_PROJECT_FIELDS}
+  query GetCoreProject($input: getProjectInput!) {
     getProject(input: $input) {
-      ...ProjectFields
+      ...CoreProjectFields
     }
   }
 `;
+
+// --- GraphQL: Local backend queries ---
+
+const LOCAL_PROJECT_FIELDS = gql`
+  fragment LocalProjectFields on Project {
+    id
+    coreRef { value }
+    projectLeaderId { value }
+    parent { id }
+    linkedModule { id name }
+  }
+`;
+
+const LIST_LOCAL_PROJECTS = gql`
+  ${LOCAL_PROJECT_FIELDS}
+  query ListLocalProjects {
+    listProjects {
+      ...LocalProjectFields
+    }
+  }
+`;
+
+const GET_LOCAL_PROJECT = gql`
+  ${LOCAL_PROJECT_FIELDS}
+  query GetLocalProject($input: getProjectInput!) {
+    getProject(input: $input) {
+      ...LocalProjectFields
+    }
+  }
+`;
+
+// --- GraphQL: Mutations (local backend) ---
 
 const APPROVE_PROJECT = gql`
-  ${PROJECT_FIELDS}
+  ${LOCAL_PROJECT_FIELDS}
   mutation ApproveProject($input: approveProjectInput!) {
     approveProject(input: $input) {
-      ...ProjectFields
+      ...LocalProjectFields
     }
   }
 `;
 
-const UPDATE_PROJECT = gql`
-  ${PROJECT_FIELDS}
-  mutation UpdateProject($input: updateProjectInput!) {
+const UPDATE_LOCAL_PROJECT = gql`
+  ${LOCAL_PROJECT_FIELDS}
+  mutation UpdateLocalProject($input: updateProjectInput!) {
     updateProject(input: $input) {
-      ...ProjectFields
+      ...LocalProjectFields
     }
   }
 `;
@@ -134,133 +106,153 @@ const DELETE_PROJECT = gql`
   }
 `;
 
-const CLOSE_PROJECT = gql`
-  ${PROJECT_FIELDS}
-  mutation CloseProject($input: closeProjectInput!) {
-    closeProject(input: $input) {
-      ...ProjectFields
+const CREATE_PROJECT = gql`
+  ${LOCAL_PROJECT_FIELDS}
+  mutation CreateProject($input: createProjectInput!) {
+    createProject(input: $input) {
+      ...LocalProjectFields
     }
   }
 `;
 
-const CREATE_PROJECT = gql`
-  ${PROJECT_FIELDS}
-  mutation CreateProject($input: createProjectInput!) {
-    createProject(input: $input) {
-      ...ProjectFields
+const CREATE_SUB_PROJECT = gql`
+  ${LOCAL_PROJECT_FIELDS}
+  mutation CreateSubProject($input: createSubProjectInput!) {
+    createSubProject(input: $input) {
+      ...LocalProjectFields
+    }
+  }
+`;
+
+const LIST_LOCAL_SUB_PROJECTS = gql`
+  ${LOCAL_PROJECT_FIELDS}
+  query ListLocalSubProjects($input: listSubProjectsInput!) {
+    listSubProjects(input: $input) {
+      ...LocalProjectFields
+    }
+  }
+`;
+
+// --- Core Portal update mutation ---
+
+const UPDATE_CORE_PROJECT = gql`
+  ${CORE_PROJECT_FIELDS}
+  mutation UpdateCoreProject($input: updateProjectInput!) {
+    updateProject(input: $input) {
+      ...CoreProjectFields
     }
   }
 `;
 
 // --- Hooks ---
 
-export function useProjects() {
-  const result = useQuery<{ listProjects: ProjectRaw[] }>(LIST_PROJECTS);
-  return normalizeQueryResult(result, (d) => d.listProjects.map(mapProject));
+export function useProjects(input?: { status?: string; parentId?: string }) {
+  const result = useQuery<{ listProjects: CoreProject[] }>(LIST_CORE_PROJECTS, {
+    client: coreClient,
+    variables: input ? { input } : { input: { status: "active" } },
+  });
+  return normalizeQueryResult(result, (d) => d.listProjects);
 }
 
 export function useProject(id: string) {
-  const result = useQuery<{ getProject: ProjectRaw | null }>(GET_PROJECT, {
+  const result = useQuery<{ getProject: CoreProject | null }>(GET_CORE_PROJECT, {
+    variables: { input: { id } },
+    client: coreClient,
+    skip: !id,
+  });
+  return normalizeQueryResult(result, (d) => d.getProject);
+}
+
+/** Fetch local cross-ref data (linkedModule, parentRef) from task-management backend. */
+export function useLocalProject(id: string) {
+  const result = useQuery<{ getProject: LocalProjectRef | null }>(GET_LOCAL_PROJECT, {
     variables: { input: { id } },
     skip: !id,
   });
-  return normalizeQueryResult(result, (d) =>
-    d.getProject ? mapProject(d.getProject) : null,
-  );
+  return normalizeQueryResult(result, (d) => d.getProject);
+}
+
+/** Fetch sub-project local refs from task-management backend. */
+export function useLocalSubProjects(parentProjectId?: string) {
+  const result = useQuery<{ listSubProjects: LocalProjectRef[] }>(LIST_LOCAL_SUB_PROJECTS, {
+    variables: { input: { parentProjectId } },
+    skip: !parentProjectId,
+  });
+  return normalizeQueryResult(result, (d) => d.listSubProjects);
+}
+
+/** Fetch sub-projects from Core Portal by parentId. */
+export function useSubProjects(parentProjectId?: string) {
+  const result = useQuery<{ listProjects: CoreProject[] }>(LIST_CORE_PROJECTS, {
+    client: coreClient,
+    variables: { input: { parentId: parentProjectId } },
+    skip: !parentProjectId,
+  });
+  return normalizeQueryResult(result, (d) => d.listProjects);
 }
 
 export const useCreateProject = createMutationHook<
   CreateProjectInput,
-  ProjectRaw,
-  Project
+  LocalProjectRef,
+  LocalProjectRef
 >({
   mutation: CREATE_PROJECT,
   responseKey: "createProject",
-  mapResponse: mapProject,
-  refetchQueries: [LIST_PROJECTS],
+  refetchQueries: [LIST_LOCAL_PROJECTS, LIST_CORE_PROJECTS],
 });
 
 export const useApproveProject = createMutationHook<
   { id: string; description?: string },
-  ProjectRaw,
-  Project
+  LocalProjectRef,
+  LocalProjectRef
 >({
   mutation: APPROVE_PROJECT,
   responseKey: "approveProject",
   mapVariables: (input) => ({
     input: { id: input.id, description: input.description },
   }),
-  mapResponse: mapProject,
-  refetchQueries: [LIST_PROJECTS],
+  refetchQueries: [LIST_LOCAL_PROJECTS, LIST_CORE_PROJECTS],
 });
 
-export const useUpdateProject = createMutationHook<
-  { id: string; description?: string; status?: string; projectLeaderId?: string; moduleId?: string | null },
-  ProjectRaw,
-  Project
+/** Update local cross-refs (moduleId, leaderId) on task-management backend. */
+export const useUpdateLocalProject = createMutationHook<
+  { id: string; projectLeaderId?: string; moduleId?: string | null },
+  LocalProjectRef,
+  LocalProjectRef
 >({
-  mutation: UPDATE_PROJECT,
+  mutation: UPDATE_LOCAL_PROJECT,
   responseKey: "updateProject",
-  mapResponse: mapProject,
-  refetchQueries: [LIST_PROJECTS, GET_PROJECT],
+  refetchQueries: [LIST_LOCAL_PROJECTS, GET_LOCAL_PROJECT],
+});
+
+/** Update project on Core Portal (status, winStage, etc.). */
+export const useUpdateCoreProject = createMutationHook<
+  { id: string; status?: string; winStage?: string; description?: string },
+  CoreProject,
+  CoreProject
+>({
+  mutation: UPDATE_CORE_PROJECT,
+  responseKey: "updateProject",
+  client: coreClient,
+  refetchQueries: [LIST_CORE_PROJECTS, GET_CORE_PROJECT],
 });
 
 export const useDeleteProject = createVoidMutationHook<string>({
   mutation: DELETE_PROJECT,
   mapVariables: (id) => ({ input: { id } }),
-  refetchQueries: [LIST_PROJECTS],
+  refetchQueries: [LIST_LOCAL_PROJECTS, LIST_CORE_PROJECTS],
 });
-
-export const useCloseProject = createMutationHook<
-  { id: string },
-  ProjectRaw,
-  Project
->({
-  mutation: CLOSE_PROJECT,
-  responseKey: "closeProject",
-  mapResponse: mapProject,
-  refetchQueries: [LIST_PROJECTS, GET_PROJECT],
-});
-
-// --- Sub-Projects ---
-
-const LIST_SUB_PROJECTS = gql`
-  ${PROJECT_FIELDS}
-  query ListSubProjects($input: listSubProjectsInput!) {
-    listSubProjects(input: $input) {
-      ...ProjectFields
-    }
-  }
-`;
-
-const CREATE_SUB_PROJECT = gql`
-  ${PROJECT_FIELDS}
-  mutation CreateSubProject($input: createSubProjectInput!) {
-    createSubProject(input: $input) {
-      ...ProjectFields
-    }
-  }
-`;
-
-export function useSubProjects(parentProjectId?: string) {
-  const result = useQuery<{ listSubProjects: ProjectRaw[] }>(LIST_SUB_PROJECTS, {
-    variables: { input: { parentProjectId } },
-    skip: !parentProjectId,
-  });
-  return normalizeQueryResult(result, (d) => d.listSubProjects.map(mapProject));
-}
 
 export const useCreateSubProject = createMutationHook<
   CreateSubProjectInput,
-  ProjectRaw,
-  Project
+  LocalProjectRef,
+  LocalProjectRef
 >({
   mutation: CREATE_SUB_PROJECT,
   responseKey: "createSubProject",
-  mapResponse: mapProject,
-  refetchQueries: [LIST_SUB_PROJECTS, LIST_PROJECTS],
+  refetchQueries: [LIST_LOCAL_SUB_PROJECTS, LIST_LOCAL_PROJECTS, LIST_CORE_PROJECTS],
 });
 
-export function getProjectDisplayName(project: Project): string {
-  return project.name?.value || project.coreName || "Untitled";
+export function getProjectDisplayName(project: CoreProject): string {
+  return project.name?.name || "Untitled";
 }
