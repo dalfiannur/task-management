@@ -34,7 +34,7 @@ const CORE_PROJECT_FIELDS = gql`
 
 const LIST_CORE_PROJECTS = gql`
   ${CORE_PROJECT_FIELDS}
-  query ListCoreProjects($input: listProjectsInput) {
+  query ListCoreProjects($input: listProjectsInput!) {
     listProjects(input: $input) {
       ...CoreProjectFields
     }
