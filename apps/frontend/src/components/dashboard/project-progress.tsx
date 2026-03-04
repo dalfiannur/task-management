@@ -2,19 +2,19 @@ import { Link } from "react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { Task } from "@/types/task";
-import type { Project } from "@/types/project";
+import type { CoreProject } from "@/types/project";
 import type { ModuleWithProject } from "@/hooks/use-modules";
 import { BarChart3 } from "lucide-react";
 import styles from "./project-progress.module.css";
 
 interface ProjectProgressProps {
-  projects: Project[];
+  projects: CoreProject[];
   tasks: Task[];
   modules: ModuleWithProject[];
 }
 
 interface ProjectStat {
-  project: Project;
+  project: CoreProject;
   done: number;
   total: number;
   percentage: number;
@@ -40,7 +40,7 @@ export function ProjectProgress({ projects, tasks, modules }: ProjectProgressPro
   }
 
   // Build stats for active projects only
-  const activeProjects = projects.filter((p) => p.status.value === "on_going");
+  const activeProjects = projects.filter((p) => p.status === "active");
   const stats: ProjectStat[] = activeProjects
     .map((project) => {
       const counts = projectTaskCounts.get(project.id) ?? { done: 0, total: 0 };
@@ -76,7 +76,7 @@ export function ProjectProgress({ projects, tasks, modules }: ProjectProgressPro
                     {project.code ?? project.id.slice(0, 6)}
                   </Badge>
                   <span className={styles.projectName}>
-                    {project.coreName ?? "Untitled"}
+                    {project.name?.name ?? "Untitled"}
                   </span>
                   <span className={styles.progressCount}>
                     {done}/{total} done

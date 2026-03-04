@@ -9,17 +9,17 @@ import { useModules } from "@/hooks/use-modules";
 import { useUser } from "@/hooks/use-users";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { FolderOpen, ChevronRight } from "lucide-react";
-import type { Project } from "@/types/project";
+import type { CoreProject } from "@/types/project";
 import { getInitials } from "@/lib/utils";
 import styles from "./active-projects.module.css";
 
 interface ActiveProjectsProps {
-  projects: Project[];
+  projects: CoreProject[];
 }
 
 export function ActiveProjects({ projects }: ActiveProjectsProps) {
   const activeProjects = projects
-    .filter((p) => p.status.value === "on_going")
+    .filter((p) => p.status === "active" && p.winStage !== "pending")
     .slice(0, 3);
 
   return (
@@ -50,10 +50,10 @@ export function ActiveProjects({ projects }: ActiveProjectsProps) {
   );
 }
 
-function ProjectItem({ project }: { project: Project }) {
+function ProjectItem({ project }: { project: CoreProject }) {
   const navigate = useNavigate();
   const { data: modules } = useModules(project.id);
-  const { data: pic } = useUser(project.projectLeaderId?.value);
+  const { data: pic } = useUser(project.ref?.leaderId);
 
   return (
     <div
@@ -66,7 +66,7 @@ function ProjectItem({ project }: { project: Project }) {
         <FolderOpen className={styles.projectIcon} />
       </div>
       <div className={styles.projectContent}>
-        <p className={styles.projectName}>{project.coreName ?? "Untitled"}</p>
+        <p className={styles.projectName}>{project.name?.name ?? "Untitled"}</p>
         <div className={styles.projectMeta}>
           <span className={styles.moduleCount}>
             {modules?.length ?? 0} modules

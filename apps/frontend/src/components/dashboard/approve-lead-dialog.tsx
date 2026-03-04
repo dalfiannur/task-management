@@ -9,13 +9,13 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useApproveProject } from "@/hooks/use-projects";
 import { client } from "@/lib/graphql-client";
-import type { Project } from "@/types/project";
+import type { CoreProject } from "@/types/project";
 import { useApproveLead, useDealBrief, useProjectMediaFiles } from "@/hooks/use-leads";
 import { FileText } from "lucide-react";
 import styles from "./approve-lead-dialog.module.css";
 
 interface ApproveLeadDialogProps {
-  project: Project | null;
+  project: CoreProject | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -27,7 +27,7 @@ export function ApproveLeadDialog({
 }: ApproveLeadDialogProps) {
   const approveProject = useApproveProject();
   const approveLead = useApproveLead();
-  const { data: dealBrief, isLoading: briefLoading } = useDealBrief(project?.id, project?.companyId);
+  const { data: dealBrief, isLoading: briefLoading } = useDealBrief(project?.id, project?.ref?.companyId);
   const { files: mediaFiles, isLoading: mediaLoading } = useProjectMediaFiles(project?.id);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -48,7 +48,7 @@ export function ApproveLeadDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Approve Lead — {project?.coreName}</DialogTitle>
+          <DialogTitle>Approve Lead — {project?.name?.name}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className={styles.form}>
           <div className={styles.fieldGroup}>

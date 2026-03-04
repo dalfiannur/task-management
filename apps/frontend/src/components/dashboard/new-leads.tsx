@@ -3,13 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ApproveLeadDialog } from "./approve-lead-dialog";
-import type { Project } from "@/types/project";
+import type { CoreProject } from "@/types/project";
 import { useUser } from "@/hooks/use-users";
 import { Sparkles } from "lucide-react";
 import styles from "./new-leads.module.css";
 
 interface NewLeadsProps {
-  projects: Project[];
+  projects: CoreProject[];
 }
 
 function LeaderName({ leaderId }: { leaderId?: string }) {
@@ -19,7 +19,7 @@ function LeaderName({ leaderId }: { leaderId?: string }) {
 }
 
 export function NewLeads({ projects }: NewLeadsProps) {
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [selectedProject, setSelectedProject] = useState<CoreProject | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
 
   return (
@@ -59,10 +59,10 @@ export function NewLeads({ projects }: NewLeadsProps) {
                         {project.code ?? project.id}
                       </Badge>
                       <span className={styles.leadName}>
-                        {project.coreName ?? "Untitled"}
+                        {project.name?.name ?? "Untitled"}
                       </span>
                     </div>
-                    <LeaderName leaderId={project.projectLeaderId?.value} />
+                    <LeaderName leaderId={project.ref?.leaderId} />
                   </div>
                   <Button
                     size="sm"
