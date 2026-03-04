@@ -396,6 +396,26 @@ function AssigneeLabel({ userIds }: { userIds: string[] }) {
   return <span className={styles.truncate}>{userIds.length} assignees</span>;
 }
 
+function SelectedAssigneeItem({ userId, onDeselect }: { userId: string; onDeselect: () => void }) {
+  const { data: user } = useUser(userId);
+  const name = user?.name ?? "...";
+  const initials = name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+  return (
+    <CommandItem
+      value={userId}
+      onSelect={onDeselect}
+      className="text-xs"
+    >
+      <Avatar className="size-5 mr-1.5">
+        <AvatarImage src={user?.avatarUrl} />
+        <AvatarFallback className="text-[9px]">{initials}</AvatarFallback>
+      </Avatar>
+      {name}
+      <Check className={cn(styles.checkIcon, styles.checkVisible)} />
+    </CommandItem>
+  );
+}
+
 export function AssigneeSelect({
   taskId,
   value,
@@ -466,50 +486,42 @@ export function AssigneeSelect({
               onValueChange={setSearch}
             />
             <CommandList>
-              {!search ? (
-                <CommandEmpty className="py-3 text-xs text-center">
-                  Type to search...
-                </CommandEmpty>
-              ) : (
-                <>
-                  <CommandEmpty className="py-3 text-xs text-center">
-                    No user found.
-                  </CommandEmpty>
-                  <CommandGroup>
-                    {searchResults?.map((user) => {
-                      const initials = user.name
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")
-                        .toUpperCase()
-                        .slice(0, 2);
-                      const isSelected = value.includes(user.id);
-                      return (
-                        <CommandItem
-                          key={user.id}
-                          value={user.id}
-                          onSelect={() => handleToggle(user.id)}
-                          className="text-xs"
-                        >
-                          <Avatar className="size-5 mr-1.5">
-                            <AvatarImage src={user.avatarUrl} />
-                            <AvatarFallback className="text-[9px]">
-                              {initials}
-                            </AvatarFallback>
-                          </Avatar>
-                          {user.name}
-                          <Check
-                            className={cn(
-                              styles.checkIcon,
-                              isSelected ? styles.checkVisible : styles.checkHidden,
-                            )}
-                          />
-                        </CommandItem>
-                      );
-                    })}
-                  </CommandGroup>
-                </>
-              )}
+              <CommandEmpty className="py-3 text-xs text-center">
+                {search ? "No user found." : "Type to search..."}
+              </CommandEmpty>
+              <CommandGroup>
+                {!search && value.map((id) => (
+                  <SelectedAssigneeItem
+                    key={id}
+                    userId={id}
+                    onDeselect={() => handleToggle(id)}
+                  />
+                ))}
+                {searchResults?.filter((u) => !value.includes(u.id)).map((user) => {
+                  const initials = user.name
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .toUpperCase()
+                    .slice(0, 2);
+                  return (
+                    <CommandItem
+                      key={user.id}
+                      value={user.id}
+                      onSelect={() => handleToggle(user.id)}
+                      className="text-xs"
+                    >
+                      <Avatar className="size-5 mr-1.5">
+                        <AvatarImage src={user.avatarUrl} />
+                        <AvatarFallback className="text-[9px]">
+                          {initials}
+                        </AvatarFallback>
+                      </Avatar>
+                      {user.name}
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
             </CommandList>
           </Command>
         </PopoverContent>

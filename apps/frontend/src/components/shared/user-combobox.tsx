@@ -74,39 +74,53 @@ export function UserCombobox({ value, onChange }: UserComboboxProps) {
             onValueChange={setSearch}
           />
           <CommandList>
-            {!search ? (
-              <CommandEmpty>Type to search...</CommandEmpty>
-            ) : (
-              <>
-                <CommandEmpty>No user found.</CommandEmpty>
-                <CommandGroup>
-                  {users?.map((user) => (
-                    <CommandItem
-                      key={user.id}
-                      value={user.id}
-                      onSelect={() => {
-                        onChange(user.id === value ? undefined : user.id);
-                        setOpen(false);
-                      }}
-                    >
-                      <Avatar className={styles.listAvatar}>
-                        <AvatarImage src={user.avatarUrl} />
-                        <AvatarFallback className={styles.listAvatarFallback}>
-                          {getInitials(user.name)}
-                        </AvatarFallback>
-                      </Avatar>
-                      {user.name}
-                      <Check
-                        className={cn(
-                          styles.checkIcon,
-                          value === user.id ? styles.checkVisible : styles.checkHidden,
-                        )}
-                      />
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              </>
-            )}
+            <CommandEmpty>{search ? "No user found." : "Type to search..."}</CommandEmpty>
+            <CommandGroup>
+              {/* Show selected user at top when no search query */}
+              {!search && selectedUser && (
+                <CommandItem
+                  key={selectedUser.id}
+                  value={selectedUser.id}
+                  onSelect={() => {
+                    onChange(undefined);
+                    setOpen(false);
+                  }}
+                >
+                  <Avatar className={styles.listAvatar}>
+                    <AvatarImage src={selectedUser.avatarUrl} />
+                    <AvatarFallback className={styles.listAvatarFallback}>
+                      {getInitials(selectedUser.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  {selectedUser.name}
+                  <Check className={cn(styles.checkIcon, styles.checkVisible)} />
+                </CommandItem>
+              )}
+              {users?.filter((u) => u.id !== value).map((user) => (
+                <CommandItem
+                  key={user.id}
+                  value={user.id}
+                  onSelect={() => {
+                    onChange(user.id);
+                    setOpen(false);
+                  }}
+                >
+                  <Avatar className={styles.listAvatar}>
+                    <AvatarImage src={user.avatarUrl} />
+                    <AvatarFallback className={styles.listAvatarFallback}>
+                      {getInitials(user.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  {user.name}
+                  <Check
+                    className={cn(
+                      styles.checkIcon,
+                      value === user.id ? styles.checkVisible : styles.checkHidden,
+                    )}
+                  />
+                </CommandItem>
+              ))}
+            </CommandGroup>
           </CommandList>
         </Command>
       </PopoverContent>
