@@ -61,17 +61,26 @@ export function Component() {
   const allModules = modules ?? [];
   const today = new Date();
 
+  // Filter to tasks from active (on_going) projects only
+  const activeProjectIds = new Set(
+    allProjects.filter((p) => p.status.value === "on_going").map((p) => p.id),
+  );
+  const activeModuleIds = new Set(
+    allModules.filter((m) => activeProjectIds.has(m.projectId)).map((m) => m.id),
+  );
+  const activeTasks = allTasks.filter((t) => activeModuleIds.has(t.moduleId));
+
   // Stats
-  const totalTasks = allTasks.length;
-  const inProgressTasks = allTasks.filter((t) => t.status === "in_progress").length;
-  const doneTasks = allTasks.filter((t) => t.status === "done").length;
-  const activeProjects = allProjects.filter((p) => p.status.value === "on_going").length;
+  const totalTasks = activeTasks.length;
+  const inProgressTasks = activeTasks.filter((t) => t.status === "in_progress").length;
+  const doneTasks = activeTasks.filter((t) => t.status === "done").length;
+  const activeProjectCount = activeProjectIds.size;
 
   // Derived data
   const myTasks = me
-    ? allTasks.filter((t) => t.assigneeIds.includes(me.id))
+    ? activeTasks.filter((t) => t.assigneeIds.includes(me.id))
     : [];
-  const deadlineTasks = getTodayDeadlines(allTasks);
+  const deadlineTasks = getTodayDeadlines(activeTasks);
 
   const stats = [
     {
@@ -97,7 +106,7 @@ export function Component() {
     },
     {
       title: "Active Projects",
-      value: activeProjects,
+      value: activeProjectCount,
       icon: FolderOpen,
       accent: STAT_ACCENTS.projects,
       desc: "On-going",
@@ -112,8 +121,8 @@ export function Component() {
           <h1 className={styles.headerTitle}>Dashboard</h1>
           <p className={styles.headerSubtitle}>
             {format(today, "EEEE, MMMM d, yyyy")} &middot; {totalTasks}{" "}
-            {totalTasks === 1 ? "task" : "tasks"} across {allProjects.length}{" "}
-            {allProjects.length === 1 ? "project" : "projects"}
+            {totalTasks === 1 ? "task" : "tasks"} across {activeProjectCount}{" "}
+            {activeProjectCount === 1 ? "project" : "projects"}
           </p>
         </div>
 
@@ -144,7 +153,7 @@ export function Component() {
               <div className={styles.mainCol} style={{ animationDelay: "400ms" }}>
                 <ProjectProgress
                   projects={allProjects}
-                  tasks={allTasks}
+                  tasks={activeTasks}
                   modules={allModules}
                 />
               </div>
@@ -162,7 +171,7 @@ export function Component() {
             </div>
             <div className={styles.contentGrid}>
               <div className={styles.mainCol} style={{ animationDelay: "650ms" }}>
-                <RecentTasks tasks={allTasks} />
+                <RecentTasks tasks={activeTasks} />
               </div>
             </div>
           </>
@@ -181,12 +190,12 @@ export function Component() {
               <div className={styles.mainCol} style={{ animationDelay: "550ms" }}>
                 <ProjectProgress
                   projects={allProjects}
-                  tasks={allTasks}
+                  tasks={activeTasks}
                   modules={allModules}
                 />
               </div>
               <div className={styles.sideCol} style={{ animationDelay: "600ms" }}>
-                <RecentTasks tasks={allTasks} />
+                <RecentTasks tasks={activeTasks} />
               </div>
             </div>
             <div className={styles.fullWidth} style={{ animationDelay: "650ms" }}>
