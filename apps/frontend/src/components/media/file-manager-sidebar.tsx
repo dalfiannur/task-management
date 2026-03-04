@@ -1,12 +1,12 @@
 import { cn } from "@/lib/utils";
 import { FolderOpen, Folder } from "lucide-react";
-import type { Project } from "@/types/project";
+import type { CoreProject } from "@/types/project";
 import { getProjectDisplayName } from "@/hooks/use-projects";
 import styles from "./file-manager-sidebar.module.css";
 
 interface FileManagerSidebarProps {
-  project: Project;
-  subProjects: Project[];
+  project: CoreProject;
+  subProjects: CoreProject[];
   activeProjectId: string;
   onSelectProject: (id: string) => void;
 }
@@ -17,7 +17,7 @@ export function FileManagerSidebar({
   activeProjectId,
   onSelectProject,
 }: FileManagerSidebarProps) {
-  const isSubProject = !!project.parent;
+  const isSubProject = !!project.ref?.parentId;
   const allProjects = isSubProject
     ? [project]
     : [project, ...subProjects];

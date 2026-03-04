@@ -10,7 +10,6 @@ import { FileManagerToolbar } from "@/components/media/file-manager-toolbar";
 import { FileManagerBreadcrumb } from "@/components/media/file-manager-breadcrumb";
 import { FileManagerContent } from "@/components/media/file-manager-content";
 import { MediaUploadDialog } from "@/components/media/media-upload-dialog";
-import type { Project } from "@/types/project";
 import styles from "./media.module.css";
 
 export function Component() {
@@ -22,7 +21,7 @@ export function Component() {
 
   const { data: project } = useProject(projectId!);
   const { data: activeProject } = useProject(activeProjectId);
-  const isSubProject = !!project?.parent;
+  const isSubProject = !!project?.ref?.parentId;
 
   const { data: subProjects = [] } = useSubProjects(
     isSubProject ? undefined : projectId,
@@ -30,7 +29,7 @@ export function Component() {
 
   // Resolve media project ID for active project
   const { mediaProjectId } = useResolveMediaProjectId(
-    activeProject?.coreRef?.value,
+    activeProject?.id,
     activeProject ? getProjectDisplayName(activeProject) : "Project",
   );
 
@@ -67,7 +66,7 @@ export function Component() {
     <div className={styles.layout}>
       <FileManagerSidebar
         project={project}
-        subProjects={subProjects as Project[]}
+        subProjects={subProjects}
         activeProjectId={activeProjectId}
         onSelectProject={handleSelectProject}
       />

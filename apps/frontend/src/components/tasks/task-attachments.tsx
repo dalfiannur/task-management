@@ -29,7 +29,7 @@ export function TaskAttachments({ projectId, taskId }: TaskAttachmentsProps) {
   const inputId = useId();
   const { data: project } = useProject(projectId);
   const { mediaProjectId } = useResolveMediaProjectId(
-    project?.coreRef?.value,
+    project?.id,
     project ? getProjectDisplayName(project) : "Project",
   );
   const { data: files = [] } = useTaskMediaFiles(taskId, mediaProjectId ?? undefined);
