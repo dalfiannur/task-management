@@ -1,68 +1,90 @@
-import { useQuery, gql, client } from "@/lib/graphql-client";
-import { useAuth } from "react-oidc-context";
+import { useQuery, gql, coreClient } from "@/lib/graphql-client";
 import type { User } from "@/types/task";
 
-interface TaskUser {
-  id: string;
-  userProfile: {
-    externalId: string;
-    email: string;
-    name: string;
-    avatarUrl: string;
-    role: string;
-  };
-}
+// --- GraphQL operations (Core Portal) ---
 
-const LIST_USERS = gql`
-  query ListUsers {
-    listUsers {
+const SEARCH_USERS = gql`
+  query SearchUsers($input: SearchUsersInput!) {
+    searchUsers(input: $input) {
       id
-      userProfile {
-        externalId
+      info {
+        displayName
         email
-        name
         avatarUrl
-        role
       }
     }
   }
 `;
 
-function mapTaskUser(u: TaskUser): User {
-  return {
-    id: u.userProfile.externalId,
-    externalId: u.userProfile.externalId,
-    email: u.userProfile.email,
-    name: u.userProfile.name,
-    avatarUrl: u.userProfile.avatarUrl || undefined,
+const GET_USER = gql`
+  query GetUser($input: GetUserInput!) {
+    getUser(input: $input) {
+      id
+      info {
+        displayName
+        email
+        avatarUrl
+      }
+    }
+  }
+`;
+
+// --- Response interfaces ---
+
+interface CoreUserResponse {
+  id: string;
+  info: {
+    displayName: string;
+    email: string;
+    avatarUrl: string;
   };
 }
 
-export function useUsers() {
-  const auth = useAuth();
-  const token = auth.user?.access_token;
+// --- Mapper ---
 
+function mapCoreUser(raw: CoreUserResponse): User {
+  return {
+    id: raw.id,
+    externalId: raw.id,
+    email: raw.info.email,
+    name: raw.info.displayName,
+    avatarUrl: raw.info.avatarUrl || undefined,
+  };
+}
+
+// --- Hooks ---
+
+export function useSearchUsers(query: string) {
   const { data, loading, error } = useQuery<{
-    listUsers: TaskUser[];
-  }>(LIST_USERS, {
-    variables: {},
-    skip: !token,
-    client: client,
+    searchUsers: CoreUserResponse[];
+  }>(SEARCH_USERS, {
+    variables: { input: { q: query } },
+    skip: !query || query.length < 1,
+    client: coreClient,
   });
 
   return {
-    data: data?.listUsers.map(mapTaskUser),
+    data: data?.searchUsers.map(mapCoreUser),
     isLoading: loading,
     error: error ?? null,
   };
 }
 
 export function useUser(id: string | undefined) {
-  const { data: users } = useUsers();
+  const { data, loading, error } = useQuery<{
+    getUser: CoreUserResponse;
+  }>(GET_USER, {
+    variables: { input: { id } },
+    skip: !id,
+    client: coreClient,
+  });
 
   return {
-    data: users?.find((u) => u.id === id),
-    isLoading: false,
-    error: null,
+    data: data?.getUser ? mapCoreUser(data.getUser) : undefined,
+    isLoading: loading,
+    error: error ?? null,
   };
 }
+
+// Re-export for consumers that still import SEARCH_USERS directly
+export { SEARCH_USERS, type CoreUserResponse, mapCoreUser };

@@ -16,7 +16,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useUsers } from "@/hooks/use-users";
+import { useSearchUsers, useUser } from "@/hooks/use-users";
 import styles from "./user-combobox.module.css";
 
 interface UserComboboxProps {
@@ -24,12 +24,11 @@ interface UserComboboxProps {
   onChange: (userId: string | undefined) => void;
 }
 
-
 export function UserCombobox({ value, onChange }: UserComboboxProps) {
   const [open, setOpen] = useState(false);
-  const { data: users } = useUsers();
-
-  const selectedUser = users?.find((u) => u.id === value);
+  const [search, setSearch] = useState("");
+  const { data: users } = useSearchUsers(search);
+  const { data: selectedUser } = useUser(value);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -68,36 +67,46 @@ export function UserCombobox({ value, onChange }: UserComboboxProps) {
         </Button>
       </PopoverTrigger>
       <PopoverContent className={styles.popover}>
-        <Command>
-          <CommandInput placeholder="Search users..." />
+        <Command shouldFilter={false}>
+          <CommandInput
+            placeholder="Search users..."
+            value={search}
+            onValueChange={setSearch}
+          />
           <CommandList>
-            <CommandEmpty>No user found.</CommandEmpty>
-            <CommandGroup>
-              {users?.map((user) => (
-                <CommandItem
-                  key={user.id}
-                  value={user.name}
-                  onSelect={() => {
-                    onChange(user.id === value ? undefined : user.id);
-                    setOpen(false);
-                  }}
-                >
-                  <Avatar className={styles.listAvatar}>
-                    <AvatarImage src={user.avatarUrl} />
-                    <AvatarFallback className={styles.listAvatarFallback}>
-                      {getInitials(user.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  {user.name}
-                  <Check
-                    className={cn(
-                      styles.checkIcon,
-                      value === user.id ? styles.checkVisible : styles.checkHidden,
-                    )}
-                  />
-                </CommandItem>
-              ))}
-            </CommandGroup>
+            {!search ? (
+              <CommandEmpty>Type to search...</CommandEmpty>
+            ) : (
+              <>
+                <CommandEmpty>No user found.</CommandEmpty>
+                <CommandGroup>
+                  {users?.map((user) => (
+                    <CommandItem
+                      key={user.id}
+                      value={user.id}
+                      onSelect={() => {
+                        onChange(user.id === value ? undefined : user.id);
+                        setOpen(false);
+                      }}
+                    >
+                      <Avatar className={styles.listAvatar}>
+                        <AvatarImage src={user.avatarUrl} />
+                        <AvatarFallback className={styles.listAvatarFallback}>
+                          {getInitials(user.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      {user.name}
+                      <Check
+                        className={cn(
+                          styles.checkIcon,
+                          value === user.id ? styles.checkVisible : styles.checkHidden,
+                        )}
+                      />
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </>
+            )}
           </CommandList>
         </Command>
       </PopoverContent>

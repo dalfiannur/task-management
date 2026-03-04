@@ -5,9 +5,9 @@ import { Query } from "bunsane/query";
 import { ProjectMembershipData } from "~/components/ProjectMembership";
 import { ProjectMembershipArcheTypeClass } from "~/archetypes/ProjectMembershipArcheType";
 import { ProjectLeaderIdComponent } from "~/components/ProjectComponents";
-import { getUserRole } from "./UserService";
+import { checkPermission, Resources, type TaskAuthUser } from "~/lib/auth-context";
 
-type AuthUser = { id: string; sub: string; email: string; name: string; picture?: string; role?: string };
+type AuthUser = TaskAuthUser;
 
 const membershipArcheType = new ProjectMembershipArcheTypeClass();
 
@@ -114,8 +114,8 @@ export default class MembershipService extends BaseService {
     if (!context.user) throw new Error("Authentication required");
     const user = context.user;
 
-    const role = user.role ?? await getUserRole(user.id);
-    if (role === "manager") return user;
+    const canManage = checkPermission({ user }, Resources.Projects, "manage");
+    if (canManage) return user;
 
     // Check if user is the project leader
     const projectEntity = await new Query().findOneById(projectId);

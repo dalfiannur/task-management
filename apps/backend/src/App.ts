@@ -9,7 +9,6 @@ import "./components/TaskLabels";
 import "./components/LabelInfo";
 import "./components/ProjectComponents";
 import "./components/ModuleComponents";
-import "./components/UserProfile";
 import "./components/MediaFileInfo";
 import "./components/TaskMediaLink";
 import "./components/CommentInfo";
@@ -22,7 +21,6 @@ import TaskService from "./services/TaskService";
 import ProjectService from "./services/ProjectService";
 import LabelService from "./services/LabelService";
 import ModuleService from "./services/ModuleService";
-import UserService from "./services/UserService";
 import MediaService from "./services/MediaService";
 import CommentService from "./services/CommentService";
 import NotificationService from "./services/NotificationService";
@@ -40,26 +38,12 @@ export default class TasksAPI extends App {
     this.addPlugin(new AuthPlugin());
     this.enableStudio();
 
-    // Set up auth context from OIDC token + auto-sync user
+    // Set up auth context from OIDC token (no local user sync)
     this.setGraphQLContextFactory(async (context: { request: Request }) => {
       const user = await AuthPlugin.extractUser(context.request);
       if (!user) {
         throw new Error("Authentication required");
       }
-
-      try {
-        const userService = new UserService();
-        await userService.syncFromOIDC({
-          sub: user.sub,
-          email: user.email,
-          name: user.name,
-          picture: user.picture,
-          role: user.role,
-        });
-      } catch (err) {
-        console.error("[AuthPlugin] Failed to sync user from OIDC:", err);
-      }
-
       return { user, request: context.request };
     });
 
@@ -76,7 +60,6 @@ export default class TasksAPI extends App {
     ServiceRegistry.registerService(new ProjectService());
     ServiceRegistry.registerService(new ModuleService());
     ServiceRegistry.registerService(new LabelService());
-    ServiceRegistry.registerService(new UserService());
     ServiceRegistry.registerService(new MediaService());
     ServiceRegistry.registerService(new CommentService());
     ServiceRegistry.registerService(new NotificationService());

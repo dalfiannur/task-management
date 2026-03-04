@@ -1,7 +1,6 @@
 import {
   useState,
   useEffect,
-  useRef,
   useCallback,
   forwardRef,
   useImperativeHandle,
@@ -12,14 +11,27 @@ import { Mention } from "@tiptap/extension-mention";
 import { Placeholder } from "@tiptap/extension-placeholder";
 import type { SuggestionProps, SuggestionKeyDownProps } from "@tiptap/suggestion";
 import { cn } from "@/lib/utils";
-import { useUsers } from "@/hooks/use-users";
-import type { User } from "@/types/task";
+import { coreClient, gql } from "@/lib/graphql-client";
 import styles from "./comment-editor.module.css";
+
+const SEARCH_USERS = gql`
+  query SearchUsersForMention($input: SearchUsersInput!) {
+    searchUsers(input: $input) {
+      id
+      info { displayName }
+    }
+  }
+`;
 
 // --- Mention suggestion list component ---
 
+interface MentionItem {
+  id: string;
+  label: string;
+}
+
 interface MentionListProps {
-  items: User[];
+  items: MentionItem[];
   command: (attrs: { id: string; label: string }) => void;
 }
 
@@ -39,7 +51,7 @@ const MentionList = forwardRef<MentionListRef, MentionListProps>(
       (index: number) => {
         const item = items[index];
         if (item) {
-          command({ id: item.id, label: item.name });
+          command({ id: item.id, label: item.label });
         }
       },
       [items, command],
@@ -83,23 +95,15 @@ const MentionList = forwardRef<MentionListRef, MentionListProps>(
             )}
             onClick={() => selectItem(index)}
           >
-            {item.avatarUrl ? (
-              <img
-                src={item.avatarUrl}
-                alt=""
-                className={styles.mentionAvatar}
-              />
-            ) : (
-              <div className={styles.mentionAvatarFallback}>
-                {item.name
-                  .split(" ")
-                  .map((w) => w[0])
-                  .slice(0, 2)
-                  .join("")
-                  .toUpperCase()}
-              </div>
-            )}
-            <span className={styles.mentionName}>{item.name}</span>
+            <div className={styles.mentionAvatarFallback}>
+              {item.label
+                .split(" ")
+                .map((w) => w[0])
+                .slice(0, 2)
+                .join("")
+                .toUpperCase()}
+            </div>
+            <span className={styles.mentionName}>{item.label}</span>
           </button>
         ))}
       </div>
@@ -138,12 +142,6 @@ export const CommentEditor = forwardRef<CommentEditorHandle, CommentEditorProps>
   initialContent = "",
   placeholder = "Write a comment... Use @ to mention someone",
 }, ref) {
-  const { data: users = [] } = useUsers();
-  const usersRef = useRef<User[]>(users);
-  useEffect(() => {
-    usersRef.current = users;
-  }, [users]);
-
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -158,11 +156,20 @@ export const CommentEditor = forwardRef<CommentEditorHandle, CommentEditorProps>
           class: "mention",
         },
         suggestion: {
-          items: ({ query }: { query: string }) => {
-            const q = query.toLowerCase();
-            return usersRef.current
-              .filter((u) => u.name.toLowerCase().includes(q))
-              .slice(0, 8);
+          items: async ({ query }: { query: string }) => {
+            if (!query) return [];
+            try {
+              const { data } = await coreClient.query<{ searchUsers: Array<{ id: string; info: { displayName: string } }> }>({
+                query: SEARCH_USERS,
+                variables: { input: { q: query } },
+              });
+              return (data?.searchUsers ?? []).map((u) => ({
+                id: u.id,
+                label: u.info.displayName,
+              }));
+            } catch {
+              return [];
+            }
           },
           render: () => {
             let component: ReactRenderer<MentionListRef> | null = null;
@@ -273,12 +280,6 @@ export function CommentEditEditor({
   onSave,
   onCancel,
 }: CommentEditEditorProps) {
-  const { data: users = [] } = useUsers();
-  const usersRef = useRef<User[]>(users);
-  useEffect(() => {
-    usersRef.current = users;
-  }, [users]);
-
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -292,11 +293,20 @@ export function CommentEditEditor({
           class: "mention",
         },
         suggestion: {
-          items: ({ query }: { query: string }) => {
-            const q = query.toLowerCase();
-            return usersRef.current
-              .filter((u) => u.name.toLowerCase().includes(q))
-              .slice(0, 8);
+          items: async ({ query }: { query: string }) => {
+            if (!query) return [];
+            try {
+              const { data } = await coreClient.query<{ searchUsers: Array<{ id: string; info: { displayName: string } }> }>({
+                query: SEARCH_USERS,
+                variables: { input: { q: query } },
+              });
+              return (data?.searchUsers ?? []).map((u) => ({
+                id: u.id,
+                label: u.info.displayName,
+              }));
+            } catch {
+              return [];
+            }
           },
           render: () => {
             let component: ReactRenderer<MentionListRef> | null = null;

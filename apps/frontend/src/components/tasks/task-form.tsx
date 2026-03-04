@@ -42,7 +42,7 @@ import {
 import { cn } from "@/lib/utils";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { useCreateTask, useUpdateTask } from "@/hooks/use-tasks";
-import { useUsers } from "@/hooks/use-users";
+import { useSearchUsers, useUser } from "@/hooks/use-users";
 import { useLabels } from "@/hooks/use-labels";
 import {
   TASK_STATUS_CONFIG,
@@ -84,7 +84,6 @@ export function TaskForm({ open, onOpenChange, task, moduleId, projectId }: Task
   const isEditing = !!task;
   const createTask = useCreateTask();
   const updateTask = useUpdateTask();
-  const { data: users = [] } = useUsers();
   const { data: labels = [] } = useLabels(projectId);
 
   const [title, setTitle] = useState(task?.title ?? "");
@@ -315,7 +314,6 @@ export function TaskForm({ open, onOpenChange, task, moduleId, projectId }: Task
                 <PropertyRow icon={UserIcon} label="Assignee">
                   <AssigneeCombobox
                     value={assigneeIds}
-                    users={users}
                     onChange={setAssigneeIds}
                   />
                 </PropertyRow>
@@ -374,17 +372,34 @@ export function TaskForm({ open, onOpenChange, task, moduleId, projectId }: Task
   );
 }
 
+function AssigneeAvatar({ userId }: { userId: string }) {
+  const { data: user } = useUser(userId);
+  const name = user?.name ?? "...";
+  const initials = name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+  return (
+    <Avatar className="size-4 ring-1 ring-background">
+      <AvatarImage src={user?.avatarUrl} />
+      <AvatarFallback className="text-[8px]">{initials}</AvatarFallback>
+    </Avatar>
+  );
+}
+
+function AssigneeLabel({ userIds }: { userIds: string[] }) {
+  const { data: firstUser } = useUser(userIds[0]);
+  if (userIds.length === 1) return <span className={styles.truncate}>{firstUser?.name ?? "..."}</span>;
+  return <span className={styles.truncate}>{userIds.length} assignees</span>;
+}
+
 function AssigneeCombobox({
   value,
-  users,
   onChange,
 }: {
   value: string[];
-  users: { id: string; name: string; avatarUrl?: string }[];
   onChange: (userIds: string[]) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const selectedUsers = users.filter((u) => value.includes(u.id));
+  const [search, setSearch] = useState("");
+  const { data: searchResults } = useSearchUsers(search);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -395,23 +410,14 @@ function AssigneeCombobox({
           aria-expanded={open}
           className={styles.assigneeTrigger}
         >
-          {selectedUsers.length > 0 ? (
+          {value.length > 0 ? (
             <>
               <div className={styles.avatarStack}>
-                {selectedUsers.slice(0, 3).map((user) => (
-                  <Avatar key={user.id} className="size-4 ring-1 ring-background">
-                    <AvatarImage src={user.avatarUrl} />
-                    <AvatarFallback className="text-[8px]">
-                      {user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)}
-                    </AvatarFallback>
-                  </Avatar>
+                {value.slice(0, 3).map((id) => (
+                  <AssigneeAvatar key={id} userId={id} />
                 ))}
               </div>
-              <span className={styles.truncate}>
-                {selectedUsers.length === 1
-                  ? selectedUsers[0].name
-                  : `${selectedUsers.length} assignees`}
-              </span>
+              <AssigneeLabel userIds={value} />
               <X
                 className={styles.clearIcon}
                 onClick={(e) => {
@@ -429,51 +435,64 @@ function AssigneeCombobox({
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-[200px] p-0" align="start">
-        <Command>
-          <CommandInput placeholder="Search users..." className="h-8 text-xs" />
+        <Command shouldFilter={false}>
+          <CommandInput
+            placeholder="Search users..."
+            className="h-8 text-xs"
+            value={search}
+            onValueChange={setSearch}
+          />
           <CommandList>
-            <CommandEmpty className="py-3 text-xs text-center">
-              No user found.
-            </CommandEmpty>
-            <CommandGroup>
-              {users.map((user) => {
-                const initials = user.name
-                  .split(" ")
-                  .map((n) => n[0])
-                  .join("")
-                  .toUpperCase()
-                  .slice(0, 2);
-                const isSelected = value.includes(user.id);
-                return (
-                  <CommandItem
-                    key={user.id}
-                    value={user.name}
-                    onSelect={() => {
-                      onChange(
-                        isSelected
-                          ? value.filter((id) => id !== user.id)
-                          : [...value, user.id],
-                      );
-                    }}
-                    className="text-xs"
-                  >
-                    <Avatar className="size-5 mr-1.5">
-                      <AvatarImage src={user.avatarUrl} />
-                      <AvatarFallback className="text-[9px]">
-                        {initials}
-                      </AvatarFallback>
-                    </Avatar>
-                    {user.name}
-                    <Check
-                      className={cn(
-                        styles.checkIcon,
-                        isSelected ? styles.checkVisible : styles.checkHidden,
-                      )}
-                    />
-                  </CommandItem>
-                );
-              })}
-            </CommandGroup>
+            {!search ? (
+              <CommandEmpty className="py-3 text-xs text-center">
+                Type to search...
+              </CommandEmpty>
+            ) : (
+              <>
+                <CommandEmpty className="py-3 text-xs text-center">
+                  No user found.
+                </CommandEmpty>
+                <CommandGroup>
+                  {searchResults?.map((user) => {
+                    const initials = user.name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")
+                      .toUpperCase()
+                      .slice(0, 2);
+                    const isSelected = value.includes(user.id);
+                    return (
+                      <CommandItem
+                        key={user.id}
+                        value={user.id}
+                        onSelect={() => {
+                          onChange(
+                            isSelected
+                              ? value.filter((id) => id !== user.id)
+                              : [...value, user.id],
+                          );
+                        }}
+                        className="text-xs"
+                      >
+                        <Avatar className="size-5 mr-1.5">
+                          <AvatarImage src={user.avatarUrl} />
+                          <AvatarFallback className="text-[9px]">
+                            {initials}
+                          </AvatarFallback>
+                        </Avatar>
+                        {user.name}
+                        <Check
+                          className={cn(
+                            styles.checkIcon,
+                            isSelected ? styles.checkVisible : styles.checkHidden,
+                          )}
+                        />
+                      </CommandItem>
+                    );
+                  })}
+                </CommandGroup>
+              </>
+            )}
           </CommandList>
         </Command>
       </PopoverContent>

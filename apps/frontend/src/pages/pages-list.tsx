@@ -5,7 +5,7 @@ import {
   useCreatePage,
   useReorderPages,
 } from "@/hooks/use-pages";
-import { useUsers } from "@/hooks/use-users";
+import { useUser } from "@/hooks/use-users";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -34,7 +34,6 @@ import {
 import { useAllTasks } from "@/hooks/use-tasks";
 import { useModules } from "@/hooks/use-modules";
 import type { Page } from "@/types/page";
-import type { User } from "@/types/task";
 import styles from "./pages-list.module.css";
 
 function formatTimeAgo(dateStr: string) {
@@ -64,13 +63,11 @@ function resolveDisplayName(params: { name?: string; email?: string; snapshotNam
 function SortablePageRow({
   page,
   projectId,
-  users,
   taskNameMap,
   moduleNameMap,
 }: {
   page: Page;
   projectId: string;
-  users: User[];
   taskNameMap: Record<string, string>;
   moduleNameMap: Record<string, string>;
 }) {
@@ -89,7 +86,7 @@ function SortablePageRow({
     opacity: isDragging ? 0.5 : 1,
   };
 
-  const matchedUser = users.find((u) => u.id === page.pageInfo.lastEditedById);
+  const { data: matchedUser } = useUser(page.pageInfo.lastEditedById);
 
   return (
     <div
@@ -150,7 +147,6 @@ export function Component() {
   const { projectId } = useParams();
   const navigate = useNavigate();
   const { data: pages = [], isLoading } = usePages(projectId!);
-  const { data: users = [] } = useUsers();
   const { data: tasks = [] } = useAllTasks({ projectId });
   const { data: modules = [] } = useModules(projectId);
   const createPage = useCreatePage();
@@ -289,7 +285,6 @@ export function Component() {
                   key={page.id}
                   page={page}
                   projectId={projectId!}
-                  users={users}
                   taskNameMap={taskNameMap}
                   moduleNameMap={moduleNameMap}
                 />

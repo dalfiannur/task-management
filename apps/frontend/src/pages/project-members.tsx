@@ -6,7 +6,7 @@ import {
   useAddProjectMember,
   useRemoveProjectMember,
 } from "@/hooks/use-members";
-import { useUsers } from "@/hooks/use-users";
+import { useUser } from "@/hooks/use-users";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { UserCombobox } from "@/components/shared/user-combobox";
@@ -14,11 +14,49 @@ import { X, UserPlus, Users } from "lucide-react";
 import { getInitials } from "@/lib/utils";
 import styles from "./project-members.module.css";
 
+function MemberCard({
+  userId,
+  isLeader,
+  onRemove,
+  isRemoving,
+}: {
+  userId: string;
+  isLeader: boolean;
+  onRemove: () => void;
+  isRemoving: boolean;
+}) {
+  const { data: user } = useUser(userId);
+  const displayName = user?.name ?? userId;
+
+  return (
+    <div className={styles.memberCard}>
+      <Button
+        variant="ghost"
+        size="icon"
+        className={styles.removeButton}
+        onClick={onRemove}
+        disabled={isRemoving}
+      >
+        <X className={styles.removeIcon} />
+      </Button>
+      <Avatar className={styles.memberAvatar}>
+        <AvatarImage src={user?.avatarUrl} />
+        <AvatarFallback className={styles.memberFallback}>
+          {getInitials(displayName)}
+        </AvatarFallback>
+      </Avatar>
+      <span className={styles.memberName}>{displayName}</span>
+      {isLeader && (
+        <span className={styles.picBadge}>Leader</span>
+      )}
+    </div>
+  );
+}
+
 export function Component() {
   const { projectId } = useParams();
   const { data: project } = useProject(projectId!);
   const { data: members } = useProjectMembers(projectId!);
-  const { data: users } = useUsers();
   const addMember = useAddProjectMember();
   const removeMember = useRemoveProjectMember();
   const [selectedUserId, setSelectedUserId] = useState<string | undefined>();
@@ -68,35 +106,15 @@ export function Component() {
       {/* Member cards grid */}
       {members && members.length > 0 ? (
         <div className={styles.grid}>
-          {members.map((member) => {
-            const user = users?.find(
-              (u) => u.id === member.membership.userId,
-            );
-            const displayName = user?.name ?? member.membership.userId;
-            return (
-              <div key={member.id} className={styles.memberCard}>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={styles.removeButton}
-                  onClick={() => handleRemove(member.membership.userId)}
-                  disabled={removeMember.isLoading}
-                >
-                  <X className={styles.removeIcon} />
-                </Button>
-                <Avatar className={styles.memberAvatar}>
-                  <AvatarImage src={user?.avatarUrl} />
-                  <AvatarFallback className={styles.memberFallback}>
-                    {getInitials(displayName)}
-                  </AvatarFallback>
-                </Avatar>
-                <span className={styles.memberName}>{displayName}</span>
-                {member.membership.userId === projectLeaderId && (
-                  <span className={styles.picBadge}>Leader</span>
-                )}
-              </div>
-            );
-          })}
+          {members.map((member) => (
+            <MemberCard
+              key={member.id}
+              userId={member.membership.userId}
+              isLeader={member.membership.userId === projectLeaderId}
+              onRemove={() => handleRemove(member.membership.userId)}
+              isRemoving={removeMember.isLoading}
+            />
+          ))}
         </div>
       ) : (
         <div className={styles.emptyState}>

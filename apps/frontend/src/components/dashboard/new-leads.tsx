@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ApproveLeadDialog } from "./approve-lead-dialog";
 import type { Project } from "@/types/project";
-import { useUsers } from "@/hooks/use-users";
+import { useUser } from "@/hooks/use-users";
 import { Sparkles } from "lucide-react";
 import styles from "./new-leads.module.css";
 
@@ -12,16 +12,15 @@ interface NewLeadsProps {
   projects: Project[];
 }
 
+function LeaderName({ leaderId }: { leaderId?: string }) {
+  const { data: user } = useUser(leaderId);
+  if (!leaderId || !user?.name) return null;
+  return <p className={styles.picName}>{user.name}</p>;
+}
+
 export function NewLeads({ projects }: NewLeadsProps) {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const { data: users } = useUsers();
-
-  function getLeaderName(leaderId?: string) {
-    if (!leaderId || !users) return null;
-    const user = users.find((u) => u.id === leaderId);
-    return user?.name ?? null;
-  }
 
   return (
     <>
@@ -45,46 +44,39 @@ export function NewLeads({ projects }: NewLeadsProps) {
             </div>
           ) : (
             <div className={styles.leadsList}>
-              {projects.map((project) => {
-                const leaderName = getLeaderName(project.projectLeaderId?.value);
-                return (
-                  <div
-                    key={project.id}
-                    className={styles.leadItem}
-                  >
-                    <div className={styles.leadStripe} />
-                    <div className={styles.leadContent}>
-                      <div className={styles.leadHeader}>
-                        <Badge
-                          variant="outline"
-                          className={styles.codeBadge}
-                        >
-                          {project.code ?? project.id}
-                        </Badge>
-                        <span className={styles.leadName}>
-                          {project.coreName ?? "Untitled"}
-                        </span>
-                      </div>
-                      {leaderName && (
-                        <p className={styles.picName}>
-                          {leaderName}
-                        </p>
-                      )}
+              {projects.map((project) => (
+                <div
+                  key={project.id}
+                  className={styles.leadItem}
+                >
+                  <div className={styles.leadStripe} />
+                  <div className={styles.leadContent}>
+                    <div className={styles.leadHeader}>
+                      <Badge
+                        variant="outline"
+                        className={styles.codeBadge}
+                      >
+                        {project.code ?? project.id}
+                      </Badge>
+                      <span className={styles.leadName}>
+                        {project.coreName ?? "Untitled"}
+                      </span>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className={styles.approveBtn}
-                      onClick={() => {
-                        setSelectedProject(project);
-                        setDialogOpen(true);
-                      }}
-                    >
-                      Approve
-                    </Button>
+                    <LeaderName leaderId={project.projectLeaderId?.value} />
                   </div>
-                );
-              })}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className={styles.approveBtn}
+                    onClick={() => {
+                      setSelectedProject(project);
+                      setDialogOpen(true);
+                    }}
+                  >
+                    Approve
+                  </Button>
+                </div>
+              ))}
             </div>
           )}
         </CardContent>

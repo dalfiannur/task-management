@@ -5,23 +5,9 @@ import { Query } from "bunsane/query";
 import { PageInfo } from "../components/PageInfo";
 import { PageArcheType } from "../archetypes/PageArcheType";
 
+import { requireAuth, type TaskAuthUser } from "~/lib/auth-context";
+
 const pageArcheType = new PageArcheType();
-
-type AuthUser = { id: string; sub: string; email: string; name: string; picture?: string; role?: string };
-
-function requireUser(context: { user?: AuthUser }) {
-  if (!context.user) throw new Error("Authentication required");
-  const user = context.user;
-  const id = user.id?.trim() || user.sub?.trim();
-  if (!id) throw new Error("Authentication required");
-  const name =
-    user.name?.trim() ||
-    user.email?.trim() ||
-    user.sub?.trim() ||
-    id ||
-    "Unknown";
-  return { ...user, id, name };
-}
 
 export default class PageService extends BaseService {
   constructor() {
@@ -118,9 +104,9 @@ export default class PageService extends BaseService {
       linkedTaskId?: string;
       linkedModuleId?: string;
     },
-    context: { user?: AuthUser },
+    context: { user?: TaskAuthUser | null },
   ) {
-    const user = requireUser(context);
+    const user = requireAuth(context);
 
     if (input.linkedTaskId && input.linkedModuleId) {
       throw new Error("A page can only be linked to a task or a module, not both");
@@ -184,9 +170,9 @@ export default class PageService extends BaseService {
       linkedTaskId?: string;
       linkedModuleId?: string;
     },
-    context: { user?: AuthUser },
+    context: { user?: TaskAuthUser | null },
   ) {
-    const user = requireUser(context);
+    const user = requireAuth(context);
 
     // Validate mutual exclusivity
     const hasTaskLink = input.linkedTaskId !== undefined && input.linkedTaskId !== "";
@@ -234,9 +220,9 @@ export default class PageService extends BaseService {
   })
   async deletePage(
     input: { id: string },
-    context: { user?: AuthUser },
+    context: { user?: TaskAuthUser | null },
   ) {
-    requireUser(context);
+    requireAuth(context);
 
     const entity = await new Query().findOneById(input.id);
     if (!entity) throw new Error("Page not found");
@@ -255,9 +241,9 @@ export default class PageService extends BaseService {
   })
   async reorderPages(
     input: { projectId: string; pageIds: string[] },
-    context: { user?: AuthUser },
+    context: { user?: TaskAuthUser | null },
   ) {
-    requireUser(context);
+    requireAuth(context);
 
     if (input.pageIds.length === 0) return true;
 

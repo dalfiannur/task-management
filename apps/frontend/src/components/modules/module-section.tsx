@@ -52,7 +52,7 @@ import { useTasks, useUpdateTask } from "@/hooks/use-tasks";
 import { useDeleteModule } from "@/hooks/use-modules";
 import { usePagesByModule, usePages, useUpdatePage } from "@/hooks/use-pages";
 import { useLabels } from "@/hooks/use-labels";
-import { useUsers, useUser } from "@/hooks/use-users";
+import { useUser } from "@/hooks/use-users";
 import { ChevronRight, FileText, FolderOpen, MessageSquare, MoreHorizontal, Pencil, Plus, Trash2, X } from "lucide-react";
 import { ModuleForm } from "./module-form";
 import { CommentsDialog } from "@/components/tasks/comments-dialog";
@@ -83,29 +83,30 @@ interface ModuleSectionProps {
   subProjectCount?: number;
 }
 
-function TaskAssigneeCell({ assigneeIds }: { assigneeIds: string[] }) {
-  const { data: allUsers = [] } = useUsers();
-  const assignedUsers = allUsers.filter((u) => assigneeIds.includes(u.id));
+function AssigneeAvatar({ userId, showName }: { userId: string; showName?: boolean }) {
+  const { data: user } = useUser(userId);
+  if (!user) return null;
+  const initials = getInitials(user.name);
+  return (
+    <>
+      <Avatar className={showName ? s.assigneeAvatar : s.stackedAvatar}>
+        <AvatarImage src={user.avatarUrl} />
+        <AvatarFallback className={s.assigneeFallback}>{initials}</AvatarFallback>
+      </Avatar>
+      {showName && <span className={s.assigneeName}>{user.name}</span>}
+    </>
+  );
+}
 
-  if (assignedUsers.length === 0) {
+function TaskAssigneeCell({ assigneeIds }: { assigneeIds: string[] }) {
+  if (assigneeIds.length === 0) {
     return <span className={s.assigneeDash}>&mdash;</span>;
   }
 
-  if (assignedUsers.length === 1) {
-    const user = assignedUsers[0];
-    const initials = user.name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
+  if (assigneeIds.length === 1) {
     return (
       <div className={s.singleAssignee}>
-        <Avatar className={s.assigneeAvatar}>
-          <AvatarImage src={user.avatarUrl} />
-          <AvatarFallback className={s.assigneeFallback}>{initials}</AvatarFallback>
-        </Avatar>
-        <span className={s.assigneeName}>{user.name}</span>
+        <AssigneeAvatar userId={assigneeIds[0]} showName />
       </div>
     );
   }
@@ -113,23 +114,12 @@ function TaskAssigneeCell({ assigneeIds }: { assigneeIds: string[] }) {
   return (
     <div className={s.multiAssignee}>
       <div className={s.avatarStack}>
-        {assignedUsers.slice(0, 3).map((user) => {
-          const initials = user.name
-            .split(" ")
-            .map((n) => n[0])
-            .join("")
-            .toUpperCase()
-            .slice(0, 2);
-          return (
-            <Avatar key={user.id} className={s.stackedAvatar}>
-              <AvatarImage src={user.avatarUrl} />
-              <AvatarFallback className={s.assigneeFallback}>{initials}</AvatarFallback>
-            </Avatar>
-          );
-        })}
+        {assigneeIds.slice(0, 3).map((id) => (
+          <AssigneeAvatar key={id} userId={id} />
+        ))}
       </div>
-      {assignedUsers.length > 3 && (
-        <span className={s.overflowCount}>+{assignedUsers.length - 3}</span>
+      {assigneeIds.length > 3 && (
+        <span className={s.overflowCount}>+{assigneeIds.length - 3}</span>
       )}
     </div>
   );

@@ -5,14 +5,9 @@ import { Query } from "bunsane/query";
 import { NotificationInfo } from "../components/NotificationInfo";
 import { NotificationArcheType } from "../archetypes/NotificationArcheType";
 
+import { requireAuth, type TaskAuthUser } from "~/lib/auth-context";
+
 const notificationArcheType = new NotificationArcheType();
-
-type AuthUser = { id: string; sub: string; email: string; name: string; picture?: string; role?: string };
-
-function requireUser(context: { user?: AuthUser }) {
-  if (!context.user) throw new Error("Authentication required");
-  return context.user;
-}
 
 export default class NotificationService extends BaseService {
   private static instance: NotificationService;
@@ -73,9 +68,9 @@ export default class NotificationService extends BaseService {
   })
   async listNotifications(
     input: { limit?: number; offset?: number },
-    context: { user?: AuthUser },
+    context: { user?: TaskAuthUser | null },
   ) {
-    const user = requireUser(context);
+    const user = requireAuth(context);
 
     const query = new Query()
       .with(NotificationInfo, {
@@ -99,9 +94,9 @@ export default class NotificationService extends BaseService {
   })
   async unreadNotificationCount(
     _input: { _dummy?: boolean },
-    context: { user?: AuthUser },
+    context: { user?: TaskAuthUser | null },
   ) {
-    const user = requireUser(context);
+    const user = requireAuth(context);
 
     const entities = await new Query()
       .with(NotificationInfo, {
@@ -124,9 +119,9 @@ export default class NotificationService extends BaseService {
   })
   async markNotificationsRead(
     input: { ids: string[] },
-    context: { user?: AuthUser },
+    context: { user?: TaskAuthUser | null },
   ) {
-    const user = requireUser(context);
+    const user = requireAuth(context);
 
     if (input.ids.length === 0) return true;
 
@@ -157,9 +152,9 @@ export default class NotificationService extends BaseService {
   })
   async markAllNotificationsRead(
     _input: { _dummy?: boolean },
-    context: { user?: AuthUser },
+    context: { user?: TaskAuthUser | null },
   ) {
-    const user = requireUser(context);
+    const user = requireAuth(context);
 
     const entities = await new Query()
       .with(NotificationInfo, {

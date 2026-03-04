@@ -9,7 +9,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTask, useDeleteTask, useUpdateTask } from "@/hooks/use-tasks";
-import { useUsers } from "@/hooks/use-users";
 import { useModules } from "@/hooks/use-modules";
 import { usePagesByTask, usePages, useUpdatePage } from "@/hooks/use-pages";
 import { useState } from "react";
@@ -76,7 +75,6 @@ export function TaskDetail({
   const { data: task, isLoading } = useTask(taskId);
   const deleteTask = useDeleteTask();
   const updateTask = useUpdateTask();
-  const { data: users = [] } = useUsers();
   const { data: modules } = useModules(projectId);
   const { data: linkedPages = [] } = usePagesByTask(taskId);
   const { data: allPages = [] } = usePages(projectId);
@@ -200,7 +198,6 @@ export function TaskDetail({
                   <AssigneeSelect
                     taskId={taskId}
                     value={task.assigneeIds}
-                    users={users}
                     updateTask={updateTask}
                   />
                 </PropertyRow>

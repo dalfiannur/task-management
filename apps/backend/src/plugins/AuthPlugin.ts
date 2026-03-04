@@ -25,7 +25,7 @@ export class AuthPlugin extends BasePlugin {
 
   static async extractUser(
     request: Request,
-  ): Promise<{ id: string; sub: string; email: string; name: string; picture?: string; role?: string } | null> {
+  ): Promise<{ id: string; sub: string; email: string; name: string; picture?: string; role?: string; permissions: string[] } | null> {
     const authHeader = request.headers.get("authorization");
     if (!authHeader?.startsWith("Bearer ")) return null;
 
@@ -42,13 +42,22 @@ export class AuthPlugin extends BasePlugin {
         : "";
       const displayName = tokenName || email || preferredUsername || payload.sub;
 
+      const role: string | undefined = (payload as any).role;
+      let permissions: string[] = Array.isArray((payload as any).permissions) ? (payload as any).permissions : [];
+
+      // Backward-compat: if role is "manager" and no permissions in JWT, grant wildcard
+      if (role === "manager" && permissions.length === 0) {
+        permissions = ["*"];
+      }
+
       return {
         id: payload.sub,
         sub: payload.sub,
         email,
         name: displayName,
         picture: (payload as any).picture,
-        role: (payload as any).role,
+        role,
+        permissions,
       };
     } catch (err) {
       console.warn("[AuthPlugin] Token verification failed:", (err as Error).message);

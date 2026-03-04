@@ -7,14 +7,9 @@ import { CommentArcheType } from "../archetypes/CommentArcheType";
 import { TaskInfo } from "../components/TaskInfo";
 import NotificationService from "./NotificationService";
 
+import { requireAuth, type TaskAuthUser } from "~/lib/auth-context";
+
 const commentArcheType = new CommentArcheType();
-
-type AuthUser = { id: string; sub: string; email: string; name: string; picture?: string; role?: string };
-
-function requireUser(context: { user?: AuthUser }) {
-  if (!context.user) throw new Error("Authentication required");
-  return context.user;
-}
 
 @GraphQLScalarType("JSON")
 export default class CommentService extends BaseService {
@@ -53,9 +48,9 @@ export default class CommentService extends BaseService {
   })
   async createComment(
     input: { taskId: string; content: string; mentionedUserIds?: string[] },
-    context: { user?: AuthUser },
+    context: { user?: TaskAuthUser | null },
   ) {
-    const user = requireUser(context);
+    const user = requireAuth(context);
     const mentionedIds = input.mentionedUserIds ?? [];
 
     const now = new Date().toISOString();
@@ -109,9 +104,9 @@ export default class CommentService extends BaseService {
   })
   async updateComment(
     input: { id: string; content: string; mentionedUserIds?: string[] },
-    context: { user?: AuthUser },
+    context: { user?: TaskAuthUser | null },
   ) {
-    const user = requireUser(context);
+    const user = requireAuth(context);
 
     const entity = await new Query().findOneById(input.id);
     if (!entity) throw new Error("Comment not found");
@@ -209,9 +204,9 @@ export default class CommentService extends BaseService {
   })
   async deleteComment(
     input: { id: string },
-    context: { user?: AuthUser },
+    context: { user?: TaskAuthUser | null },
   ) {
-    const user = requireUser(context);
+    const user = requireAuth(context);
 
     const entity = await new Query().findOneById(input.id);
     if (!entity) throw new Error("Comment not found");

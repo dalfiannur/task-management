@@ -11,8 +11,7 @@ import NotificationService from "./NotificationService";
 import ActivityService from "./ActivityService";
 import MembershipService from "./MembershipService";
 import { ModuleProjectRefComponent } from "../components/ModuleComponents";
-
-type AuthUser = { id: string; sub: string; email: string; name: string; picture?: string; role?: string };
+import { type TaskAuthUser } from "~/lib/auth-context";
 
 function encodeLabelIds(ids?: string[]): string {
   return JSON.stringify(ids ?? []);
@@ -211,7 +210,7 @@ export default class TaskService extends BaseService {
       moduleId: string;
       labelIds?: string[];
     },
-    context: { user?: AuthUser },
+    context: { user?: TaskAuthUser | null },
   ) {
     const archetype = new TaskArcheType();
     const now = new Date().toISOString();
@@ -293,7 +292,7 @@ export default class TaskService extends BaseService {
       assigneeIds?: string[];
       labelIds?: string[];
     },
-    context: { user?: AuthUser },
+    context: { user?: TaskAuthUser | null },
   ) {
     const entity = await new Query().findOneById(input.id);
     if (!entity) throw new Error("Task not found");
@@ -464,7 +463,7 @@ export default class TaskService extends BaseService {
   })
   async deleteTask(
     input: { id: string },
-    context: { user?: AuthUser },
+    context: { user?: TaskAuthUser | null },
   ) {
     const entity = await new Query().findOneById(input.id);
     if (!entity) throw new Error("Task not found");

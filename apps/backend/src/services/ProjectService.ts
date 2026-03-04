@@ -31,7 +31,7 @@ import {
   ModuleTag,
 } from "~/components/ModuleComponents";
 import { ProjectMembershipData } from "~/components/ProjectMembership";
-import { getUserRole, requireManager } from "./UserService";
+import { requireAuth, checkPermission, Resources, type TaskAuthUser } from "~/lib/auth-context";
 import MembershipService from "./MembershipService";
 import {
   fetchCoreProject,
@@ -41,7 +41,7 @@ import {
   type CoreProject,
 } from "~/lib/core-client";
 
-type AuthUser = { id: string; sub: string; email: string; name: string; picture?: string; role?: string };
+type AuthUser = TaskAuthUser;
 
 function computeResolvedStatus(localStatus: string, coreWinStage?: string): string {
   if (coreWinStage === "won" && localStatus === "prospect") return "won";
@@ -89,8 +89,8 @@ export default class ProjectService extends BaseService {
     const user = this.extractUser(context);
     let filteredProjects = rootProjects;
     if (user) {
-      const role = user.role ?? await getUserRole(user.id);
-      if (role !== "manager") {
+      const canManage = checkPermission({ user }, Resources.Projects, "manage");
+      if (!canManage) {
         const memberProjectIds = await this.getMemberProjectIds(user.id);
         filteredProjects = rootProjects.filter((p: any) => memberProjectIds.has(p.id));
       }
@@ -150,8 +150,8 @@ export default class ProjectService extends BaseService {
 
     const user = this.extractUser(context);
     if (user) {
-      const role = user.role ?? await getUserRole(user.id);
-      if (role !== "manager") {
+      const canManage = checkPermission({ user }, Resources.Projects, "manage");
+      if (!canManage) {
         const memberProjectIds = await this.getMemberProjectIds(user.id);
         if (!memberProjectIds.has(input.id)) {
           const parentRef = await entity.get(ProjectParentRefComponent);
@@ -415,8 +415,8 @@ export default class ProjectService extends BaseService {
     const user = this.extractUser(context);
     let filteredProjects = allSubProjects;
     if (user) {
-      const role = user.role ?? await getUserRole(user.id);
-      if (role !== "manager") {
+      const canManage = checkPermission({ user }, Resources.Projects, "manage");
+      if (!canManage) {
         const memberProjectIds = await this.getMemberProjectIds(user.id);
         if (!memberProjectIds.has(input.parentProjectId)) {
           filteredProjects = allSubProjects.filter((p: any) => memberProjectIds.has(p.id));
@@ -545,8 +545,11 @@ export default class ProjectService extends BaseService {
     args: { id: string; description?: string },
     context: { user?: AuthUser; request?: Request },
   ) {
-    // Manager only
-    const user = requireManager(context);
+    // Requires project manage permission
+    const user = requireAuth(context);
+    if (!checkPermission({ user }, Resources.Projects, "manage")) {
+      throw new Error("Permission denied: project manage required");
+    }
 
     // Fetch Core data first to get the project name
     const authToken = extractAuthToken(context.request);

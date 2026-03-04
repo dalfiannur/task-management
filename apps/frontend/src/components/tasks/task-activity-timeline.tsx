@@ -3,9 +3,8 @@ import { useAuth } from "react-oidc-context";
 import { Loader2 } from "lucide-react";
 import { useComments } from "@/hooks/use-comments";
 import { useActivities } from "@/hooks/use-activities";
-import { useUsers } from "@/hooks/use-users";
+import { useUser } from "@/hooks/use-users";
 import { useLabels } from "@/hooks/use-labels";
-import { resolveDisplayName } from "@/lib/utils";
 import {
   CommentItem,
   formatRelativeTime,
@@ -39,7 +38,6 @@ export function TaskActivityTimeline({
     useComments(taskId);
   const { data: activities = [], isLoading: activitiesLoading } =
     useActivities(taskId);
-  const { data: users = [] } = useUsers();
   const { data: labels = [] } = useLabels(projectId);
 
   const timeline = useMemo<TimelineEntry[]>(() => {
@@ -99,7 +97,6 @@ export function TaskActivityTimeline({
               comment={entry.data}
               isAuthor={entry.data.commentInfo.authorId === currentUserId}
               taskId={taskId}
-              users={users}
             />
           );
         }
@@ -114,7 +111,6 @@ export function TaskActivityTimeline({
               color="green"
               actorId={activityInfo.actorId}
               actorName={activityInfo.actorName}
-              users={users}
               time={activityInfo.createdAt}
               text="created this task"
             />
@@ -128,7 +124,6 @@ export function TaskActivityTimeline({
               color="red"
               actorId={activityInfo.actorId}
               actorName={activityInfo.actorName}
-              users={users}
               time={activityInfo.createdAt}
               text="deleted this task"
             />
@@ -142,9 +137,8 @@ export function TaskActivityTimeline({
             color="muted"
             actorId={activityInfo.actorId}
             actorName={activityInfo.actorName}
-            users={users}
             time={activityInfo.createdAt}
-            text={formatFieldChange(change, users, labels)}
+            text={formatFieldChange(change, labels)}
           />
         ));
       })}
@@ -156,18 +150,17 @@ function ActivityEntry({
   color,
   actorId,
   actorName,
-  users,
   time,
   text,
 }: {
   color: "green" | "red" | "muted";
   actorId: string;
   actorName: string;
-  users: Array<{ id: string; name: string }>;
   time: string;
   text: string;
 }) {
-  const displayName = resolveDisplayName(actorId, actorName, users);
+  const { data: user } = useUser(actorId);
+  const displayName = user?.name || actorName || "Unknown user";
 
   return (
     <div className={styles.activityRow}>
@@ -184,7 +177,6 @@ function ActivityEntry({
 
 function formatFieldChange(
   change: FieldChange,
-  users: Array<{ id: string; name: string }>,
   labels: Array<{ id: string; name: string; color: string }>,
 ): string {
   const { field, from, to } = change;
@@ -225,16 +217,10 @@ function formatFieldChange(
       const removed = oldIds.filter((id) => !newIds.includes(id));
       const parts: string[] = [];
       if (added.length > 0) {
-        const names = added.map(
-          (id) => users.find((u) => u.id === id)?.name ?? "someone",
-        );
-        parts.push(`assigned ${names.join(", ")}`);
+        parts.push(`assigned ${added.length} member${added.length > 1 ? "s" : ""}`);
       }
       if (removed.length > 0) {
-        const names = removed.map(
-          (id) => users.find((u) => u.id === id)?.name ?? "someone",
-        );
-        parts.push(`unassigned ${names.join(", ")}`);
+        parts.push(`unassigned ${removed.length} member${removed.length > 1 ? "s" : ""}`);
       }
       return parts.join(" and ") || "changed assignees";
     }

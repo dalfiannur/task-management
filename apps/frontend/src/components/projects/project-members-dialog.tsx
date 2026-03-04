@@ -14,7 +14,7 @@ import {
   useRemoveProjectMember,
 } from "@/hooks/use-members";
 import { useMe } from "@/hooks/use-me";
-import { useUsers } from "@/hooks/use-users";
+import { useUser } from "@/hooks/use-users";
 import { X, UserPlus } from "lucide-react";
 import { getInitials } from "@/lib/utils";
 import styles from "./project-members-dialog.module.css";
@@ -26,6 +26,53 @@ interface ProjectMembersDialogProps {
   projectLeaderId?: string;
 }
 
+function MemberRow({
+  userId,
+  isLeader,
+  canManage,
+  onRemove,
+  isRemoving,
+}: {
+  userId: string;
+  isLeader: boolean;
+  canManage: boolean;
+  onRemove: () => void;
+  isRemoving: boolean;
+}) {
+  const { data: user } = useUser(userId);
+  const displayName = user?.name ?? userId;
+
+  return (
+    <div className={styles.memberRow}>
+      <div className={styles.memberInfo}>
+        <Avatar className={styles.memberAvatar}>
+          <AvatarImage src={user?.avatarUrl} />
+          <AvatarFallback className={styles.memberFallback}>
+            {getInitials(displayName)}
+          </AvatarFallback>
+        </Avatar>
+        <span className={styles.memberName}>{displayName}</span>
+        {isLeader && (
+          <span className={styles.picBadge}>
+            Leader
+          </span>
+        )}
+      </div>
+      {canManage && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className={styles.removeButton}
+          onClick={onRemove}
+          disabled={isRemoving}
+        >
+          <X className={styles.removeIcon} />
+        </Button>
+      )}
+    </div>
+  );
+}
+
 export function ProjectMembersDialog({
   open,
   onOpenChange,
@@ -33,7 +80,6 @@ export function ProjectMembersDialog({
   projectLeaderId,
 }: ProjectMembersDialogProps) {
   const { data: members } = useProjectMembers(projectId);
-  const { data: users } = useUsers();
   const { data: me } = useMe();
   const addMember = useAddProjectMember();
   const removeMember = useRemoveProjectMember();
@@ -65,44 +111,16 @@ export function ProjectMembersDialog({
         <div className={styles.body}>
           {/* Member list */}
           <div className={styles.memberList}>
-            {members?.map((member) => {
-              const user = users?.find(
-                (u) => u.id === member.membership.userId,
-              );
-              const displayName = user?.name ?? member.membership.userId;
-              return (
-                <div
-                  key={member.id}
-                  className={styles.memberRow}
-                >
-                  <div className={styles.memberInfo}>
-                    <Avatar className={styles.memberAvatar}>
-                      <AvatarImage src={user?.avatarUrl} />
-                      <AvatarFallback className={styles.memberFallback}>
-                        {getInitials(displayName)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className={styles.memberName}>{displayName}</span>
-                    {member.membership.userId === projectLeaderId && (
-                      <span className={styles.picBadge}>
-                        Leader
-                      </span>
-                    )}
-                  </div>
-                  {canManage && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className={styles.removeButton}
-                      onClick={() => handleRemove(member.membership.userId)}
-                      disabled={removeMember.isLoading}
-                    >
-                      <X className={styles.removeIcon} />
-                    </Button>
-                  )}
-                </div>
-              );
-            })}
+            {members?.map((member) => (
+              <MemberRow
+                key={member.id}
+                userId={member.membership.userId}
+                isLeader={member.membership.userId === projectLeaderId}
+                canManage={!!canManage}
+                onRemove={() => handleRemove(member.membership.userId)}
+                isRemoving={removeMember.isLoading}
+              />
+            ))}
             {(!members || members.length === 0) && (
               <p className={styles.emptyMessage}>
                 No members yet

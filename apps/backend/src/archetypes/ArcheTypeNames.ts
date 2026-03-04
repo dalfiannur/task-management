@@ -6,7 +6,6 @@ export const ArcheTypeNames = {
     Module: "Module",
     Project: "Project",
     Task: "Task",
-    User: "User",
     Notification: "Notification",
     Page: "Page",
     ProjectMembership: "ProjectMembership",

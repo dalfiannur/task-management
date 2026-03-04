@@ -3,7 +3,7 @@ import { useAuth } from "react-oidc-context";
 import { MessageSquare, Pencil, Trash2, X, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useUsers } from "@/hooks/use-users";
+import { useUser } from "@/hooks/use-users";
 import {
   useComments,
   useCreateComment,
@@ -14,7 +14,7 @@ import { CommentEditor, CommentEditEditor } from "./comment-editor";
 import type { CommentEditorHandle } from "./comment-editor";
 import { CommentContent } from "./comment-content";
 import type { Comment } from "@/types/comment";
-import { getInitials, resolveDisplayName } from "@/lib/utils";
+import { getInitials } from "@/lib/utils";
 import styles from "./task-comments.module.css";
 
 export function formatRelativeTime(iso: string): string {
@@ -46,7 +46,6 @@ export function TaskComments({ taskId }: TaskCommentsProps) {
   const auth = useAuth();
   const currentUserId = auth.user?.profile?.sub as string | undefined;
   const { data: comments = [], isLoading } = useComments(taskId);
-  const { data: users = [] } = useUsers();
 
   return (
     <div className={styles.container}>
@@ -68,7 +67,6 @@ export function TaskComments({ taskId }: TaskCommentsProps) {
               comment={comment}
               isAuthor={comment.commentInfo.authorId === currentUserId}
               taskId={taskId}
-              users={users}
             />
           ))}
         </div>
@@ -83,15 +81,13 @@ export function CommentItem({
   comment,
   isAuthor,
   taskId,
-  users,
 }: {
   comment: Comment;
   isAuthor: boolean;
   taskId: string;
-  users: Array<{ id: string; name: string; avatarUrl?: string }>;
 }) {
-  const author = users.find((u) => u.id === comment.commentInfo.authorId);
-  const authorName = resolveDisplayName(comment.commentInfo.authorId, comment.commentInfo.authorName, users);
+  const { data: author } = useUser(comment.commentInfo.authorId);
+  const authorName = author?.name || comment.commentInfo.authorName || "Unknown user";
 
   const [isEditing, setIsEditing] = useState(false);
   const updateComment = useUpdateComment();
@@ -202,12 +198,11 @@ export function CommentItem({
 
 export function AddCommentForm({ taskId }: { taskId: string }) {
   const auth = useAuth();
-  const { data: users = [] } = useUsers();
   const createComment = useCreateComment();
   const editorRef = useRef<CommentEditorHandle>(null);
 
   const currentUserId = auth.user?.profile?.sub as string | undefined;
-  const currentUser = users.find((u) => u.id === currentUserId);
+  const { data: currentUser } = useUser(currentUserId);
   const displayName = currentUser?.name ?? "You";
 
   const handleSubmit = (html: string, mentionedUserIds: string[]) => {
