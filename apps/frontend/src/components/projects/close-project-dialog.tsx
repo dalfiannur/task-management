@@ -8,16 +8,16 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { useCloseProject, getProjectDisplayName } from "@/hooks/use-projects";
+import { useUpdateCoreProject, getProjectDisplayName } from "@/hooks/use-projects";
 import { useUploadMedia, useDeleteMedia } from "@/hooks/use-media";
 import { useResolveMediaProjectId } from "@/hooks/use-media-project";
 import { isImage, formatFileSize, type MediaFile } from "@/types/media";
-import type { Project } from "@/types/project";
+import type { CoreProject } from "@/types/project";
 import { FileText, ImageIcon, File, Plus, X } from "lucide-react";
 import styles from "./close-project-dialog.module.css";
 
 interface CloseProjectDialogProps {
-  project: Project;
+  project: CoreProject;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -35,10 +35,10 @@ export function CloseProjectDialog({
   onOpenChange,
 }: CloseProjectDialogProps) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const closeProject = useCloseProject();
+  const updateCoreProject = useUpdateCoreProject();
   const [reportFiles, setReportFiles] = useState<MediaFile[]>([]);
   const { mediaProjectId } = useResolveMediaProjectId(
-    project.coreRef?.value,
+    project.id,
     getProjectDisplayName(project),
   );
 
@@ -67,8 +67,8 @@ export function CloseProjectDialog({
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    closeProject.mutate(
-      { id: project.id },
+    updateCoreProject.mutate(
+      { id: project.id, status: "completed" },
       { onSuccess: () => handleOpenChange(false) },
     );
   }
@@ -140,9 +140,9 @@ export function CloseProjectDialog({
             <Button
               type="submit"
               className={styles.closeButton}
-              disabled={closeProject.isLoading}
+              disabled={updateCoreProject.isLoading}
             >
-              {closeProject.isLoading ? "Closing..." : "Close Project"}
+              {updateCoreProject.isLoading ? "Closing..." : "Close Project"}
             </Button>
           </DialogFooter>
         </form>

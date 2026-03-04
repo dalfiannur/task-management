@@ -10,14 +10,14 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useModules } from "@/hooks/use-modules";
 import { useUser } from "@/hooks/use-users";
 import { FolderOpen } from "lucide-react";
-import type { Project } from "@/types/project";
-import { PROJECT_STATUS_CONFIG } from "@/types/project";
+import type { CoreProject } from "@/types/project";
+import { PROJECT_STATUS_CONFIG, getDisplayStatus } from "@/types/project";
 import { getProjectDisplayName } from "@/hooks/use-projects";
 import { cn, getInitials } from "@/lib/utils";
 import styles from "./project-card.module.css";
 
 interface ProjectCardProps {
-  project: Project;
+  project: CoreProject;
   parentName?: string;
   onClick?: () => void;
 }
@@ -25,10 +25,10 @@ interface ProjectCardProps {
 export function ProjectCard({ project, parentName, onClick }: ProjectCardProps) {
   const navigate = useNavigate();
   const { data: modules } = useModules(project.id);
-  const { data: pic } = useUser(project.projectLeaderId?.value);
+  const { data: pic } = useUser(project.ref?.leaderId);
 
-  const statusConfig = PROJECT_STATUS_CONFIG[project.status.value] ?? {
-    label: project.status.value,
+  const statusConfig = PROJECT_STATUS_CONFIG[getDisplayStatus(project)] ?? {
+    label: "unknown",
     color: "bg-gray-100 text-gray-700",
   };
 
@@ -56,16 +56,11 @@ export function ProjectCard({ project, parentName, onClick }: ProjectCardProps) 
                   Sub: {parentName}
                 </Badge>
               )}
-              {project.linkedModule && (
-                <Badge variant="outline" className={styles.moduleBadge}>
-                  {project.linkedModule.name}
-                </Badge>
-              )}
             </div>
             <CardTitle className={styles.title}>{getProjectDisplayName(project)}</CardTitle>
-            {project.description && (
+            {project.name?.description && (
               <CardDescription className="line-clamp-2">
-                {project.description.replace(/<[^>]*>/g, "")}
+                {project.name.description.replace(/<[^>]*>/g, "")}
               </CardDescription>
             )}
           </div>

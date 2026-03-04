@@ -10,16 +10,16 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { UserCombobox } from "@/components/shared/user-combobox";
-import { useUpdateProject, getProjectDisplayName } from "@/hooks/use-projects";
+import { useUpdateCoreProject, useUpdateLocalProject, getProjectDisplayName } from "@/hooks/use-projects";
 import { useMediaFiles, useUploadMedia, useDeleteMedia } from "@/hooks/use-media";
 import { useResolveMediaProjectId } from "@/hooks/use-media-project";
 import { isImage, formatFileSize } from "@/types/media";
-import type { Project } from "@/types/project";
+import type { CoreProject } from "@/types/project";
 import { FileText, ImageIcon, File, Plus, X } from "lucide-react";
 import styles from "./win-project-dialog.module.css";
 
 interface WinProjectDialogProps {
-  project: Project;
+  project: CoreProject;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -36,12 +36,13 @@ export function WinProjectDialog({
   open,
   onOpenChange,
 }: WinProjectDialogProps) {
-  const [projectLeaderId, setProjectLeaderId] = useState<string | undefined>(project.projectLeaderId?.value);
-  const [description, setDescription] = useState(project.description ?? "");
+  const [projectLeaderId, setProjectLeaderId] = useState<string | undefined>(project.ref?.leaderId);
+  const [description, setDescription] = useState(project.name?.description ?? "");
   const inputRef = useRef<HTMLInputElement>(null);
-  const updateProject = useUpdateProject();
+  const updateCoreProject = useUpdateCoreProject();
+  const updateLocalProject = useUpdateLocalProject();
   const { mediaProjectId } = useResolveMediaProjectId(
-    project.coreRef?.value,
+    project.id,
     getProjectDisplayName(project),
   );
 
@@ -60,15 +61,19 @@ export function WinProjectDialog({
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    updateProject.mutate(
+    updateCoreProject.mutate(
       {
         id: project.id,
+        winStage: "won",
         description,
-        projectLeaderId,
-        status: "on_going",
       },
       {
-        onSuccess: () => onOpenChange(false),
+        onSuccess: () => {
+          if (projectLeaderId) {
+            updateLocalProject.mutate({ id: project.id, projectLeaderId });
+          }
+          onOpenChange(false);
+        },
       },
     );
   }
@@ -78,7 +83,7 @@ export function WinProjectDialog({
       <DialogContent className={styles.dialogContent}>
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Win Project — {project.coreName}</DialogTitle>
+            <DialogTitle>Win Project — {project.name?.name}</DialogTitle>
           </DialogHeader>
           <div className={styles.fieldGroup}>
             <div className={styles.field}>
@@ -145,8 +150,8 @@ export function WinProjectDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={updateProject.isLoading}>
-              {updateProject.isLoading ? "Saving..." : "Save & Start Project"}
+            <Button type="submit" disabled={updateCoreProject.isLoading}>
+              {updateCoreProject.isLoading ? "Saving..." : "Save & Start Project"}
             </Button>
           </DialogFooter>
         </form>
