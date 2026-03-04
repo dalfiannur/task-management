@@ -182,7 +182,7 @@ export function AppSidebar() {
     (p) => !p.ref?.parentId,
   );
   const internalProjects = rootProjects?.filter((p) => !p.commercial);
-  const commercialProjects = allProjects?.filter((p) => p.commercial)
+  const commercialProjects = allProjects?.filter((p) => p.commercial && p.winStage !== "pending")
 
   return (
     <Sidebar>
