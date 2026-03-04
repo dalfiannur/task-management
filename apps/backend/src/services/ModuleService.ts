@@ -5,12 +5,28 @@ import { Entity } from 'bunsane/core/Entity';
 import { Query } from 'bunsane/query';
 import { ModuleDescriptionComponent, ModuleNameComponent, ModuleOrderComponent, ModulePicIdComponent, ModuleProjectRefComponent, ModuleTag } from "../components/ModuleComponents";
 import { ModuleArcheType } from "../archetypes/ModuleArcheType";
-import { ProjectTag, ProjectModuleRefComponent } from "../components/ProjectComponents";
+import { ProjectTag, ProjectModuleRefComponent, ProjectCoreRefComponent } from "../components/ProjectComponents";
 
 export default class ModuleService extends BaseService {
   constructor() {
     super();
     ModuleArcheType.registerFieldResolvers(this);
+  }
+
+  /** Resolve a project ID that may be a Core Portal ID to the local entity ID. */
+  private async resolveLocalProjectId(id: string): Promise<string> {
+    const entity = await Entity.FindById(id);
+    if (entity) return id;
+    const results = await new Query()
+      .with(ProjectTag)
+      .with(ProjectCoreRefComponent)
+      .populate({
+        filters: [
+          Query.filter("value", Query.filterOp.EQ, id),
+        ],
+      })
+      .exec();
+    return results[0]?.id ?? id;
   }
 
   @GraphQLOperation({
@@ -37,13 +53,14 @@ export default class ModuleService extends BaseService {
     output: [ModuleArcheType],
   })
   async listModules(input: { projectId: string }) {
+    const localProjectId = await this.resolveLocalProjectId(input.projectId);
     return await new Query()
       .with(ModuleTag)
       .with(ModuleNameComponent)
       .with(ModuleOrderComponent)
       .with(ModuleProjectRefComponent, {
         filters: [
-          Query.filter("projectId", Query.filterOp.EQ, input.projectId),
+          Query.filter("projectId", Query.filterOp.EQ, localProjectId),
         ],
       })
       .sortBy(ModuleOrderComponent, "value", "ASC")
@@ -80,12 +97,13 @@ export default class ModuleService extends BaseService {
     projectId: string;
     picId?: string;
   }) {
+    const localProjectId = await this.resolveLocalProjectId(input.projectId);
     // Shift existing modules' order +1 so new module appears at top
     const existing = await new Query()
       .with(ModuleTag)
       .with(ModuleProjectRefComponent, {
         filters: [
-          Query.filter("projectId", Query.filterOp.EQ, input.projectId),
+          Query.filter("projectId", Query.filterOp.EQ, localProjectId),
         ],
       })
       .exec();
@@ -100,7 +118,7 @@ export default class ModuleService extends BaseService {
       .add(ModuleNameComponent, { value: input.name })
       .add(ModuleDescriptionComponent, { value: input.description ?? "" })
       .add(ModuleOrderComponent, { value: 0 })
-      .add(ModuleProjectRefComponent, { projectId: input.projectId });
+      .add(ModuleProjectRefComponent, { projectId: localProjectId });
 
     if (input.picId) {
       entity.add(ModulePicIdComponent, { value: input.picId });
