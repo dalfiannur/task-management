@@ -46,7 +46,7 @@ export function useNewLeads(ownerId?: string) {
 }
 
 export const useApproveLead = createMutationHook<
-  { id: string; winStage: string },
+  { id: string; winStage: string, status: string },
   CoreProject
 >({
   mutation: APPROVE_LEAD,

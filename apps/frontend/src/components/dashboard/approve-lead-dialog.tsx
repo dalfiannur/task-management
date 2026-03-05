@@ -35,7 +35,7 @@ export function ApproveLeadDialog({
     if (!project) return;
     try {
       await approveProject.mutateAsync({ id: project.id, description: dealBrief?.briefDescription });
-      await approveLead.mutateAsync({ id: project.id, winStage: "proposal" });
+      await approveLead.mutateAsync({ id: project.id, winStage: "proposal", status: "active" });
       // Refetch tasks project list after Core winStage is updated so commercial section shows it
       await client.refetchQueries({ include: ['ListProjects'] });
       onOpenChange(false);
