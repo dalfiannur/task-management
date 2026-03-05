@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useCompanyStore } from "@/stores/company-store";
 import type { Client, ClientStatus } from "@/types/client";
 import styles from "./clients.module.css";
 
@@ -23,12 +24,15 @@ export function Component() {
     return () => clearTimeout(timer);
   }, [search]);
 
+  const selectedCompanyId = useCompanyStore((s) => s.selectedCompanyId);
+
   const statusFilter: ClientStatus | undefined =
     filter === "all" ? undefined : filter;
 
   const { data: clients, isLoading } = useClients({
     status: statusFilter,
     search: debouncedSearch || undefined,
+    companyId: selectedCompanyId ?? undefined,
   });
 
   const handleEdit = (client: Client) => {
