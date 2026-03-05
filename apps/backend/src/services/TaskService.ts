@@ -11,8 +11,8 @@ import NotificationService from "./NotificationService";
 import ActivityService from "./ActivityService";
 import MembershipService from "./MembershipService";
 import { ModuleProjectRefComponent, ModuleTag } from "../components/ModuleComponents";
-import { type TaskAuthUser } from "~/lib/auth-context";
 import { resolveLocalProjectId } from "~/lib/resolve-project-id";
+import { requirePermission, type AuthContext, TaskResources, Action } from "~/utils/auth";
 
 function encodeLabelIds(ids?: string[]): string {
   return JSON.stringify(ids ?? []);
@@ -55,8 +55,10 @@ export default class TaskService extends BaseService {
       page?: number;
       pageSize?: number;
     },
-    _context: unknown,
+    context: AuthContext,
   ) {
+    requirePermission(context, TaskResources.Tasks, Action.Read);
+
     const query = new Query()
       .with(TaskAssignment, {
         filters: [
@@ -132,8 +134,10 @@ export default class TaskService extends BaseService {
       page?: number;
       pageSize?: number;
     },
-    _context: unknown,
+    context: AuthContext,
   ) {
+    requirePermission(context, TaskResources.Tasks, Action.Read);
+
     // Resolve project → modules → tasks per module
     if (input.projectId) {
       const localProjectId = await resolveLocalProjectId(input.projectId);
@@ -231,7 +235,8 @@ export default class TaskService extends BaseService {
     },
     output: taskArcheType,
   })
-  async getTask(input: { id: string }) {
+  async getTask(input: { id: string }, context: AuthContext) {
+    requirePermission(context, TaskResources.Tasks, Action.Read);
     return await Entity.FindById(input.id);
   }
 
@@ -262,8 +267,10 @@ export default class TaskService extends BaseService {
       moduleId: string;
       labelIds?: string[];
     },
-    context: { user?: TaskAuthUser | null },
+    context: AuthContext,
   ) {
+    const user = requirePermission(context, TaskResources.Tasks, Action.Create);
+
     const archetype = new TaskArcheType();
     const now = new Date().toISOString();
     archetype.fill({
@@ -302,17 +309,14 @@ export default class TaskService extends BaseService {
     }
 
     // Record activity
-    if (context?.user) {
-      const user = context.user;
-      await ActivityService.getInstance().recordActivity({
-        taskId: entity.id,
-        actorId: user.id,
-        actorName: user.name,
-        action: "created",
-        changes: [],
-        taskTitle: input.title,
-      });
-    }
+    await ActivityService.getInstance().recordActivity({
+      taskId: entity.id,
+      actorId: user.sub,
+      actorName: user.name ?? user.email ?? user.sub,
+      action: "created",
+      changes: [],
+      taskTitle: input.title,
+    });
 
     return entity;
   }
@@ -344,8 +348,10 @@ export default class TaskService extends BaseService {
       assigneeIds?: string[];
       labelIds?: string[];
     },
-    context: { user?: TaskAuthUser | null },
+    context: AuthContext,
   ) {
+    const user = requirePermission(context, TaskResources.Tasks, Action.Update);
+
     const entity = await new Query().findOneById(input.id);
     if (!entity) throw new Error("Task not found");
 
@@ -404,13 +410,8 @@ export default class TaskService extends BaseService {
 
     await entity.save();
 
-    // Extract user for notifications and activity
-    let actorId = "";
-    let actorName = "Someone";
-    if (context?.user) {
-      actorId = context.user.id;
-      actorName = context.user.name;
-    }
+    const actorId = user.sub;
+    const actorName = user.name ?? user.email ?? user.sub;
 
     // Build activity changes
     const changes: Array<{ field: string; from: string; to: string }> = [];
@@ -449,7 +450,7 @@ export default class TaskService extends BaseService {
     }
 
     // Record activity if there were changes
-    if (changes.length > 0 && actorId) {
+    if (changes.length > 0) {
       await ActivityService.getInstance().recordActivity({
         taskId: input.id,
         actorId,
@@ -515,8 +516,10 @@ export default class TaskService extends BaseService {
   })
   async deleteTask(
     input: { id: string },
-    context: { user?: TaskAuthUser | null },
+    context: AuthContext,
   ) {
+    const user = requirePermission(context, TaskResources.Tasks, Action.Delete);
+
     const entity = await new Query().findOneById(input.id);
     if (!entity) throw new Error("Task not found");
 
@@ -525,17 +528,14 @@ export default class TaskService extends BaseService {
     const taskTitle = taskInfo?.title ?? "";
 
     // Record activity before deleting
-    if (context?.user) {
-      const user = context.user;
-      await ActivityService.getInstance().recordActivity({
-        taskId: input.id,
-        actorId: user.id,
-        actorName: user.name,
-        action: "deleted",
-        changes: [{ field: "title", from: taskTitle, to: "" }],
-        taskTitle,
-      });
-    }
+    await ActivityService.getInstance().recordActivity({
+      taskId: input.id,
+      actorId: user.sub,
+      actorName: user.name ?? user.email ?? user.sub,
+      action: "deleted",
+      changes: [{ field: "title", from: taskTitle, to: "" }],
+      taskTitle,
+    });
 
     await entity.delete();
     return true;
@@ -554,7 +554,9 @@ export default class TaskService extends BaseService {
     id: string;
     newOrder: number;
     newStatus?: string;
-  }) {
+  }, context: AuthContext) {
+    requirePermission(context, TaskResources.Tasks, Action.Update);
+
     const entity = await new Query().findOneById(input.id);
     if (!entity) throw new Error("Task not found");
 

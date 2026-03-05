@@ -7,7 +7,7 @@ import { CommentArcheType } from "../archetypes/CommentArcheType";
 import { TaskInfo } from "../components/TaskInfo";
 import NotificationService from "./NotificationService";
 
-import { requireAuth, type TaskAuthUser } from "~/lib/auth-context";
+import { requirePermission, type AuthContext, TaskResources, Action } from "~/utils/auth";
 
 const commentArcheType = new CommentArcheType();
 
@@ -25,7 +25,8 @@ export default class CommentService extends BaseService {
     },
     output: [commentArcheType],
   })
-  async listComments(input: { taskId: string }) {
+  async listComments(input: { taskId: string }, context: AuthContext) {
+    requirePermission(context, TaskResources.Tasks, Action.Read);
     const entities = await new Query()
       .with(CommentInfo, {
         filters: [
@@ -48,9 +49,9 @@ export default class CommentService extends BaseService {
   })
   async createComment(
     input: { taskId: string; content: string; mentionedUserIds?: string[] },
-    context: { user?: TaskAuthUser | null },
+    context: AuthContext,
   ) {
-    const user = requireAuth(context);
+    const user = requirePermission(context, TaskResources.Tasks, Action.Create);
     const mentionedIds = input.mentionedUserIds ?? [];
 
     const now = new Date().toISOString();
@@ -58,8 +59,8 @@ export default class CommentService extends BaseService {
     archetype.fill({
       commentInfo: {
         taskId: input.taskId,
-        authorId: user.id,
-        authorName: user.name,
+        authorId: user.sub,
+        authorName: user.name ?? user.email ?? user.sub,
         content: input.content,
         createdAt: now,
         updatedAt: now,
@@ -76,16 +77,17 @@ export default class CommentService extends BaseService {
       const taskTitle = taskInfo?.title ?? "a task";
 
       const notificationService = NotificationService.getInstance();
+      const displayName = user.name ?? user.email ?? user.sub;
       for (const mentionedUserId of mentionedIds) {
         await notificationService.createNotification({
           recipientId: mentionedUserId,
           type: "mention",
-          actorId: user.id,
-          actorName: user.name,
+          actorId: user.sub,
+          actorName: displayName,
           taskId: input.taskId,
           taskTitle,
           commentId: entity.id,
-          message: `${user.name} mentioned you in a comment on "${taskTitle}"`,
+          message: `${displayName} mentioned you in a comment on "${taskTitle}"`,
         });
       }
     }
@@ -104,15 +106,15 @@ export default class CommentService extends BaseService {
   })
   async updateComment(
     input: { id: string; content: string; mentionedUserIds?: string[] },
-    context: { user?: TaskAuthUser | null },
+    context: AuthContext,
   ) {
-    const user = requireAuth(context);
+    const user = requirePermission(context, TaskResources.Tasks, Action.Update);
 
     const entity = await new Query().findOneById(input.id);
     if (!entity) throw new Error("Comment not found");
 
     const info = await entity.get(CommentInfo);
-    if (info?.authorId !== user.id) {
+    if (info?.authorId !== user.sub) {
       throw new Error("Not authorized to edit this comment");
     }
 
@@ -143,16 +145,17 @@ export default class CommentService extends BaseService {
       const taskTitle = taskInfo?.title ?? "a task";
 
       const notificationService = NotificationService.getInstance();
+      const displayName = user.name ?? user.email ?? user.sub;
       for (const mentionedUserId of newlyMentioned) {
         await notificationService.createNotification({
           recipientId: mentionedUserId,
           type: "mention",
-          actorId: user.id,
-          actorName: user.name,
+          actorId: user.sub,
+          actorName: displayName,
           taskId,
           taskTitle,
           commentId: entity.id,
-          message: `${user.name} mentioned you in a comment on "${taskTitle}"`,
+          message: `${displayName} mentioned you in a comment on "${taskTitle}"`,
         });
       }
     }
@@ -167,7 +170,8 @@ export default class CommentService extends BaseService {
     },
     output: "JSON",
   })
-  async commentCounts(input: { taskIds: string[] }) {
+  async commentCounts(input: { taskIds: string[] }, context: AuthContext) {
+    requirePermission(context, TaskResources.Tasks, Action.Read);
     const counts: Record<string, number> = {};
     for (const taskId of input.taskIds) {
       counts[taskId] = 0;
@@ -204,15 +208,15 @@ export default class CommentService extends BaseService {
   })
   async deleteComment(
     input: { id: string },
-    context: { user?: TaskAuthUser | null },
+    context: AuthContext,
   ) {
-    const user = requireAuth(context);
+    const user = requirePermission(context, TaskResources.Tasks, Action.Delete);
 
     const entity = await new Query().findOneById(input.id);
     if (!entity) throw new Error("Comment not found");
 
     const info = await entity.get(CommentInfo);
-    if (info?.authorId !== user.id) {
+    if (info?.authorId !== user.sub) {
       throw new Error("Not authorized to delete this comment");
     }
 

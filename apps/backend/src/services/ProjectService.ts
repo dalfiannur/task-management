@@ -21,15 +21,13 @@ import {
   ModuleTag,
 } from "~/components/ModuleComponents";
 import { ProjectMembershipData } from "~/components/ProjectMembership";
-import { requireAuth, checkPermission, Resources, type TaskAuthUser } from "~/lib/auth-context";
+import { requirePermission, type AuthContext, TaskResources, Action } from "~/utils/auth";
 import MembershipService from "./MembershipService";
 import {
   fetchCoreProject,
   createCoreProject,
   extractAuthToken,
 } from "~/lib/core-client";
-
-type AuthUser = TaskAuthUser;
 
 export default class ProjectService extends BaseService {
   constructor() {
@@ -47,7 +45,9 @@ export default class ProjectService extends BaseService {
     type: "Query",
     output: [ProjectArcheType],
   })
-  async listProjects(_input: unknown, context: { user?: AuthUser; request?: Request }) {
+  async listProjects(_input: unknown, context: AuthContext) {
+    requirePermission(context, TaskResources.Projects, Action.Read);
+
     const allProjects = await new Query()
       .with(ProjectTag)
       .with(ProjectCoreRefComponent)
@@ -63,17 +63,7 @@ export default class ProjectService extends BaseService {
       }
     }
 
-    const user = this.extractUser(context);
-    let filteredProjects = rootProjects;
-    if (user) {
-      const canManage = checkPermission({ user }, Resources.Projects, "manage");
-      if (!canManage) {
-        const memberProjectIds = await this.getMemberProjectIds(user.id);
-        filteredProjects = rootProjects.filter((p: any) => memberProjectIds.has(p.id));
-      }
-    }
-
-    return filteredProjects;
+    return rootProjects;
   }
 
   @GraphQLOperation({
@@ -83,24 +73,11 @@ export default class ProjectService extends BaseService {
     },
     output: ProjectArcheType,
   })
-  async getProject(input: { id: string }, context: { user?: AuthUser; request?: Request }) {
+  async getProject(input: { id: string }, context: AuthContext) {
+    requirePermission(context, TaskResources.Projects, Action.Read);
     const entity = await this.findProjectEntity(input.id);
     if (!entity) {
       return new GraphQLError("Project not found", { extensions: { code: "NOT_FOUND" } });
-    }
-
-    const user = this.extractUser(context);
-    if (user) {
-      const canManage = checkPermission({ user }, Resources.Projects, "manage");
-      if (!canManage) {
-        const memberProjectIds = await this.getMemberProjectIds(user.id);
-        if (!memberProjectIds.has(entity.id)) {
-          const parentRef = await entity.get(ProjectParentRefComponent);
-          if (!parentRef?.parentProjectId || !memberProjectIds.has(parentRef.parentProjectId)) {
-            return new GraphQLError("Access denied", { extensions: { code: "FORBIDDEN" } });
-          }
-        }
-      }
     }
 
     return entity;
@@ -135,12 +112,9 @@ export default class ProjectService extends BaseService {
       startDate?: string;
       endDate?: string;
     },
-    context: { user?: AuthUser; request?: Request },
+    context: AuthContext,
   ) {
-    const user = this.extractUser(context);
-    if (!user) {
-      return new GraphQLError("Authentication required", { extensions: { code: "UNAUTHENTICATED" } });
-    }
+    const user = requirePermission(context, TaskResources.Projects, Action.Create);
 
     const authToken = extractAuthToken(context.request);
 
@@ -150,7 +124,7 @@ export default class ProjectService extends BaseService {
         name: input.name,
         description: input.description,
         clientId: input.clientId,
-        authorId: user.id,
+        authorId: user.sub,
         ownerId: input.ownerId,
         divisionId: input.divisionId,
         commercial: input.commercial,
@@ -174,7 +148,7 @@ export default class ProjectService extends BaseService {
     await entity.save();
 
     // Auto-add creator and leader as members
-    await MembershipService.getInstance().ensureMembership(entity.id, user.id);
+    await MembershipService.getInstance().ensureMembership(entity.id, user.sub);
     if (input.projectLeaderId) {
       await MembershipService.getInstance().ensureMembership(entity.id, input.projectLeaderId);
     }
@@ -213,8 +187,10 @@ export default class ProjectService extends BaseService {
       endDate?: string;
       moduleId?: string;
     },
-    context: { user?: AuthUser; request?: Request },
+    context: AuthContext,
   ) {
+    const user = requirePermission(context, TaskResources.Projects, Action.Create);
+
     // 1. Find parent project and get its coreRef
     const parent = await new Query().findOneById(input.parentProjectId);
     if (!parent) {
@@ -238,19 +214,13 @@ export default class ProjectService extends BaseService {
       return new GraphQLError("Parent project has no clientId in Core", { extensions: { code: "BAD_USER_INPUT" } });
     }
 
-    // 3. Extract user for authorId
-    const user = this.extractUser(context);
-    if (!user) {
-      return new GraphQLError("Authentication required", { extensions: { code: "UNAUTHENTICATED" } });
-    }
-
-    // 4. Create project in Core with parentId
+    // 3. Create project in Core with parentId
     const coreProject = await createCoreProject(
       {
         name: input.name,
         description: input.description,
         clientId,
-        authorId: user.id,
+        authorId: user.sub,
         parentId: parentCoreRef.value,
         ownerId: input.ownerId,
         divisionId: input.divisionId,
@@ -292,7 +262,7 @@ export default class ProjectService extends BaseService {
     await entity.save();
 
     // 6. Auto-add creator and leader as members
-    await MembershipService.getInstance().ensureMembership(entity.id, user.id);
+    await MembershipService.getInstance().ensureMembership(entity.id, user.sub);
     if (input.projectLeaderId) {
       await MembershipService.getInstance().ensureMembership(entity.id, input.projectLeaderId);
     }
@@ -307,8 +277,9 @@ export default class ProjectService extends BaseService {
   })
   async listSubProjects(
     input: { parentProjectId: string },
-    context: { user?: AuthUser; request?: Request },
+    context: AuthContext,
   ) {
+    requirePermission(context, TaskResources.Projects, Action.Read);
     const localParentId = await resolveLocalProjectId(input.parentProjectId);
     const allSubProjects = await new Query()
       .with(ProjectTag)
@@ -321,19 +292,7 @@ export default class ProjectService extends BaseService {
       .populate()
       .exec();
 
-    const user = this.extractUser(context);
-    let filteredProjects = allSubProjects;
-    if (user) {
-      const canManage = checkPermission({ user }, Resources.Projects, "manage");
-      if (!canManage) {
-        const memberProjectIds = await this.getMemberProjectIds(user.id);
-        if (!memberProjectIds.has(localParentId)) {
-          filteredProjects = allSubProjects.filter((p: any) => memberProjectIds.has(p.id));
-        }
-      }
-    }
-
-    return filteredProjects;
+    return allSubProjects;
   }
 
   @GraphQLOperation({
@@ -355,7 +314,8 @@ export default class ProjectService extends BaseService {
     status?: string;
     projectLeaderId?: string;
     moduleId?: string | null;
-  }, context: { user?: AuthUser; request?: Request }) {
+  }, context: AuthContext) {
+    requirePermission(context, TaskResources.Projects, Action.Update);
     const entity = await this.findProjectEntity(input.id);
     if (!entity) {
       return new GraphQLError("Project not found", { extensions: { code: "NOT_FOUND" } });
@@ -403,13 +363,9 @@ export default class ProjectService extends BaseService {
   })
   async approveProject(
     args: { id: string; description?: string },
-    context: { user?: AuthUser; request?: Request },
+    context: AuthContext,
   ) {
-    // Requires project manage permission
-    const user = requireAuth(context);
-    if (!checkPermission({ user }, Resources.Projects, "manage")) {
-      throw new Error("Permission denied: project manage required");
-    }
+    const user = requirePermission(context, TaskResources.Projects, Action.Create);
 
     const project = Entity.Create()
       .add(ProjectTag, {})
@@ -426,8 +382,8 @@ export default class ProjectService extends BaseService {
 
     await module.save();
 
-    // Auto-add approver and leader as members
-    await MembershipService.getInstance().ensureMembership(project.id, user.id);
+    // Auto-add approver as member
+    await MembershipService.getInstance().ensureMembership(project.id, user.sub);
 
     return project;
   }
@@ -439,7 +395,8 @@ export default class ProjectService extends BaseService {
     },
     output: "Boolean",
   })
-  async deleteProject(input: { id: string }) {
+  async deleteProject(input: { id: string }, context: AuthContext) {
+    requirePermission(context, TaskResources.Projects, Action.Delete);
     const entity = await this.findProjectEntity(input.id);
     if (!entity) {
       return new GraphQLError("Project not found", { extensions: { code: "NOT_FOUND" } });
@@ -462,11 +419,6 @@ export default class ProjectService extends BaseService {
 
     await entity.delete();
     return true;
-  }
-
-  /** Extract authenticated user from context (nullable, non-throwing). */
-  private extractUser(context: { user?: AuthUser }) {
-    return context.user ?? null;
   }
 
   /** Get set of project IDs the user is a member of. */

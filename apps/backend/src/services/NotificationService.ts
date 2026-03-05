@@ -5,7 +5,7 @@ import { Query } from "bunsane/query";
 import { NotificationInfo } from "../components/NotificationInfo";
 import { NotificationArcheType } from "../archetypes/NotificationArcheType";
 
-import { requireAuth, type TaskAuthUser } from "~/lib/auth-context";
+import { requireUser, type AuthContext } from "~/utils/auth";
 
 const notificationArcheType = new NotificationArcheType();
 
@@ -68,14 +68,14 @@ export default class NotificationService extends BaseService {
   })
   async listNotifications(
     input: { limit?: number; offset?: number },
-    context: { user?: TaskAuthUser | null },
+    context: AuthContext,
   ) {
-    const user = requireAuth(context);
+    const user = requireUser(context);
 
     const query = new Query()
       .with(NotificationInfo, {
         filters: [
-          Query.typedFilter(NotificationInfo, "recipientId", "=", user.id),
+          Query.typedFilter(NotificationInfo, "recipientId", "=", user.sub),
         ],
       })
       .sortBy(NotificationInfo, "createdAt", "DESC")
@@ -94,14 +94,14 @@ export default class NotificationService extends BaseService {
   })
   async unreadNotificationCount(
     _input: { _dummy?: boolean },
-    context: { user?: TaskAuthUser | null },
+    context: AuthContext,
   ) {
-    const user = requireAuth(context);
+    const user = requireUser(context);
 
     const entities = await new Query()
       .with(NotificationInfo, {
         filters: [
-          Query.typedFilter(NotificationInfo, "recipientId", "=", user.id),
+          Query.typedFilter(NotificationInfo, "recipientId", "=", user.sub),
           Query.typedFilter(NotificationInfo, "read", "=", "false"),
         ],
       })
@@ -119,9 +119,9 @@ export default class NotificationService extends BaseService {
   })
   async markNotificationsRead(
     input: { ids: string[] },
-    context: { user?: TaskAuthUser | null },
+    context: AuthContext,
   ) {
-    const user = requireAuth(context);
+    const user = requireUser(context);
 
     if (input.ids.length === 0) return true;
 
@@ -134,7 +134,7 @@ export default class NotificationService extends BaseService {
       if (!entity) continue;
 
       const info = await entity.get(NotificationInfo);
-      if (info?.recipientId !== user.id) continue;
+      if (info?.recipientId !== user.sub) continue;
 
       await entity.set(NotificationInfo, { read: "true" });
       await entity.save();
@@ -152,14 +152,14 @@ export default class NotificationService extends BaseService {
   })
   async markAllNotificationsRead(
     _input: { _dummy?: boolean },
-    context: { user?: TaskAuthUser | null },
+    context: AuthContext,
   ) {
-    const user = requireAuth(context);
+    const user = requireUser(context);
 
     const entities = await new Query()
       .with(NotificationInfo, {
         filters: [
-          Query.typedFilter(NotificationInfo, "recipientId", "=", user.id),
+          Query.typedFilter(NotificationInfo, "recipientId", "=", user.sub),
           Query.typedFilter(NotificationInfo, "read", "=", "false"),
         ],
       })

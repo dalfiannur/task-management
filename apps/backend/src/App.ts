@@ -38,12 +38,9 @@ export default class TasksAPI extends App {
     this.addPlugin(new AuthPlugin());
     this.enableStudio();
 
-    // Set up auth context from OIDC token (no local user sync)
+    // Set up auth context — let individual resolvers enforce auth via requirePermission
     this.setGraphQLContextFactory(async (context: { request: Request }) => {
       const user = await AuthPlugin.extractUser(context.request);
-      if (!user) {
-        throw new Error("Authentication required");
-      }
       return { user, request: context.request };
     });
 
