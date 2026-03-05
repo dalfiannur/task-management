@@ -30,14 +30,8 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { ChevronRight, ListChecks } from "lucide-react";
+import { ListChecks } from "lucide-react";
 import styles from "./my-tasks.module.css";
-
-interface ProjectGroup {
-  projectId: string;
-  projectName: string;
-  tasks: (Task & { moduleName: string })[];
-}
 
 export function Component() {
   const { data: me, isLoading: meLoading } = useMe();
@@ -45,8 +39,8 @@ export function Component() {
     { assigneeId: me?.id },
     { skip: !me?.id },
   );
-  const { data: projects, isLoading: projectsLoading } = useProjects();
   const { data: modules, isLoading: modulesLoading } = useAllModules();
+  const { data: projects, isLoading: projectsLoading } = useProjects();
   const updateTask = useUpdateTask();
 
   const [searchParams, setSearchParams] = useSearchParams();
@@ -54,33 +48,28 @@ export function Component() {
   const priorityFilter = searchParams.get("priority") ?? "all";
   const searchQuery = searchParams.get("q") ?? "";
 
-  const [collapsedProjects, setCollapsedProjects] = useState<Set<string>>(
-    new Set(),
-  );
   const [selectedTask, setSelectedTask] = useState<{
     taskId: string;
     projectId: string;
     moduleId: string;
   } | null>(null);
 
-  const isLoading = meLoading || tasksLoading || projectsLoading || modulesLoading;
+  const isLoading = meLoading || tasksLoading || modulesLoading || projectsLoading;
 
-  // Build lookup maps and group tasks by project
-  const projectGroups = useMemo(() => {
-    if (!tasks || !modules) return [];
+  // Build lookup maps
+  const moduleMap = useMemo(
+    () => new Map((modules ?? []).map((m) => [m.id, m])),
+    [modules],
+  );
+  const projectMap = useMemo(
+    () => new Map((projects ?? []).map((p) => [p.id, p])),
+    [projects],
+  );
 
-    // Module lookup: moduleId → { name, projectId }
-    const moduleMap = new Map(
-      modules.map((m) => [m.id, { name: m.name, projectId: m.projectId }]),
-    );
+  const filteredTasks = useMemo(() => {
+    if (!tasks) return [];
 
-    // Project lookup by Core Portal ID
-    const projectMap = new Map(
-      (projects ?? []).map((p) => [p.id, p]),
-    );
-
-    // Apply user filters (assignee already filtered server-side)
-    const filtered = tasks.filter((task) => {
+    return tasks.filter((task) => {
       if (statusFilter !== "all" && task.status !== statusFilter) return false;
       if (priorityFilter !== "all" && task.priority !== priorityFilter)
         return false;
@@ -91,33 +80,7 @@ export function Component() {
         return false;
       return true;
     });
-
-    // Group by project
-    const groups = new Map<string, ProjectGroup>();
-    for (const task of filtered) {
-      const mod = moduleMap.get(task.moduleId);
-      const projectId = mod?.projectId ?? "unknown";
-      const project = projectMap.get(projectId);
-      const projectName = project
-        ? getProjectDisplayName(project)
-        : "Other";
-
-      if (!groups.has(projectId)) {
-        groups.set(projectId, { projectId, projectName, tasks: [] });
-      }
-      groups.get(projectId)!.tasks.push({
-        ...task,
-        moduleName: mod?.name ?? "Unknown",
-      });
-    }
-
-    const result = Array.from(groups.values());
-    result.sort((a, b) => a.projectName.localeCompare(b.projectName));
-    return result;
-  }, [tasks, modules, projects, statusFilter, priorityFilter, searchQuery]);
-
-  const totalTasks = projectGroups.reduce((s, g) => s + g.tasks.length, 0);
-  const projectCount = projectGroups.length;
+  }, [tasks, statusFilter, priorityFilter, searchQuery]);
 
   function setFilter(key: string, value: string) {
     setSearchParams((prev) => {
@@ -127,15 +90,6 @@ export function Component() {
       } else {
         next.set(key, value);
       }
-      return next;
-    });
-  }
-
-  function toggleCollapse(projectId: string) {
-    setCollapsedProjects((prev) => {
-      const next = new Set(prev);
-      if (next.has(projectId)) next.delete(projectId);
-      else next.add(projectId);
       return next;
     });
   }
@@ -166,8 +120,8 @@ export function Component() {
         <div className={styles.header}>
           <h1 className={styles.headerTitle}>My Tasks</h1>
           <p className={styles.headerSubtitle}>
-            {totalTasks} {totalTasks === 1 ? "task" : "tasks"} across{" "}
-            {projectCount} {projectCount === 1 ? "project" : "projects"}
+            {filteredTasks.length}{" "}
+            {filteredTasks.length === 1 ? "task" : "tasks"}
           </p>
         </div>
 
@@ -220,8 +174,8 @@ export function Component() {
           />
         </div>
 
-        {/* Task groups */}
-        {projectGroups.length === 0 ? (
+        {/* Tasks */}
+        {filteredTasks.length === 0 ? (
           <div className={styles.emptyState} style={{ animationDelay: "150ms" }}>
             <ListChecks className={styles.emptyIcon} />
             <p className={styles.emptyTitle}>No tasks found</p>
@@ -232,121 +186,47 @@ export function Component() {
             </p>
           </div>
         ) : (
-          projectGroups.map((group, gi) => {
-            const collapsed = collapsedProjects.has(group.projectId);
-            return (
-              <div
-                key={group.projectId}
-                className={styles.projectGroup}
-                style={{ animationDelay: `${gi * 50 + 150}ms` }}
-              >
-                <div
-                  className={styles.projectGroupHeader}
-                  onClick={() => toggleCollapse(group.projectId)}
-                >
-                  <ChevronRight
-                    className={cn(
-                      styles.chevron,
-                      !collapsed && styles.chevronOpen,
-                    )}
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Module</TableHead>
+                <TableHead>Task</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Priority</TableHead>
+                <TableHead>Due Date</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredTasks.map((task) => {
+                const mod = moduleMap.get(task.moduleId);
+                const project = mod
+                  ? projectMap.get(mod.projectId)
+                  : undefined;
+                const projectId = mod?.projectId ?? "";
+
+                return (
+                  <TaskRow
+                    key={task.id}
+                    task={task}
+                    moduleName={mod?.name ?? "Unknown Module"}
+                    projectName={
+                      project ? getProjectDisplayName(project) : undefined
+                    }
+                    onSelect={() =>
+                      setSelectedTask({
+                        taskId: task.id,
+                        projectId,
+                        moduleId: task.moduleId,
+                      })
+                    }
+                    onStatusChange={(id, input) =>
+                      updateTask.mutate({ id, input })
+                    }
                   />
-                  <span className={styles.projectName}>
-                    {group.projectName}
-                  </span>
-                  <span className={styles.taskCount}>
-                    {group.tasks.length}{" "}
-                    {group.tasks.length === 1 ? "task" : "tasks"}
-                  </span>
-                </div>
-                {!collapsed && (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Module</TableHead>
-                        <TableHead>Task</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Priority</TableHead>
-                        <TableHead>Due Date</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {group.tasks.map((task) => (
-                        <TableRow
-                          key={task.id}
-                          className={styles.taskRow}
-                          onClick={() =>
-                            setSelectedTask({
-                              taskId: task.id,
-                              projectId: group.projectId,
-                              moduleId: task.moduleId,
-                            })
-                          }
-                        >
-                          <TableCell>
-                            <span className={styles.moduleTag}>
-                              {task.moduleName}
-                            </span>
-                          </TableCell>
-                          <TableCell className={styles.taskTitle}>
-                            {task.title}
-                          </TableCell>
-                          <TableCell onClick={(e) => e.stopPropagation()}>
-                            <Select
-                              value={task.status}
-                              onValueChange={(v) => {
-                                const newStatus = v as TaskStatus;
-                                const input: UpdateTaskInput = {
-                                  status: newStatus,
-                                };
-                                if (
-                                  newStatus === "in_progress" &&
-                                  !task.startDate
-                                ) {
-                                  input.startDate = new Date().toISOString();
-                                }
-                                updateTask.mutate({ id: task.id, input });
-                              }}
-                            >
-                              <SelectTrigger
-                                className={cn(
-                                  styles.statusTrigger,
-                                  TASK_STATUS_CONFIG[task.status].color,
-                                )}
-                              >
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {(
-                                  Object.entries(TASK_STATUS_CONFIG) as [
-                                    TaskStatus,
-                                    { label: string; color: string },
-                                  ][]
-                                ).map(([key, config]) => (
-                                  <SelectItem key={key} value={key}>
-                                    <span className={config.color}>
-                                      {config.label}
-                                    </span>
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </TableCell>
-                          <TableCell>
-                            <TaskPriorityBadge priority={task.priority} />
-                          </TableCell>
-                          <TableCell className={styles.dueDateCell}>
-                            {task.dueDate
-                              ? new Date(task.dueDate).toLocaleDateString()
-                              : "\u2014"}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-              </div>
-            );
-          })
+                );
+              })}
+            </TableBody>
+          </Table>
         )}
       </div>
 
@@ -360,5 +240,76 @@ export function Component() {
         />
       )}
     </div>
+  );
+}
+
+function TaskRow({
+  task,
+  moduleName,
+  projectName,
+  onSelect,
+  onStatusChange,
+}: {
+  task: Task;
+  moduleName: string;
+  projectName?: string;
+  onSelect: () => void;
+  onStatusChange: (id: string, input: UpdateTaskInput) => void;
+}) {
+  return (
+    <TableRow
+      className={styles.taskRow}
+      onClick={onSelect}
+    >
+      <TableCell>
+        <span className={styles.moduleTag}>
+          {projectName ? `${projectName} / ` : ""}
+          {moduleName}
+        </span>
+      </TableCell>
+      <TableCell className={styles.taskTitle}>{task.title}</TableCell>
+      <TableCell onClick={(e) => e.stopPropagation()}>
+        <Select
+          value={task.status}
+          onValueChange={(v) => {
+            const newStatus = v as TaskStatus;
+            const input: UpdateTaskInput = { status: newStatus };
+            if (newStatus === "in_progress" && !task.startDate) {
+              input.startDate = new Date().toISOString();
+            }
+            onStatusChange(task.id, input);
+          }}
+        >
+          <SelectTrigger
+            className={cn(
+              styles.statusTrigger,
+              TASK_STATUS_CONFIG[task.status].color,
+            )}
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {(
+              Object.entries(TASK_STATUS_CONFIG) as [
+                TaskStatus,
+                { label: string; color: string },
+              ][]
+            ).map(([key, config]) => (
+              <SelectItem key={key} value={key}>
+                <span className={config.color}>{config.label}</span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </TableCell>
+      <TableCell>
+        <TaskPriorityBadge priority={task.priority} />
+      </TableCell>
+      <TableCell className={styles.dueDateCell}>
+        {task.dueDate
+          ? new Date(task.dueDate).toLocaleDateString()
+          : "\u2014"}
+      </TableCell>
+    </TableRow>
   );
 }
