@@ -13,8 +13,14 @@ const MODULE_FIELDS = gql`
       value
     }
     order
+    projectRef {
+      projectId
+    }
     project {
       id
+      coreRef {
+        value
+      }
     }
   }
 `;
@@ -93,6 +99,9 @@ interface ModuleResponse {
   description?: string;
   picId?: { value: string };
   order?: number | null;
+  projectRef?: {
+    projectId: string;
+  }
 }
 
 function mapModule(raw: ModuleResponse): Module {
