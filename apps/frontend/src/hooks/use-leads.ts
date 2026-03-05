@@ -3,8 +3,8 @@ import { createMutationHook, normalizeQueryResult } from "@/lib/hook-factories";
 import type { CoreProject } from "@/types/project";
 
 const LIST_LEADS = gql`
-  query ListLeadProjects {
-    listProjects(input: {winStage: pending}) {
+  query ListLeadProjects($input: listProjectsInput!) {
+    listProjects(input: $input) {
       id
       code
       status
@@ -37,9 +37,10 @@ const APPROVE_LEAD = gql`
   }
 `;
 
-export function useNewLeads() {
+export function useNewLeads(ownerId?: string) {
   const result = useQuery<{ listProjects: CoreProject[] }>(LIST_LEADS, {
     client: coreClient,
+    variables: { input: { winStage: "pending", ownerId } },
   });
   return normalizeQueryResult(result, (d) => d.listProjects);
 }
@@ -92,14 +93,13 @@ function parseDealBrief(raw: DealBriefRaw | null): DealBrief | null {
   };
 }
 
-export function useDealBrief(projectId?: string, companyId?: string) {
+export function useDealBrief(projectId?: string) {
   const result = useQuery<{ getDealByProjectId: DealBriefRaw | null }>(
     GET_DEAL_BY_PROJECT_ID,
     {
       client: salesClient,
-      context: { headers: { 'X-Company-Id': companyId ?? '' } },
       variables: { input: { projectId } },
-      skip: !projectId || !companyId,
+      skip: !projectId,
     }
   );
   return normalizeQueryResult(result, (d) => parseDealBrief(d.getDealByProjectId));
