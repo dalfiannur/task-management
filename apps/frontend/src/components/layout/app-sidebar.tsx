@@ -25,6 +25,7 @@ import {
   LogOut,
   ChevronsUpDown,
   LayoutDashboard,
+  ListChecks,
   Building2,
   CheckCircle2,
 } from "lucide-react";
@@ -175,6 +176,7 @@ export function AppSidebar() {
 
   const { pathname } = useLocation();
   const isDashboardActive = pathname === "/dashboard" || pathname === "/dashboard/";
+  const isMyTasksActive = pathname.startsWith("/my-tasks");
   const isClientsActive = pathname.startsWith("/clients");
   const isSettingsActive = pathname.startsWith("/settings");
 
@@ -212,6 +214,14 @@ export function AppSidebar() {
                   <Link to="/dashboard">
                     <LayoutDashboard className={styles.icon} />
                     <span>Dashboard</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isMyTasksActive}>
+                  <Link to="/my-tasks">
+                    <ListChecks className={styles.icon} />
+                    <span>My Tasks</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

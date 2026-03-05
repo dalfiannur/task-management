@@ -10,6 +10,7 @@ import {
   ModuleNameComponent,
   ModuleOrderComponent,
   ModulePicIdComponent,
+  ModuleProjectRefComponent,
 } from "../components/ModuleComponents";
 import { type IProjectArcheType } from "./ProjectArcheType";
 import { ArcheTypeNames } from "./ArcheTypeNames";
@@ -24,6 +25,9 @@ export class ModuleArcheTypeClass extends BaseArcheType {
 
   @ArcheTypeField(ModulePicIdComponent, { nullable: true })
   picId!: ModulePicIdComponent;
+
+  @ArcheTypeField(ModuleProjectRefComponent, { nullable: true })
+  projectRef!: ModuleProjectRefComponent;
 
   @ArcheTypeField(ModuleOrderComponent, { nullable: true })
   order!: number;

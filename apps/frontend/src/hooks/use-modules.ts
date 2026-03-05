@@ -60,8 +60,14 @@ const LIST_ALL_MODULES = gql`
     listAllModules(input: $input) {
       id
       name
+      projectRef {
+        projectId
+      }
       project {
         id
+        coreRef {
+          value
+        }
       }
     }
   }
@@ -165,7 +171,8 @@ export interface ModuleWithProject {
 interface AllModuleResponse {
   id: string;
   name: string;
-  project?: { id: string } | null;
+  projectRef?: { projectId: string } | null;
+  project?: { id: string; coreRef?: { value: string } | null } | null;
 }
 
 export function useAllModules() {
@@ -173,8 +180,10 @@ export function useAllModules() {
     variables: { input: {} },
   });
   return normalizeQueryResult(result, (d) =>
-    d.listAllModules
-      .filter((m): m is AllModuleResponse & { project: { id: string } } => !!m.project?.id)
-      .map((m) => ({ id: m.id, name: m.name, projectId: m.project.id })),
+    d.listAllModules.map((m) => ({
+      id: m.id,
+      name: m.name,
+      projectId: m.project?.coreRef?.value ?? m.projectRef?.projectId ?? "",
+    })),
   );
 }

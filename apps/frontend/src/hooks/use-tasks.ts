@@ -194,9 +194,13 @@ export function useTask(taskId: string) {
   );
 }
 
-export function useAllTasks(filters: { projectId?: string; assigneeId?: string } = {}) {
+export function useAllTasks(
+  filters: { projectId?: string; assigneeId?: string } = {},
+  options?: { skip?: boolean },
+) {
   const result = useQuery<{ listAllTasks: TaskResponse[] }>(LIST_ALL_TASKS, {
     variables: { input: { projectId: filters.projectId, assigneeId: filters.assigneeId } },
+    skip: options?.skip,
   });
   return normalizeQueryResult(result, (d) => d.listAllTasks.map(mapTask));
 }

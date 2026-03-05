@@ -54,6 +54,7 @@ export const router = createBrowserRouter([
         Component: AuthenticatedLayout,
         children: [
           { path: "dashboard", lazy: () => import("./pages/dashboard") },
+          { path: "my-tasks", lazy: () => import("./pages/my-tasks") },
           { path: "settings", lazy: () => import("./pages/settings") },
           { path: "clients", lazy: () => import("./pages/clients") },
           { path: "projects", lazy: () => import("./pages/projects") },
