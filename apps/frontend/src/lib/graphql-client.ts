@@ -7,6 +7,7 @@ import {
 import { setContext } from "@apollo/client/link/context";
 import { onError } from "@apollo/client/link/error";
 import { toast } from "sonner";
+import { useCompanyStore } from "@/stores/company-store";
 
 export { gql } from "@apollo/client";
 export { useQuery, useMutation, ApolloProvider } from "@apollo/client/react";
@@ -34,6 +35,16 @@ const authLink = setContext((_, { headers }) => ({
     ...(currentToken ? { Authorization: `Bearer ${currentToken}` } : {}),
   },
 }));
+
+const companyLink = setContext((_, { headers }) => {
+  const companyId = useCompanyStore.getState().selectedCompanyId;
+  return {
+    headers: {
+      ...headers,
+      ...(companyId ? { "X-Company-Id": companyId } : {}),
+    },
+  };
+});
 
 function createErrorLink() {
   return onError((response: any) => {
@@ -67,4 +78,25 @@ export const client = makeClient(TASKS_URL);
 export const coreClient = makeClient(CORE_URL);
 export const oidcClient = makeClient(OIDC_URL);
 export const mediaClient = makeClient(MEDIA_URL);
-export const salesClient = makeClient(SALES_URL);
+function makeSalesClient(uri: string) {
+  return new ApolloClient({
+    link: ApolloLink.from([
+      authLink,
+      companyLink,
+      createErrorLink(),
+      createHttpLink({ uri }),
+    ]),
+    cache: new InMemoryCache(),
+  });
+}
+
+export const salesClient = makeSalesClient(SALES_URL);
+
+export function resetAllStores() {
+  return Promise.all([
+    client.resetStore(),
+    coreClient.resetStore(),
+    salesClient.resetStore(),
+    mediaClient.resetStore(),
+  ]);
+}
