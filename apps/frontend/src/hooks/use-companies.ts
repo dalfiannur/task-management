@@ -59,9 +59,7 @@ const LIST_USER_COMPANIES = gql`
         name {
           name
         }
-        status {
-          value
-        }
+        status
       }
     }
   }
@@ -71,7 +69,7 @@ interface CompanyMembershipRaw {
   companyRef: string;
   companyDetail: {
     name: { name: string };
-    status: { value: string };
+    status: string;
   } | null;
 }
 
@@ -86,7 +84,7 @@ export function useUserCompanies(userId?: string) {
   );
   return normalizeQueryResult(result, (d) =>
     d.listUserCompanies
-      .filter((m) => m.companyDetail?.status?.value === "active")
+      .filter((m) => m.companyDetail?.status === "active")
       .map((m) => ({
         id: m.companyRef,
         name: m.companyDetail?.name?.name ?? "Unknown",
