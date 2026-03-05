@@ -28,10 +28,22 @@ const CLIENT_FIELDS = gql`
       postalCode
       country
     }
-    contact {
-      attentionName
-      email
-      phoneNumber
+    contacts {
+      id
+      name {
+        firstName
+        lastName
+        displayName
+      }
+      info {
+        email
+        phone
+      }
+      role {
+        title
+        department
+      }
+      status
     }
     status
   }
@@ -104,11 +116,13 @@ interface ClientRaw {
     postalCode: string;
     country: string;
   } | null;
-  contact: {
-    attentionName: string;
-    email: string;
-    phoneNumber: string;
-  } | null;
+  contacts: Array<{
+    id: string;
+    name: { firstName: string; lastName: string; displayName: string };
+    info: { email: string; phone: string } | null;
+    role: { title: string; department: string } | null;
+    status: string;
+  }> | null;
   status: string;
 }
 
@@ -126,9 +140,9 @@ function mapClient(raw: ClientRaw): Client {
     state: raw.address?.state || undefined,
     postalCode: raw.address?.postalCode || undefined,
     country: raw.address?.country || undefined,
-    attentionName: raw.contact?.attentionName || undefined,
-    email: raw.contact?.email || undefined,
-    phoneNumber: raw.contact?.phoneNumber || undefined,
+    attentionName: raw.contacts?.[0]?.name?.displayName || undefined,
+    email: raw.contacts?.[0]?.info?.email || undefined,
+    phoneNumber: raw.contacts?.[0]?.info?.phone || undefined,
     status: raw.status as ClientStatus,
   };
 }
