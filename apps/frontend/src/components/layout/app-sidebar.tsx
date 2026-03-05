@@ -44,6 +44,7 @@ const STATUS_DOT_COLORS: Record<ProjectDisplayStatus, string> = {
   draft: "dot-draft",
   pending: "dot-pending",
   proposal: "dot-proposal",
+  won: "dot-won",
   active: "dot-active",
   completed: "dot-completed",
   archived: "dot-archived",

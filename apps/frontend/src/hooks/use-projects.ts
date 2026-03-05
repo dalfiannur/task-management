@@ -227,7 +227,7 @@ export const useUpdateLocalProject = createMutationHook<
 
 /** Update project on Core Portal (status, winStage, etc.). */
 export const useUpdateCoreProject = createMutationHook<
-  { id: string; status?: string; winStage?: string; description?: string },
+  { id: string; status?: string; winStage?: string; description?: string; projectLeaderId?: string },
   CoreProject,
   CoreProject
 >({

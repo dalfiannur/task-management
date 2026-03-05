@@ -53,6 +53,10 @@
   background-color: hsl(38 90% 52%);
 }
 
+.dot-won {
+  background-color: hsl(160 60% 45%);
+}
+
 .dot-active {
   background-color: hsl(225 60% 52%);
 }

@@ -13,7 +13,7 @@ import { useModules } from "@/hooks/use-modules";
 import { useUser } from "@/hooks/use-users";
 import { useAllTasks } from "@/hooks/use-tasks";
 import { ModuleForm } from "@/components/modules/module-form";
-import { WinProjectDialog } from "@/components/projects/win-project-dialog";
+import { AssignLeaderDialog } from "@/components/projects/win-project-dialog";
 import { CloseProjectDialog } from "@/components/projects/close-project-dialog";
 import { SubProjectForm } from "@/components/projects/sub-project-form";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -70,6 +69,7 @@ const DOT_CLASS: Record<string, string> = {
   draft: styles.dotPending,
   pending: styles.dotPending,
   proposal: styles.dotProspect,
+  won: styles.dotWon,
   active: styles.dotOnGoing,
   completed: styles.dotClosed,
   archived: styles.dotCanceled,
@@ -136,7 +136,7 @@ export function Component() {
   const completionPct =
     totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
 
-  const showWin = project.winStage === "proposal";
+  const showWin = resolvedStatus === "won";
 
   // Active tab detection
   const basePath = `/projects/${projectId}`;
@@ -241,7 +241,7 @@ export function Component() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                {project.winStage === "won" && (
+                {resolvedStatus === "active" && (
                   <DropdownMenuItem
                     className={styles.closeItem}
                     onClick={() => setCloseDialogOpen(true)}
@@ -408,7 +408,7 @@ export function Component() {
         projectId={projectId!}
       />
       {showWin && (
-        <WinProjectDialog
+        <AssignLeaderDialog
           project={project}
           open={winDialogOpen}
           onOpenChange={setWinDialogOpen}
@@ -419,7 +419,7 @@ export function Component() {
         onOpenChange={setSubProjectFormOpen}
         parentProjectId={projectId!}
       />
-      {project.status === "active" && project.winStage === "won" && (
+      {resolvedStatus === "active" && (
         <CloseProjectDialog
           project={project}
           open={closeDialogOpen}
