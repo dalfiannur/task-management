@@ -17,6 +17,7 @@ import { TaskForm } from "@/components/tasks/task-form";
 import { useProject, getProjectDisplayName } from "@/hooks/use-projects";
 import { useModule } from "@/hooks/use-modules";
 import { NotificationBell } from "./notification-bell";
+import { CompanySelector } from "./company-selector";
 import { cn } from "@/lib/utils";
 import styles from "./header.module.css";
 
@@ -54,6 +55,7 @@ export function Header() {
       <header className={styles.header}>
         <SidebarTrigger className={styles.triggerBtn} />
         <Separator orientation="vertical" className={styles.separatorEl} />
+        <CompanySelector />
 
         <Breadcrumb>
           <BreadcrumbList>
