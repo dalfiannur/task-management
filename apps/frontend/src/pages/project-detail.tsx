@@ -144,7 +144,7 @@ export function Component() {
             className={styles.searchInput}
           />
         </div>
-        {project.status === "active" && (
+        {getDisplayStatus(project) === "active" && (
           <Button
             size="sm"
             className={styles.newModuleBtn}
@@ -191,7 +191,7 @@ export function Component() {
               Create a module to start organizing tasks.
             </p>
           </div>
-          {project.status === "active" && (
+          {getDisplayStatus(project) === "active" && (
             <Button
               size="sm"
               variant="outline"
