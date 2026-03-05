@@ -219,6 +219,17 @@ export function Component() {
           </div>
 
           <div className={styles.headerActions}>
+            {showWin && (
+              <Button
+                variant="outline"
+                size="sm"
+                className={styles.winBtn}
+                onClick={() => setWinDialogOpen(true)}
+              >
+                <Trophy className={styles.winBtnIcon} />
+                WIN
+              </Button>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -239,16 +250,6 @@ export function Component() {
                     Close Project
                   </DropdownMenuItem>
                 )}
-                {showWin && (
-                  <DropdownMenuItem
-                    className={styles.winItem}
-                    onClick={() => setWinDialogOpen(true)}
-                  >
-                    <Trophy className={styles.menuIcon} />
-                    WIN
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
                 <DropdownMenuItem
                   className={styles.deleteItem}
                   onClick={() => setDeleteDialogOpen(true)}

@@ -412,13 +412,24 @@
   background-color: color-mix(in srgb, var(--destructive) 90%, black);
 }
 
-/* Win button in menu */
-.winItem {
+/* Win button */
+.winBtn {
+  color: #059669;
+  border-color: #059669;
+  height: 1.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  gap: 0.25rem;
+}
+
+.winBtn:hover {
+  background-color: #05966910;
   color: #059669;
 }
 
-.winItem:focus {
-  color: #059669;
+.winBtnIcon {
+  width: 0.875rem;
+  height: 0.875rem;
 }
 
 /* Close Project button in menu */
