@@ -48,3 +48,48 @@ export function useCompanies(search?: string) {
     d.searchCompanies.map(mapCompany),
   );
 }
+
+// --- User's companies (membership-based) ---
+
+const LIST_USER_COMPANIES = gql`
+  query ListUserCompanies($input: listUserCompaniesInput!) {
+    listUserCompanies(input: $input) {
+      companyRef
+      companyDetail {
+        name {
+          name
+        }
+        status {
+          value
+        }
+      }
+    }
+  }
+`;
+
+interface CompanyMembershipRaw {
+  companyRef: string;
+  companyDetail: {
+    name: { name: string };
+    status: { value: string };
+  } | null;
+}
+
+export function useUserCompanies(userId?: string) {
+  const result = useQuery<{ listUserCompanies: CompanyMembershipRaw[] }>(
+    LIST_USER_COMPANIES,
+    {
+      variables: { input: { userRefId: userId } },
+      skip: !userId,
+      client: coreClient,
+    },
+  );
+  return normalizeQueryResult(result, (d) =>
+    d.listUserCompanies
+      .filter((m) => m.companyDetail?.status?.value === "active")
+      .map((m) => ({
+        id: m.companyRef,
+        name: m.companyDetail?.name?.name ?? "Unknown",
+      })),
+  );
+}
