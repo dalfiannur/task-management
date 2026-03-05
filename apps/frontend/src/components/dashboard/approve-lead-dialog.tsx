@@ -27,7 +27,7 @@ export function ApproveLeadDialog({
 }: ApproveLeadDialogProps) {
   const approveProject = useApproveProject();
   const approveLead = useApproveLead();
-  const { data: dealBrief, isLoading: briefLoading } = useDealBrief(project?.id, project?.ref?.companyId);
+  const { data: dealBrief, isLoading: briefLoading } = useDealBrief(project?.id);
   const { files: mediaFiles, isLoading: mediaLoading } = useProjectMediaFiles(project?.id);
 
   async function handleSubmit(e: React.FormEvent) {
