@@ -13,6 +13,7 @@ import { RecentTasks } from "@/components/dashboard/recent-tasks";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ListTodo, Timer, CheckCircle2, FolderOpen } from "lucide-react";
 import { format } from "date-fns";
+import { useCompanyStore } from "@/stores/company-store";
 import styles from "./dashboard.module.css";
 
 const STAT_ACCENTS = {
@@ -25,7 +26,8 @@ const STAT_ACCENTS = {
 export function Component() {
   const { data: me } = useMe();
   const { data: tasks, isLoading: tasksLoading } = useAllTasks();
-  const { data: projects, isLoading: projectsLoading } = useProjects();
+  const selectedCompanyId = useCompanyStore((s) => s.selectedCompanyId);
+  const { data: projects, isLoading: projectsLoading } = useProjects(selectedCompanyId ? { ownerId: selectedCompanyId } : undefined);
   const { data: modules, isLoading: modulesLoading } = useAllModules();
   const isManager = useIsManager();
 

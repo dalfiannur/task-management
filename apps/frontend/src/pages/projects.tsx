@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import type { CoreProject } from "@/types/project";
+import { useCompanyStore } from "@/stores/company-store";
 import styles from "./projects.module.css";
 
 type ProjectFilter = "active" | "closed" | "all";
@@ -33,8 +34,9 @@ export function Component() {
   const [searchParams] = useSearchParams();
   const projectType = searchParams.get("type") as ProjectType | null;
 
-  const { data: allProjects, isLoading } = useProjects();
-  const { data: leads, isLoading: isLeadsLoading } = useNewLeads();
+  const selectedCompanyId = useCompanyStore((s) => s.selectedCompanyId);
+  const { data: allProjects, isLoading } = useProjects(selectedCompanyId ? { ownerId: selectedCompanyId } : undefined);
+  const { data: leads, isLoading: isLeadsLoading } = useNewLeads(selectedCompanyId ?? undefined);
   const [filter, setFilter] = useState<ProjectFilter>("active");
   const [formOpen, setFormOpen] = useState(false);
   const [approveProject, setApproveProject] = useState<CoreProject | null>(null);

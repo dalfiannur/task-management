@@ -31,6 +31,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { ListChecks } from "lucide-react";
+import { useCompanyStore } from "@/stores/company-store";
 import styles from "./my-tasks.module.css";
 
 export function Component() {
@@ -40,7 +41,8 @@ export function Component() {
     { skip: !me?.id },
   );
   const { data: modules, isLoading: modulesLoading } = useAllModules();
-  const { data: projects, isLoading: projectsLoading } = useProjects();
+  const selectedCompanyId = useCompanyStore((s) => s.selectedCompanyId);
+  const { data: projects, isLoading: projectsLoading } = useProjects(selectedCompanyId ? { ownerId: selectedCompanyId } : undefined);
   const updateTask = useUpdateTask();
 
   const [searchParams, setSearchParams] = useSearchParams();

@@ -38,6 +38,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { CoreProject, ProjectDisplayStatus } from "@/types/project";
 import { getDisplayStatus } from "@/types/project";
+import { useCompanyStore } from "@/stores/company-store";
 import styles from "./app-sidebar.module.css";
 
 const STATUS_DOT_COLORS: Record<ProjectDisplayStatus, string> = {
@@ -169,8 +170,9 @@ function UserMenu() {
 }
 
 export function AppSidebar() {
-  const { data: allProjects } = useProjects();
-  const { data: leads } = useNewLeads();
+  const selectedCompanyId = useCompanyStore((s) => s.selectedCompanyId);
+  const { data: allProjects } = useProjects(selectedCompanyId ? { ownerId: selectedCompanyId } : undefined);
+  const { data: leads } = useNewLeads(selectedCompanyId ?? undefined);
   const [projectFormOpen, setProjectFormOpen] = useState(false);
   const [approveProject, setApproveProject] = useState<CoreProject | null>(null);
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
