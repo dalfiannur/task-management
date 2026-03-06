@@ -64,8 +64,8 @@ No test framework is configured in either package.
 
 #### Styling
 
-- **CSS Modules only.** Every component uses `ComponentName.module.css` imported as `styles`. Never use inline Tailwind classes on domain components (Tailwind utility classes are only acceptable inside shadcn/ui primitives in `src/components/ui/`).
-- Import pattern: `import styles from "./component-name.module.css";`
+- **Tailwind CSS utility classes** for domain components. Use `cn()` helper from `@/lib/utils` to merge classes.
+- **CSS Modules** are retained for `src/components/ui/` (shadcn/ui primitives) only.
 - CSS variables for theming: `var(--color-*)`, `var(--spacing-*)`, `var(--radius-*)`, etc.
 
 #### Hook Patterns

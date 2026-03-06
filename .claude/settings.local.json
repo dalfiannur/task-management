@@ -19,7 +19,9 @@
       "Bash(git show:*)",
       "Bash(grep:*)",
       "Bash(PGPASSWORD=postgres psql:*)",
-      "Bash(PGPASSWORD=password psql:*)"
+      "Bash(PGPASSWORD=password psql:*)",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_take_screenshot"
     ]
   }
 }

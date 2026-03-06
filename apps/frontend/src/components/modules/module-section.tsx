@@ -61,7 +61,6 @@ import { TASK_STATUS_CONFIG, type Label, type Module, type Task, type TaskStatus
 import { type ProjectDisplayStatus } from "@/types/project"
 import { cn, getInitials } from "@/lib/utils";
 import { Button } from "../ui/button";
-import s from "./module-section.module.css";
 
 export const MODULE_COLORS = [
   "#3b82f6", // blue
@@ -89,37 +88,37 @@ function AssigneeAvatar({ userId, showName }: { userId: string; showName?: boole
   const initials = getInitials(user.name);
   return (
     <>
-      <Avatar className={showName ? s.assigneeAvatar : s.stackedAvatar}>
+      <Avatar className={showName ? "size-[1.125rem]" : "size-[1.125rem] shadow-[0_0_0_1px_var(--background)]"}>
         <AvatarImage src={user.avatarUrl} />
-        <AvatarFallback className={s.assigneeFallback}>{initials}</AvatarFallback>
+        <AvatarFallback className="text-[0.5625rem]">{initials}</AvatarFallback>
       </Avatar>
-      {showName && <span className={s.assigneeName}>{user.name}</span>}
+      {showName && <span className="text-sm leading-5 overflow-hidden text-ellipsis whitespace-nowrap">{user.name}</span>}
     </>
   );
 }
 
 function TaskAssigneeCell({ assigneeIds }: { assigneeIds: string[] }) {
   if (assigneeIds.length === 0) {
-    return <span className={s.assigneeDash}>&mdash;</span>;
+    return <span className="text-muted-foreground">&mdash;</span>;
   }
 
   if (assigneeIds.length === 1) {
     return (
-      <div className={s.singleAssignee}>
+      <div className="flex items-center gap-1.5">
         <AssigneeAvatar userId={assigneeIds[0]} showName />
       </div>
     );
   }
 
   return (
-    <div className={s.multiAssignee}>
-      <div className={s.avatarStack}>
+    <div className="flex items-center gap-[0.3125rem]">
+      <div className="flex items-center [&>*+*]:-ml-1.5">
         {assigneeIds.slice(0, 3).map((id) => (
           <AssigneeAvatar key={id} userId={id} />
         ))}
       </div>
       {assigneeIds.length > 3 && (
-        <span className={s.overflowCount}>+{assigneeIds.length - 3}</span>
+        <span className="font-mono text-sm leading-4 text-muted-foreground tabular-nums">+{assigneeIds.length - 3}</span>
       )}
     </div>
   );
@@ -168,85 +167,89 @@ export function ModuleSection({
     <>
       <Collapsible defaultOpen className="group/module">
         <div
-          className={s.container}
+          className="rounded-md border border-l-4 overflow-hidden"
           style={{ borderLeftColor: color }}
         >
-          <div className={s.headerBar}>
-            <CollapsibleTrigger className={s.trigger}>
-              <ChevronRight className={s.chevron} />
-              <span className={s.moduleName} style={{ color }}>
+          <div className="flex w-full min-w-0 overflow-hidden items-center gap-2 px-3.5 py-2.5">
+            <CollapsibleTrigger className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden rounded-[calc(var(--radius)-2px)] -m-0.5 p-0.5 transition-colors hover:bg-accent/50">
+              <ChevronRight className="size-3.5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]/module:rotate-90" />
+              <span className="font-semibold text-sm leading-5" style={{ color }}>
                 {module.name}
               </span>
-              <Badge variant="secondary" className={s.countBadge}>
+              <Badge variant="secondary" className="font-mono ml-0.5 text-sm leading-4 tabular-nums">
                 {isLoading ? "..." : taskCount}
               </Badge>
               {subProjectCount != null && subProjectCount > 0 && (
-                <Badge variant="outline" className={s.subProjectBadge}>
-                  <FolderOpen className={s.subProjectBadgeIcon} />
+                <Badge variant="outline" className="inline-flex items-center gap-0.5 font-mono text-xs leading-4 px-1.5 text-muted-foreground tabular-nums">
+                  <FolderOpen className="size-[0.6875rem]" />
                   {subProjectCount}
                 </Badge>
               )}
               {linkedPages.length > 0 && (
-                <Badge variant="outline" className={s.subProjectBadge}>
-                  <FileText className={s.subProjectBadgeIcon} />
+                <Badge variant="outline" className="inline-flex items-center gap-0.5 font-mono text-xs leading-4 px-1.5 text-muted-foreground tabular-nums">
+                  <FileText className="size-[0.6875rem]" />
                   {linkedPages.length}
                 </Badge>
               )}
               {module.description && (
-                <span className={s.headerDescription}>{module.description}</span>
+                <span className="flex-[0_1_auto] min-w-0 max-w-[30rem] text-muted-foreground text-[0.8125rem] leading-5 overflow-hidden text-ellipsis whitespace-nowrap text-left">
+                  {module.description}
+                </span>
               )}
               {!isLoading && taskCount > 0 && (
-                <div className={s.progressGroup}>
-                  <div className={s.progressTrack}>
+                <div className="flex items-center gap-1.5 ml-auto mr-0.5">
+                  <div className="h-1 w-14 rounded-full bg-muted overflow-hidden">
                     <div
-                      className={s.progressFill}
+                      className="h-full rounded-full transition-all duration-500"
                       style={{
                         width: `${progressPct}%`,
                         backgroundColor: color,
                       }}
                     />
                   </div>
-                  <span className={s.progressText}>
+                  <span className="font-mono text-sm text-muted-foreground tabular-nums w-6 text-right">
                     {progressPct}%
                   </span>
                 </div>
               )}
               {picUser && (
-                <span className={s.headerPic}>
-                  <Avatar className={s.headerPicAvatar}>
+                <span className="flex items-center gap-[0.3125rem] shrink-0">
+                  <Avatar className="size-4">
                     <AvatarImage src={picUser.avatarUrl} />
-                    <AvatarFallback className={s.assigneeFallback}>
+                    <AvatarFallback className="text-[0.5625rem]">
                       {getInitials(picUser.name)}
                     </AvatarFallback>
                   </Avatar>
-                  <span className={s.headerPicName}>{picUser.name}</span>
+                  <span className="text-[0.8125rem] leading-5 text-muted-foreground font-medium whitespace-nowrap">
+                    {picUser.name}
+                  </span>
                 </span>
               )}
             </CollapsibleTrigger>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className={s.menuButton}>
-                  <MoreHorizontal className={s.menuIcon} />
+                <Button variant="ghost" size="icon" className="ml-auto size-6 shrink-0">
+                  <MoreHorizontal className="size-3.5" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={() => setEditFormOpen(true)}>
-                  <Pencil className={s.menuItemIcon} />
+                  <Pencil className="size-3.5" />
                   Edit
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setPagesPopoverOpen(true)}>
-                  <FileText className={s.menuItemIcon} />
+                  <FileText className="size-3.5" />
                   Pages
                   {linkedPages.length > 0 && (
-                    <span className={s.menuItemCount}>{linkedPages.length}</span>
+                    <span className="ml-auto font-mono text-xs text-muted-foreground">{linkedPages.length}</span>
                   )}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  className={s.destructiveItem}
+                  className="text-destructive focus:text-destructive"
                   onClick={() => setDeleteDialogOpen(true)}
                 >
-                  <Trash2 className={s.menuItemIcon} />
+                  <Trash2 className="size-3.5" />
                   Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -273,28 +276,28 @@ export function ModuleSection({
               <PopoverTrigger asChild>
                 <span />
               </PopoverTrigger>
-              <PopoverContent className={s.pagesPopover} align="end">
-                <p className={s.pagesPopoverTitle}>Linked Pages</p>
+              <PopoverContent className="w-64 p-2" align="end">
+                <p className="text-xs font-semibold font-mono uppercase tracking-wider text-muted-foreground px-1.5 py-0.5 mb-1">Linked Pages</p>
                 {linkedPages.length > 0 && (
-                  <div className={s.pagesPopoverList}>
+                  <div className="max-h-40 overflow-y-auto">
                     {linkedPages.map((page) => (
-                      <div key={page.id} className={s.pagesPopoverItem}>
+                      <div key={page.id} className="group/page flex items-center">
                         <button
-                          className={s.pagesPopoverLink}
+                          className="flex items-center gap-1.5 flex-1 min-w-0 px-1.5 py-[0.3125rem] text-[0.8125rem] bg-transparent border-none rounded-[var(--radius)] cursor-pointer text-left transition-colors hover:bg-accent"
                           onClick={() => {
                             navigate(`/projects/${projectId}/pages/${page.id}`);
                             setPagesPopoverOpen(false);
                           }}
                         >
-                          <span className={s.pagesPopoverIcon}>
-                            {page.pageInfo.icon || <FileText className={s.pagesPopoverFileIcon} />}
+                          <span className="text-xs shrink-0">
+                            {page.pageInfo.icon || <FileText className="size-3 text-muted-foreground" />}
                           </span>
-                          <span className={s.pagesPopoverName}>
+                          <span className="overflow-hidden text-ellipsis whitespace-nowrap">
                             {page.pageInfo.title || "Untitled"}
                           </span>
                         </button>
                         <button
-                          className={s.pagesPopoverUnlink}
+                          className="flex items-center justify-center size-5 rounded-[var(--radius)] bg-transparent border-none cursor-pointer text-muted-foreground opacity-0 shrink-0 transition-[opacity,color] group-hover/page:opacity-100 hover:!text-destructive"
                           onClick={() =>
                             updatePage.mutate({
                               id: page.id,
@@ -303,24 +306,24 @@ export function ModuleSection({
                             })
                           }
                         >
-                          <X className={s.pagesPopoverUnlinkIcon} />
+                          <X className="size-2.5" />
                         </button>
                       </div>
                     ))}
                   </div>
                 )}
                 {linkedPages.length === 0 && (
-                  <p className={s.pagesPopoverEmpty}>No pages linked</p>
+                  <p className="text-[0.8125rem] text-muted-foreground text-center py-2">No pages linked</p>
                 )}
                 {availablePages.length > 0 && (
                   <>
-                    <div className={s.pagesPopoverDivider} />
-                    <p className={s.pagesPopoverSubtitle}>Link a page</p>
-                    <div className={s.pagesPopoverList}>
+                    <div className="h-px bg-border my-1.5" />
+                    <p className="text-[0.6875rem] font-mono uppercase tracking-wider text-muted-foreground/70 px-1.5 py-0.5 mb-0.5">Link a page</p>
+                    <div className="max-h-40 overflow-y-auto">
                       {availablePages.map((page) => (
                         <button
                           key={page.id}
-                          className={s.pagesPopoverLink}
+                          className="flex items-center gap-1.5 flex-1 min-w-0 px-1.5 py-[0.3125rem] text-[0.8125rem] bg-transparent border-none rounded-[var(--radius)] cursor-pointer text-left transition-colors hover:bg-accent w-full"
                           onClick={() => {
                             updatePage.mutate({
                               id: page.id,
@@ -329,10 +332,10 @@ export function ModuleSection({
                             });
                           }}
                         >
-                          <span className={s.pagesPopoverIcon}>
-                            {page.pageInfo.icon || <FileText className={s.pagesPopoverFileIcon} />}
+                          <span className="text-xs shrink-0">
+                            {page.pageInfo.icon || <FileText className="size-3 text-muted-foreground" />}
                           </span>
-                          <span className={s.pagesPopoverName}>
+                          <span className="overflow-hidden text-ellipsis whitespace-nowrap">
                             {page.pageInfo.title || "Untitled"}
                           </span>
                         </button>
@@ -345,15 +348,15 @@ export function ModuleSection({
           </div>
 
           <CollapsibleContent>
-            <Table>
+            <Table className="table-fixed">
               <TableHeader>
                 <TableRow>
-                  <TableHead className={s.skeletonCell}>Task</TableHead>
-                  <TableHead className="w-[120px]">Status</TableHead>
-                  <TableHead className="w-[120px]">Priority</TableHead>
-                  <TableHead className="w-[150px]">Labels</TableHead>
-                  <TableHead className="w-[120px]">Start Date</TableHead>
-                  <TableHead className="w-[120px]">Due Date</TableHead>
+                  <TableHead className="pl-8">Task</TableHead>
+                  <TableHead className="w-[110px]">Status</TableHead>
+                  <TableHead className="w-[100px]">Priority</TableHead>
+                  <TableHead className="w-[140px]">Labels</TableHead>
+                  <TableHead className="w-[110px]">Start Date</TableHead>
+                  <TableHead className="w-[110px]">Due Date</TableHead>
                   <TableHead className="w-[150px]">Assignee</TableHead>
                 </TableRow>
               </TableHeader>
@@ -362,7 +365,7 @@ export function ModuleSection({
                   <>
                     {[1, 2].map((i) => (
                       <TableRow key={i}>
-                        <TableCell className={s.skeletonCell}>
+                        <TableCell className="pl-8">
                           <Skeleton className="h-4 w-40" />
                         </TableCell>
                         <TableCell>
@@ -392,7 +395,7 @@ export function ModuleSection({
                   <TableRow>
                     <TableCell
                       colSpan={7}
-                      className={s.emptyCell}
+                      className="text-center py-5 text-muted-foreground"
                     >
                       No tasks in this module
                     </TableCell>
@@ -414,12 +417,12 @@ export function ModuleSection({
 
                 {!(projectStatus === "proposal" && module.name !== "Proposal") && (
                   <TableRow
-                    className={s.addTaskRow}
+                    className="cursor-pointer hover:bg-accent/50"
                     onClick={() => setTaskFormOpen(true)}
                   >
-                    <TableCell colSpan={7} className={s.addTaskCell}>
-                      <span className={s.addTaskLabel}>
-                        <Plus className={s.addTaskIcon} />
+                    <TableCell colSpan={7} className="pl-8 py-1.5">
+                      <span className="inline-flex items-center gap-0.5 text-sm leading-5 text-muted-foreground transition-colors hover:text-foreground">
+                        <Plus className="size-3.5" />
                         Add task
                       </span>
                     </TableCell>
@@ -483,19 +486,20 @@ function TaskRow({
   onOpenComments: () => void;
 }) {
   const taskLabels = labels.filter((l) => task.labelIds.includes(l.id));
+  const cleanTitle = task.title.replace(/^[•·]\s*/, "");
   return (
     <TableRow
-      className={s.taskRow}
+      className="cursor-pointer hover:bg-accent/50"
       onClick={onNavigate}
     >
-      <TableCell className={s.taskTitle}>
-        {task.title}
+      <TableCell className="pl-8 font-medium">
+        {cleanTitle}
         {commentCount > 0 && (
           <button
-            className={s.commentBadge}
+            className="inline-flex items-center gap-0.5 ml-2 px-[0.3125rem] py-px rounded-full border-none bg-muted/50 text-muted-foreground text-xs font-mono cursor-pointer transition-colors align-middle hover:bg-accent hover:text-accent-foreground"
             onClick={(e) => { e.stopPropagation(); onOpenComments(); }}
           >
-            <MessageSquare className={s.commentIcon} />
+            <MessageSquare className="size-3" />
             <span>{commentCount}</span>
           </button>
         )}
@@ -514,7 +518,7 @@ function TaskRow({
         >
           <SelectTrigger
             className={cn(
-              s.statusTrigger,
+              "font-mono h-auto rounded-full border-transparent px-1.5 py-px text-sm leading-4 font-medium w-fit shadow-none [&>svg]:hidden",
               TASK_STATUS_CONFIG[task.status].color,
             )}
           >
@@ -535,26 +539,26 @@ function TaskRow({
         <TaskPriorityBadge priority={task.priority} />
       </TableCell>
       <TableCell>
-        <div className={s.labelsList}>
+        <div className="flex flex-wrap gap-1">
           {taskLabels.map((label) => (
             <Badge
               key={label.id}
               variant="outline"
-              className={s.labelBadge}
+              className="text-xs leading-4 px-1.5"
               style={{ borderColor: label.color, color: label.color }}
             >
               {label.name}
             </Badge>
           ))}
           {taskLabels.length === 0 && (
-            <span className={s.assigneeDash}>&mdash;</span>
+            <span className="text-muted-foreground">&mdash;</span>
           )}
         </div>
       </TableCell>
-      <TableCell className={s.dueDateCell}>
+      <TableCell className="font-mono text-muted-foreground">
         {task.startDate ? new Date(task.startDate).toLocaleDateString() : "\u2014"}
       </TableCell>
-      <TableCell className={s.dueDateCell}>
+      <TableCell className="font-mono text-muted-foreground">
         {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "\u2014"}
       </TableCell>
       <TableCell>
