@@ -161,7 +161,7 @@ const CREATE_CORE_PROJECT_MUTATION = `
 export interface CreateCoreProjectInput {
   name: string;
   description?: string;
-  clientId: string;
+  clientId?: string;
   authorId: string;
   parentId?: string;
   ownerId?: string;
@@ -171,6 +171,8 @@ export interface CreateCoreProjectInput {
   projectLeaderId?: string;
   startDate?: string;
   endDate?: string;
+  status?: string;
+  winStage?: string;
 }
 
 export async function createCoreProject(

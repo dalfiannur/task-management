@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,9 +13,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { UserCombobox } from "@/components/shared/user-combobox";
-import { ClientCombobox } from "@/components/shared/client-combobox";
 import { DatePickerField } from "@/components/shared/date-picker-field";
 import { useCreateProject } from "@/hooks/use-projects";
+import { useCompanyStore } from "@/stores/company-store";
+import { coreClient } from "@/lib/graphql-client";
 import styles from "./project-form.module.css";
 
 interface ProjectFormProps {
@@ -25,41 +27,38 @@ interface ProjectFormProps {
 export function ProjectForm({ open, onOpenChange }: ProjectFormProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [clientId, setClientId] = useState<string | undefined>();
   const [projectLeaderId, setProjectLeaderId] = useState<string | undefined>();
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
-  const [value, setValue] = useState<string>("");
+  const navigate = useNavigate();
+  const selectedCompanyId = useCompanyStore((s) => s.selectedCompanyId);
   const createProject = useCreateProject();
 
   const resetForm = () => {
     setName("");
     setDescription("");
-    setClientId(undefined);
     setProjectLeaderId(undefined);
     setStartDate(undefined);
     setEndDate(undefined);
-    setValue("");
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!clientId) return;
-    const parsedValue = value ? parseFloat(value) : undefined;
     createProject.mutate(
       {
         name: name.trim(),
-        clientId,
         description: description || undefined,
+        ownerId: selectedCompanyId ?? undefined,
         projectLeaderId,
-        value: parsedValue,
         startDate: startDate ? format(startDate, "yyyy-MM-dd") : undefined,
         endDate: endDate ? format(endDate, "yyyy-MM-dd") : undefined,
       },
       {
-        onSuccess: () => {
+        onSuccess: (data) => {
+          coreClient.refetchQueries({ include: "active" });
           resetForm();
           onOpenChange(false);
+          navigate(`/projects/${data.coreRef.value}`);
         },
       },
     );
@@ -92,10 +91,6 @@ export function ProjectForm({ open, onOpenChange }: ProjectFormProps) {
               />
             </div>
             <div className={styles.field}>
-              <Label>Client</Label>
-              <ClientCombobox value={clientId} onChange={setClientId} />
-            </div>
-            <div className={styles.field}>
               <Label>Project Leader</Label>
               <UserCombobox value={projectLeaderId} onChange={setProjectLeaderId} />
             </div>
@@ -109,18 +104,6 @@ export function ProjectForm({ open, onOpenChange }: ProjectFormProps) {
                 <DatePickerField value={endDate} onChange={setEndDate} />
               </div>
             </div>
-            <div className={styles.field}>
-              <Label htmlFor="project-value">Value</Label>
-              <Input
-                id="project-value"
-                type="number"
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-                placeholder="Project value..."
-                min={0}
-                step="any"
-              />
-            </div>
           </div>
           <DialogFooter>
             <Button
@@ -132,7 +115,7 @@ export function ProjectForm({ open, onOpenChange }: ProjectFormProps) {
             </Button>
             <Button
               type="submit"
-              disabled={!name.trim() || !clientId || createProject.isLoading}
+              disabled={!name.trim() || createProject.isLoading}
             >
               {createProject.isLoading ? "Creating..." : "Create"}
             </Button>

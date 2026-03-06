@@ -26,7 +26,6 @@ import {
   ChevronsUpDown,
   LayoutDashboard,
   ListChecks,
-  Building2,
   CheckCircle2,
 } from "lucide-react";
 import { useProjects, getProjectDisplayName } from "@/hooks/use-projects";
@@ -180,7 +179,6 @@ export function AppSidebar() {
   const { pathname } = useLocation();
   const isDashboardActive = pathname === "/dashboard" || pathname === "/dashboard/";
   const isMyTasksActive = pathname.startsWith("/my-tasks");
-  const isClientsActive = pathname.startsWith("/clients");
   const isSettingsActive = pathname.startsWith("/settings");
 
   const rootProjects = allProjects?.filter(
@@ -225,14 +223,6 @@ export function AppSidebar() {
                   <Link to="/my-tasks">
                     <ListChecks className={styles.icon} />
                     <span>My Tasks</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isClientsActive}>
-                  <Link to="/clients">
-                    <Building2 className={styles.icon} />
-                    <span>Clients</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

@@ -87,7 +87,7 @@ export default class ProjectService extends BaseService {
     type: "Mutation",
     input: {
       name: t.string().required(),
-      clientId: t.string().required(),
+      clientId: t.string(),
       description: t.string(),
       projectLeaderId: t.string(),
       ownerId: t.string(),
@@ -102,7 +102,7 @@ export default class ProjectService extends BaseService {
   async createProject(
     input: {
       name: string;
-      clientId: string;
+      clientId?: string;
       description?: string;
       projectLeaderId?: string;
       ownerId?: string;
@@ -118,6 +118,8 @@ export default class ProjectService extends BaseService {
 
     const authToken = extractAuthToken(context.request);
 
+    const projectLeaderId = input.projectLeaderId ?? user.sub;
+
     // Create project in Core (no parentId for root projects)
     const coreProject = await createCoreProject(
       {
@@ -129,9 +131,11 @@ export default class ProjectService extends BaseService {
         divisionId: input.divisionId,
         commercial: input.commercial,
         value: input.value,
-        projectLeaderId: input.projectLeaderId,
+        projectLeaderId,
         startDate: input.startDate,
         endDate: input.endDate,
+        status: "active",
+        winStage: "won",
       },
       authToken,
     );
@@ -141,16 +145,14 @@ export default class ProjectService extends BaseService {
       .add(ProjectTag, {})
       .add(ProjectCoreRefComponent, { value: coreProject.id })
 
-    if (input.projectLeaderId) {
-      entity.add(ProjectLeaderIdComponent, { value: input.projectLeaderId });
-    }
+    entity.add(ProjectLeaderIdComponent, { value: projectLeaderId });
 
     await entity.save();
 
     // Auto-add creator and leader as members
     await MembershipService.getInstance().ensureMembership(entity.id, user.sub);
-    if (input.projectLeaderId) {
-      await MembershipService.getInstance().ensureMembership(entity.id, input.projectLeaderId);
+    if (projectLeaderId !== user.sub) {
+      await MembershipService.getInstance().ensureMembership(entity.id, projectLeaderId);
     }
 
     return entity;

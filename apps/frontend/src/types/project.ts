@@ -37,12 +37,10 @@ export interface LocalProjectRef {
 
 export interface CreateProjectInput {
   name: string;
-  clientId: string;
   description?: string;
   projectLeaderId?: string;
   ownerId?: string;
   divisionId?: string;
-  value?: number;
   startDate?: string;
   endDate?: string;
 }
