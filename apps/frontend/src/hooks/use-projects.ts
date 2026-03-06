@@ -146,7 +146,14 @@ const UPDATE_CORE_PROJECT = gql`
 
 // --- Hooks ---
 
-export function useProjects(input?: { status?: string; parentId?: string; ownerId?: string }) {
+export function useProjects(input?: {
+  status?: string;
+  parentId?: string;
+  ownerId?: string;
+  page?: number;
+  limit?: number;
+  commercial?: boolean;
+}) {
   const result = useQuery<{ listProjects: CoreProject[] }>(LIST_CORE_PROJECTS, {
     client: coreClient,
     variables: { input },

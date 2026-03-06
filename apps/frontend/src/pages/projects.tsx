@@ -1,13 +1,14 @@
 import { useSearchParams } from "react-router";
-import { useProjects, getProjectDisplayName } from "@/hooks/use-projects";
+import { useProjects } from "@/hooks/use-projects";
 import { useNewLeads } from "@/hooks/use-leads";
 import { ProjectCard } from "@/components/projects/project-card";
 import { ProjectForm } from "@/components/projects/project-form";
 import { ApproveLeadDialog } from "@/components/dashboard/approve-lead-dialog";
+import { Pagination } from "@/components/shared/pagination";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import type { CoreProject } from "@/types/project";
 import { useCompanyStore } from "@/stores/company-store";
@@ -22,27 +23,45 @@ const TYPE_TITLES: Record<ProjectType, string> = {
   commercial: "Commercial Projects",
 };
 
-function isInternalProject(p: CoreProject): boolean {
-  return !p.commercial;
-}
-
-function isCommercialProject(p: CoreProject): boolean {
-  return p.commercial;
-}
+const PAGE_LIMIT = 12;
 
 export function Component() {
   const [searchParams] = useSearchParams();
   const projectType = searchParams.get("type") as ProjectType | null;
 
   const selectedCompanyId = useCompanyStore((s) => s.selectedCompanyId);
-  const { data: allProjects, isLoading } = useProjects(selectedCompanyId ? { ownerId: selectedCompanyId } : undefined);
-  const { data: leads, isLoading: isLeadsLoading } = useNewLeads(selectedCompanyId ?? undefined);
   const [filter, setFilter] = useState<ProjectFilter>("active");
+  const [page, setPage] = useState(1);
   const [formOpen, setFormOpen] = useState(false);
   const [approveProject, setApproveProject] = useState<CoreProject | null>(null);
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
 
   const isLeadsView = projectType === "leads";
+
+  // Build server-side query params
+  const queryInput = isLeadsView
+    ? undefined
+    : {
+        ...(selectedCompanyId ? { ownerId: selectedCompanyId } : {}),
+        ...(projectType === "commercial"
+          ? { commercial: true }
+          : projectType === "internal"
+            ? { commercial: false }
+            : {}),
+        ...(filter === "closed" ? { status: "completed" } : {}),
+        page,
+        limit: PAGE_LIMIT,
+      };
+
+  const { data: allProjects, isLoading } = useProjects(queryInput);
+  const { data: leads, isLoading: isLeadsLoading } = useNewLeads(
+    isLeadsView ? (selectedCompanyId ?? undefined) : undefined,
+  );
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [filter, projectType, selectedCompanyId]);
 
   // For leads view, use leads data directly
   if (isLeadsView) {
@@ -85,26 +104,13 @@ export function Component() {
     );
   }
 
-  // For internal/commercial/all views, use allProjects
-  const rootProjects = allProjects?.filter((p) => !p.ref?.parentId && p.winStage !== "pending");
-
-  const typeFiltered = rootProjects?.filter((p) => {
-    if (projectType === "internal") return isInternalProject(p);
-    if (projectType === "commercial") return isCommercialProject(p);
-    return true;
-  });
-
-  const projects = typeFiltered?.filter((p) => {
-    if (filter === "active") return p.status !== "completed";
-    if (filter === "closed") return p.status === "completed";
-    return true;
-  });
-
-  const nameMap = new Map(
-    rootProjects?.map((p) => [p.id, getProjectDisplayName(p)]),
+  // Client-side filtering for what the server can't express
+  const projects = allProjects?.filter(
+    (p) => !p.ref?.parentId && p.winStage !== "pending",
   );
 
-  const closedCount = typeFiltered?.filter((p) => p.status === "completed").length ?? 0;
+  const hasNextPage = (allProjects?.length ?? 0) === PAGE_LIMIT;
+
   const title = projectType ? TYPE_TITLES[projectType] : "Projects";
   const showNewButton = !projectType || projectType === "internal";
 
@@ -140,7 +146,7 @@ export function Component() {
           className={cn(styles.filterTab, filter === "closed" && styles.filterTabActive)}
           onClick={() => setFilter("closed")}
         >
-          Closed{closedCount > 0 && <span className={styles.filterCount}>{closedCount}</span>}
+          Closed
         </button>
         <button
           className={cn(styles.filterTab, filter === "all" && styles.filterTabActive)}
@@ -154,9 +160,6 @@ export function Component() {
           <ProjectCard
             key={project.id}
             project={project}
-            parentName={
-              project.ref?.parentId ? nameMap.get(project.ref.parentId) : undefined
-            }
           />
         ))}
       </div>
@@ -167,6 +170,11 @@ export function Component() {
             : "No projects yet. Create one to get started."}
         </p>
       )}
+      <Pagination
+        currentPage={page}
+        hasNextPage={hasNextPage}
+        onPageChange={setPage}
+      />
       <ProjectForm open={formOpen} onOpenChange={setFormOpen} />
     </div>
   );
