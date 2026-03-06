@@ -131,7 +131,7 @@
    ============================================ */
 
 .editorContent :global(.tiptap) {
-  min-height: 64px;
+  min-height: var(--editor-min-height, 64px);
   max-width: none;
   padding: 0.375rem 0.625rem;
   outline: none;

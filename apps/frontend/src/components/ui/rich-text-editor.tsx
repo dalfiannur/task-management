@@ -45,18 +45,23 @@ import {
 } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import styles from "./rich-text-editor.module.css";
 
 interface RichTextEditorProps {
   content: string;
   onChange: (html: string) => void;
   placeholder?: string;
+  className?: string;
+  minHeight?: string;
 }
 
 export function RichTextEditor({
   content,
   onChange,
   placeholder,
+  className,
+  minHeight,
 }: RichTextEditorProps) {
   const editor = useEditor({
     extensions: [
@@ -282,7 +287,11 @@ export function RichTextEditor({
       </div>
 
       {/* Editor content */}
-      <EditorContent editor={editor} className={styles.editorContent} />
+      <EditorContent
+        editor={editor}
+        className={cn(styles.editorContent, className)}
+        style={minHeight ? { "--editor-min-height": minHeight } as React.CSSProperties : undefined}
+      />
     </div>
   );
 }

@@ -138,9 +138,25 @@ export function TaskForm({ open, onOpenChange, task, moduleId, projectId }: Task
           moduleId: moduleId ?? "",
           labelIds,
         },
-        { onSuccess: () => onOpenChange(false) },
+        {
+          onSuccess: () => {
+            resetForm();
+            onOpenChange(false);
+          },
+        },
       );
     }
+  };
+
+  const resetForm = () => {
+    setTitle(task?.title ?? "");
+    setDescription(task?.description ?? "");
+    setStatus(task?.status ?? "todo");
+    setPriority(task?.priority ?? "none");
+    setAssigneeIds(task?.assigneeIds ?? []);
+    setStartDate(task?.startDate);
+    setDueDate(task?.dueDate);
+    setLabelIds(task?.labelIds ?? []);
   };
 
   useFormShortcut(open, "[data-task-form]", !!title.trim());
@@ -189,7 +205,8 @@ export function TaskForm({ open, onOpenChange, task, moduleId, projectId }: Task
                   <RichTextEditor
                     content={description}
                     onChange={setDescription}
-                    placeholder="Add a description..."
+                    placeholder="Describe what needs to be done, acceptance criteria, and any relevant context..."
+                    minHeight="500px"
                   />
                 </div>
               </div>
