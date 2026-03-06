@@ -227,7 +227,7 @@ export function Component() {
                 onClick={() => setWinDialogOpen(true)}
               >
                 <Trophy className={styles.winBtnIcon} />
-                WIN
+                Assign Project Leader
               </Button>
             )}
             <DropdownMenu>
