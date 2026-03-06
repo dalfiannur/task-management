@@ -39,6 +39,7 @@ import {
   Check,
   ChevronsUpDown,
 } from "lucide-react";
+import { startOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { useCreateTask, useUpdateTask } from "@/hooks/use-tasks";
@@ -101,6 +102,7 @@ export function TaskForm({ open, onOpenChange, task, moduleId, projectId }: Task
   const [dueDate, setDueDate] = useState<string | undefined>(task?.dueDate);
   const [labelIds, setLabelIds] = useState<string[]>(task?.labelIds ?? []);
 
+  const today = startOfDay(new Date());
   const parsedStartDate = startDate ? new Date(startDate) : undefined;
   const parsedDueDate = dueDate ? new Date(dueDate) : undefined;
 
@@ -352,6 +354,7 @@ export function TaskForm({ open, onOpenChange, task, moduleId, projectId }: Task
                   <DatePickerField
                     value={parsedStartDate}
                     onChange={(d) => setStartDate(d ? d.toISOString() : undefined)}
+                    minDate={today}
                   />
                 </PropertyRow>
 
@@ -360,6 +363,7 @@ export function TaskForm({ open, onOpenChange, task, moduleId, projectId }: Task
                   <DatePickerField
                     value={parsedDueDate}
                     onChange={(d) => setDueDate(d ? d.toISOString() : undefined)}
+                    minDate={today}
                   />
                 </PropertyRow>
 

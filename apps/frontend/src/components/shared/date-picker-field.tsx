@@ -15,12 +15,14 @@ interface DatePickerFieldProps {
   value: Date | undefined;
   onChange: (date: Date | undefined) => void;
   placeholder?: string;
+  minDate?: Date;
 }
 
 export function DatePickerField({
   value,
   onChange,
   placeholder = "Set date",
+  minDate,
 }: DatePickerFieldProps) {
   const [open, setOpen] = useState(false);
 
@@ -46,6 +48,8 @@ export function DatePickerField({
             onChange(d);
             setOpen(false);
           }}
+          fromDate={minDate}
+          disabled={minDate ? (date) => date < minDate : undefined}
           initialFocus
         />
         {value && (
