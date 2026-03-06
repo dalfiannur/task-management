@@ -21,7 +21,8 @@
       "Bash(PGPASSWORD=postgres psql:*)",
       "Bash(PGPASSWORD=password psql:*)",
       "mcp__playwright__browser_navigate",
-      "mcp__playwright__browser_take_screenshot"
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__plugin_serena_serena__replace_content"
     ]
   }
 }

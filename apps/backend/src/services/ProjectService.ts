@@ -194,7 +194,7 @@ export default class ProjectService extends BaseService {
     const user = requirePermission(context, TaskResources.Projects, Action.Create);
 
     // 1. Find parent project and get its coreRef
-    const parent = await new Query().findOneById(input.parentProjectId);
+    const parent = await this.findProjectEntity(input.parentProjectId);
     if (!parent) {
       return new GraphQLError("Parent project not found", { extensions: { code: "NOT_FOUND" } });
     }
@@ -242,7 +242,7 @@ export default class ProjectService extends BaseService {
         return new GraphQLError("Module not found", { extensions: { code: "NOT_FOUND" } });
       }
       const moduleProjectRef = await moduleEntity.get(ModuleProjectRefComponent);
-      if (moduleProjectRef?.projectId !== input.parentProjectId) {
+      if (moduleProjectRef?.projectId !== parent.id) {
         return new GraphQLError("Module does not belong to the parent project", { extensions: { code: "BAD_USER_INPUT" } });
       }
     }
@@ -250,7 +250,7 @@ export default class ProjectService extends BaseService {
     // 6. Create local entity with coreRef pointing to new Core project
     const entity = Entity.Create()
       .add(ProjectTag, {})
-      .add(ProjectParentRefComponent, { parentProjectId: input.parentProjectId })
+      .add(ProjectParentRefComponent, { parentProjectId: parent.id })
       .add(ProjectCoreRefComponent, { value: coreProject.id })
 
     if (input.projectLeaderId) {
