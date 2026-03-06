@@ -6,6 +6,7 @@ import {
   File,
   Plus,
   X,
+  Download,
 } from "lucide-react";
 import { useTaskMediaFiles, useUploadMedia, useDeleteMedia } from "@/hooks/use-media";
 import { useProject, getProjectDisplayName } from "@/hooks/use-projects";
@@ -62,10 +63,25 @@ export function TaskAttachments({ projectId, taskId }: TaskAttachmentsProps) {
           <Button
             size="icon"
             variant="ghost"
-            className={styles.deleteButton}
+            className={styles.actionButton}
+            asChild
+          >
+            <a
+              href={file.mediaFileInfo.url}
+              download={file.mediaFileInfo.originalFileName}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Download className={styles.actionIcon} />
+            </a>
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            className={styles.actionButton}
             onClick={() => deleteMedia.mutate(file.id)}
           >
-            <X className={styles.deleteIcon} />
+            <X className={styles.actionIcon} />
           </Button>
         </div>
       ))}
