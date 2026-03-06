@@ -1,4 +1,4 @@
-import { useQuery, gql, coreClient } from "@/lib/graphql-client";
+import { useQuery, useMutation, gql, coreClient } from "@/lib/graphql-client";
 import { createMutationHook, createVoidMutationHook, normalizeQueryResult } from "@/lib/hook-factories";
 import type { CoreProject, CreateProjectInput, CreateSubProjectInput, LocalProjectRef } from "@/types/project";
 
@@ -250,15 +250,29 @@ export const useDeleteProject = createVoidMutationHook<string>({
   refetchQueries: [LIST_LOCAL_PROJECTS, LIST_CORE_PROJECTS],
 });
 
-export const useCreateSubProject = createMutationHook<
-  CreateSubProjectInput,
-  LocalProjectRef,
-  LocalProjectRef
->({
-  mutation: CREATE_SUB_PROJECT,
-  responseKey: "createSubProject",
-  refetchQueries: [LIST_LOCAL_SUB_PROJECTS, LIST_LOCAL_PROJECTS, LIST_CORE_PROJECTS],
-});
+export function useCreateSubProject() {
+  const [exec, { loading }] = useMutation<{ createSubProject: LocalProjectRef }>(
+    CREATE_SUB_PROJECT,
+    {
+      refetchQueries: [LIST_LOCAL_SUB_PROJECTS, LIST_LOCAL_PROJECTS],
+      onCompleted: () => {
+        coreClient.refetchQueries({ include: [LIST_CORE_PROJECTS] });
+      },
+    },
+  );
+
+  return {
+    mutate: (
+      input: CreateSubProjectInput,
+      opts?: { onSuccess?: (data: LocalProjectRef) => void },
+    ) => {
+      exec({ variables: { input } }).then((res) => {
+        if (res.data) opts?.onSuccess?.(res.data.createSubProject);
+      });
+    },
+    isLoading: loading,
+  };
+}
 
 export function getProjectDisplayName(project: CoreProject): string {
   return project.name?.name || "Untitled";

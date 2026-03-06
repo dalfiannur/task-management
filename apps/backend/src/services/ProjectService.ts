@@ -212,9 +212,6 @@ export default class ProjectService extends BaseService {
     }
 
     const clientId = parentCoreData.ref.clientId;
-    if (!clientId) {
-      return new GraphQLError("Parent project has no clientId in Core", { extensions: { code: "BAD_USER_INPUT" } });
-    }
 
     // 3. Create project in Core with parentId
     const coreProject = await createCoreProject(
@@ -231,6 +228,8 @@ export default class ProjectService extends BaseService {
         projectLeaderId: input.projectLeaderId,
         startDate: input.startDate,
         endDate: input.endDate,
+        status: "active",
+        winStage: "won",
       },
       authToken,
     );
