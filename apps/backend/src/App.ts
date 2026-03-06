@@ -27,6 +27,7 @@ import NotificationService from "./services/NotificationService";
 import ActivityService from "./services/ActivityService";
 import PageService from "./services/PageService";
 import MembershipService from "./services/MembershipService";
+import DashboardService from "./services/DashboardService";
 import { AuthPlugin } from "./plugins/AuthPlugin";
 import { PermissionRestService } from "./services/PermissionService";
 
@@ -62,6 +63,7 @@ export default class TasksAPI extends App {
     ServiceRegistry.registerService(new NotificationService());
     ServiceRegistry.registerService(new PageService());
     ServiceRegistry.registerService(new MembershipService());
+    ServiceRegistry.registerService(new DashboardService());
 
     ServiceRegistry.registerService(new PermissionRestService());
   }

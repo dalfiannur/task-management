@@ -32,7 +32,7 @@ export class ModuleArcheTypeClass extends BaseArcheType {
   @ArcheTypeField(ModuleOrderComponent, { nullable: true })
   order!: number;
 
-  @BelongsTo("Project", { foreignKey: "project.projectId", nullable: true })
+  @BelongsTo("Project", { foreignKey: "projectRef.projectId", nullable: true })
   project!: IProjectArcheType;
 }
 

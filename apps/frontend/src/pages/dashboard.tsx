@@ -1,8 +1,9 @@
 import { useAllTasks, getTodayDeadlines } from "@/hooks/use-tasks";
 import { useProjects } from "@/hooks/use-projects";
-import type { CoreProject } from "@/types/project";
+
 import { useMe, useIsManager } from "@/hooks/use-me";
 import { useAllModules } from "@/hooks/use-modules";
+import { useDashboardStats } from "@/hooks/use-dashboard";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { MyAssignedTasks } from "@/components/dashboard/my-assigned-tasks";
 import { UpcomingDeadlines } from "@/components/dashboard/upcoming-deadlines";
@@ -31,7 +32,14 @@ export function Component() {
   const { data: modules, isLoading: modulesLoading } = useAllModules();
   const isManager = useIsManager();
 
-  const isLoading = tasksLoading || projectsLoading || modulesLoading;
+  // Active projects: proposal or won winStage
+  const activeProjectIds = (projects ?? [])
+    .filter((p) => p.status === "active" && (p.winStage === "proposal" || p.winStage === "won"))
+    .map((p) => p.id);
+
+  const { data: stats, isLoading: statsLoading } = useDashboardStats(activeProjectIds);
+
+  const isLoading = tasksLoading || projectsLoading || modulesLoading || statsLoading;
 
   if (isLoading) {
     return (
@@ -64,22 +72,18 @@ export function Component() {
   const allModules = modules ?? [];
   const today = new Date();
 
-  // Filter to tasks from active projects (on_going status or proposal winStage)
-  const isActiveProject = (p: CoreProject) =>
-    p.status === "active"
-  const activeProjectIds = new Set(
-    allProjects.filter(isActiveProject).map((p) => p.id),
-  );
+  // Filter to tasks from active projects (proposal/won)
+  const activeProjectIdSet = new Set(activeProjectIds);
   const activeModuleIds = new Set(
-    allModules.filter((m) => activeProjectIds.has(m.projectId)).map((m) => m.id),
+    allModules.filter((m) => activeProjectIdSet.has(m.projectId)).map((m) => m.id),
   );
   const activeTasks = allTasks.filter((t) => activeModuleIds.has(t.moduleId));
 
-  // Stats
-  const totalTasks = activeTasks.length;
-  const inProgressTasks = activeTasks.filter((t) => t.status === "in_progress").length;
-  const doneTasks = activeTasks.filter((t) => t.status === "done").length;
-  const activeProjectCount = activeProjectIds.size;
+  // Stats from backend (scoped to current user + active projects)
+  const totalTasks = stats?.totalTasks ?? 0;
+  const inProgressTasks = stats?.inProgressTasks ?? 0;
+  const doneTasks = stats?.doneTasks ?? 0;
+  const activeProjectCount = activeProjectIds.length;
 
   // Derived data
   const myTasks = me
@@ -87,7 +91,7 @@ export function Component() {
     : [];
   const deadlineTasks = getTodayDeadlines(activeTasks);
 
-  const stats = [
+  const statCards = [
     {
       title: "Total Tasks",
       value: totalTasks,
@@ -133,7 +137,7 @@ export function Component() {
 
         {/* Stats Grid */}
         <div className={styles.statsGrid}>
-          {stats.map((stat, i) => (
+          {statCards.map((stat, i) => (
             <div
               key={stat.title}
               className={styles.statItem}

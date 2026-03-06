@@ -16,7 +16,10 @@
       "mcp__plugin_serena_serena__initial_instructions",
       "mcp__plugin_serena_serena__check_onboarding_performed",
       "Skill(commit-commands:commit)",
-      "Bash(git show:*)"
+      "Bash(git show:*)",
+      "Bash(grep:*)",
+      "Bash(PGPASSWORD=postgres psql:*)",
+      "Bash(PGPASSWORD=password psql:*)"
     ]
   }
 }
