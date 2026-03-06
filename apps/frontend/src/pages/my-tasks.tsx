@@ -1,8 +1,6 @@
 import { useState, useMemo } from "react";
 import { useSearchParams } from "react-router";
-import { useMe } from "@/hooks/use-me";
-import { useAllTasks, useUpdateTask } from "@/hooks/use-tasks";
-import { useAllModules } from "@/hooks/use-modules";
+import { useMyTasks, useUpdateTask } from "@/hooks/use-tasks";
 import { useProjects, getProjectDisplayName } from "@/hooks/use-projects";
 import { TaskDetail } from "@/components/tasks/task-detail";
 import { TaskPriorityBadge } from "@/components/tasks/task-priority-badge";
@@ -35,12 +33,7 @@ import { useCompanyStore } from "@/stores/company-store";
 import styles from "./my-tasks.module.css";
 
 export function Component() {
-  const { data: me, isLoading: meLoading } = useMe();
-  const { data: tasks, isLoading: tasksLoading } = useAllTasks(
-    { assigneeId: me?.id },
-    { skip: !me?.id },
-  );
-  const { data: modules, isLoading: modulesLoading } = useAllModules();
+  const { data: myTasksData, isLoading: tasksLoading } = useMyTasks();
   const selectedCompanyId = useCompanyStore((s) => s.selectedCompanyId);
   const { data: projects, isLoading: projectsLoading } = useProjects(selectedCompanyId ? { ownerId: selectedCompanyId } : undefined);
   const updateTask = useUpdateTask();
@@ -56,13 +49,13 @@ export function Component() {
     moduleId: string;
   } | null>(null);
 
-  const isLoading = meLoading || tasksLoading || modulesLoading || projectsLoading;
+  const isLoading = tasksLoading || projectsLoading;
 
-  // Build lookup maps
-  const moduleMap = useMemo(
-    () => new Map((modules ?? []).map((m) => [m.id, m])),
-    [modules],
-  );
+  const tasks = myTasksData?.tasks;
+  const moduleMap = myTasksData?.moduleMap ?? {};
+  const projectCoreRefMap = myTasksData?.projectCoreRefMap ?? {};
+
+  // Build project lookup by core ID
   const projectMap = useMemo(
     () => new Map((projects ?? []).map((p) => [p.id, p])),
     [projects],
@@ -200,11 +193,12 @@ export function Component() {
             </TableHeader>
             <TableBody>
               {filteredTasks.map((task) => {
-                const mod = moduleMap.get(task.moduleId);
-                const project = mod
-                  ? projectMap.get(mod.projectId)
+                const mod = moduleMap[task.moduleId];
+                const localProjectId = mod?.projectId ?? "";
+                const coreProjectId = projectCoreRefMap[localProjectId];
+                const project = coreProjectId
+                  ? projectMap.get(coreProjectId)
                   : undefined;
-                const projectId = mod?.projectId ?? "";
 
                 return (
                   <TaskRow
@@ -217,7 +211,7 @@ export function Component() {
                     onSelect={() =>
                       setSelectedTask({
                         taskId: task.id,
-                        projectId,
+                        projectId: localProjectId,
                         moduleId: task.moduleId,
                       })
                     }

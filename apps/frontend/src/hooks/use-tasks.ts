@@ -95,6 +95,12 @@ const REORDER_TASK = gql`
   }
 `;
 
+const LIST_MY_TASKS = gql`
+  query ListMyTasks($input: listMyTasksInput!) {
+    listMyTasks(input: $input)
+  }
+`;
+
 // --- Response type from Bunsane ---
 
 interface TaskResponse {
@@ -205,6 +211,27 @@ export function useAllTasks(
   return normalizeQueryResult(result, (d) => d.listAllTasks.map(mapTask));
 }
 
+interface MyTasksResponse {
+  tasks: TaskResponse[];
+  moduleMap: Record<string, { name: string; projectId: string }>;
+  projectCoreRefMap: Record<string, string>;
+}
+
+export function useMyTasks(
+  filters: { status?: string; priority?: string } = {},
+  options?: { skip?: boolean },
+) {
+  const result = useQuery<{ listMyTasks: MyTasksResponse }>(LIST_MY_TASKS, {
+    variables: { input: { status: filters.status, priority: filters.priority } },
+    skip: options?.skip,
+  });
+  return normalizeQueryResult(result, (d) => ({
+    tasks: d.listMyTasks.tasks.map(mapTask),
+    moduleMap: d.listMyTasks.moduleMap,
+    projectCoreRefMap: d.listMyTasks.projectCoreRefMap,
+  }));
+}
+
 /** Filter tasks due today or overdue, sorted soonest first. Excludes done/cancelled. */
 export function getTodayDeadlines(tasks: Task[]): Task[] {
   const now = new Date();
@@ -252,7 +279,7 @@ export const useCreateTask = createMutationHook<
     },
   }),
   mapResponse: mapTask,
-  refetchQueries: [LIST_TASKS, LIST_ALL_TASKS],
+  refetchQueries: [LIST_TASKS, LIST_ALL_TASKS, LIST_MY_TASKS],
 });
 
 export const useUpdateTask = createMutationHook<
@@ -276,13 +303,13 @@ export const useUpdateTask = createMutationHook<
     },
   }),
   mapResponse: mapTask,
-  refetchQueries: [LIST_TASKS, LIST_ALL_TASKS, GET_TASK],
+  refetchQueries: [LIST_TASKS, LIST_ALL_TASKS, LIST_MY_TASKS, GET_TASK],
 });
 
 export const useDeleteTask = createVoidMutationHook<string>({
   mutation: DELETE_TASK,
   mapVariables: (id) => ({ input: { id } }),
-  refetchQueries: [LIST_TASKS, LIST_ALL_TASKS],
+  refetchQueries: [LIST_TASKS, LIST_ALL_TASKS, LIST_MY_TASKS],
 });
 
 export const useReorderTask = createMutationHook<
@@ -296,5 +323,5 @@ export const useReorderTask = createMutationHook<
     input: { id: vars.id, newOrder: vars.newOrder, newStatus: vars.newStatus },
   }),
   mapResponse: mapTask,
-  refetchQueries: [LIST_TASKS, LIST_ALL_TASKS],
+  refetchQueries: [LIST_TASKS, LIST_ALL_TASKS, LIST_MY_TASKS],
 });
