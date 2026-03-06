@@ -248,7 +248,7 @@ export function useUploadMedia() {
     formData.append("projectId", vars.mediaProjectId);
 
     const token = getAuthToken();
-    const res = await fetch(`${MEDIA_API_BASE}/api/media/upload`, {
+    const res = await fetch(`${MEDIA_API_BASE}/upload`, {
       method: "POST",
       body: formData,
       headers: token ? { Authorization: `Bearer ${token}` } : undefined,
