@@ -1,16 +1,14 @@
 import { Link } from "react-router";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import type { Task } from "@/types/task";
 import type { CoreProject } from "@/types/project";
-import type { ModuleWithProject } from "@/hooks/use-modules";
+import type { ProjectProgressData } from "@/hooks/use-dashboard";
 import { BarChart3 } from "lucide-react";
 import styles from "./project-progress.module.css";
 
 interface ProjectProgressProps {
   projects: CoreProject[];
-  tasks: Task[];
-  modules: ModuleWithProject[];
+  progressData: ProjectProgressData[];
 }
 
 interface ProjectStat {
@@ -20,35 +18,25 @@ interface ProjectStat {
   percentage: number;
 }
 
-export function ProjectProgress({ projects, tasks, modules }: ProjectProgressProps) {
-  // Build moduleId → projectId map
-  const moduleToProject = new Map<string, string>();
-  for (const mod of modules) {
-    moduleToProject.set(mod.id, mod.projectId);
-  }
-
-  // Group tasks by project, exclude cancelled
-  const projectTaskCounts = new Map<string, { done: number; total: number }>();
-  for (const task of tasks) {
-    if (task.status === "cancelled") continue;
-    const projectId = moduleToProject.get(task.moduleId);
-    if (!projectId) continue;
-    const counts = projectTaskCounts.get(projectId) ?? { done: 0, total: 0 };
-    counts.total++;
-    if (task.status === "done") counts.done++;
-    projectTaskCounts.set(projectId, counts);
+export function ProjectProgress({ projects, progressData }: ProjectProgressProps) {
+  // Build progress lookup by coreProjectId
+  const progressMap = new Map<string, ProjectProgressData>();
+  for (const p of progressData) {
+    progressMap.set(p.coreProjectId, p);
   }
 
   // Build stats for active projects only
   const activeProjects = projects.filter((p) => p.status === "active");
   const stats: ProjectStat[] = activeProjects
     .map((project) => {
-      const counts = projectTaskCounts.get(project.id) ?? { done: 0, total: 0 };
+      const progress = progressMap.get(project.id);
+      const done = progress?.done ?? 0;
+      const total = progress?.total ?? 0;
       return {
         project,
-        done: counts.done,
-        total: counts.total,
-        percentage: counts.total > 0 ? Math.round((counts.done / counts.total) * 100) : 0,
+        done,
+        total,
+        percentage: total > 0 ? Math.round((done / total) * 100) : 0,
       };
     })
     .sort((a, b) => a.percentage - b.percentage);

@@ -62,19 +62,10 @@ const UPDATE_MODULE = gql`
 `;
 
 const LIST_ALL_MODULES = gql`
+  ${MODULE_FIELDS}
   query ListAllModules($input: listAllModulesInput!) {
     listAllModules(input: $input) {
-      id
-      name
-      projectRef {
-        projectId
-      }
-      project {
-        id
-        coreRef {
-          value
-        }
-      }
+      ...ModuleFields
     }
   }
 `;
@@ -154,7 +145,6 @@ export const useUpdateModule = createMutationHook<
     input: { id: vars.id, name: vars.input.name, description: vars.input.description, picId: vars.input.picId },
   }),
   mapResponse: mapModule,
-  refetchQueries: [LIST_MODULES],
 });
 
 export const useDeleteModule = createVoidMutationHook<string>({
@@ -177,15 +167,8 @@ export interface ModuleWithProject {
   projectId: string;
 }
 
-interface AllModuleResponse {
-  id: string;
-  name: string;
-  projectRef?: { projectId: string } | null;
-  project?: { id: string; coreRef?: { value: string } | null } | null;
-}
-
 export function useAllModules() {
-  const result = useQuery<{ listAllModules: AllModuleResponse[] }>(LIST_ALL_MODULES, {
+  const result = useQuery<{ listAllModules: (ModuleResponse & { project?: { id: string; coreRef?: { value: string } | null } | null })[] }>(LIST_ALL_MODULES, {
     variables: { input: {} },
   });
   return normalizeQueryResult(result, (d) =>

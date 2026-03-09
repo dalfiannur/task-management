@@ -80,7 +80,6 @@ export const useUpdateComment = createMutationHook<
   mutation: UPDATE_COMMENT,
   responseKey: "updateComment",
   mapVariables: ({ taskId: _taskId, ...rest }) => ({ input: rest }),
-  refetchQueries: [LIST_COMMENTS],
 });
 
 export const useDeleteComment = createVoidMutationHook<{

@@ -33,6 +33,7 @@ interface MeResponse {
 export function useMe() {
   const { data, loading, error } = useQuery<MeResponse>(ME_QUERY, {
     client: oidcClient,
+    fetchPolicy: "cache-and-network",
   });
 
   const meData: MeData | null = data?.me

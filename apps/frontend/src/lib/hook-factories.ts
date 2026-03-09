@@ -2,6 +2,9 @@ import type { DocumentNode } from "@apollo/client";
 import type { ApolloClient } from "@apollo/client";
 import { useMutation } from "@/lib/graphql-client";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type MutationUpdateFn = (cache: any, result: any) => void;
+
 // --- Mutation factory ---
 
 interface MutationHookOptions<TInput, TRaw, TMapped> {
@@ -11,6 +14,7 @@ interface MutationHookOptions<TInput, TRaw, TMapped> {
   mapResponse?: (raw: TRaw) => TMapped;
   client?: ApolloClient;
   refetchQueries?: DocumentNode[];
+  update?: MutationUpdateFn;
 }
 
 export function createMutationHook<TInput, TRaw, TMapped = TRaw>(
@@ -23,6 +27,7 @@ export function createMutationHook<TInput, TRaw, TMapped = TRaw>(
     mapResponse,
     client,
     refetchQueries,
+    update,
   } = options;
 
   return function useMutationHook() {
@@ -31,6 +36,7 @@ export function createMutationHook<TInput, TRaw, TMapped = TRaw>(
       {
         ...(client ? { client } : {}),
         ...(refetchQueries ? { refetchQueries } : {}),
+        ...(update ? { update } : {}),
       },
     );
 
@@ -65,12 +71,13 @@ interface VoidMutationHookOptions<TInput> {
   mapVariables?: (input: TInput) => Record<string, unknown>;
   client?: ApolloClient;
   refetchQueries?: DocumentNode[];
+  update?: MutationUpdateFn;
 }
 
 export function createVoidMutationHook<TInput>(
   options: VoidMutationHookOptions<TInput>,
 ) {
-  const { mutation, mapVariables, client, refetchQueries } = options;
+  const { mutation, mapVariables, client, refetchQueries, update } = options;
 
   return function useVoidMutationHook() {
     const [exec, { loading }] = useMutation(
@@ -78,6 +85,7 @@ export function createVoidMutationHook<TInput>(
       {
         ...(client ? { client } : {}),
         ...(refetchQueries ? { refetchQueries } : {}),
+        ...(update ? { update } : {}),
       },
     );
 

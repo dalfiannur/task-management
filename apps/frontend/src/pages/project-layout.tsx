@@ -11,7 +11,7 @@ import {
 } from "@/hooks/use-projects";
 import { useModules } from "@/hooks/use-modules";
 import { useUser } from "@/hooks/use-users";
-import { useAllTasks } from "@/hooks/use-tasks";
+import { useProjectTaskStats } from "@/hooks/use-dashboard";
 import { ModuleForm } from "@/components/modules/module-form";
 import { AssignLeaderDialog } from "@/components/projects/win-project-dialog";
 import { CloseProjectDialog } from "@/components/projects/close-project-dialog";
@@ -89,9 +89,8 @@ export function Component() {
 
   const { data: project, isLoading } = useProject(projectId!);
   const { data: localProject } = useLocalProject(projectId!);
-  const { data: modules } = useModules(projectId);
   const { data: pic } = useUser(project?.ref?.leaderId);
-  const { data: allTasks } = useAllTasks({ projectId });
+  const { data: taskStats } = useProjectTaskStats(projectId);
   const { data: subProjects } = useSubProjects(projectId);
   const { data: localSubProjects } = useLocalSubProjects(projectId);
   const deleteProject = useDeleteProject();
@@ -123,16 +122,10 @@ export function Component() {
   };
   const dotClass = DOT_CLASS[resolvedStatus] ?? DOT_CLASS.pending;
 
-  // Task stats
-  const projectModuleIds = new Set(modules?.map((m) => m.id) ?? []);
-  const projectTasks = (allTasks ?? []).filter((t) =>
-    projectModuleIds.has(t.moduleId),
-  );
-  const totalTasks = projectTasks.length;
-  const doneTasks = projectTasks.filter((t) => t.status === "done").length;
-  const inProgressTasks = projectTasks.filter(
-    (t) => t.status === "in_progress",
-  ).length;
+  // Task stats from lightweight endpoint
+  const totalTasks = taskStats?.totalTasks ?? 0;
+  const doneTasks = taskStats?.doneTasks ?? 0;
+  const inProgressTasks = taskStats?.inProgressTasks ?? 0;
   const completionPct =
     totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
 

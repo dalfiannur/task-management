@@ -186,6 +186,7 @@ export function useTasks(filters: TaskFilters = {}) {
       },
     },
     skip: !filters.moduleId,
+    fetchPolicy: "cache-and-network",
   });
   return normalizeQueryResult(result, (d) => d.listTasks.map(mapTask));
 }
@@ -194,6 +195,7 @@ export function useTask(taskId: string) {
   const result = useQuery<{ getTask: TaskResponse | null }>(GET_TASK, {
     variables: { input: { id: taskId } },
     skip: !taskId,
+    fetchPolicy: "cache-and-network",
   });
   return normalizeQueryResult(result, (d) =>
     d.getTask ? mapTask(d.getTask) : undefined,
@@ -207,6 +209,7 @@ export function useAllTasks(
   const result = useQuery<{ listAllTasks: TaskResponse[] }>(LIST_ALL_TASKS, {
     variables: { input: { projectId: filters.projectId, assigneeId: filters.assigneeId } },
     skip: options?.skip,
+    fetchPolicy: "cache-and-network",
   });
   return normalizeQueryResult(result, (d) => d.listAllTasks.map(mapTask));
 }
@@ -224,6 +227,7 @@ export function useMyTasks(
   const result = useQuery<{ listMyTasks: MyTasksResponse }>(LIST_MY_TASKS, {
     variables: { input: { status: filters.status, priority: filters.priority } },
     skip: options?.skip,
+    fetchPolicy: "cache-and-network",
   });
   return normalizeQueryResult(result, (d) => ({
     tasks: d.listMyTasks.tasks.map(mapTask),
@@ -279,7 +283,7 @@ export const useCreateTask = createMutationHook<
     },
   }),
   mapResponse: mapTask,
-  refetchQueries: [LIST_TASKS, LIST_ALL_TASKS, LIST_MY_TASKS],
+  refetchQueries: [LIST_TASKS],
 });
 
 export const useUpdateTask = createMutationHook<
@@ -303,13 +307,12 @@ export const useUpdateTask = createMutationHook<
     },
   }),
   mapResponse: mapTask,
-  refetchQueries: [LIST_TASKS, LIST_ALL_TASKS, LIST_MY_TASKS, GET_TASK],
 });
 
 export const useDeleteTask = createVoidMutationHook<string>({
   mutation: DELETE_TASK,
   mapVariables: (id) => ({ input: { id } }),
-  refetchQueries: [LIST_TASKS, LIST_ALL_TASKS, LIST_MY_TASKS],
+  refetchQueries: [LIST_TASKS],
 });
 
 export const useReorderTask = createMutationHook<
@@ -323,5 +326,5 @@ export const useReorderTask = createMutationHook<
     input: { id: vars.id, newOrder: vars.newOrder, newStatus: vars.newStatus },
   }),
   mapResponse: mapTask,
-  refetchQueries: [LIST_TASKS, LIST_ALL_TASKS, LIST_MY_TASKS],
+  refetchQueries: [LIST_TASKS],
 });

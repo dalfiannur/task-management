@@ -67,15 +67,33 @@ function createErrorLink() {
   });
 }
 
-function makeClient(uri: string) {
+function makeClient(uri: string, cache?: InMemoryCache) {
   return new ApolloClient({
     link: ApolloLink.from([authLink, createErrorLink(), createHttpLink({ uri })]),
-    cache: new InMemoryCache(),
+    cache: cache ?? new InMemoryCache(),
   });
 }
 
-export const client = makeClient(TASKS_URL);
-export const coreClient = makeClient(CORE_URL);
+const tasksCache = new InMemoryCache({
+  typePolicies: {
+    Task: { keyFields: ["id"] },
+    Module: { keyFields: ["id"] },
+    Label: { keyFields: ["id"] },
+    Comment: { keyFields: ["id"] },
+    Notification: { keyFields: ["id"] },
+    Activity: { keyFields: ["id"] },
+    Project: { keyFields: ["id"] },
+  },
+});
+
+const coreCache = new InMemoryCache({
+  typePolicies: {
+    Project: { keyFields: ["id"] },
+  },
+});
+
+export const client = makeClient(TASKS_URL, tasksCache);
+export const coreClient = makeClient(CORE_URL, coreCache);
 export const oidcClient = makeClient(OIDC_URL);
 export const mediaClient = makeClient(MEDIA_URL);
 function makeSalesClient(uri: string) {

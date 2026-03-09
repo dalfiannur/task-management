@@ -229,7 +229,6 @@ export const useUpdateLocalProject = createMutationHook<
 >({
   mutation: UPDATE_LOCAL_PROJECT,
   responseKey: "updateProject",
-  refetchQueries: [LIST_LOCAL_PROJECTS, GET_LOCAL_PROJECT],
 });
 
 /** Update project on Core Portal (status, winStage, etc.). */
@@ -241,7 +240,6 @@ export const useUpdateCoreProject = createMutationHook<
   mutation: UPDATE_CORE_PROJECT,
   responseKey: "updateProject",
   client: coreClient,
-  refetchQueries: [LIST_CORE_PROJECTS, GET_CORE_PROJECT],
 });
 
 export const useDeleteProject = createVoidMutationHook<string>({

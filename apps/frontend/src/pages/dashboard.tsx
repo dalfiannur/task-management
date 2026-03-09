@@ -1,8 +1,5 @@
-import { useAllTasks, getTodayDeadlines } from "@/hooks/use-tasks";
 import { useProjects } from "@/hooks/use-projects";
-
-import { useMe, useIsManager } from "@/hooks/use-me";
-import { useAllModules } from "@/hooks/use-modules";
+import { useIsManager } from "@/hooks/use-me";
 import { useDashboardStats } from "@/hooks/use-dashboard";
 import { StatCard } from "@/components/dashboard/stat-card";
 import { MyAssignedTasks } from "@/components/dashboard/my-assigned-tasks";
@@ -25,11 +22,8 @@ const STAT_ACCENTS = {
 };
 
 export function Component() {
-  const { data: me } = useMe();
-  const { data: tasks, isLoading: tasksLoading } = useAllTasks();
   const selectedCompanyId = useCompanyStore((s) => s.selectedCompanyId);
   const { data: projects, isLoading: projectsLoading } = useProjects(selectedCompanyId ? { ownerId: selectedCompanyId } : undefined);
-  const { data: modules, isLoading: modulesLoading } = useAllModules();
   const isManager = useIsManager();
 
   // Active projects: proposal or won winStage
@@ -39,7 +33,7 @@ export function Component() {
 
   const { data: stats, isLoading: statsLoading } = useDashboardStats(activeProjectIds);
 
-  const isLoading = tasksLoading || projectsLoading || modulesLoading || statsLoading;
+  const isLoading = projectsLoading || statsLoading;
 
   if (isLoading) {
     return (
@@ -67,17 +61,8 @@ export function Component() {
     );
   }
 
-  const allTasks = tasks ?? [];
   const allProjects = projects ?? [];
-  const allModules = modules ?? [];
   const today = new Date();
-
-  // Filter to tasks from active projects (proposal/won)
-  const activeProjectIdSet = new Set(activeProjectIds);
-  const activeModuleIds = new Set(
-    allModules.filter((m) => activeProjectIdSet.has(m.projectId)).map((m) => m.id),
-  );
-  const activeTasks = allTasks.filter((t) => activeModuleIds.has(t.moduleId));
 
   // Stats from backend (scoped to current user + active projects)
   const totalTasks = stats?.totalTasks ?? 0;
@@ -85,11 +70,11 @@ export function Component() {
   const doneTasks = stats?.doneTasks ?? 0;
   const activeProjectCount = activeProjectIds.length;
 
-  // Derived data
-  const myTasks = me
-    ? activeTasks.filter((t) => t.assigneeIds.includes(me.id))
-    : [];
-  const deadlineTasks = getTodayDeadlines(activeTasks);
+  // Task lists from backend (pre-filtered and sorted)
+  const myTasks = stats?.myTasks ?? [];
+  const deadlineTasks = stats?.deadlineTasks ?? [];
+  const recentTasks = stats?.recentTasks ?? [];
+  const projectProgress = stats?.projectProgress ?? [];
 
   const statCards = [
     {
@@ -162,8 +147,7 @@ export function Component() {
               <div className={styles.mainCol} style={{ animationDelay: "400ms" }}>
                 <ProjectProgress
                   projects={allProjects}
-                  tasks={activeTasks}
-                  modules={allModules}
+                  progressData={projectProgress}
                 />
               </div>
               <div className={styles.sideCol} style={{ animationDelay: "500ms" }}>
@@ -180,7 +164,7 @@ export function Component() {
             </div>
             <div className={styles.contentGrid}>
               <div className={styles.mainCol} style={{ animationDelay: "650ms" }}>
-                <RecentTasks tasks={activeTasks} />
+                <RecentTasks tasks={recentTasks} />
               </div>
             </div>
           </>
@@ -199,12 +183,11 @@ export function Component() {
               <div className={styles.mainCol} style={{ animationDelay: "550ms" }}>
                 <ProjectProgress
                   projects={allProjects}
-                  tasks={activeTasks}
-                  modules={allModules}
+                  progressData={projectProgress}
                 />
               </div>
               <div className={styles.sideCol} style={{ animationDelay: "600ms" }}>
-                <RecentTasks tasks={activeTasks} />
+                <RecentTasks tasks={recentTasks} />
               </div>
             </div>
             <div className={styles.fullWidth} style={{ animationDelay: "650ms" }}>
