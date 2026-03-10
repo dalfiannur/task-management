@@ -12,7 +12,6 @@ import { client } from "@/lib/graphql-client";
 import type { CoreProject } from "@/types/project";
 import { useApproveLead, useDealBrief, useProjectMediaFiles } from "@/hooks/use-leads";
 import { FileText } from "lucide-react";
-import styles from "./approve-lead-dialog.module.css";
 
 interface ApproveLeadDialogProps {
   project: CoreProject | null;
@@ -50,35 +49,35 @@ export function ApproveLeadDialog({
         <DialogHeader>
           <DialogTitle>Approve Lead — {project?.name?.name}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className={styles.form}>
-          <div className={styles.fieldGroup}>
-            <span className={styles.label}>Description / Brief</span>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1.5">
+            <span className="text-sm font-bold tracking-tight text-foreground">Description / Brief</span>
             {briefLoading ? (
-              <p className={styles.hint}>Loading brief...</p>
+              <p className="text-sm leading-4 text-muted-foreground font-mono">Loading brief...</p>
             ) : dealBrief?.briefDescription ? (
               <div
-                className={styles.briefContent}
+                className="p-3 rounded-2xl bg-accent border border-border text-sm leading-relaxed max-h-[200px] overflow-y-auto [&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:mb-2 [&_ol]:mb-2 [&_ul]:pl-5 [&_ol]:pl-5"
                 dangerouslySetInnerHTML={{ __html: dealBrief.briefDescription }}
               />
             ) : (
-              <p className={styles.hint}>No brief provided from Sales Pipeline.</p>
+              <p className="text-sm leading-4 text-muted-foreground font-mono">No brief provided from Sales Pipeline.</p>
             )}
           </div>
 
-          <div className={styles.fieldGroup}>
-            <span className={styles.label}>Attachments</span>
+          <div className="flex flex-col gap-1.5">
+            <span className="text-sm font-bold tracking-tight text-foreground">Attachments</span>
             {mediaLoading ? (
-              <p className={styles.hint}>Loading attachments...</p>
+              <p className="text-sm leading-4 text-muted-foreground font-mono">Loading attachments...</p>
             ) : mediaFiles.length > 0 ? (
-              <ul className={styles.fileList}>
+              <ul className="list-none p-0 m-0 flex flex-col gap-2">
                 {mediaFiles.map((file) => (
-                  <li key={file.id} className={styles.fileItem}>
+                  <li key={file.id} className="flex items-center gap-2 text-muted-foreground">
                     <FileText size={16} />
                     <a
                       href={file.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className={styles.fileLink}
+                      className="text-primary no-underline text-sm hover:underline transition-all duration-300"
                     >
                       {file.fileName}
                     </a>
@@ -86,7 +85,7 @@ export function ApproveLeadDialog({
                 ))}
               </ul>
             ) : (
-              <p className={styles.hint}>No attachments.</p>
+              <p className="text-sm leading-4 text-muted-foreground font-mono">No attachments.</p>
             )}
           </div>
 

@@ -13,7 +13,6 @@ import { UserCombobox } from "@/components/shared/user-combobox";
 import { useCreateModule, useUpdateModule, useModules } from "@/hooks/use-modules";
 import { MODULE_COLORS } from "./module-section";
 import type { Module } from "@/types/task";
-import styles from "./module-form.module.css";
 
 interface ModuleFormProps {
   open: boolean;
@@ -73,17 +72,17 @@ export function ModuleForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={styles.dialogContent}>
+      <DialogContent className="max-w-[32rem] p-0 overflow-hidden">
         {/* Color accent strip */}
         <div
-          className={styles.accentStrip}
+          className="h-1 w-full"
           style={{ background: `linear-gradient(90deg, ${accentColor}, ${accentColor}44)` }}
         />
 
         <form onSubmit={handleSubmit} data-module-form>
-          <div className={styles.formBody}>
-            <DialogHeader className={styles.header}>
-              <DialogTitle className={styles.headerTitle}>
+          <div className="p-5 pb-0">
+            <DialogHeader className="mb-4">
+              <DialogTitle className="font-mono text-sm leading-4 font-semibold uppercase tracking-widest text-muted-foreground">
                 {isEditing ? "Edit Module" : "New Module"}
               </DialogTitle>
               <DialogDescription className="sr-only">
@@ -93,25 +92,25 @@ export function ModuleForm({
               </DialogDescription>
             </DialogHeader>
 
-            <div className={styles.fields}>
+            <div className="flex flex-col gap-4">
               {/* Title input with accent bar */}
-              <div className={styles.titleRow}>
+              <div className="flex gap-2.5">
                 <div
-                  className={styles.accentBar}
+                  className="w-1 shrink-0 rounded-full self-stretch transition-all duration-300"
                   style={{ backgroundColor: accentColor }}
                 />
                 <input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Module name..."
-                  className={styles.titleInput}
+                  className="flex-1 text-lg leading-6 font-bold tracking-tight bg-transparent border-0 outline-none text-foreground placeholder:font-normal placeholder:text-[0.9375rem] placeholder:leading-[1.375rem] placeholder:text-muted-foreground"
                   autoFocus
                 />
               </div>
 
               {/* Description */}
-              <div className={styles.descriptionField}>
-                <p className={styles.descriptionLabel}>
+              <div className="flex flex-col gap-1.5">
+                <p className="font-mono text-sm font-semibold uppercase tracking-widest text-muted-foreground">
                   Description
                 </p>
                 <Textarea
@@ -119,17 +118,17 @@ export function ModuleForm({
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Describe what this module covers..."
                   maxLength={500}
-                  className={styles.descriptionTextarea}
+                  className="resize-y min-h-16 max-h-40 text-sm leading-[1.375rem]"
                   rows={3}
                 />
-                <span className={styles.charCount}>
+                <span className="font-mono text-sm text-muted-foreground text-right">
                   {description.length}/500
                 </span>
               </div>
 
               {/* Person In Charge */}
-              <div className={styles.descriptionField}>
-                <p className={styles.descriptionLabel}>
+              <div className="flex flex-col gap-1.5">
+                <p className="font-mono text-sm font-semibold uppercase tracking-widest text-muted-foreground">
                   Person In Charge
                 </p>
                 <UserCombobox value={picId} onChange={setPicId} />
@@ -138,17 +137,17 @@ export function ModuleForm({
           </div>
 
           {/* Footer */}
-          <div className={styles.footer}>
-            <span className={styles.shortcutHint}>
-              <kbd className={styles.kbd}>
+          <div className="flex items-center justify-between py-3.5 px-5 mt-1.5 border-t border-border">
+            <span className="font-mono text-sm text-muted-foreground">
+              <kbd className="py-px px-[0.3125rem] rounded-xl bg-accent text-sm font-mono">
                 ⌘
               </kbd>{" "}
-              <kbd className={styles.kbd}>
+              <kbd className="py-px px-[0.3125rem] rounded-xl bg-accent text-sm font-mono">
                 ↵
               </kbd>{" "}
               to submit
             </span>
-            <div className={styles.footerActions}>
+            <div className="flex items-center gap-1.5">
               <Button
                 type="button"
                 variant="ghost"

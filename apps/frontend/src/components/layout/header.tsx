@@ -9,10 +9,11 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { LayoutList, LayoutGrid, Plus, Search } from "lucide-react";
+import { LayoutList, LayoutGrid, Plus, Search, Sun, Moon } from "lucide-react";
 import { useUIStore } from "@/stores/ui-store";
 import { Link, useParams, useSearchParams } from "react-router";
 import { useState } from "react";
+import { useTheme } from "next-themes";
 import { TaskForm } from "@/components/tasks/task-form";
 import { useProject, getProjectDisplayName } from "@/hooks/use-projects";
 import { useModule } from "@/hooks/use-modules";
@@ -23,6 +24,7 @@ import styles from "./header.module.css";
 
 export function Header() {
   const { viewMode, setViewMode } = useUIStore();
+  const { theme, setTheme } = useTheme();
   const [, setSearchParams] = useSearchParams();
   const params = useParams();
   const projectId = (params as { projectId?: string }).projectId;
@@ -102,6 +104,16 @@ export function Header() {
             />
           </div>
         </form>
+
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          type="button"
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          className="size-7 shrink-0"
+        >
+          {theme === "dark" ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
+        </Button>
 
         <NotificationBell />
 

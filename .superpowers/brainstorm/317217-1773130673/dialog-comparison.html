@@ -1,0 +1,64 @@
+<h2>Dialog Glassmorphism Refactor</h2>
+<p class="subtitle">Current solid dialog vs glassmorphism-styled dialog over your gradient background</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">Current Dialog Style</div>
+    <div class="mockup-body" style="background: linear-gradient(135deg, #6366f1, #a855f7, #ec4899); padding: 40px 20px; min-height: 350px; display: flex; align-items: center; justify-content: center; position: relative;">
+      <!-- Overlay -->
+      <div style="position: absolute; inset: 0; background: rgba(0,0,0,0.5);"></div>
+      <!-- Dialog -->
+      <div style="position: relative; z-index: 1; background: #1a1a2e; border: 1px solid #2a2a3e; border-radius: 12px; padding: 20px; width: 90%; max-width: 320px; box-shadow: 0 10px 15px rgba(0,0,0,0.1);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <span style="color: #fff; font-weight: 600; font-size: 15px;">Delete Project</span>
+          <span style="color: rgba(255,255,255,0.5); cursor: pointer; font-size: 18px;">&times;</span>
+        </div>
+        <p style="color: rgba(255,255,255,0.6); font-size: 13px; margin-bottom: 16px; line-height: 1.4;">Are you sure you want to delete this project? This action cannot be undone.</p>
+        <div style="display: flex; gap: 8px; justify-content: flex-end;">
+          <button style="padding: 8px 16px; border-radius: 8px; border: 1px solid #2a2a3e; background: transparent; color: rgba(255,255,255,0.7); font-size: 13px; cursor: pointer;">Cancel</button>
+          <button style="padding: 8px 16px; border-radius: 8px; border: none; background: #ef4444; color: white; font-size: 13px; cursor: pointer;">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mockup">
+    <div class="mockup-header">Glassmorphism Dialog</div>
+    <div class="mockup-body" style="background: linear-gradient(135deg, #6366f1, #a855f7, #ec4899); padding: 40px 20px; min-height: 350px; display: flex; align-items: center; justify-content: center; position: relative;">
+      <!-- Overlay with blur -->
+      <div style="position: absolute; inset: 0; background: rgba(0,0,0,0.3); backdrop-filter: blur(4px);"></div>
+      <!-- Dialog -->
+      <div style="position: relative; z-index: 1; background: rgba(255,255,255,0.12); backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); border: 1px solid rgba(255,255,255,0.25); border-radius: 20px; padding: 24px; width: 90%; max-width: 320px; box-shadow: 0 8px 32px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.15);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+          <span style="color: #fff; font-weight: 700; font-size: 15px; letter-spacing: -0.01em;">Delete Project</span>
+          <span style="color: rgba(255,255,255,0.5); cursor: pointer; font-size: 18px; transition: all 0.3s;">&times;</span>
+        </div>
+        <p style="color: rgba(255,255,255,0.7); font-size: 13px; margin-bottom: 18px; line-height: 1.5;">Are you sure you want to delete this project? This action cannot be undone.</p>
+        <div style="display: flex; gap: 8px; justify-content: flex-end;">
+          <button style="padding: 8px 18px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.1); backdrop-filter: blur(12px); color: white; font-size: 13px; cursor: pointer; transition: all 0.3s;">Cancel</button>
+          <button style="padding: 8px 18px; border-radius: 12px; border: 1px solid rgba(239,68,68,0.3); background: rgba(239,68,68,0.7); backdrop-filter: blur(12px); color: white; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.3s;">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3 style="margin-top: 32px;">What's Changing</h3>
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 12px;">
+  <div style="padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03);">
+    <p class="label">Overlay</p>
+    <p style="font-size: 13px; opacity: 0.7;">Black 50% → Black 30% + <code>backdrop-blur(4px)</code></p>
+  </div>
+  <div style="padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03);">
+    <p class="label">Content Panel</p>
+    <p style="font-size: 13px; opacity: 0.7;">Solid <code>var(--background)</code> → <code>white/12 + backdrop-blur-xl</code></p>
+  </div>
+  <div style="padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03);">
+    <p class="label">Border</p>
+    <p style="font-size: 13px; opacity: 0.7;">Solid <code>var(--border)</code> → <code>white/25</code> + inset highlight</p>
+  </div>
+  <div style="padding: 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.03);">
+    <p class="label">Border Radius</p>
+    <p style="font-size: 13px; opacity: 0.7;"><code>rounded-lg</code> → <code>rounded-2xl</code> for soft organic feel</p>
+  </div>
+</div>

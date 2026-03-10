@@ -14,7 +14,6 @@ import { useResolveMediaProjectId } from "@/hooks/use-media-project";
 import { isImage, formatFileSize, type MediaFile } from "@/types/media";
 import type { CoreProject } from "@/types/project";
 import { FileText, ImageIcon, File, Plus, X } from "lucide-react";
-import styles from "./close-project-dialog.module.css";
 
 interface CloseProjectDialogProps {
   project: CoreProject;
@@ -23,10 +22,10 @@ interface CloseProjectDialogProps {
 }
 
 function AttachmentIcon({ mimeType }: { mimeType: string }) {
-  if (isImage(mimeType)) return <ImageIcon className={styles.attachmentIconPurple} />;
+  if (isImage(mimeType)) return <ImageIcon className="size-3.5 text-purple-400" />;
   if (mimeType === "application/pdf")
-    return <FileText className={styles.attachmentIconRed} />;
-  return <File className={styles.attachmentIconDefault} />;
+    return <FileText className="size-3.5 text-red-400" />;
+  return <File className="size-3.5 text-muted-foreground" />;
 }
 
 export function CloseProjectDialog({
@@ -75,38 +74,38 @@ export function CloseProjectDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className={styles.dialogContent}>
+      <DialogContent className="max-w-[32rem]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Close Project</DialogTitle>
           </DialogHeader>
-          <div className={styles.fieldGroup}>
-            <p className={styles.warningText}>
+          <div className="flex flex-col gap-3 py-3.5">
+            <p className="text-sm leading-[1.375rem] text-muted-foreground">
               This will permanently close the project. Closed projects cannot be
               reopened, and no new modules or tasks can be created.
             </p>
-            <div className={styles.field}>
+            <div className="flex flex-col gap-1.5">
               <Label>Report Files</Label>
               {reportFiles.map((file) => (
-                <div key={file.id} className={styles.attachmentRow}>
+                <div key={file.id} className="group flex items-center gap-1.5">
                   <AttachmentIcon mimeType={file.mediaFileInfo.mimeType} />
                   <span
-                    className={styles.fileName}
+                    className="text-sm leading-5 truncate flex-1"
                     title={file.mediaFileInfo.originalFileName}
                   >
                     {file.mediaFileInfo.originalFileName}
                   </span>
-                  <span className={styles.fileSize}>
+                  <span className="font-mono text-sm text-muted-foreground shrink-0">
                     {formatFileSize(file.mediaFileInfo.size)}
                   </span>
                   <Button
                     type="button"
                     size="icon"
                     variant="ghost"
-                    className={styles.removeButton}
+                    className="size-[1.125rem] opacity-0 group-hover:opacity-100 shrink-0 transition-all duration-300 active:scale-95"
                     onClick={() => handleRemoveFile(file.id)}
                   >
-                    <X className={styles.removeIcon} />
+                    <X className="size-3" />
                   </Button>
                 </div>
               ))}
@@ -114,17 +113,17 @@ export function CloseProjectDialog({
                 type="button"
                 variant="ghost"
                 size="sm"
-                className={styles.attachButton}
+                className="h-6 text-sm leading-4 w-full justify-start text-muted-foreground transition-all duration-300 active:scale-95"
                 onClick={() => inputRef.current?.click()}
               >
-                <Plus className={styles.attachIcon} />
+                <Plus className="size-3 mr-1" />
                 Attach report file
               </Button>
               <input
                 ref={inputRef}
                 type="file"
                 multiple
-                className={styles.hiddenInput}
+                className="hidden"
                 onChange={handleFileSelect}
               />
             </div>
@@ -139,7 +138,7 @@ export function CloseProjectDialog({
             </Button>
             <Button
               type="submit"
-              className={styles.closeButton}
+              className="bg-purple-500/80 backdrop-blur-md text-white border border-purple-400/40 transition-all duration-300 active:scale-95 hover:bg-purple-600/90 hover:shadow-[0_0_20px_rgb(124_58_237/0.3)]"
               disabled={updateCoreProject.isLoading}
             >
               {updateCoreProject.isLoading ? "Closing..." : "Close Project"}

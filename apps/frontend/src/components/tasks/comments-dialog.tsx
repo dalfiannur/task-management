@@ -7,7 +7,6 @@ import {
 } from "@/components/ui/dialog";
 import { TaskActivityTimeline } from "./task-activity-timeline";
 import { AddCommentForm } from "./task-comments";
-import styles from "./comments-dialog.module.css";
 
 interface CommentsDialogProps {
   open: boolean;
@@ -26,18 +25,18 @@ export function CommentsDialog({
 }: CommentsDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={styles.dialogContent}>
+      <DialogContent className="max-w-[40rem] max-h-[80vh] flex flex-col overflow-hidden p-6 gap-4 rounded-2xl">
         <DialogHeader>
           <DialogTitle>{taskTitle ? `Comments — ${taskTitle}` : "Comments"}</DialogTitle>
           <DialogDescription className="sr-only">
             Comments and activity for {taskTitle ?? "this task"}
           </DialogDescription>
         </DialogHeader>
-        <div className={styles.body}>
-          <div className={styles.timelineScroll}>
+        <div className="flex flex-col flex-1 min-h-0 gap-4">
+          <div className="flex-1 overflow-y-auto pr-1">
             <TaskActivityTimeline taskId={taskId} projectId={projectId} />
           </div>
-          <div className={styles.inputArea}>
+          <div className="shrink-0 border-t border-border pt-4">
             <AddCommentForm taskId={taskId} />
           </div>
         </div>

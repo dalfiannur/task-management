@@ -11,7 +11,6 @@ import { Label } from "@/components/ui/label";
 import { UserCombobox } from "@/components/shared/user-combobox";
 import { useUpdateCoreProject, useUpdateLocalProject } from "@/hooks/use-projects";
 import type { CoreProject } from "@/types/project";
-import styles from "./win-project-dialog.module.css";
 
 interface AssignLeaderDialogProps {
   project: CoreProject;
@@ -47,13 +46,13 @@ export function AssignLeaderDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={styles.dialogContent}>
+      <DialogContent className="max-w-[32rem]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Assign Project Leader — {project.name?.name}</DialogTitle>
           </DialogHeader>
-          <div className={styles.fieldGroup}>
-            <div className={styles.field}>
+          <div className="flex flex-col gap-3 py-3.5">
+            <div className="flex flex-col gap-1.5">
               <Label>Project Leader</Label>
               <UserCombobox value={projectLeaderId} onChange={setProjectLeaderId} />
             </div>

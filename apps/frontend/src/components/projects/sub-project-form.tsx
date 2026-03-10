@@ -22,7 +22,6 @@ import { UserCombobox } from "@/components/shared/user-combobox";
 import { DatePickerField } from "@/components/shared/date-picker-field";
 import { useCreateSubProject } from "@/hooks/use-projects";
 import { useModules } from "@/hooks/use-modules";
-import styles from "./sub-project-form.module.css";
 
 interface SubProjectFormProps {
   open: boolean;
@@ -76,13 +75,13 @@ export function SubProjectForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={styles.dialogContent}>
+      <DialogContent className="max-w-[36rem]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Create Sub-Project</DialogTitle>
           </DialogHeader>
-          <div className={styles.fieldGroup}>
-            <div className={styles.field}>
+          <div className="flex flex-col gap-3 py-3.5">
+            <div className="flex flex-col gap-1.5">
               <Label htmlFor="sub-project-name">Name</Label>
               <Input
                 id="sub-project-name"
@@ -92,7 +91,7 @@ export function SubProjectForm({
                 autoFocus
               />
             </div>
-            <div className={styles.field}>
+            <div className="flex flex-col gap-1.5">
               <Label>Description</Label>
               <Textarea
                 value={description}
@@ -100,12 +99,12 @@ export function SubProjectForm({
                 placeholder="Describe the sub-project..."
               />
             </div>
-            <div className={styles.field}>
+            <div className="flex flex-col gap-1.5">
               <Label>Project Leader</Label>
               <UserCombobox value={projectLeaderId} onChange={setProjectLeaderId} />
             </div>
             {parentModules && parentModules.length > 0 && (
-              <div className={styles.field}>
+              <div className="flex flex-col gap-1.5">
                 <Label>Linked Module</Label>
                 <Select
                   value={moduleId ?? "__none__"}
@@ -125,12 +124,12 @@ export function SubProjectForm({
                 </Select>
               </div>
             )}
-            <div className={styles.row}>
-              <div className={styles.field}>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
                 <Label>Start Date</Label>
                 <DatePickerField value={startDate} onChange={setStartDate} />
               </div>
-              <div className={styles.field}>
+              <div className="flex flex-col gap-1.5">
                 <Label>End Date</Label>
                 <DatePickerField value={endDate} onChange={setEndDate} />
               </div>

@@ -27,7 +27,8 @@
       "mcp__playwright__browser_wait_for",
       "mcp__playwright__browser_fill_form",
       "mcp__playwright__browser_click",
-      "mcp__playwright__browser_evaluate"
+      "mcp__playwright__browser_evaluate",
+      "Bash(find /home/qyubit/Workspace/qyubit/sedjiwa-portal/task-management/apps/frontend -type f -name \"*dialog*\" -o -name \"*modal*\" 2>/dev/null | head -20)"
     ]
   }
 }

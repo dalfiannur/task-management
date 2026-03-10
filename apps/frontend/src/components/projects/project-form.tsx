@@ -17,7 +17,6 @@ import { DatePickerField } from "@/components/shared/date-picker-field";
 import { useCreateProject } from "@/hooks/use-projects";
 import { useCompanyStore } from "@/stores/company-store";
 import { coreClient } from "@/lib/graphql-client";
-import styles from "./project-form.module.css";
 
 interface ProjectFormProps {
   open: boolean;
@@ -66,13 +65,13 @@ export function ProjectForm({ open, onOpenChange }: ProjectFormProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={styles.dialogContent}>
+      <DialogContent className="max-w-[36rem]">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
             <DialogTitle>Create Project</DialogTitle>
           </DialogHeader>
-          <div className={styles.fieldGroup}>
-            <div className={styles.field}>
+          <div className="flex flex-col gap-3 py-3.5">
+            <div className="flex flex-col gap-1.5">
               <Label htmlFor="project-name">Name</Label>
               <Input
                 id="project-name"
@@ -82,7 +81,7 @@ export function ProjectForm({ open, onOpenChange }: ProjectFormProps) {
                 autoFocus
               />
             </div>
-            <div className={styles.field}>
+            <div className="flex flex-col gap-1.5">
               <Label>Description</Label>
               <Textarea
                 value={description}
@@ -90,16 +89,16 @@ export function ProjectForm({ open, onOpenChange }: ProjectFormProps) {
                 placeholder="Describe the project..."
               />
             </div>
-            <div className={styles.field}>
+            <div className="flex flex-col gap-1.5">
               <Label>Project Leader</Label>
               <UserCombobox value={projectLeaderId} onChange={setProjectLeaderId} />
             </div>
-            <div className={styles.row}>
-              <div className={styles.field}>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
                 <Label>Start Date</Label>
                 <DatePickerField value={startDate} onChange={setStartDate} />
               </div>
-              <div className={styles.field}>
+              <div className="flex flex-col gap-1.5">
                 <Label>End Date</Label>
                 <DatePickerField value={endDate} onChange={setEndDate} />
               </div>

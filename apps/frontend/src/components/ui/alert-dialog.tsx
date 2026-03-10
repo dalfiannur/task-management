@@ -3,7 +3,6 @@ import { AlertDialog as AlertDialogPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import styles from "./alert-dialog.module.css"
 
 function AlertDialog({
   ...props
@@ -34,7 +33,12 @@ function AlertDialogOverlay({
   return (
     <AlertDialogPrimitive.Overlay
       data-slot="alert-dialog-overlay"
-      className={cn(styles.overlay, className)}
+      className={cn(
+        "fixed inset-0 z-50 bg-black/20 backdrop-blur-sm dark:bg-black/50",
+        "data-[state=open]:[animation:fade-in_150ms_ease-out]",
+        "data-[state=closed]:[animation:fade-out_150ms_ease-in]",
+        className,
+      )}
       {...props}
     />
   )
@@ -50,12 +54,27 @@ function AlertDialogContent({
   return (
     <AlertDialogPortal>
       <AlertDialogOverlay />
-      <AlertDialogPrimitive.Content
-        data-slot="alert-dialog-content"
-        data-size={size}
-        className={cn(styles.content, className)}
-        {...props}
-      />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <AlertDialogPrimitive.Content
+          data-slot="alert-dialog-content"
+          data-size={size}
+          className={cn(
+            // Layout
+            "relative w-full max-w-[calc(100%-2rem)] sm:max-w-lg",
+            "grid gap-3.5 p-5 text-foreground outline-none",
+            // Solid background + frosted border
+            "bg-white border border-black/[0.08] shadow-2xl rounded-2xl",
+            "dark:bg-gray-950 dark:border-white/[0.12] dark:shadow-black/80",
+            // Animation
+            "data-[state=open]:[animation:fade-in_200ms_ease-out,zoom-in_200ms_ease-out]",
+            "data-[state=closed]:[animation:fade-out_150ms_ease-in,zoom-out_150ms_ease-in]",
+            // Size variant
+            "data-[size=sm]:max-w-xs",
+            className,
+          )}
+          {...props}
+        />
+      </div>
     </AlertDialogPortal>
   )
 }
@@ -71,9 +90,9 @@ function AlertDialogHeader({
     <div
       data-slot="alert-dialog-header"
       className={cn(
-        styles.header,
-        size !== "sm" && styles.headerDefault,
-        className
+        "flex flex-col gap-1.5 text-center",
+        size !== "sm" && "sm:text-left sm:place-items-start",
+        className,
       )}
       {...props}
     />
@@ -91,8 +110,10 @@ function AlertDialogFooter({
     <div
       data-slot="alert-dialog-footer"
       className={cn(
-        size === "sm" ? styles.footerSm : styles.footer,
-        className
+        size === "sm"
+          ? "grid grid-cols-2 gap-2"
+          : "flex flex-col-reverse gap-2 sm:flex-row sm:justify-end",
+        className,
       )}
       {...props}
     />
@@ -106,7 +127,7 @@ function AlertDialogTitle({
   return (
     <AlertDialogPrimitive.Title
       data-slot="alert-dialog-title"
-      className={cn(styles.title, className)}
+      className={cn("text-base leading-5 font-bold tracking-tight text-foreground", className)}
       {...props}
     />
   )
@@ -119,7 +140,7 @@ function AlertDialogDescription({
   return (
     <AlertDialogPrimitive.Description
       data-slot="alert-dialog-description"
-      className={cn(styles.description, className)}
+      className={cn("text-sm leading-5 text-muted-foreground", className)}
       {...props}
     />
   )
@@ -136,9 +157,12 @@ function AlertDialogMedia({
     <div
       data-slot="alert-dialog-media"
       className={cn(
-        styles.media,
-        size !== "sm" && styles.mediaDefault,
-        className
+        // Subtle nested surface
+        "bg-accent border border-border",
+        "w-14 h-14 inline-flex items-center justify-center rounded-2xl mb-1.5",
+        "[&_svg:not([class*=size-])]:size-8",
+        size !== "sm" && "sm:row-span-2",
+        className,
       )}
       {...props}
     />

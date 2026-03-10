@@ -6,6 +6,8 @@
 @import "./styles/animations.css" layer(base);
 @import "./styles/status-colors.css" layer(base);
 
+@custom-variant dark (&:is(.dark *));
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

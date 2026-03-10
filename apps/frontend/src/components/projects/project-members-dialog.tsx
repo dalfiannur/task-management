@@ -17,7 +17,6 @@ import { useMe } from "@/hooks/use-me";
 import { useUser } from "@/hooks/use-users";
 import { X, UserPlus } from "lucide-react";
 import { getInitials } from "@/lib/utils";
-import styles from "./project-members-dialog.module.css";
 
 interface ProjectMembersDialogProps {
   open: boolean;
@@ -43,17 +42,17 @@ function MemberRow({
   const displayName = user?.name ?? userId;
 
   return (
-    <div className={styles.memberRow}>
-      <div className={styles.memberInfo}>
-        <Avatar className={styles.memberAvatar}>
+    <div className="flex items-center justify-between py-[0.3125rem] px-1.5 rounded-2xl transition-all duration-300 hover:bg-accent">
+      <div className="flex items-center gap-1.5">
+        <Avatar className="size-6">
           <AvatarImage src={user?.avatarUrl} />
-          <AvatarFallback className={styles.memberFallback}>
+          <AvatarFallback className="text-[0.5625rem]">
             {getInitials(displayName)}
           </AvatarFallback>
         </Avatar>
-        <span className={styles.memberName}>{displayName}</span>
+        <span className="text-sm leading-5">{displayName}</span>
         {isLeader && (
-          <span className={styles.picBadge}>
+          <span className="font-mono text-sm font-medium uppercase tracking-widest text-muted-foreground bg-accent px-1 rounded-sm">
             Leader
           </span>
         )}
@@ -62,11 +61,11 @@ function MemberRow({
         <Button
           variant="ghost"
           size="icon"
-          className={styles.removeButton}
+          className="size-6 text-muted-foreground hover:text-[var(--destructive)] transition-all duration-300 active:scale-95"
           onClick={onRemove}
           disabled={isRemoving}
         >
-          <X className={styles.removeIcon} />
+          <X className="size-3.5" />
         </Button>
       )}
     </div>
@@ -104,13 +103,13 @@ export function ProjectMembersDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={styles.dialogContent}>
+      <DialogContent className="max-w-[28rem]">
         <DialogHeader>
           <DialogTitle>Project Members</DialogTitle>
         </DialogHeader>
-        <div className={styles.body}>
+        <div className="flex flex-col gap-3">
           {/* Member list */}
-          <div className={styles.memberList}>
+          <div className="flex flex-col gap-1.5 max-h-56 overflow-y-auto">
             {members?.map((member) => (
               <MemberRow
                 key={member.id}
@@ -122,7 +121,7 @@ export function ProjectMembersDialog({
               />
             ))}
             {(!members || members.length === 0) && (
-              <p className={styles.emptyMessage}>
+              <p className="text-sm leading-5 text-muted-foreground text-center py-3">
                 No members yet
               </p>
             )}
@@ -130,8 +129,8 @@ export function ProjectMembersDialog({
 
           {/* Add member */}
           {canManage && (
-            <div className={styles.addSection}>
-              <div className={styles.addCombobox}>
+            <div className="flex items-end gap-1.5 pt-1.5 border-t border-border">
+              <div className="flex-1">
                 <UserCombobox
                   value={selectedUserId}
                   onChange={setSelectedUserId}
@@ -146,7 +145,7 @@ export function ProjectMembersDialog({
                   addMember.isLoading
                 }
               >
-                <UserPlus className={styles.addIcon} />
+                <UserPlus className="size-3.5 mr-[0.3125rem]" />
                 Add
               </Button>
             </div>

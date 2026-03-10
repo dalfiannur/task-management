@@ -3,7 +3,6 @@ import { XIcon } from "lucide-react"
 import { Dialog as SheetPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
-import styles from "./sheet.module.css"
 
 function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
   return <SheetPrimitive.Root data-slot="sheet" {...props} />
@@ -34,7 +33,12 @@ function SheetOverlay({
   return (
     <SheetPrimitive.Overlay
       data-slot="sheet-overlay"
-      className={cn(styles.overlay, className)}
+      className={cn(
+        "fixed inset-0 z-50 bg-black/20 backdrop-blur-sm dark:bg-black/50",
+        "data-[state=open]:[animation:fade-in_150ms_ease-out]",
+        "data-[state=closed]:[animation:fade-out_150ms_ease-in]",
+        className,
+      )}
       {...props}
     />
   )
@@ -56,14 +60,51 @@ function SheetContent({
       <SheetPrimitive.Content
         data-slot="sheet-content"
         data-side={side}
-        className={cn(styles.content, className)}
+        className={cn(
+          // Base
+          "fixed z-50 flex flex-col gap-3",
+          // Solid background
+          "bg-white shadow-xl",
+          "dark:bg-gray-950 dark:shadow-black/60",
+          // Side: right
+          "data-[side=right]:inset-y-0 data-[side=right]:right-0 data-[side=right]:h-full data-[side=right]:w-3/4 data-[side=right]:sm:max-w-sm",
+          "data-[side=right]:border-l data-[side=right]:border-black/[0.08] data-[side=right]:dark:border-white/[0.12]",
+          "data-[side=right]:data-[state=open]:[animation:slide-in-from-right_500ms_ease-in-out]",
+          "data-[side=right]:data-[state=closed]:[animation:slide-out-to-right_300ms_ease-in-out]",
+          // Side: left
+          "data-[side=left]:inset-y-0 data-[side=left]:left-0 data-[side=left]:h-full data-[side=left]:w-3/4 data-[side=left]:sm:max-w-sm",
+          "data-[side=left]:border-r data-[side=left]:border-black/[0.08] data-[side=left]:dark:border-white/[0.12]",
+          "data-[side=left]:data-[state=open]:[animation:slide-in-from-left_500ms_ease-in-out]",
+          "data-[side=left]:data-[state=closed]:[animation:slide-out-to-left_300ms_ease-in-out]",
+          // Side: top
+          "data-[side=top]:inset-x-0 data-[side=top]:top-0 data-[side=top]:h-auto",
+          "data-[side=top]:border-b data-[side=top]:border-black/[0.08] data-[side=top]:dark:border-white/[0.12]",
+          "data-[side=top]:data-[state=open]:[animation:slide-in-from-top_500ms_ease-in-out]",
+          "data-[side=top]:data-[state=closed]:[animation:slide-out-to-top_300ms_ease-in-out]",
+          // Side: bottom
+          "data-[side=bottom]:inset-x-0 data-[side=bottom]:bottom-0 data-[side=bottom]:h-auto",
+          "data-[side=bottom]:border-t data-[side=bottom]:border-black/[0.08] data-[side=bottom]:dark:border-white/[0.12]",
+          "data-[side=bottom]:data-[state=open]:[animation:slide-in-from-bottom_500ms_ease-in-out]",
+          "data-[side=bottom]:data-[state=closed]:[animation:slide-out-to-bottom_300ms_ease-in-out]",
+          className,
+        )}
         {...props}
       >
         {children}
         {showCloseButton && (
-          <SheetPrimitive.Close className={styles.closeButton}>
-            <XIcon className={styles.closeIcon} />
-            <span className={styles.srOnly}>Close</span>
+          <SheetPrimitive.Close
+            className={cn(
+              "absolute top-3 right-3 rounded-lg p-1 border-none",
+              "text-muted-foreground cursor-pointer",
+              // Interactive standards
+              "transition-all duration-200 active:scale-95",
+              "hover:bg-accent hover:text-foreground",
+              "focus:outline-none focus:ring-2 focus:ring-ring/40",
+              "disabled:pointer-events-none",
+            )}
+          >
+            <XIcon className="size-4 pointer-events-none shrink-0" />
+            <span className="sr-only">Close</span>
           </SheetPrimitive.Close>
         )}
       </SheetPrimitive.Content>
@@ -75,7 +116,7 @@ function SheetHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="sheet-header"
-      className={cn(styles.header, className)}
+      className={cn("flex flex-col gap-1 p-3", className)}
       {...props}
     />
   )
@@ -85,7 +126,7 @@ function SheetFooter({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="sheet-footer"
-      className={cn(styles.footer, className)}
+      className={cn("mt-auto flex flex-col gap-1.5 p-3", className)}
       {...props}
     />
   )
@@ -98,7 +139,7 @@ function SheetTitle({
   return (
     <SheetPrimitive.Title
       data-slot="sheet-title"
-      className={cn(styles.title, className)}
+      className={cn("font-bold tracking-tight text-foreground", className)}
       {...props}
     />
   )
@@ -111,7 +152,7 @@ function SheetDescription({
   return (
     <SheetPrimitive.Description
       data-slot="sheet-description"
-      className={cn(styles.description, className)}
+      className={cn("text-sm leading-5 text-muted-foreground", className)}
       {...props}
     />
   )

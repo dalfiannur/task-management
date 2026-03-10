@@ -56,7 +56,6 @@ import { Tag } from "lucide-react";
 import { LabelCombobox } from "@/components/shared/label-combobox";
 import { PropertyRow } from "@/components/shared/property-row";
 import { DatePickerField } from "@/components/shared/date-picker-field";
-import styles from "./task-form.module.css";
 
 interface TaskFormProps {
   open: boolean;
@@ -67,18 +66,18 @@ interface TaskFormProps {
 }
 
 const STATUS_DOT_COLORS: Record<TaskStatus, string> = {
-  todo: styles.dotTodo,
-  in_progress: styles.dotInProgress,
-  done: styles.dotDone,
-  cancelled: styles.dotCancelled,
+  todo: "bg-blue-400",
+  in_progress: "bg-amber-400",
+  done: "bg-emerald-400",
+  cancelled: "bg-red-400",
 };
 
 const PRIORITY_DOT_COLORS: Record<TaskPriority, string> = {
-  none: styles.dotPriorityNone,
-  low: styles.dotPriorityLow,
-  medium: styles.dotPriorityMedium,
-  high: styles.dotPriorityHigh,
-  urgent: styles.dotPriorityUrgent,
+  none: "bg-gray-300",
+  low: "bg-blue-400",
+  medium: "bg-amber-400",
+  high: "bg-orange-500",
+  urgent: "bg-red-500",
 };
 
 export function TaskForm({ open, onOpenChange, task, moduleId, projectId }: TaskFormProps) {
@@ -165,13 +164,13 @@ export function TaskForm({ open, onOpenChange, task, moduleId, projectId }: Task
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={styles.dialogContent}>
+      <DialogContent className="max-w-[72rem] max-h-[85vh] overflow-y-auto p-0">
         <form onSubmit={handleSubmit} data-task-form>
-          <div className={styles.formLayout}>
+          <div className="flex flex-col sm:flex-row">
             {/* Left panel -- main content */}
-            <div className={styles.leftPanel}>
-              <DialogHeader className={styles.headerMargin}>
-                <DialogTitle className={styles.headerTitle}>
+            <div className="flex-1 p-5 min-w-0 sm:border-r sm:border-border">
+              <DialogHeader className="mb-4">
+                <DialogTitle className="text-sm leading-4 font-semibold font-mono uppercase tracking-widest text-muted-foreground">
                   {isEditing ? "Edit Task" : "New Task"}
                 </DialogTitle>
                 <DialogDescription className="sr-only">
@@ -181,12 +180,12 @@ export function TaskForm({ open, onOpenChange, task, moduleId, projectId }: Task
                 </DialogDescription>
               </DialogHeader>
 
-              <div className={styles.leftContent}>
+              <div className="space-y-4">
                 {/* Title input with accent bar */}
-                <div className={styles.titleRow}>
+                <div className="flex gap-2.5">
                   <div
                     className={cn(
-                      styles.titleAccent,
+                      "w-1 shrink-0 rounded-full self-stretch transition-all duration-300",
                       STATUS_DOT_COLORS[status],
                     )}
                   />
@@ -194,14 +193,14 @@ export function TaskForm({ open, onOpenChange, task, moduleId, projectId }: Task
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="Task title..."
-                    className={styles.titleInput}
+                    className="flex-1 text-lg leading-6 font-bold tracking-tight bg-transparent border-0 outline-none text-foreground placeholder:font-normal placeholder:text-[0.9375rem] placeholder:text-muted-foreground"
                     autoFocus
                   />
                 </div>
 
                 {/* Description */}
-                <div className={styles.descriptionSection}>
-                  <p className={styles.sectionLabel}>
+                <div className="space-y-1.5">
+                  <p className="text-sm font-semibold font-mono uppercase tracking-widest text-muted-foreground">
                     Description
                   </p>
                   <RichTextEditor
@@ -214,17 +213,17 @@ export function TaskForm({ open, onOpenChange, task, moduleId, projectId }: Task
               </div>
 
               {/* Footer */}
-              <div className={styles.footer}>
-                <span className={styles.shortcutHint}>
-                  <kbd className={styles.kbd}>
+              <div className="flex items-center justify-between mt-5 pt-3.5 border-t border-border">
+                <span className="text-sm font-mono text-muted-foreground">
+                  <kbd className="px-1.5 py-0.5 rounded-xl bg-accent text-sm font-mono">
                     &#8984;
                   </kbd>{" "}
-                  <kbd className={styles.kbd}>
+                  <kbd className="px-1.5 py-0.5 rounded-xl bg-accent text-sm font-mono">
                     &#8629;
                   </kbd>{" "}
                   to submit
                 </span>
-                <div className={styles.footerActions}>
+                <div className="flex items-center gap-1.5">
                   <Button
                     type="button"
                     variant="ghost"
@@ -244,25 +243,25 @@ export function TaskForm({ open, onOpenChange, task, moduleId, projectId }: Task
               </div>
             </div>
 
-            {/* Right panel -- property panel */}
-            <div className={styles.rightPanel}>
-              <div className={styles.propertiesHeader}>
-                <p className={styles.propertiesLabel}>
+            {/* Right panel -- property panel (Subtle Glass) */}
+            <div className="w-full shrink-0 bg-accent sm:w-[300px]">
+              <div className="py-3.5 px-4 border-b border-border">
+                <p className="text-sm font-semibold font-mono uppercase tracking-widest text-muted-foreground">
                   Properties
                 </p>
               </div>
 
-              <div className={styles.propertiesBody}>
+              <div className="p-3.5 space-y-1">
                 {/* Status */}
                 <PropertyRow icon={CircleDot} label="Status">
                   <Select
                     value={status}
                     onValueChange={(v) => setStatus(v as TaskStatus)}
                   >
-                    <SelectTrigger className={styles.propertyTrigger}>
+                    <SelectTrigger className="h-7 text-sm leading-4 font-mono border-0 shadow-none bg-transparent px-2 w-auto gap-1.5 transition-all duration-300 hover:bg-accent [&_svg:last-child]:size-3">
                       <span
                         className={cn(
-                          styles.dot,
+                          "size-2 rounded-full shrink-0",
                           STATUS_DOT_COLORS[status],
                         )}
                       />
@@ -276,10 +275,10 @@ export function TaskForm({ open, onOpenChange, task, moduleId, projectId }: Task
                         ][]
                       ).map(([key, config]) => (
                         <SelectItem key={key} value={key}>
-                          <div className={styles.selectItemRow}>
+                          <div className="flex items-center gap-2">
                             <span
                               className={cn(
-                                styles.dot,
+                                "size-2 rounded-full shrink-0",
                                 STATUS_DOT_COLORS[key],
                               )}
                             />
@@ -297,10 +296,10 @@ export function TaskForm({ open, onOpenChange, task, moduleId, projectId }: Task
                     value={priority}
                     onValueChange={(v) => setPriority(v as TaskPriority)}
                   >
-                    <SelectTrigger className={styles.propertyTrigger}>
+                    <SelectTrigger className="h-7 text-sm leading-4 font-mono border-0 shadow-none bg-transparent px-2 w-auto gap-1.5 transition-all duration-300 hover:bg-accent [&_svg:last-child]:size-3">
                       <span
                         className={cn(
-                          styles.dot,
+                          "size-2 rounded-full shrink-0",
                           PRIORITY_DOT_COLORS[priority],
                         )}
                       />
@@ -314,10 +313,10 @@ export function TaskForm({ open, onOpenChange, task, moduleId, projectId }: Task
                         ][]
                       ).map(([key, config]) => (
                         <SelectItem key={key} value={key}>
-                          <div className={styles.selectItemRow}>
+                          <div className="flex items-center gap-2">
                             <span
                               className={cn(
-                                styles.dot,
+                                "size-2 rounded-full shrink-0",
                                 PRIORITY_DOT_COLORS[key],
                               )}
                             />
@@ -347,7 +346,7 @@ export function TaskForm({ open, onOpenChange, task, moduleId, projectId }: Task
                   />
                 </PropertyRow>
 
-                <div className={styles.divider} />
+                <div className="h-px bg-border !mt-2.5 !mb-2.5" />
 
                 {/* Start Date */}
                 <PropertyRow icon={CalendarDays} label="Start">
@@ -369,10 +368,10 @@ export function TaskForm({ open, onOpenChange, task, moduleId, projectId }: Task
 
                 {/* Date range indicator */}
                 {parsedStartDate && parsedDueDate && (
-                  <div className={styles.dateRange}>
-                    <div className={styles.dateRangeInner}>
-                      <div className={styles.dateRangeLine} />
-                      <span className={styles.dateRangeDays}>
+                  <div className="pl-[1.75rem] pt-1">
+                    <div className="flex items-center gap-1.5 text-sm font-mono text-muted-foreground">
+                      <div className="h-px flex-1 bg-border" />
+                      <span className="tabular-nums">
                         {Math.ceil(
                           (parsedDueDate.getTime() -
                             parsedStartDate.getTime()) /
@@ -380,7 +379,7 @@ export function TaskForm({ open, onOpenChange, task, moduleId, projectId }: Task
                         )}{" "}
                         days
                       </span>
-                      <div className={styles.dateRangeLine} />
+                      <div className="h-px flex-1 bg-border" />
                     </div>
                   </div>
                 )}
@@ -407,8 +406,8 @@ function AssigneeAvatar({ userId }: { userId: string }) {
 
 function AssigneeLabel({ userIds }: { userIds: string[] }) {
   const { data: firstUser } = useUser(userIds[0]);
-  if (userIds.length === 1) return <span className={styles.truncate}>{firstUser?.name ?? "..."}</span>;
-  return <span className={styles.truncate}>{userIds.length} assignees</span>;
+  if (userIds.length === 1) return <span className="truncate">{firstUser?.name ?? "..."}</span>;
+  return <span className="truncate">{userIds.length} assignees</span>;
 }
 
 function SelectedAssigneeItem({ userId, onDeselect }: { userId: string; onDeselect: () => void }) {
@@ -426,7 +425,7 @@ function SelectedAssigneeItem({ userId, onDeselect }: { userId: string; onDesele
         <AvatarFallback className="text-[9px]">{initials}</AvatarFallback>
       </Avatar>
       {name}
-      <Check className={cn(styles.checkIcon, styles.checkVisible)} />
+      <Check className="ml-auto size-3.5 opacity-100" />
     </CommandItem>
   );
 }
@@ -450,18 +449,18 @@ function AssigneeCombobox({
           type="button"
           role="combobox"
           aria-expanded={open}
-          className={styles.assigneeTrigger}
+          className="inline-flex items-center gap-1.5 rounded-2xl px-2 h-7 text-sm leading-4 transition-all duration-300 w-full hover:bg-accent"
         >
           {value.length > 0 ? (
             <>
-              <div className={styles.avatarStack}>
+              <div className="flex items-center [&>*+*]:-ml-1.5">
                 {value.slice(0, 3).map((id) => (
                   <AssigneeAvatar key={id} userId={id} />
                 ))}
               </div>
               <AssigneeLabel userIds={value} />
               <X
-                className={styles.clearIcon}
+                className="size-3 ml-auto text-muted-foreground shrink-0 hover:text-foreground transition-all duration-300"
                 onClick={(e) => {
                   e.stopPropagation();
                   onChange([]);
@@ -470,8 +469,8 @@ function AssigneeCombobox({
             </>
           ) : (
             <>
-              <span className={styles.unassignedText}>Unassigned</span>
-              <ChevronsUpDown className={styles.chevronIcon} />
+              <span className="text-muted-foreground">Unassigned</span>
+              <ChevronsUpDown className="size-3 ml-auto text-muted-foreground shrink-0" />
             </>
           )}
         </Button>
@@ -527,8 +526,8 @@ function AssigneeCombobox({
                     {user.name}
                     <Check
                       className={cn(
-                        styles.checkIcon,
-                        isSelected ? styles.checkVisible : styles.checkHidden,
+                        "ml-auto size-3.5",
+                        isSelected ? "opacity-100" : "opacity-0",
                       )}
                     />
                       </CommandItem>
@@ -541,4 +540,3 @@ function AssigneeCombobox({
     </Popover>
   );
 }
-
