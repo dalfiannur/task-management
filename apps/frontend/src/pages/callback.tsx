@@ -2,6 +2,7 @@ import { useNavigate, useSearchParams } from "react-router";
 import { Loader2 } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { useAuth } from "react-oidc-context";
+import { Button } from "@/components/ui/button";
 import styles from "./callback.module.css";
 
 export function Component() {
@@ -44,7 +45,8 @@ export function Component() {
         <div className={styles.errorContainer}>
           <p className={styles.errorMessage}>Authentication failed</p>
           <p className={styles.errorDetail}>{auth.error.message}</p>
-          <button
+          <Button
+            variant="default"
             className={styles.retryButton}
             onClick={() => {
               redirectingRef.current = false;
@@ -52,7 +54,7 @@ export function Component() {
             }}
           >
             Try again
-          </button>
+          </Button>
         </div>
       </div>
     );

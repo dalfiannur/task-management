@@ -109,20 +109,24 @@ export function Header() {
           {moduleId && (
             <>
               <div className={styles.viewToggle}>
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
                   type="button"
                   className={cn(styles.viewBtn, viewMode === "list" && styles.viewBtnActive)}
                   onClick={() => setViewMode("list")}
                 >
                   <LayoutList className={styles.viewIcon} />
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
                   type="button"
                   className={cn(styles.viewBtn, viewMode === "board" && styles.viewBtnActive)}
                   onClick={() => setViewMode("board")}
                 >
                   <LayoutGrid className={styles.viewIcon} />
-                </button>
+                </Button>
               </div>
               <Button
                 size="sm"

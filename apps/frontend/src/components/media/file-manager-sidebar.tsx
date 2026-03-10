@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { FolderOpen, Folder } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import type { CoreProject } from "@/types/project";
 import { getProjectDisplayName } from "@/hooks/use-projects";
 import styles from "./file-manager-sidebar.module.css";
@@ -28,7 +29,8 @@ export function FileManagerSidebar({
       <ul className={styles.tree}>
         {allProjects.map((p) => (
           <li key={p.id}>
-            <button
+            <Button
+              variant="ghost"
               type="button"
               className={cn(
                 styles.treeItem,
@@ -44,7 +46,7 @@ export function FileManagerSidebar({
               <span className={styles.itemName}>
                 {getProjectDisplayName(p)}
               </span>
-            </button>
+            </Button>
           </li>
         ))}
       </ul>

@@ -445,7 +445,8 @@ function AssigneeCombobox({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button
+        <Button
+          variant="ghost"
           type="button"
           role="combobox"
           aria-expanded={open}
@@ -473,7 +474,7 @@ function AssigneeCombobox({
               <ChevronsUpDown className={styles.chevronIcon} />
             </>
           )}
-        </button>
+        </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[200px] p-0" align="start">
         <Command shouldFilter={false}>

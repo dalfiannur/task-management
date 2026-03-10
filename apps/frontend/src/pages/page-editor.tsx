@@ -126,9 +126,9 @@ function LinkPicker({
             </>
           )}
         </span>
-        <button className={styles.unlinkButton} onClick={onUnlink}>
+        <Button variant="ghost" size="icon-xs" className={styles.unlinkButton} onClick={onUnlink}>
           <X className={styles.unlinkIcon} />
-        </button>
+        </Button>
       </div>
     );
   }
@@ -137,10 +137,10 @@ function LinkPicker({
     <div className={styles.linkRow}>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <button className={styles.addLinkButton}>
+          <Button variant="ghost" className={styles.addLinkButton}>
             <Link2 className={styles.linkIcon} />
             Link to task or module
-          </button>
+          </Button>
         </PopoverTrigger>
         <PopoverContent className={styles.linkPopover} align="start">
           <div className={styles.linkSearchWrapper}>
@@ -163,14 +163,15 @@ function LinkPicker({
                   <p className={styles.linkEmpty}>No tasks found</p>
                 )}
                 {filteredTasks.map((t) => (
-                  <button
+                  <Button
+                    variant="ghost"
                     key={t.id}
                     className={styles.linkOption}
                     onClick={() => handleSelect("task", t.id)}
                   >
                     <CheckSquare className={styles.linkOptionIcon} />
                     <span className={styles.linkOptionText}>{t.title}</span>
-                  </button>
+                  </Button>
                 ))}
               </div>
             </TabsContent>
@@ -180,14 +181,15 @@ function LinkPicker({
                   <p className={styles.linkEmpty}>No modules found</p>
                 )}
                 {filteredModules.map((m) => (
-                  <button
+                  <Button
+                    variant="ghost"
                     key={m.id}
                     className={styles.linkOption}
                     onClick={() => handleSelect("module", m.id)}
                   >
                     <Layers className={styles.linkOptionIcon} />
                     <span className={styles.linkOptionText}>{m.name}</span>
-                  </button>
+                  </Button>
                 ))}
               </div>
             </TabsContent>
@@ -339,20 +341,21 @@ export function Component() {
       <div className={styles.titleRow}>
         <Popover open={emojiOpen} onOpenChange={setEmojiOpen}>
           <PopoverTrigger asChild>
-            <button className={styles.iconButton}>
+            <Button variant="ghost" size="icon" className={styles.iconButton}>
               {icon || <FileText className={styles.iconPlaceholder} />}
-            </button>
+            </Button>
           </PopoverTrigger>
           <PopoverContent className="w-64 p-2" align="start">
             <div className={styles.emojiGrid}>
               {COMMON_EMOJIS.map((emoji) => (
-                <button
+                <Button
+                  variant="ghost"
                   key={emoji}
                   onClick={() => handleIconSelect(emoji)}
                   className={styles.emojiButton}
                 >
                   {emoji}
-                </button>
+                </Button>
               ))}
             </div>
           </PopoverContent>

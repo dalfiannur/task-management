@@ -1,4 +1,5 @@
 import { Folder } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import styles from "./folder-card.module.css";
 
 interface FolderCardProps {
@@ -9,7 +10,8 @@ interface FolderCardProps {
 
 export function FolderCard({ name, subtitle, onDoubleClick }: FolderCardProps) {
   return (
-    <button
+    <Button
+      variant="ghost"
       type="button"
       className={styles.card}
       onDoubleClick={onDoubleClick}
@@ -23,6 +25,6 @@ export function FolderCard({ name, subtitle, onDoubleClick }: FolderCardProps) {
         </span>
         {subtitle && <span className={styles.subtitle}>{subtitle}</span>}
       </div>
-    </button>
+    </Button>
   );
 }

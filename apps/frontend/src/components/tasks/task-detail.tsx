@@ -282,7 +282,9 @@ export function TaskDetail({
                         <span className={styles.linkedPageName}>
                           {page.pageInfo.title || "Untitled"}
                         </span>
-                        <button
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
                           className={styles.unlinkPageBtn}
                           onClick={(e) => {
                             e.preventDefault();
@@ -295,15 +297,15 @@ export function TaskDetail({
                           }}
                         >
                           <X className={styles.unlinkPageIcon} />
-                        </button>
+                        </Button>
                       </a>
                     ))}
                     <Popover open={linkPageOpen} onOpenChange={setLinkPageOpen}>
                       <PopoverTrigger asChild>
-                        <button className={styles.addPageBtn}>
+                        <Button variant="ghost" className={styles.addPageBtn}>
                           <Plus className={styles.addPageBtnIcon} />
                           Link page
-                        </button>
+                        </Button>
                       </PopoverTrigger>
                       <PopoverContent className={styles.linkPagePopover} align="start">
                         {availablePages.length === 0 ? (
@@ -313,8 +315,9 @@ export function TaskDetail({
                         ) : (
                           <div className={styles.linkPageList}>
                             {availablePages.map((page) => (
-                              <button
+                              <Button
                                 key={page.id}
+                                variant="ghost"
                                 className={styles.linkPageOption}
                                 onClick={() => {
                                   updatePage.mutate({
@@ -331,7 +334,7 @@ export function TaskDetail({
                                 <span className={styles.linkPageOptionText}>
                                   {page.pageInfo.title || "Untitled"}
                                 </span>
-                              </button>
+                              </Button>
                             ))}
                           </div>
                         )}

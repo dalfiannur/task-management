@@ -282,7 +282,8 @@ export function ModuleSection({
                   <div className="max-h-40 overflow-y-auto">
                     {linkedPages.map((page) => (
                       <div key={page.id} className="group/page flex items-center">
-                        <button
+                        <Button
+                          variant="ghost"
                           className="flex items-center gap-1.5 flex-1 min-w-0 px-1.5 py-[0.3125rem] text-[0.8125rem] bg-transparent border-none rounded-[var(--radius)] cursor-pointer text-left transition-colors hover:bg-accent"
                           onClick={() => {
                             navigate(`/projects/${projectId}/pages/${page.id}`);
@@ -295,8 +296,10 @@ export function ModuleSection({
                           <span className="overflow-hidden text-ellipsis whitespace-nowrap">
                             {page.pageInfo.title || "Untitled"}
                           </span>
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
                           className="flex items-center justify-center size-5 rounded-[var(--radius)] bg-transparent border-none cursor-pointer text-muted-foreground opacity-0 shrink-0 transition-[opacity,color] group-hover/page:opacity-100 hover:!text-destructive"
                           onClick={() =>
                             updatePage.mutate({
@@ -307,7 +310,7 @@ export function ModuleSection({
                           }
                         >
                           <X className="size-2.5" />
-                        </button>
+                        </Button>
                       </div>
                     ))}
                   </div>
@@ -321,7 +324,8 @@ export function ModuleSection({
                     <p className="text-[0.6875rem] font-mono uppercase tracking-wider text-muted-foreground/70 px-1.5 py-0.5 mb-0.5">Link a page</p>
                     <div className="max-h-40 overflow-y-auto">
                       {availablePages.map((page) => (
-                        <button
+                        <Button
+                          variant="ghost"
                           key={page.id}
                           className="flex items-center gap-1.5 flex-1 min-w-0 px-1.5 py-[0.3125rem] text-[0.8125rem] bg-transparent border-none rounded-[var(--radius)] cursor-pointer text-left transition-colors hover:bg-accent w-full"
                           onClick={() => {
@@ -338,7 +342,7 @@ export function ModuleSection({
                           <span className="overflow-hidden text-ellipsis whitespace-nowrap">
                             {page.pageInfo.title || "Untitled"}
                           </span>
-                        </button>
+                        </Button>
                       ))}
                     </div>
                   </>
@@ -495,13 +499,14 @@ function TaskRow({
       <TableCell className="pl-8 font-medium">
         {cleanTitle}
         {commentCount > 0 && (
-          <button
+          <Button
+            variant="ghost"
             className="inline-flex items-center gap-0.5 ml-2 px-[0.3125rem] py-px rounded-full border-none bg-muted/50 text-muted-foreground text-xs font-mono cursor-pointer transition-colors align-middle hover:bg-accent hover:text-accent-foreground"
             onClick={(e) => { e.stopPropagation(); onOpenComments(); }}
           >
             <MessageSquare className="size-3" />
             <span>{commentCount}</span>
-          </button>
+          </Button>
         )}
       </TableCell>
       <TableCell onClick={(e) => e.stopPropagation()}>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Check, ChevronsUpDown, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import {
   Command,
   CommandEmpty,
@@ -57,7 +58,8 @@ export function LabelCombobox({ value, labels, onChange, projectId }: LabelCombo
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button
+        <Button
+          variant="ghost"
           type="button"
           role="combobox"
           aria-expanded={open}
@@ -98,7 +100,7 @@ export function LabelCombobox({ value, labels, onChange, projectId }: LabelCombo
               <ChevronsUpDown className={styles.chevron} />
             </>
           )}
-        </button>
+        </Button>
       </PopoverTrigger>
       <PopoverContent className={styles.popover} align="start">
         <Command>

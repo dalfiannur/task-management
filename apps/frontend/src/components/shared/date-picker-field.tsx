@@ -29,7 +29,8 @@ export function DatePickerField({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button
+        <Button
+          variant="ghost"
           type="button"
           className={cn(
             styles.dateTrigger,
@@ -38,7 +39,7 @@ export function DatePickerField({
         >
           <CalendarIcon className={styles.dateIcon} />
           {value ? format(value, "MMM d, yyyy") : placeholder}
-        </button>
+        </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
         <Calendar

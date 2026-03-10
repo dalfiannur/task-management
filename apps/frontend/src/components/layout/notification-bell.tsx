@@ -124,7 +124,8 @@ function NotificationItem({
   const Icon = info.type === "mention" ? MessageSquare : UserPlus;
 
   return (
-    <button
+    <Button
+      variant="ghost"
       type="button"
       className={cn(styles.notifItem, isUnread && styles.notifItemUnread)}
       onClick={onClick}
@@ -137,6 +138,6 @@ function NotificationItem({
         <p className={styles.notifTime}>{formatTimeAgo(info.createdAt)}</p>
       </div>
       {isUnread && <div className={styles.unreadDot} />}
-    </button>
+    </Button>
   );
 }
