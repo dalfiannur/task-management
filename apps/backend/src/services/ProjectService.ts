@@ -21,11 +21,12 @@ import {
   ModuleTag,
 } from "~/components/ModuleComponents";
 import { ProjectMembershipData } from "~/components/ProjectMembership";
-import { requirePermission, type AuthContext, TaskResources, Action } from "~/utils/auth";
+import { requirePermission, requireAdmin, type AuthContext, TaskResources, Action } from "~/utils/auth";
 import MembershipService from "./MembershipService";
 import {
   fetchCoreProject,
   createCoreProject,
+  deleteCoreProject,
   extractAuthToken,
 } from "~/lib/core-client";
 
@@ -397,10 +398,24 @@ export default class ProjectService extends BaseService {
     output: "Boolean",
   })
   async deleteProject(input: { id: string }, context: AuthContext) {
-    requirePermission(context, TaskResources.Projects, Action.Delete);
+    requireAdmin(context);
+    const authToken = extractAuthToken(context.request);
     const entity = await this.findProjectEntity(input.id);
+
     if (!entity) {
-      return new GraphQLError("Project not found", { extensions: { code: "NOT_FOUND" } });
+      // Project may exist only in Core Portal (never approved locally)
+      try {
+        await deleteCoreProject(input.id, authToken);
+      } catch {
+        return new GraphQLError("Project not found", { extensions: { code: "NOT_FOUND" } });
+      }
+      return true;
+    }
+
+    // Delete from Core Portal (best-effort — may already be gone)
+    const coreRef = await entity.get(ProjectCoreRefComponent);
+    if (coreRef?.value) {
+      try { await deleteCoreProject(coreRef.value, authToken); } catch { /* ignore */ }
     }
 
     // Cascade delete sub-projects
@@ -408,13 +423,17 @@ export default class ProjectService extends BaseService {
       .with(ProjectTag)
       .with(ProjectParentRefComponent, {
         filters: [
-          Query.typedFilter(ProjectParentRefComponent, "parentProjectId", "=", input.id),
+          Query.typedFilter(ProjectParentRefComponent, "parentProjectId", "=", entity.id),
         ],
       })
       .populate()
       .exec();
 
     for (const sub of subProjects) {
+      const subCoreRef = await sub.get(ProjectCoreRefComponent);
+      if (subCoreRef?.value) {
+        try { await deleteCoreProject(subCoreRef.value, authToken); } catch { /* ignore */ }
+      }
       await sub.delete();
     }
 

@@ -1,6 +1,19 @@
 export { requireUser, requirePermission, type AuthContext } from '@qyubit/sedjiwa-permissions';
 export { Action, type PermissionEntry } from '@qyubit/sedjiwa-permissions';
 import { Action, type PermissionEntry } from '@qyubit/sedjiwa-permissions';
+import { requireUser } from '@qyubit/sedjiwa-permissions';
+import { GraphQLError } from 'graphql';
+import type { AuthContext } from '@qyubit/sedjiwa-permissions';
+
+export function requireAdmin(context: AuthContext) {
+  const user = requireUser(context);
+  if (!user.permissions?.includes("*")) {
+    throw new GraphQLError("Admin access required", {
+      extensions: { code: "FORBIDDEN" },
+    });
+  }
+  return user;
+}
 
 export const TaskResources = {
   Tasks: "task_management:tasks",

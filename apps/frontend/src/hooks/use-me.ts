@@ -1,4 +1,5 @@
 import { useQuery, gql, oidcClient } from "@/lib/graphql-client";
+import { useAuth } from "react-oidc-context";
 
 const ME_QUERY = gql`
   query Me {
@@ -18,6 +19,7 @@ export interface MeData {
     displayName: string;
   };
   role: "manager" | "member";
+  isAdmin: boolean;
 }
 
 interface MeResponse {
@@ -41,6 +43,7 @@ export function useMe() {
         id: data.me.id,
         profile: data.me.profile,
         role: data.me.isAdmin ? "manager" : "member",
+        isAdmin: data.me.isAdmin,
       }
     : data === undefined
       ? (undefined as unknown as null)
@@ -56,4 +59,17 @@ export function useMe() {
 export function useIsManager(): boolean {
   const { data } = useMe();
   return data?.role === "manager";
+}
+
+export function useIsAdmin(): boolean {
+  const auth = useAuth();
+  try {
+    const token = auth.user?.access_token;
+    if (!token) return false;
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    const permissions: string[] = payload.permissions ?? [];
+    return permissions.includes("*");
+  } catch {
+    return false;
+  }
 }

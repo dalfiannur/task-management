@@ -11,6 +11,9 @@ import {
 } from "@/hooks/use-projects";
 import { useModules } from "@/hooks/use-modules";
 import { useUser } from "@/hooks/use-users";
+import { toast } from "sonner";
+import { useIsAdmin } from "@/hooks/use-me";
+import { client, coreClient } from "@/lib/graphql-client";
 import { useProjectTaskStats } from "@/hooks/use-dashboard";
 import { ModuleForm } from "@/components/modules/module-form";
 import { AssignLeaderDialog } from "@/components/projects/win-project-dialog";
@@ -94,6 +97,7 @@ export function Component() {
   const { data: subProjects } = useSubProjects(projectId);
   const { data: localSubProjects } = useLocalSubProjects(projectId);
   const deleteProject = useDeleteProject();
+  const isAdmin = useIsAdmin();
   const updateLocalProject = useUpdateLocalProject();
   const { data: parentModules } = useModules(project?.ref?.parentId);
 
@@ -243,13 +247,15 @@ export function Component() {
                     Close Project
                   </DropdownMenuItem>
                 )}
-                <DropdownMenuItem
-                  className={styles.deleteItem}
-                  onClick={() => setDeleteDialogOpen(true)}
-                >
-                  <Trash2 className={styles.menuIcon} />
-                  Delete
-                </DropdownMenuItem>
+                {isAdmin && (
+                  <DropdownMenuItem
+                    className={styles.deleteItem}
+                    onClick={() => setDeleteDialogOpen(true)}
+                  >
+                    <Trash2 className={styles.menuIcon} />
+                    Delete
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -435,7 +441,16 @@ export function Component() {
               className={styles.deleteDialogAction}
               onClick={() =>
                 deleteProject.mutate(projectId!, {
-                  onSuccess: () => navigate("/projects"),
+                  onSuccess: () => {
+                    client.cache.evict({ fieldName: "listProjects" });
+                    client.cache.evict({ fieldName: "getProject" });
+                    client.cache.gc();
+                    coreClient.cache.evict({ fieldName: "listProjects" });
+                    coreClient.cache.evict({ fieldName: "getProject" });
+                    coreClient.cache.gc();
+                    toast.success("Project deleted successfully");
+                    navigate("/projects");
+                  },
                 })
               }
             >

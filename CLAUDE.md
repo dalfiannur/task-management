@@ -64,8 +64,9 @@ No test framework is configured in either package.
 
 #### Styling
 
-- **Tailwind CSS utility classes** for domain components. Use `cn()` helper from `@/lib/utils` to merge classes.
-- **CSS Modules** are retained for `src/components/ui/` (shadcn/ui primitives) only.
+- **Always use Tailwind CSS utility classes** for all new code — pages, domain components, and layouts. Do NOT create new CSS Module files.
+- Use `cn()` helper from `@/lib/utils` to merge/conditional classes.
+- **CSS Modules** are retained for `src/components/ui/` (shadcn/ui primitives) only. Existing CSS Modules in pages/components may still exist but should be migrated to Tailwind when touched.
 - CSS variables for theming: `var(--color-*)`, `var(--spacing-*)`, `var(--radius-*)`, etc.
 
 #### Hook Patterns

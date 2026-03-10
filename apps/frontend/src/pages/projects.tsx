@@ -6,16 +6,24 @@ import { ProjectForm } from "@/components/projects/project-form";
 import { ApproveLeadDialog } from "@/components/dashboard/approve-lead-dialog";
 import { Pagination } from "@/components/shared/pagination";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Plus, Search, ArrowUpDown } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import type { CoreProject } from "@/types/project";
 import { useCompanyStore } from "@/stores/company-store";
-import styles from "./projects.module.css";
 
 type ProjectFilter = "active" | "closed" | "all";
 type ProjectType = "internal" | "leads" | "commercial";
+type SortOption = "name-asc" | "name-desc" | "date-desc" | "date-asc";
 
 const TYPE_TITLES: Record<ProjectType, string> = {
   internal: "Internal Projects",
@@ -32,6 +40,8 @@ export function Component() {
   const selectedCompanyId = useCompanyStore((s) => s.selectedCompanyId);
   const [filter, setFilter] = useState<ProjectFilter>("active");
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<SortOption>("date-desc");
   const [formOpen, setFormOpen] = useState(false);
   const [approveProject, setApproveProject] = useState<CoreProject | null>(null);
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
@@ -68,7 +78,7 @@ export function Component() {
     const title = TYPE_TITLES.leads;
     if (isLeadsLoading) {
       return (
-        <div className={styles.skeletonGrid}>
+        <div className="p-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <Skeleton className="h-32" />
           <Skeleton className="h-32" />
           <Skeleton className="h-32" />
@@ -76,11 +86,11 @@ export function Component() {
       );
     }
     return (
-      <div className={styles.page}>
-        <div className={styles.header}>
-          <h1 className={styles.title}>{title}</h1>
+      <div className="p-5">
+        <div className="flex items-center justify-between mb-5">
+          <h1 className="text-xl font-semibold">{title}</h1>
         </div>
-        <div className={styles.grid}>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {leads?.map((lead) => (
             <ProjectCard
               key={lead.id}
@@ -93,7 +103,7 @@ export function Component() {
           ))}
         </div>
         {(!leads || leads.length === 0) && (
-          <p className={styles.empty}>No new leads.</p>
+          <p className="text-center text-muted-foreground py-10">No new leads.</p>
         )}
         <ApproveLeadDialog
           project={approveProject}
@@ -104,10 +114,43 @@ export function Component() {
     );
   }
 
-  // Client-side filtering for what the server can't express
-  const projects = allProjects?.filter(
-    (p) => !p.ref?.parentId && p.winStage !== "pending",
-  );
+  // Client-side filtering, searching, and sorting
+  const projects = useMemo(() => {
+    let result = allProjects?.filter(
+      (p) => !p.ref?.parentId && p.winStage !== "pending",
+    );
+
+    // Search by name or client
+    if (search.trim() && result) {
+      const q = search.trim().toLowerCase();
+      result = result.filter(
+        (p) =>
+          p.name.name.toLowerCase().includes(q) ||
+          p.code.toLowerCase().includes(q) ||
+          p.clientDetail?.name.name.toLowerCase().includes(q),
+      );
+    }
+
+    // Sort
+    if (result) {
+      result = [...result].sort((a, b) => {
+        switch (sort) {
+          case "name-asc":
+            return a.name.name.localeCompare(b.name.name);
+          case "name-desc":
+            return b.name.name.localeCompare(a.name.name);
+          case "date-asc":
+            return (a.dates?.startDate ?? a.id).localeCompare(b.dates?.startDate ?? b.id);
+          case "date-desc":
+            return (b.dates?.startDate ?? b.id).localeCompare(a.dates?.startDate ?? a.id);
+          default:
+            return 0;
+        }
+      });
+    }
+
+    return result;
+  }, [allProjects, search, sort]);
 
   const hasNextPage = (allProjects?.length ?? 0) === PAGE_LIMIT;
 
@@ -116,7 +159,7 @@ export function Component() {
 
   if (isLoading) {
     return (
-      <div className={styles.skeletonGrid}>
+      <div className="p-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <Skeleton className="h-32" />
         <Skeleton className="h-32" />
         <Skeleton className="h-32" />
@@ -125,37 +168,54 @@ export function Component() {
   }
 
   return (
-    <div className={styles.page}>
-      <div className={styles.header}>
-        <h1 className={styles.title}>{title}</h1>
+    <div className="p-5">
+      <div className="flex items-center justify-between mb-5">
+        <h1 className="text-xl font-semibold">{title}</h1>
         {showNewButton && (
           <Button size="sm" onClick={() => setFormOpen(true)}>
-            <Plus className={styles.btnIcon} />
+            <Plus className="w-4 h-4 mr-1" />
             New Project
           </Button>
         )}
       </div>
-      <div className={styles.filterTabs}>
-        <button
-          className={cn(styles.filterTab, filter === "active" && styles.filterTabActive)}
-          onClick={() => setFilter("active")}
-        >
-          Active
-        </button>
-        <button
-          className={cn(styles.filterTab, filter === "closed" && styles.filterTabActive)}
-          onClick={() => setFilter("closed")}
-        >
-          Closed
-        </button>
-        <button
-          className={cn(styles.filterTab, filter === "all" && styles.filterTabActive)}
-          onClick={() => setFilter("all")}
-        >
-          All
-        </button>
+      <div className="flex items-center border-b border-border mb-4">
+        {(["active", "closed", "all"] as const).map((tab) => (
+          <button
+            key={tab}
+            className={cn(
+              "relative px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors",
+              filter === tab && "text-foreground after:absolute after:bottom-[-1px] after:left-2 after:right-2 after:h-0.5 after:bg-foreground after:rounded-sm",
+            )}
+            onClick={() => setFilter(tab)}
+          >
+            {tab === "active" ? "Active" : tab === "closed" ? "Closed" : "All"}
+          </button>
+        ))}
       </div>
-      <div className={styles.grid}>
+      <div className="flex items-center gap-2 mb-4">
+        <div className="relative flex-1 max-w-80">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
+          <Input
+            placeholder="Search projects..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="!pl-8 h-9 text-sm"
+          />
+        </div>
+        <Select value={sort} onValueChange={(v) => setSort(v as SortOption)}>
+          <SelectTrigger className="w-auto min-w-36 h-9 text-sm gap-1.5">
+            <ArrowUpDown className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="date-desc">Newest first</SelectItem>
+            <SelectItem value="date-asc">Oldest first</SelectItem>
+            <SelectItem value="name-asc">Name A–Z</SelectItem>
+            <SelectItem value="name-desc">Name Z–A</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {projects?.map((project) => (
           <ProjectCard
             key={project.id}
@@ -164,7 +224,7 @@ export function Component() {
         ))}
       </div>
       {projects?.length === 0 && (
-        <p className={styles.empty}>
+        <p className="text-center text-muted-foreground py-10">
           {projectType === "commercial"
             ? "No commercial projects."
             : "No projects yet. Create one to get started."}

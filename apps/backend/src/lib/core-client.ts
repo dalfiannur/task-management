@@ -209,6 +209,41 @@ export async function createCoreProject(
   return project;
 }
 
+const DELETE_CORE_PROJECT_MUTATION = `
+  mutation DeleteCoreProject($input: deleteProjectInput!) {
+    deleteProject(input: $input)
+  }
+`;
+
+export async function deleteCoreProject(
+  id: string,
+  authToken: string | null,
+): Promise<boolean> {
+  const res = await fetch(CORE_API_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+    },
+    body: JSON.stringify({
+      query: DELETE_CORE_PROJECT_MUTATION,
+      variables: { input: { id } },
+    }),
+  });
+
+  const json = (await res.json()) as {
+    data?: { deleteProject: boolean };
+    errors?: { message: string }[];
+  };
+
+  if (json.errors?.length) {
+    throw new Error(`Core API error: ${json.errors[0].message}`);
+  }
+
+  cache.delete(id);
+  return json.data?.deleteProject ?? false;
+}
+
 export function extractAuthToken(request?: Request): string | null {
   if (!request) return null;
   const header = request.headers.get("Authorization");
