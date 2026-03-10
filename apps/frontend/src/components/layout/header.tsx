@@ -20,7 +20,6 @@ import { useModule } from "@/hooks/use-modules";
 import { NotificationBell } from "./notification-bell";
 import { CompanySelector } from "./company-selector";
 import { cn } from "@/lib/utils";
-import styles from "./header.module.css";
 
 export function Header() {
   const { viewMode, setViewMode } = useUIStore();
@@ -54,9 +53,9 @@ export function Header() {
 
   return (
     <>
-      <header className={styles.header}>
-        <SidebarTrigger className={styles.triggerBtn} />
-        <Separator orientation="vertical" className={styles.separatorEl} />
+      <header className="flex h-14 shrink-0 items-center gap-3 border-b-2 border-border px-5 py-2">
+        <SidebarTrigger className="-ml-1" />
+        <Separator orientation="vertical" className="mr-1.5 h-5" />
         <CompanySelector />
 
         <Breadcrumb>
@@ -77,7 +76,7 @@ export function Header() {
                       </Link>
                     </BreadcrumbLink>
                   ) : (
-                    <BreadcrumbPage>{projectName}</BreadcrumbPage>
+                    <BreadcrumbPage className="text-primary font-semibold">{projectName}</BreadcrumbPage>
                   )}
                 </BreadcrumbItem>
               </>
@@ -86,19 +85,19 @@ export function Header() {
               <>
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
-                  <BreadcrumbPage>{module.name}</BreadcrumbPage>
+                  <BreadcrumbPage className="text-primary font-semibold">{module.name}</BreadcrumbPage>
                 </BreadcrumbItem>
               </>
             )}
           </BreadcrumbList>
         </Breadcrumb>
 
-        <form onSubmit={handleSearch} className={styles.searchForm}>
-          <div className={styles.searchWrapper}>
-            <Search className={styles.searchIcon} />
+        <form onSubmit={handleSearch} className="ml-auto flex-1 max-w-[28rem]">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-[0.8125rem] text-muted-foreground" />
             <input
               placeholder="Search tasks..."
-              className={styles.searchInput}
+              className="w-full rounded-lg bg-muted/40 ring-1 ring-border pl-9 pr-4 h-9 text-sm transition-all placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:bg-background"
               value={searchValue}
               onChange={(e) => setSearchValue(e.target.value)}
             />
@@ -110,42 +109,44 @@ export function Header() {
           size="icon-xs"
           type="button"
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          className="size-7 shrink-0"
+          className="size-8 shrink-0"
         >
-          {theme === "dark" ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
+          {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
         </Button>
 
         <NotificationBell />
 
-        <div className={styles.actions}>
+        <div className="flex items-center gap-2 ml-3 pl-3 border-l border-border">
           {moduleId && (
             <>
-              <div className={styles.viewToggle}>
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
+              <div className="flex items-center rounded-md border border-border bg-muted/30 p-0.5">
+                <button
                   type="button"
-                  className={cn(styles.viewBtn, viewMode === "list" && styles.viewBtnActive)}
+                  className={cn(
+                    "inline-flex items-center justify-center rounded-[calc(var(--radius)-2px)] px-2.5 h-7 text-sm transition-colors text-muted-foreground hover:text-foreground",
+                    viewMode === "list" && "bg-primary text-primary-foreground shadow-sm",
+                  )}
                   onClick={() => setViewMode("list")}
                 >
-                  <LayoutList className={styles.viewIcon} />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
+                  <LayoutList className="size-[0.8125rem]" />
+                </button>
+                <button
                   type="button"
-                  className={cn(styles.viewBtn, viewMode === "board" && styles.viewBtnActive)}
+                  className={cn(
+                    "inline-flex items-center justify-center rounded-[calc(var(--radius)-2px)] px-2.5 h-7 text-sm transition-colors text-muted-foreground hover:text-foreground",
+                    viewMode === "board" && "bg-primary text-primary-foreground shadow-sm",
+                  )}
                   onClick={() => setViewMode("board")}
                 >
-                  <LayoutGrid className={styles.viewIcon} />
-                </Button>
+                  <LayoutGrid className="size-[0.8125rem]" />
+                </button>
               </div>
               <Button
                 size="sm"
-                className={styles.newTaskBtn}
+                className="h-9 px-4 rounded-lg shadow-sm"
                 onClick={() => setTaskFormOpen(true)}
               >
-                <Plus className={styles.newTaskIcon} />
+                <Plus className="size-3.5 mr-1" />
                 New Task
               </Button>
             </>

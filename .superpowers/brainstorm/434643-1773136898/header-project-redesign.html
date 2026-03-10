@@ -1,0 +1,199 @@
+<h2>Header & Project Layout Redesign</h2>
+<p class="subtitle">Taller header with spacious controls + hero-style project page with blue accent tabs</p>
+
+<!-- HEADER MOCKUP -->
+<div class="mockup" style="margin-bottom:32px;">
+  <div class="mockup-header">Redesigned Header (56px, spacious)</div>
+  <div class="mockup-body" style="padding:0;">
+    <!-- Current header -->
+    <div style="font-family:'Google Sans',system-ui,sans-serif;font-size:13px;">
+      <div style="padding:4px 8px;background:#f5f0ea;font-size:10px;color:#8b7a66;text-align:center;border-bottom:1px solid #e0d5c7;letter-spacing:0.05em;text-transform:uppercase;">Current (44px)</div>
+      <div style="display:flex;align-items:center;gap:6px;height:44px;border-bottom:1px solid #e0d5c7;padding:0 12px;background:#faf8f5;">
+        <span style="font-size:14px;color:#8b7a66;">☰</span>
+        <div style="width:1px;height:14px;background:#e0d5c7;margin:0 2px;"></div>
+        <span style="font-size:12px;color:#8b7a66;">🏢 Company</span>
+        <span style="font-size:12px;color:#c4b8a8;">Projects</span>
+        <span style="font-size:10px;color:#c4b8a8;">›</span>
+        <span style="font-size:12px;color:#2c2520;">Website Redesign</span>
+        <div style="flex:1;"></div>
+        <div style="position:relative;max-width:160px;flex:1;">
+          <input style="width:100%;height:28px;border-radius:999px;background:rgba(224,213,199,0.4);border:0;padding:0 12px 0 28px;font-size:12px;outline:none;" placeholder="Search...">
+          <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:10px;color:#8b7a66;">🔍</span>
+        </div>
+        <span style="font-size:12px;color:#8b7a66;cursor:pointer;">🌙</span>
+        <span style="font-size:12px;color:#8b7a66;">🔔</span>
+      </div>
+    </div>
+    <!-- Redesigned header -->
+    <div style="font-family:'Google Sans',system-ui,sans-serif;font-size:14px;margin-top:8px;">
+      <div style="padding:4px 8px;background:#eef0ff;font-size:10px;color:#3b6cc6;text-align:center;border-bottom:1px solid #d4d9f0;letter-spacing:0.05em;text-transform:uppercase;font-weight:600;">Redesigned (56px, spacious)</div>
+      <div style="display:flex;align-items:center;gap:12px;height:56px;border-bottom:2px solid #e0d5c7;padding:0 20px;background:#faf8f5;">
+        <span style="font-size:16px;color:#8b7a66;cursor:pointer;">☰</span>
+        <div style="width:1px;height:20px;background:#e0d5c7;margin:0 4px;"></div>
+        <span style="font-size:13px;color:#8b7a66;">🏢 Company</span>
+        <!-- Breadcrumbs -->
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="font-size:13px;color:#a08b76;">Projects</span>
+          <span style="font-size:10px;color:#c4b8a8;">›</span>
+          <span style="font-size:13px;color:#3b6cc6;font-weight:600;">Website Redesign</span>
+        </div>
+        <div style="flex:1;"></div>
+        <!-- Search - wider, taller -->
+        <div style="position:relative;max-width:280px;flex:1;">
+          <input style="width:100%;height:36px;border-radius:8px;background:rgba(224,213,199,0.3);border:0;padding:0 16px 0 36px;font-size:13px;outline:none;box-shadow:0 0 0 1px #e0d5c7;" placeholder="Search tasks...">
+          <span style="position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:12px;color:#8b7a66;">🔍</span>
+        </div>
+        <!-- Divider before actions -->
+        <div style="width:1px;height:24px;background:#e0d5c7;margin:0 4px;"></div>
+        <!-- Actions -->
+        <span style="font-size:14px;color:#8b7a66;cursor:pointer;">🌙</span>
+        <span style="font-size:14px;color:#8b7a66;">🔔</span>
+        <div style="display:flex;border:1px solid #e0d5c7;border-radius:6px;background:rgba(224,213,199,0.2);padding:2px;">
+          <div style="padding:4px 10px;border-radius:4px;background:#3b6cc6;color:white;font-size:12px;box-shadow:0 1px 2px rgba(0,0,0,0.1);">≡ List</div>
+          <div style="padding:4px 10px;border-radius:4px;font-size:12px;color:#8b7a66;">⊞ Board</div>
+        </div>
+        <button style="height:36px;padding:0 16px;background:#3b6cc6;color:white;border:0;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;box-shadow:0 1px 3px rgba(59,108,198,0.3);display:flex;align-items:center;gap:6px;">
+          <span style="font-size:14px;">+</span> New Task
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PROJECT LAYOUT MOCKUP -->
+<div class="mockup">
+  <div class="mockup-header">Redesigned Project Layout — Hero Style</div>
+  <div class="mockup-body" style="padding:0;">
+    <div style="font-family:'Google Sans',system-ui,sans-serif;background:#faf8f5;">
+      <!-- Hero Header -->
+      <div style="padding:24px 24px 20px;border-bottom:1px solid #e0d5c7;background:rgba(224,213,199,0.15);">
+        <!-- Badges row -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-family:'Google Sans Mono',monospace;font-size:13px;padding:3px 10px;border:1px solid rgba(59,108,198,0.3);border-radius:999px;color:#2c2520;letter-spacing:0.05em;">PRJ-001</span>
+            <span style="font-size:12px;padding:3px 10px;border-radius:999px;background:rgba(96,165,250,0.15);color:#3b82f6;display:flex;align-items:center;gap:4px;font-family:'Google Sans Mono',monospace;">
+              <span style="width:6px;height:6px;border-radius:50%;background:#60a5fa;"></span>
+              Active
+            </span>
+          </div>
+          <div style="display:flex;gap:4px;">
+            <button style="padding:4px 12px;border:1px solid #059669;color:#059669;background:transparent;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;">🏆 Assign Leader</button>
+            <button style="width:28px;height:28px;border:0;background:transparent;cursor:pointer;color:#8b7a66;font-size:14px;">⋯</button>
+          </div>
+        </div>
+        <!-- Title - LARGE -->
+        <h1 style="font-size:22px;font-weight:700;letter-spacing:-0.025em;color:#2c2520;margin:0 0 6px;">Website Redesign Project</h1>
+        <!-- Meta row -->
+        <div style="display:flex;align-items:center;gap:12px;font-size:13px;color:#8b7a66;">
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:11px;color:rgba(59,108,198,0.6);text-transform:uppercase;letter-spacing:0.05em;font-weight:600;font-family:'Google Sans Mono',monospace;">Leader</span>
+            <div style="width:24px;height:24px;border-radius:50%;background:rgba(59,108,198,0.1);color:#3b6cc6;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:10px;box-shadow:0 0 0 2px rgba(59,108,198,0.2);">AB</div>
+            <span>Alice Brown</span>
+          </div>
+          <span style="color:#c4b8a8;">·</span>
+          <div style="display:flex;align-items:center;gap:4px;">
+            <span style="font-size:12px;">🏢</span>
+            <span>Acme Corp</span>
+          </div>
+          <span style="color:#c4b8a8;">·</span>
+          <span style="color:#a08b76;display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;">Complete website overhaul with new branding</span>
+        </div>
+      </div>
+
+      <!-- Stats Strip - with blue gradient progress -->
+      <div style="display:flex;align-items:center;gap:16px;padding:14px 24px;border-bottom:1px solid #e0d5c7;background:rgba(224,213,199,0.08);">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="display:flex;align-items:center;gap:4px;">
+            <span style="color:#10b981;font-size:12px;">✓</span>
+            <span style="font-weight:600;font-family:'Google Sans Mono',monospace;font-size:14px;">12</span>
+            <span style="color:#8b7a66;font-size:13px;font-family:'Google Sans Mono',monospace;">done</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px;">
+            <span style="color:#3b6cc6;font-size:12px;">⏱</span>
+            <span style="font-weight:600;font-family:'Google Sans Mono',monospace;font-size:14px;">5</span>
+            <span style="color:#8b7a66;font-size:13px;font-family:'Google Sans Mono',monospace;">in progress</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px;">
+            <span style="color:#8b7a66;font-size:12px;">◉</span>
+            <span style="font-weight:600;font-family:'Google Sans Mono',monospace;font-size:14px;">24</span>
+            <span style="color:#8b7a66;font-size:13px;font-family:'Google Sans Mono',monospace;">total</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex:1;max-width:256px;">
+          <div style="height:6px;flex:1;border-radius:999px;background:#e0d5c7;overflow:hidden;">
+            <div style="width:50%;height:100%;border-radius:999px;background:linear-gradient(to right,#3b6cc6,rgba(59,108,198,0.7));"></div>
+          </div>
+          <span style="font-weight:700;color:#3b6cc6;font-family:'Google Sans Mono',monospace;font-size:14px;">50%</span>
+        </div>
+      </div>
+
+      <!-- Tab Navigation - bold with blue active indicator -->
+      <div style="display:flex;align-items:center;padding:0 24px;border-bottom:1px solid #e0d5c7;background:rgba(224,213,199,0.05);">
+        <a style="position:relative;padding:14px 16px;font-size:13px;font-weight:600;color:#3b6cc6;text-decoration:none;display:flex;align-items:center;gap:6px;">
+          <span style="font-size:13px;">≡</span> All Tasks
+          <span style="position:absolute;bottom:-1px;left:8px;right:8px;height:3px;background:#3b6cc6;border-radius:2px;"></span>
+        </a>
+        <a style="padding:14px 16px;font-size:13px;font-weight:500;color:#8b7a66;text-decoration:none;display:flex;align-items:center;gap:6px;">
+          <span style="font-size:13px;">📊</span> Timeline
+        </a>
+        <a style="padding:14px 16px;font-size:13px;font-weight:500;color:#8b7a66;text-decoration:none;display:flex;align-items:center;gap:6px;">
+          <span style="font-size:13px;">📁</span> Sub-Projects
+          <span style="font-size:11px;padding:1px 6px;border-radius:999px;background:rgba(59,108,198,0.1);color:#3b6cc6;font-family:'Google Sans Mono',monospace;">3</span>
+        </a>
+        <a style="padding:14px 16px;font-size:13px;font-weight:500;color:#8b7a66;text-decoration:none;display:flex;align-items:center;gap:6px;">
+          <span style="font-size:13px;">👥</span> Members
+        </a>
+        <a style="padding:14px 16px;font-size:13px;font-weight:500;color:#8b7a66;text-decoration:none;display:flex;align-items:center;gap:6px;">
+          <span style="font-size:13px;">🖼</span> Media & Files
+        </a>
+        <a style="padding:14px 16px;font-size:13px;font-weight:500;color:#8b7a66;text-decoration:none;display:flex;align-items:center;gap:6px;">
+          <span style="font-size:13px;">📄</span> Pages
+        </a>
+      </div>
+
+      <!-- Content placeholder -->
+      <div style="padding:24px;color:#a08b76;font-size:13px;min-height:100px;">
+        <div class="placeholder" style="height:80px;">Task list content area</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:24px;">
+  <h3>Key Changes</h3>
+  <ul style="font-size:14px;line-height:1.8;">
+    <li><strong>Header:</strong> 56px tall, spacious gaps, wider search with visible ring, divider before actions, blue active view toggle, prominent blue "New Task" button</li>
+    <li><strong>Breadcrumbs:</strong> Current page highlighted in blue (primary) with semibold weight</li>
+    <li><strong>Project title:</strong> 22px (was 18px), strong visual anchor</li>
+    <li><strong>Code badge:</strong> Blue-tinted border for accent</li>
+    <li><strong>Leader avatar:</strong> Blue accent ring, blue-tinted "LEADER" label</li>
+    <li><strong>Progress bar:</strong> Thicker (6px), blue gradient fill, blue percentage text</li>
+    <li><strong>Tabs:</strong> Taller (14px padding), 3px thick blue underline indicator, blue active text</li>
+    <li><strong>Sub-project count badge:</strong> Blue-tinted background</li>
+    <li><strong>Stats:</strong> In-progress uses blue (primary) instead of amber</li>
+  </ul>
+</div>
+
+<div class="options">
+  <div class="option" data-choice="approve-all" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Approve everything</h3>
+      <p>Both header and project layout look great, ready to implement</p>
+    </div>
+  </div>
+  <div class="option" data-choice="tweak-header" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Tweak header</h3>
+      <p>Project layout is good, but header needs adjustments</p>
+    </div>
+  </div>
+  <div class="option" data-choice="tweak-project" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Tweak project layout</h3>
+      <p>Header is good, but project hero/tabs need adjustments</p>
+    </div>
+  </div>
+</div>

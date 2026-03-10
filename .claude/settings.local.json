@@ -28,7 +28,9 @@
       "mcp__playwright__browser_fill_form",
       "mcp__playwright__browser_click",
       "mcp__playwright__browser_evaluate",
-      "Bash(find /home/qyubit/Workspace/qyubit/sedjiwa-portal/task-management/apps/frontend -type f -name \"*dialog*\" -o -name \"*modal*\" 2>/dev/null | head -20)"
+      "Bash(find /home/qyubit/Workspace/qyubit/sedjiwa-portal/task-management/apps/frontend -type f -name \"*dialog*\" -o -name \"*modal*\" 2>/dev/null | head -20)",
+      "Bash(/home/qyubit/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.0/lib/brainstorm-server/start-server.sh --project-dir /home/qyubit/Workspace/qyubit/sedjiwa-portal/task-management)",
+      "Bash(/home/qyubit/.claude/plugins/cache/claude-plugins-official/superpowers/5.0.0/lib/brainstorm-server/stop-server.sh /home/qyubit/Workspace/qyubit/sedjiwa-portal/task-management/.superpowers/brainstorm/434643-1773136898)"
     ]
   }
 }

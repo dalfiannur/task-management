@@ -66,17 +66,16 @@ import {
 } from "lucide-react";
 import { PROJECT_STATUS_CONFIG, getDisplayStatus } from "@/types/project";
 import { cn, getInitials } from "@/lib/utils";
-import styles from "./project-layout.module.css";
 
 const DOT_CLASS: Record<string, string> = {
-  draft: styles.dotPending,
-  pending: styles.dotPending,
-  proposal: styles.dotProspect,
-  won: styles.dotWon,
-  active: styles.dotOnGoing,
-  completed: styles.dotClosed,
-  archived: styles.dotCanceled,
-  lost: styles.dotCanceled,
+  draft: "bg-gray-400",
+  pending: "bg-gray-400",
+  proposal: "bg-yellow-400",
+  won: "bg-emerald-400",
+  active: "bg-blue-400",
+  completed: "bg-purple-500",
+  archived: "bg-red-400",
+  lost: "bg-red-400",
 };
 
 export interface ProjectLayoutContext {
@@ -109,14 +108,14 @@ export function Component() {
 
   if (isLoading) {
     return (
-      <div className={styles.loading}>
-        <Loader2 className={styles.loadingIcon} />
+      <div className="flex items-center justify-center p-10">
+        <Loader2 className="size-7 text-muted-foreground animate-spin" />
       </div>
     );
   }
 
   if (!project) {
-    return <div className={styles.notFound}>Project not found</div>;
+    return <div className="p-5 text-center text-muted-foreground">Project not found</div>;
   }
 
   const resolvedStatus = getDisplayStatus(project);
@@ -202,28 +201,28 @@ export function Component() {
 
   return (
     <div>
-      {/* Compact Header */}
-      <div className={styles.header}>
-        <div className={styles.topRow}>
-          <div className={styles.badges}>
-            <Badge variant="outline" className={styles.codeBadge}>
+      {/* Hero Header */}
+      <div className="px-6 pt-6 pb-5 border-b border-border bg-muted/15 animate-[fade-up_0.4s_ease-out_both]">
+        <div className="flex items-center justify-between gap-2.5 mb-2">
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="font-[family-name:var(--font-mono)] text-sm tracking-wide border-primary/30">
               {project.code}
             </Badge>
-            <Badge className={cn(statusConfig.color, styles.statusBadge)}>
-              <span className={cn(styles.statusDot, dotClass)} />
+            <Badge className={cn(statusConfig.color, "border-0 text-sm font-[family-name:var(--font-mono)]")}>
+              <span className={cn("size-1.5 rounded-full mr-1.5 inline-block", dotClass)} />
               {statusConfig.label}
             </Badge>
           </div>
 
-          <div className={styles.headerActions}>
+          <div className="flex items-center gap-1.5">
             {showWin && (
               <Button
                 variant="outline"
                 size="sm"
-                className={styles.winBtn}
+                className="text-emerald-600 border-emerald-600 h-7 text-xs font-semibold gap-1 hover:bg-emerald-600/10"
                 onClick={() => setWinDialogOpen(true)}
               >
-                <Trophy className={styles.winBtnIcon} />
+                <Trophy className="size-3.5" />
                 Assign Project Leader
               </Button>
             )}
@@ -232,27 +231,27 @@ export function Component() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className={styles.moreBtn}
+                  className="size-7"
                 >
-                  <MoreHorizontal className={styles.moreBtnIcon} />
+                  <MoreHorizontal className="size-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 {resolvedStatus === "active" && (
                   <DropdownMenuItem
-                    className={styles.closeItem}
+                    className="text-violet-600 focus:text-violet-600"
                     onClick={() => setCloseDialogOpen(true)}
                   >
-                    <Lock className={styles.menuIcon} />
+                    <Lock className="size-3.5 mr-1.5" />
                     Close Project
                   </DropdownMenuItem>
                 )}
                 {isAdmin && (
                   <DropdownMenuItem
-                    className={styles.deleteItem}
+                    className="text-destructive focus:text-destructive"
                     onClick={() => setDeleteDialogOpen(true)}
                   >
-                    <Trash2 className={styles.menuIcon} />
+                    <Trash2 className="size-3.5 mr-1.5" />
                     Delete
                   </DropdownMenuItem>
                 )}
@@ -264,21 +263,21 @@ export function Component() {
         {project.ref?.parentId && (
           <Link
             to={`/projects/${project.ref.parentId}`}
-            className={styles.parentLink}
+            className="text-sm leading-4 text-primary flex items-center gap-1 mb-1 font-[family-name:var(--font-mono)] hover:text-primary/80 transition-colors"
           >
-            <ArrowLeft className={styles.parentLinkIcon} />
+            <ArrowLeft className="size-3" />
             Back to parent project
           </Link>
         )}
 
-        <h1 className={styles.projectTitle}>
+        <h1 className="text-[22px] leading-7 font-bold tracking-tight">
           {getProjectDisplayName(project)}
         </h1>
 
-        <div className={styles.metaRow}>
+        <div className="flex items-center gap-3 mt-1.5">
           {project.ref?.parentId && parentModules && parentModules.length > 0 && (
-            <div className={styles.moduleLinkInfo}>
-              <Layers className={styles.moduleLinkIcon} />
+            <div className="flex items-center gap-1.5">
+              <Layers className="size-[0.8125rem] text-muted-foreground shrink-0" />
               <Select
                 value={localProject?.linkedModule?.id ?? "__none__"}
                 onValueChange={(v) => {
@@ -288,7 +287,7 @@ export function Component() {
                   });
                 }}
               >
-                <SelectTrigger className={styles.moduleLinkTrigger}>
+                <SelectTrigger className="h-6 text-sm border-border/60 w-auto min-w-32 shadow-none">
                   <SelectValue placeholder="Link module..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -303,30 +302,30 @@ export function Component() {
             </div>
           )}
           {pic && (
-            <div className={styles.picInfo}>
-              <span className={styles.picLabel}>Leader</span>
-              <Avatar className={styles.picAvatar}>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-semibold uppercase tracking-wider text-primary/60 font-[family-name:var(--font-mono)]">Leader</span>
+              <Avatar className="size-6 ring-2 ring-primary/20">
                 <AvatarImage src={pic.avatarUrl} />
-                <AvatarFallback className={styles.picAvatarFallback}>
+                <AvatarFallback className="text-[9px]">
                   {getInitials(pic.name)}
                 </AvatarFallback>
               </Avatar>
-              <span className={styles.picName}>{pic.name}</span>
+              <span className="text-sm text-muted-foreground">{pic.name}</span>
             </div>
           )}
           {project.clientDetail?.name.name && (
-            <div className={styles.clientInfo}>
-              <span className={styles.descSeparator}>&middot;</span>
-              <Building className={styles.clientIcon} />
-              <span className={styles.clientName}>
+            <div className="flex items-center gap-1.5 text-sm">
+              <span className="text-muted-foreground/40">&middot;</span>
+              <Building className="size-[0.8125rem] text-muted-foreground shrink-0" />
+              <span className="text-muted-foreground">
                 {project.clientDetail.name.name}
               </span>
             </div>
           )}
           {project.name?.description && (
-            <div className={styles.descriptionRow}>
-              <span className={styles.descSeparator}>&middot;</span>
-              <span className={styles.descClamp}>
+            <div className="flex items-center text-sm text-muted-foreground/80">
+              <span className="text-muted-foreground/40">&middot;</span>
+              <span className="line-clamp-1">
                 {project.name.description}
               </span>
             </div>
@@ -336,28 +335,28 @@ export function Component() {
 
       {/* Stats Strip */}
       {totalTasks > 0 && (
-        <div className={styles.statsStrip}>
-          <div className={styles.statsGroup}>
-            <div className={styles.statItem}>
-              <CheckCircle2 className={styles.statIconDone} />
-              <span className={styles.statValue}>{doneTasks}</span>
-              <span className={styles.statLabel}>done</span>
+        <div className="flex items-center gap-4 px-6 py-3.5 border-b border-border bg-muted/8 animate-[fade-up_0.4s_ease-out_both] [animation-delay:100ms]">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1">
+              <CheckCircle2 className="size-3.5 text-emerald-500" />
+              <span className="text-sm font-semibold tabular-nums font-[family-name:var(--font-mono)]">{doneTasks}</span>
+              <span className="text-sm text-muted-foreground font-[family-name:var(--font-mono)]">done</span>
             </div>
-            <div className={styles.statItem}>
-              <Clock className={styles.statIconProgress} />
-              <span className={styles.statValue}>{inProgressTasks}</span>
-              <span className={styles.statLabel}>in progress</span>
+            <div className="flex items-center gap-1">
+              <Clock className="size-3.5 text-primary" />
+              <span className="text-sm font-semibold tabular-nums font-[family-name:var(--font-mono)]">{inProgressTasks}</span>
+              <span className="text-sm text-muted-foreground font-[family-name:var(--font-mono)]">in progress</span>
             </div>
-            <div className={styles.statItem}>
-              <CircleDot className={styles.statIconTotal} />
-              <span className={styles.statValue}>{totalTasks}</span>
-              <span className={styles.statLabel}>total</span>
+            <div className="flex items-center gap-1">
+              <CircleDot className="size-3.5 text-muted-foreground" />
+              <span className="text-sm font-semibold tabular-nums font-[family-name:var(--font-mono)]">{totalTasks}</span>
+              <span className="text-sm text-muted-foreground font-[family-name:var(--font-mono)]">total</span>
             </div>
           </div>
-          <div className={styles.progressWrapper}>
-            <div className={styles.progressTrack}>
+          <div className="flex items-center gap-2 flex-1 max-w-64">
+            <div className="h-1.5 flex-1 rounded-full bg-muted overflow-hidden">
               <div
-                className={styles.progressFill}
+                className="h-full rounded-full bg-gradient-to-r from-primary to-primary/70"
                 style={{
                   width: `${completionPct}%`,
                   transformOrigin: "left",
@@ -366,27 +365,27 @@ export function Component() {
                 }}
               />
             </div>
-            <span className={styles.progressPct}>{completionPct}%</span>
+            <span className="text-sm font-bold text-primary tabular-nums font-[family-name:var(--font-mono)]">{completionPct}%</span>
           </div>
         </div>
       )}
 
       {/* Tab Navigation — hidden on page editor */}
       {!isPageEditor && (
-        <nav className={styles.tabNav}>
+        <nav className="flex items-center px-6 border-b border-border bg-muted/5">
           {tabs.map((tab) => (
             <Link
               key={tab.key}
               to={tab.to}
               className={cn(
-                styles.tabLink,
-                activeTab === tab.key && styles.tabLinkActive,
+                "relative py-3.5 px-4 text-sm font-medium text-muted-foreground no-underline transition-colors duration-150 hover:text-foreground flex items-center gap-1.5",
+                activeTab === tab.key && "text-primary font-semibold after:absolute after:bottom-[-1px] after:left-2 after:right-2 after:h-[3px] after:bg-primary after:rounded-full",
               )}
             >
-              <tab.icon className={styles.tabIcon} />
+              <tab.icon className={cn("size-4", activeTab === tab.key && "text-primary")} />
               {tab.label}
               {tab.count != null && tab.count > 0 && (
-                <Badge variant="secondary" className={styles.tabCountBadge}>
+                <Badge variant="secondary" className="ml-1.5 font-[family-name:var(--font-mono)] text-xs px-1.5 tabular-nums bg-primary/10 text-primary">
                   {tab.count}
                 </Badge>
               )}
@@ -396,7 +395,7 @@ export function Component() {
       )}
 
       {/* Child route content */}
-      <div className={styles.content}>
+      <div className="flex-1 min-h-0">
         <Outlet context={outletContext} />
       </div>
 
@@ -438,7 +437,7 @@ export function Component() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className={styles.deleteDialogAction}
+              className="bg-destructive text-white hover:bg-destructive/90"
               onClick={() =>
                 deleteProject.mutate(projectId!, {
                   onSuccess: () => {
