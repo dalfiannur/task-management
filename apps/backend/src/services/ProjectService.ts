@@ -216,6 +216,12 @@ export default class ProjectService extends BaseService {
       return new GraphQLError("Parent project not found", { extensions: { code: "NOT_FOUND" } });
     }
 
+    // Prevent nested sub-projects (single-level nesting only)
+    const parentParentRef = await parent.get(ProjectParentRefComponent);
+    if (parentParentRef?.parentProjectId) {
+      return new GraphQLError("Cannot create sub-projects under a sub-project", { extensions: { code: "BAD_USER_INPUT" } });
+    }
+
     const parentCoreRef = await parent.get(ProjectCoreRefComponent);
     if (!parentCoreRef?.value) {
       return new GraphQLError("Parent project has no Core reference", { extensions: { code: "BAD_USER_INPUT" } });

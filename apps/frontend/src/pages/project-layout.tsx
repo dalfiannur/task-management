@@ -162,7 +162,9 @@ export function Component() {
   else if (pathname.startsWith(`${basePath}/members`)) activeTab = "members";
   else if (pathname.startsWith(`${basePath}/pages`)) activeTab = "pages";
 
-  const tabs = [
+  const isSubProject = !!project.ref?.parentId;
+
+  const allTabs = [
     { key: "all-tasks", label: "All Tasks", to: `${basePath}/all-tasks`, icon: LayoutList },
     {
       key: "timeline",
@@ -197,6 +199,9 @@ export function Component() {
     },
   ];
 
+  // Hide sub-projects tab for sub-projects (single-level nesting only)
+  const tabs = isSubProject ? allTabs.filter((t) => t.key !== "sub-projects") : allTabs;
+
   // Compute sub-project counts by linked module (uses local data)
   const subProjectCountsByModule = new Map<string, number>();
   for (const sp of localSubProjects ?? []) {
@@ -210,7 +215,7 @@ export function Component() {
 
   const outletContext: ProjectLayoutContext = {
     openModuleForm: () => setFormOpen(true),
-    openSubProjectForm: () => setSubProjectFormOpen(true),
+    openSubProjectForm: () => { if (!isSubProject) setSubProjectFormOpen(true); },
     subProjectCountsByModule,
   };
 
