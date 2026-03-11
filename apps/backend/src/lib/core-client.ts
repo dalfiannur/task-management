@@ -150,10 +150,19 @@ export async function fetchCoreProjects(
   return map;
 }
 
+const CORE_PROJECT_FIELDS_MINIMAL = `
+  id
+  code
+  name { name description }
+  status
+  winStage
+  ref { leaderId clientId }
+`;
+
 const CREATE_CORE_PROJECT_MUTATION = `
   mutation CreateCoreProject($input: createProjectInput!) {
     createProject(input: $input) {
-      ${CORE_PROJECT_FIELDS}
+      ${CORE_PROJECT_FIELDS_MINIMAL}
     }
   }
 `;
@@ -242,6 +251,45 @@ export async function deleteCoreProject(
 
   cache.delete(id);
   return json.data?.deleteProject ?? false;
+}
+
+const USER_COMPANIES_QUERY = `
+  query ListUserCompanies($input: listUserCompaniesInput!) {
+    listUserCompanies(input: $input) { companyRef }
+  }
+`;
+
+export async function fetchUserCompanyIds(
+  userId: string,
+  authToken: string | null,
+): Promise<string[]> {
+  try {
+    const res = await fetch(CORE_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+      },
+      body: JSON.stringify({
+        query: USER_COMPANIES_QUERY,
+        variables: { input: { userRefId: userId, limit: 100 } },
+      }),
+    });
+
+    const json = (await res.json()) as {
+      data?: { listUserCompanies: { companyRef: string }[] | null };
+      errors?: { message: string }[];
+    };
+
+    if (json.errors?.length) {
+      console.error(`[core-client] fetchUserCompanyIds errors for userId=${userId}:`, json.errors);
+    }
+
+    return (json.data?.listUserCompanies ?? []).map((m) => m.companyRef);
+  } catch (err) {
+    console.error(`[core-client] fetchUserCompanyIds failed for userId=${userId}:`, err);
+    return [];
+  }
 }
 
 export function extractAuthToken(request?: Request): string | null {

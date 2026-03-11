@@ -117,7 +117,10 @@ export function Component() {
   // Client-side filtering, searching, and sorting
   const projects = useMemo(() => {
     let result = allProjects?.filter(
-      (p) => !p.ref?.parentId && p.winStage !== "pending",
+      (p) =>
+        p.winStage !== "pending" &&
+        // For commercial projects, show sub-projects (they are the commercial engagement)
+        (projectType === "commercial" || !p.ref?.parentId),
     );
 
     // Search by name or client

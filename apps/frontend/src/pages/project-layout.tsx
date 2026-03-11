@@ -90,7 +90,7 @@ export function Component() {
   const navigate = useNavigate();
 
   const { data: project, isLoading } = useProject(projectId!);
-  const { data: localProject } = useLocalProject(projectId!);
+  const { data: localProject, error: localProjectError } = useLocalProject(projectId!);
   const { data: pic } = useUser(project?.ref?.leaderId);
   const { data: taskStats } = useProjectTaskStats(projectId);
   const { data: subProjects } = useSubProjects(projectId);
@@ -98,6 +98,7 @@ export function Component() {
   const deleteProject = useDeleteProject();
   const isAdmin = useIsAdmin();
   const updateLocalProject = useUpdateLocalProject();
+  const { data: parentLocalProject } = useLocalProject(project?.ref?.parentId ?? "");
   const { data: parentModules } = useModules(project?.ref?.parentId);
 
   const [formOpen, setFormOpen] = useState(false);
@@ -110,6 +111,20 @@ export function Component() {
     return (
       <div className="flex items-center justify-center p-10">
         <Loader2 className="size-7 text-muted-foreground animate-spin" />
+      </div>
+    );
+  }
+
+  const isForbidden = localProjectError?.message?.includes("not a project member");
+
+  if (isForbidden) {
+    return (
+      <div className="flex flex-col items-center justify-center p-10 gap-3">
+        <Lock className="size-10 text-muted-foreground/50" />
+        <p className="text-muted-foreground font-medium">You don't have access to this project</p>
+        <Button variant="outline" size="sm" onClick={() => navigate("/projects")}>
+          Back to Projects
+        </Button>
       </div>
     );
   }
@@ -260,7 +275,7 @@ export function Component() {
           </div>
         </div>
 
-        {project.ref?.parentId && (
+        {project.ref?.parentId && parentLocalProject && (
           <Link
             to={`/projects/${project.ref.parentId}`}
             className="text-sm leading-4 text-primary flex items-center gap-1 mb-1 font-[family-name:var(--font-mono)] hover:text-primary/80 transition-colors"
@@ -275,7 +290,7 @@ export function Component() {
         </h1>
 
         <div className="flex items-center gap-3 mt-1.5">
-          {project.ref?.parentId && parentModules && parentModules.length > 0 && (
+          {project.ref?.parentId && parentLocalProject && parentModules && parentModules.length > 0 && (
             <div className="flex items-center gap-1.5">
               <Layers className="size-[0.8125rem] text-muted-foreground shrink-0" />
               <Select

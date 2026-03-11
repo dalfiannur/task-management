@@ -21,13 +21,14 @@ import {
   ModuleTag,
 } from "~/components/ModuleComponents";
 import { ProjectMembershipData } from "~/components/ProjectMembership";
-import { requirePermission, requireAdmin, type AuthContext, TaskResources, Action } from "~/utils/auth";
+import { requirePermission, requireAdmin, checkProjectMember, type AuthContext, TaskResources, Action } from "~/utils/auth";
 import MembershipService from "./MembershipService";
 import {
   fetchCoreProject,
   createCoreProject,
   deleteCoreProject,
   extractAuthToken,
+  fetchUserCompanyIds,
 } from "~/lib/core-client";
 
 export default class ProjectService extends BaseService {
@@ -47,7 +48,7 @@ export default class ProjectService extends BaseService {
     output: [ProjectArcheType],
   })
   async listProjects(_input: unknown, context: AuthContext) {
-    requirePermission(context, TaskResources.Projects, Action.Read);
+    const user = requirePermission(context, TaskResources.Projects, Action.Read);
 
     const allProjects = await new Query()
       .with(ProjectTag)
@@ -55,9 +56,14 @@ export default class ProjectService extends BaseService {
       .populate()
       .exec();
 
+    const memberProjectIds = await this.getMemberProjectIds(user.sub);
+
     // Exclude sub-projects (those with a parent reference)
+    // and filter by membership (admins see all)
+    const isUserAdmin = user.permissions?.includes("*") ?? false;
     const rootProjects: typeof allProjects = [];
     for (const p of allProjects) {
+      if (!isUserAdmin && !memberProjectIds.has(p.id)) continue;
       const parentRef = await p.get(ProjectParentRefComponent);
       if (!parentRef?.parentProjectId) {
         rootProjects.push(p);
@@ -75,10 +81,14 @@ export default class ProjectService extends BaseService {
     output: ProjectArcheType,
   })
   async getProject(input: { id: string }, context: AuthContext) {
-    requirePermission(context, TaskResources.Projects, Action.Read);
+    const user = requirePermission(context, TaskResources.Projects, Action.Read);
     const entity = await this.findProjectEntity(input.id);
     if (!entity) {
       return new GraphQLError("Project not found", { extensions: { code: "NOT_FOUND" } });
+    }
+
+    if (!await checkProjectMember(user, entity.id)) {
+      return new GraphQLError("Access denied: not a project member", { extensions: { code: "FORBIDDEN" } });
     }
 
     return entity;
@@ -122,24 +132,30 @@ export default class ProjectService extends BaseService {
     const projectLeaderId = input.projectLeaderId ?? user.sub;
 
     // Create project in Core (no parentId for root projects)
-    const coreProject = await createCoreProject(
-      {
-        name: input.name,
-        description: input.description,
-        clientId: input.clientId,
-        authorId: user.sub,
-        ownerId: input.ownerId,
-        divisionId: input.divisionId,
-        commercial: input.commercial,
-        value: input.value,
-        projectLeaderId,
-        startDate: input.startDate,
-        endDate: input.endDate,
-        status: "active",
-        winStage: "won",
-      },
-      authToken,
-    );
+    let coreProject: Awaited<ReturnType<typeof createCoreProject>>;
+    try {
+      coreProject = await createCoreProject(
+        {
+          name: input.name,
+          description: input.description,
+          clientId: input.clientId,
+          authorId: user.sub,
+          ownerId: input.ownerId,
+          divisionId: input.divisionId,
+          commercial: input.commercial,
+          value: input.value,
+          projectLeaderId,
+          startDate: input.startDate,
+          endDate: input.endDate,
+          status: "active",
+          winStage: "won",
+        },
+        authToken,
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to create project in Core";
+      return new GraphQLError(message, { extensions: { code: "INTERNAL_ERROR" } });
+    }
 
     // Create local entity
     const entity = Entity.Create()
@@ -212,28 +228,47 @@ export default class ProjectService extends BaseService {
       return new GraphQLError("Could not fetch parent project data from Core", { extensions: { code: "INTERNAL_ERROR" } });
     }
 
-    const clientId = parentCoreData.ref.clientId;
+    // Resolve ownerId, clientId, and commercial from project leader's company
+    let ownerId = input.ownerId;
+    let clientId = parentCoreData.ref.clientId;
+    let commercial = input.commercial;
+
+    if (input.projectLeaderId) {
+      const leaderCompanyIds = await fetchUserCompanyIds(input.projectLeaderId, authToken);
+      if (leaderCompanyIds.length > 0) {
+        const leaderCompanyId = leaderCompanyIds[0];
+        clientId = leaderCompanyId;
+        ownerId = ownerId ?? leaderCompanyId;
+        commercial = commercial ?? true;
+      }
+    }
 
     // 3. Create project in Core with parentId
-    const coreProject = await createCoreProject(
-      {
-        name: input.name,
-        description: input.description,
-        clientId,
-        authorId: user.sub,
-        parentId: parentCoreRef.value,
-        ownerId: input.ownerId,
-        divisionId: input.divisionId,
-        commercial: input.commercial,
-        value: input.value,
-        projectLeaderId: input.projectLeaderId,
-        startDate: input.startDate,
-        endDate: input.endDate,
-        status: "active",
-        winStage: "won",
-      },
-      authToken,
-    );
+    let coreProject: Awaited<ReturnType<typeof createCoreProject>>;
+    try {
+      coreProject = await createCoreProject(
+        {
+          name: input.name,
+          description: input.description,
+          clientId,
+          authorId: user.sub,
+          parentId: parentCoreRef.value,
+          ownerId,
+          divisionId: input.divisionId,
+          commercial,
+          value: input.value,
+          projectLeaderId: input.projectLeaderId,
+          startDate: input.startDate,
+          endDate: input.endDate,
+          status: "active",
+          winStage: "won",
+        },
+        authToken,
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to create project in Core";
+      return new GraphQLError(message, { extensions: { code: "INTERNAL_ERROR" } });
+    }
 
     // 5. Validate moduleId belongs to parent project if provided
     if (input.moduleId) {
@@ -281,8 +316,11 @@ export default class ProjectService extends BaseService {
     input: { parentProjectId: string },
     context: AuthContext,
   ) {
-    requirePermission(context, TaskResources.Projects, Action.Read);
+    const user = requirePermission(context, TaskResources.Projects, Action.Read);
     const localParentId = await resolveLocalProjectId(input.parentProjectId);
+    if (!await checkProjectMember(user, localParentId)) {
+      return new GraphQLError("Access denied: not a project member", { extensions: { code: "FORBIDDEN" } });
+    }
     const allSubProjects = await new Query()
       .with(ProjectTag)
       .with(ProjectCoreRefComponent)

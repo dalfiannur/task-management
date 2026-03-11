@@ -57,6 +57,10 @@ function createErrorLink() {
 
     if (isAuthError) return;
 
+    // Don't toast FORBIDDEN errors — handled in UI
+    const isForbidden = graphQLErrors?.some((e) => e.extensions?.code === 'FORBIDDEN');
+    if (isForbidden) return;
+
     graphQLErrors?.forEach((error) => {
       toast.error(error.message || 'An unexpected error occurred');
     });

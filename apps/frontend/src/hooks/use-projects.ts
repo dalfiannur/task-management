@@ -157,6 +157,7 @@ export function useProjects(input?: {
   const result = useQuery<{ listProjects: CoreProject[] }>(LIST_CORE_PROJECTS, {
     client: coreClient,
     variables: { input },
+    errorPolicy: "all",
   });
   return normalizeQueryResult(result, (d) => d.listProjects);
 }
@@ -166,6 +167,7 @@ export function useProject(id: string) {
     variables: { input: { id } },
     client: coreClient,
     skip: !id,
+    errorPolicy: "all",
   });
   return normalizeQueryResult(result, (d) => d.getProject);
 }
@@ -194,6 +196,7 @@ export function useSubProjects(parentProjectId?: string) {
     client: coreClient,
     variables: { input: { parentId: parentProjectId } },
     skip: !parentProjectId,
+    errorPolicy: "all",
   });
   return normalizeQueryResult(result, (d) => d.listProjects);
 }
