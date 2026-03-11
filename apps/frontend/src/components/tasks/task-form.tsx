@@ -164,7 +164,7 @@ export function TaskForm({ open, onOpenChange, task, moduleId, projectId }: Task
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[72rem] max-h-[85vh] overflow-y-auto p-0">
+      <DialogContent className="max-w-[72rem] sm:max-w-[72rem] max-h-[85vh] overflow-y-auto p-0">
         <form onSubmit={handleSubmit} data-task-form>
           <div className="flex flex-col sm:flex-row">
             {/* Left panel -- main content */}
