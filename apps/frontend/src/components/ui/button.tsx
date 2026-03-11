@@ -5,22 +5,22 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-2xl text-sm font-medium shrink-0 cursor-pointer border-none no-underline transition-all duration-300 active:scale-95 hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] focus:outline-none focus:ring-2 focus:ring-white/40 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg text-sm font-medium shrink-0 cursor-pointer border-none no-underline transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
         default:
-          "bg-white text-indigo-600 dark:bg-indigo-500 dark:text-white font-bold hover:shadow-lg hover:shadow-white/20",
+          "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90",
         secondary:
-          "bg-white/20 dark:bg-white/5 backdrop-blur-md border border-white/30 dark:border-white/10 text-white hover:bg-white/30",
+          "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
         destructive:
-          "bg-red-500/80 backdrop-blur-md text-white border border-red-400/30 hover:bg-red-500/90 hover:shadow-lg hover:shadow-red-500/20",
+          "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
         outline:
-          "bg-white/10 backdrop-blur-md border border-white/30 dark:border-white/10 text-white hover:bg-white/20",
+          "border border-border bg-background text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground",
         ghost:
-          "bg-transparent text-white hover:bg-white/10 backdrop-blur-md",
+          "text-foreground hover:bg-accent hover:text-accent-foreground",
         link:
-          "bg-transparent text-white underline-offset-4 hover:underline",
+          "text-primary underline-offset-4 hover:underline",
       },
       size: {
         default: "h-8 px-3.5 py-1.5 has-[>svg]:px-2.5",
