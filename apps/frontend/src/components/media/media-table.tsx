@@ -28,10 +28,11 @@ import {
   Download,
   Trash2,
   Link2,
+  Share2,
 } from "lucide-react";
 import type { MediaFile } from "@/types/media";
 import { isImage, formatFileSize } from "@/types/media";
-import { useDeleteMedia } from "@/hooks/use-media";
+import { useDeleteMedia, useToggleMediaVisibility } from "@/hooks/use-media";
 import styles from "./media-table.module.css";
 
 function FileTypeIcon({ mimeType }: { mimeType: string }) {
@@ -58,10 +59,13 @@ interface MediaTableProps {
   files: MediaFile[];
   isLoading: boolean;
   readOnly?: boolean;
+  projectId?: string;
+  visibilityMap?: Map<string, "private" | "shared">;
 }
 
-export function MediaTable({ files, isLoading, readOnly }: MediaTableProps) {
+export function MediaTable({ files, isLoading, readOnly, projectId, visibilityMap }: MediaTableProps) {
   const deleteMedia = useDeleteMedia();
+  const toggleVisibility = useToggleMediaVisibility();
 
   if (isLoading) {
     return (
@@ -96,89 +100,129 @@ export function MediaTable({ files, isLoading, readOnly }: MediaTableProps) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {files.map((file) => (
-            <TableRow key={file.id}>
-              <TableCell>
-                <div className={styles.nameCell}>
-                  <FileTypeIcon mimeType={file.mediaFileInfo.mimeType} />
-                  <span className={styles.fileNameText}>
-                    {file.mediaFileInfo.originalFileName}
-                  </span>
-                </div>
-              </TableCell>
-              <TableCell>
-                <Badge variant="outline" className={styles.typeBadge}>
-                  {getMimeLabel(file.mediaFileInfo.mimeType)}
-                </Badge>
-              </TableCell>
-              <TableCell className={styles.sizeText}>
-                {formatFileSize(file.mediaFileInfo.size)}
-              </TableCell>
-              <TableCell>
-                {file.mediaFileInfo.taskId ? (
-                  <Badge
-                    variant="secondary"
-                    className={styles.linkedBadge}
-                  >
-                    <Link2 className={styles.linkedIcon} />
-                    Linked
+          {files.map((file) => {
+            const isShared = file.isFromSharedProject;
+            const currentVisibility = visibilityMap?.get(file.id) ?? file.visibility ?? "private";
+            const isFileShared = currentVisibility === "shared";
+
+            return (
+              <TableRow key={file.id}>
+                <TableCell>
+                  <div className={styles.nameCell}>
+                    <FileTypeIcon mimeType={file.mediaFileInfo.mimeType} />
+                    <span className={styles.fileNameText}>
+                      {file.mediaFileInfo.originalFileName}
+                    </span>
+                    {isShared && file.sourceProjectName && (
+                      <span className={styles.sourceProjectText}>
+                        ({file.sourceProjectName})
+                      </span>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline" className={styles.typeBadge}>
+                    {getMimeLabel(file.mediaFileInfo.mimeType)}
                   </Badge>
-                ) : (
-                  <span className={styles.noLink}>&mdash;</span>
-                )}
-              </TableCell>
-              <TableCell className={styles.actionsCell}>
-                <div className={styles.actionsWrapper}>
-                  {file.mediaFileInfo.url && (
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className={styles.actionBtn}
-                      asChild
-                    >
-                      <a
-                        href={file.mediaFileInfo.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                </TableCell>
+                <TableCell className={styles.sizeText}>
+                  {formatFileSize(file.mediaFileInfo.size)}
+                </TableCell>
+                <TableCell>
+                  <div style={{ display: "flex", gap: "0.25rem", alignItems: "center" }}>
+                    {isFileShared && !isShared && (
+                      <Badge variant="outline" className={styles.sharedBadge}>
+                        <Share2 className={styles.sharedIcon} />
+                        Shared
+                      </Badge>
+                    )}
+                    {file.mediaFileInfo.taskId ? (
+                      <Badge
+                        variant="secondary"
+                        className={styles.linkedBadge}
                       >
-                        <Download className={styles.actionIcon} />
-                      </a>
-                    </Button>
-                  )}
-                  {!readOnly && (
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className={styles.deleteBtn}
+                        <Link2 className={styles.linkedIcon} />
+                        Linked
+                      </Badge>
+                    ) : !isFileShared ? (
+                      <span className={styles.noLink}>&mdash;</span>
+                    ) : null}
+                  </div>
+                </TableCell>
+                <TableCell className={styles.actionsCell}>
+                  <div className={styles.actionsWrapper}>
+                    {file.mediaFileInfo.url && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className={styles.actionBtn}
+                        asChild
+                      >
+                        <a
+                          href={file.mediaFileInfo.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
                         >
-                          <Trash2 className={styles.actionIcon} />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete file?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This will permanently delete &quot;
-                            {file.mediaFileInfo.originalFileName}&quot;.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => deleteMedia.mutate(file.id)}
+                          <Download className={styles.actionIcon} />
+                        </a>
+                      </Button>
+                    )}
+                    {!readOnly && !isShared && projectId && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className={styles.shareBtn}
+                        title={isFileShared ? "Unshare file" : "Share with sub-projects"}
+                        onClick={() =>
+                          toggleVisibility.mutate({
+                            mediaFileId: file.id,
+                            projectId,
+                            visibility: isFileShared ? "private" : "shared",
+                            originalFileName: file.mediaFileInfo.originalFileName,
+                            mimeType: file.mediaFileInfo.mimeType,
+                            size: file.mediaFileInfo.size,
+                            url: file.mediaFileInfo.url,
+                          })
+                        }
+                      >
+                        <Share2 className={styles.actionIcon} />
+                      </Button>
+                    )}
+                    {!readOnly && !isShared && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className={styles.deleteBtn}
                           >
-                            Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  )}
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
+                            <Trash2 className={styles.actionIcon} />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete file?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will permanently delete &quot;
+                              {file.mediaFileInfo.originalFileName}&quot;.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => deleteMedia.mutate(file.id)}
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+                  </div>
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     </div>

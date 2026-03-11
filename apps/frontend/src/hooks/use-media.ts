@@ -47,6 +47,42 @@ const DELETE_MEDIA_FILE = gql`
   }
 `;
 
+// --- task-management GraphQL operations (visibility / sharing) ---
+
+const SET_MEDIA_FILE_VISIBILITY = gql`
+  mutation SetMediaFileVisibility($input: setMediaFileVisibilityInput!) {
+    setMediaFileVisibility(input: $input) {
+      id
+      mediaFileInfo {
+        fileName
+        originalFileName
+        mimeType
+        size
+        url
+        projectId
+        visibility
+      }
+    }
+  }
+`;
+
+const LIST_SHARED_MEDIA_FILES = gql`
+  query ListSharedMediaFiles($input: listSharedMediaFilesInput!) {
+    listSharedMediaFiles(input: $input) {
+      id
+      mediaFileInfo {
+        fileName
+        originalFileName
+        mimeType
+        size
+        url
+        projectId
+        visibility
+      }
+    }
+  }
+`;
+
 // --- task-management GraphQL operations (links) ---
 
 const TASK_MEDIA_LINK_FIELDS = gql`
@@ -104,11 +140,26 @@ function triggerMediaRefetch() {
 
 // --- Hooks ---
 
+/** Response shape for MediaFile visibility entries from task-management backend. */
+export interface MediaFileVisibilityEntry {
+  id: string;
+  mediaFileInfo: {
+    fileName: string; // stores the sedjiwa-media file ID
+    originalFileName: string;
+    mimeType: string;
+    size: number;
+    url: string;
+    projectId: string;
+    visibility: string;
+  };
+}
+
 interface MediaFilters {
   projectId: string;
   mediaProjectId?: string;
   taskId?: string;
   mimeType?: string;
+  includeShared?: boolean;
 }
 
 /**
@@ -142,10 +193,19 @@ export function useMediaFiles(filters: MediaFilters) {
     skip: !projectId,
   });
 
+  // Query visibility entries for this project's files
+  const { data: sharedData, refetch: sharedRefetch } = useQuery<{
+    listSharedMediaFiles: MediaFileVisibilityEntry[];
+  }>(LIST_SHARED_MEDIA_FILES, {
+    variables: { input: { projectId } },
+    skip: !projectId || !filters.includeShared,
+  });
+
   const doRefetch = useCallback(() => {
     mediaRefetch();
     linksRefetch();
-  }, [mediaRefetch, linksRefetch]);
+    if (filters.includeShared) sharedRefetch();
+  }, [mediaRefetch, linksRefetch, sharedRefetch, filters.includeShared]);
 
   useEffect(() => {
     mediaRefetchCallbacks.add(doRefetch);
@@ -175,8 +235,14 @@ export function useMediaFiles(filters: MediaFilters) {
     files = files.filter((f) => linkedFileIds.has(f.id));
   }
 
+  // Build shared media file IDs set for marking visibility
+  const sharedFileIds = new Set(
+    (sharedData?.listSharedMediaFiles ?? []).map((e) => e.mediaFileInfo.fileName),
+  );
+
   return {
     data: files,
+    sharedFileIds,
     isLoading: mediaLoading || linksLoading,
     error: null,
   };
@@ -325,6 +391,96 @@ export function useUploadMedia() {
       }
     },
     isLoading: loading,
+  };
+}
+
+/**
+ * Toggle a media file's visibility between private and shared.
+ */
+export function useToggleMediaVisibility() {
+  const [loading, setLoading] = useState(false);
+
+  interface ToggleVars {
+    mediaFileId: string;
+    projectId: string;
+    visibility: "private" | "shared";
+    originalFileName?: string;
+    mimeType?: string;
+    size?: number;
+    url?: string;
+  }
+
+  const toggle = async (vars: ToggleVars) => {
+    await client.mutate({
+      mutation: SET_MEDIA_FILE_VISIBILITY,
+      variables: { input: vars },
+    });
+  };
+
+  return {
+    mutate: (
+      vars: ToggleVars,
+      opts?: { onSuccess?: () => void },
+    ) => {
+      setLoading(true);
+      toggle(vars)
+        .then(() => {
+          triggerMediaRefetch();
+          opts?.onSuccess?.();
+        })
+        .finally(() => setLoading(false));
+    },
+    isLoading: loading,
+  };
+}
+
+/**
+ * Fetch shared media files from other projects in the same hierarchy.
+ * Returns MediaFile[] built from the backend's visibility entries (includes file metadata).
+ */
+export function useSharedMediaFiles(
+  projectId: string,
+  projectNameMap?: Map<string, string>,
+) {
+  const { data: sharedData, loading: sharedLoading, refetch: sharedRefetch } = useQuery<{
+    listSharedMediaFiles: MediaFileVisibilityEntry[];
+  }>(LIST_SHARED_MEDIA_FILES, {
+    variables: { input: { projectId } },
+    skip: !projectId,
+  });
+
+  useEffect(() => {
+    mediaRefetchCallbacks.add(sharedRefetch);
+    return () => {
+      mediaRefetchCallbacks.delete(sharedRefetch);
+    };
+  }, [sharedRefetch]);
+
+  const sharedEntries = sharedData?.listSharedMediaFiles ?? [];
+
+  // Convert visibility entries to MediaFile display objects
+  const sharedFiles: MediaFile[] = sharedEntries.map((entry) => ({
+    id: entry.mediaFileInfo.fileName, // the sedjiwa-media file ID
+    mediaFileInfo: {
+      fileName: entry.mediaFileInfo.fileName,
+      originalFileName: entry.mediaFileInfo.originalFileName,
+      mimeType: entry.mediaFileInfo.mimeType,
+      size: entry.mediaFileInfo.size,
+      storageKey: "",
+      url: entry.mediaFileInfo.url,
+      projectId: entry.mediaFileInfo.projectId,
+      taskId: "",
+      uploadedBy: "",
+    },
+    visibility: "shared",
+    isFromSharedProject: true,
+    sourceProjectName: projectNameMap?.get(entry.mediaFileInfo.projectId),
+  }));
+
+  return {
+    sharedEntries,
+    sharedFiles,
+    isLoading: sharedLoading,
   };
 }
 

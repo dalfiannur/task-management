@@ -165,3 +165,33 @@
   width: 0.75rem;
   height: 0.75rem;
 }
+
+.sharedBadge {
+  font-size: 0.875rem;
+  padding-left: 0.375rem;
+  padding-right: 0.375rem;
+  padding-top: 0;
+  padding-bottom: 0;
+  font-family: var(--font-mono);
+}
+
+.sharedIcon {
+  width: 0.625rem;
+  height: 0.625rem;
+  margin-right: 0.125rem;
+}
+
+.sourceProjectText {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  font-family: var(--font-mono);
+}
+
+.shareBtn {
+  composes: actionBtn;
+  color: var(--primary);
+}
+
+.shareBtn:hover {
+  color: var(--primary);
+}

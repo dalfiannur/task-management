@@ -12,6 +12,9 @@ export interface MediaFile {
     taskId: string;
     uploadedBy: string;
   };
+  visibility?: "private" | "shared";
+  isFromSharedProject?: boolean;
+  sourceProjectName?: string;
 }
 
 /** Raw shape returned by sedjiwa-media GraphQL */

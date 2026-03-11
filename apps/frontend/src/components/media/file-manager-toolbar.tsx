@@ -14,7 +14,6 @@ import {
   ArrowUpDown,
   Grid3X3,
   List,
-  Layers,
   Search,
   ArrowUp,
 } from "lucide-react";
@@ -99,15 +98,6 @@ export function FileManagerToolbar({
             className={styles.searchInput}
           />
         </div>
-
-        <Button
-          size="sm"
-          variant={fm.flatten ? "secondary" : "ghost"}
-          onClick={fm.toggleFlatten}
-          title="Flatten — show all files"
-        >
-          <Layers className={styles.icon} />
-        </Button>
 
         <Tabs
           value={mediaViewMode}

@@ -166,3 +166,36 @@
   width: 0.875rem;
   height: 0.875rem;
 }
+
+.sharedBadge {
+  font-size: 0.875rem;
+  padding-left: 0.25rem;
+  padding-right: 0.25rem;
+  padding-top: 0;
+  padding-bottom: 0;
+  height: 1rem;
+  font-family: var(--font-mono);
+}
+
+.sharedIcon {
+  width: 0.625rem;
+  height: 0.625rem;
+  margin-right: 0.125rem;
+}
+
+.sourceProjectBadge {
+  position: absolute;
+  top: 0.25rem;
+  left: 0.25rem;
+  font-size: 0.6875rem;
+  padding: 0.0625rem 0.25rem;
+  background-color: var(--primary);
+  color: var(--primary-foreground);
+  border-radius: calc(var(--radius) - 2px);
+  font-family: var(--font-mono);
+  max-width: 80%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  z-index: 1;
+}

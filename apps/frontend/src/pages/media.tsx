@@ -1,10 +1,11 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useParams } from "react-router";
 import { useProject, useSubProjects, getProjectDisplayName } from "@/hooks/use-projects";
 import { useResolveMediaProjectId } from "@/hooks/use-media-project";
 import { useModule } from "@/hooks/use-modules";
 import { useTask } from "@/hooks/use-tasks";
 import { useFileManager } from "@/hooks/use-file-manager";
+import { useSharedMediaFiles } from "@/hooks/use-media";
 import { FileManagerSidebar } from "@/components/media/file-manager-sidebar";
 import { FileManagerToolbar } from "@/components/media/file-manager-toolbar";
 import { FileManagerBreadcrumb } from "@/components/media/file-manager-breadcrumb";
@@ -27,6 +28,8 @@ export function Component() {
     isSubProject ? undefined : projectId,
   );
 
+  const hasHierarchy = isSubProject || subProjects.length > 0;
+
   // Resolve media project ID for active project
   const { mediaProjectId } = useResolveMediaProjectId(
     activeProject?.id,
@@ -39,6 +42,30 @@ export function Component() {
 
   // Upload dialog state
   const [uploadOpen, setUploadOpen] = useState(false);
+
+  // Build project name lookup by local project ID
+  const projectNameByLocalId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const sub of subProjects) {
+      if (sub.id) map.set(sub.id, getProjectDisplayName(sub));
+    }
+    if (project) map.set(project.id, getProjectDisplayName(project));
+    return map;
+  }, [subProjects, project]);
+
+  const { sharedEntries, sharedFiles, isLoading: sharedLoading } = useSharedMediaFiles(
+    hasHierarchy ? activeProjectId : "",
+    projectNameByLocalId,
+  );
+
+  // Build visibility map (mediaFileId → visibility) from shared entries
+  const visibilityMap = useMemo(() => {
+    const map = new Map<string, "private" | "shared">();
+    for (const entry of sharedEntries) {
+      map.set(entry.mediaFileInfo.fileName, entry.mediaFileInfo.visibility as "private" | "shared");
+    }
+    return map;
+  }, [sharedEntries]);
 
   const handleUploadClick = useCallback(() => {
     setUploadOpen(true);
@@ -94,6 +121,10 @@ export function Component() {
           projectId={activeProjectId}
           mediaProjectId={mediaProjectId ?? undefined}
           fm={fm}
+          sharedFiles={sharedFiles}
+          sharedFilesLoading={sharedLoading}
+          showShared={hasHierarchy}
+          visibilityMap={visibilityMap}
         />
       </div>
 

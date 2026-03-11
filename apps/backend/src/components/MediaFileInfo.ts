@@ -28,4 +28,7 @@ export class MediaFileInfo extends BaseComponent {
 
   @CompData({ indexed: true })
   uploadedBy: string = "";
+
+  @CompData({ indexed: true })
+  visibility: string = "private";
 }

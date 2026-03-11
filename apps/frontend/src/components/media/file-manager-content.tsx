@@ -14,12 +14,20 @@ interface FileManagerContentProps {
   projectId: string;
   mediaProjectId?: string;
   fm: FileManagerState;
+  sharedFiles?: MediaFile[];
+  sharedFilesLoading?: boolean;
+  showShared?: boolean;
+  visibilityMap?: Map<string, "private" | "shared">;
 }
 
 export function FileManagerContent({
   projectId,
   mediaProjectId,
   fm,
+  sharedFiles = [],
+  sharedFilesLoading,
+  showShared,
+  visibilityMap,
 }: FileManagerContentProps) {
   const { mediaViewMode } = useUIStore();
 
@@ -110,22 +118,6 @@ export function FileManagerContent({
     return items;
   }, [tasks, taskIdsWithFiles, fileCountByTask, query]);
 
-  // --- Flatten mode: show all project files ---
-  if (fm.flatten) {
-    const filtered = filterFiles(allFiles, query);
-    const sorted = sortFiles(filtered, fm.sortBy, fm.sortDir);
-
-    return (
-      <div className={styles.content}>
-        {mediaViewMode === "grid" ? (
-          <MediaGrid files={sorted} isLoading={allFilesLoading} />
-        ) : (
-          <MediaTable files={sorted} isLoading={allFilesLoading} />
-        )}
-      </div>
-    );
-  }
-
   // --- Task level: show task files ---
   if (fm.selectedTaskId) {
     const filtered = filterFiles(taskFiles, query);
@@ -134,9 +126,9 @@ export function FileManagerContent({
     return (
       <div className={styles.content}>
         {mediaViewMode === "grid" ? (
-          <MediaGrid files={sorted} isLoading={taskFilesLoading} />
+          <MediaGrid files={sorted} isLoading={taskFilesLoading} projectId={projectId} visibilityMap={visibilityMap} />
         ) : (
-          <MediaTable files={sorted} isLoading={taskFilesLoading} />
+          <MediaTable files={sorted} isLoading={taskFilesLoading} projectId={projectId} visibilityMap={visibilityMap} />
         )}
       </div>
     );
@@ -156,15 +148,61 @@ export function FileManagerContent({
     );
   }
 
-  // --- Project level: show modules with files ---
+  // --- Project level: show module folders + unlinked files ---
+  const unlinkedFiles = useMemo(() => {
+    const files = allFiles.filter((f) => !f.mediaFileInfo.taskId);
+    return sortFiles(filterFiles(files, query), fm.sortBy, fm.sortDir);
+  }, [allFiles, query, fm.sortBy, fm.sortDir]);
+
+  const filteredSharedProject = showShared ? filterFiles(sharedFiles, query) : [];
+  const sortedSharedProject = sortFiles(filteredSharedProject, fm.sortBy, fm.sortDir);
+
+  const hasSharedToShow = showShared && sortedSharedProject.length > 0;
+  const hasContent = moduleFolders.length > 0 || unlinkedFiles.length > 0 || hasSharedToShow;
+
   return (
     <div className={styles.content}>
-      <FolderGrid
-        items={moduleFolders}
-        isLoading={modulesLoading || allFilesLoading}
-        onOpen={fm.navigateToModule}
-        emptyMessage="No files in this project"
-      />
+      {moduleFolders.length > 0 && (
+        <FolderGrid
+          items={moduleFolders}
+          isLoading={modulesLoading || allFilesLoading}
+          onOpen={fm.navigateToModule}
+        />
+      )}
+      {unlinkedFiles.length > 0 && (
+        <>
+          {moduleFolders.length > 0 && (
+            <div className={styles.sharedDivider}>
+              <span className={styles.sharedDividerText}>Project Files</span>
+            </div>
+          )}
+          {mediaViewMode === "grid" ? (
+            <MediaGrid files={unlinkedFiles} isLoading={allFilesLoading} projectId={projectId} visibilityMap={visibilityMap} />
+          ) : (
+            <MediaTable files={unlinkedFiles} isLoading={allFilesLoading} projectId={projectId} visibilityMap={visibilityMap} />
+          )}
+        </>
+      )}
+      {hasSharedToShow && (
+        <>
+          <div className={styles.sharedDivider}>
+            <span className={styles.sharedDividerText}>Shared Files</span>
+          </div>
+          {mediaViewMode === "grid" ? (
+            <MediaGrid files={sortedSharedProject} isLoading={sharedFilesLoading ?? false} readOnly />
+          ) : (
+            <MediaTable files={sortedSharedProject} isLoading={sharedFilesLoading ?? false} readOnly />
+          )}
+        </>
+      )}
+      {!hasContent && !allFilesLoading && !modulesLoading && (
+        <FolderGrid
+          items={[]}
+          isLoading={false}
+          onOpen={() => {}}
+          emptyMessage="No files in this project"
+        />
+      )}
     </div>
   );
 }
