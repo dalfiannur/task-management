@@ -553,11 +553,11 @@
   opacity: 0.5;
 }
 
-/* Active state */
+/* Active state — golden accent */
 .sidebarMenuButton[data-active="true"] {
-  background-color: var(--sidebar-accent);
+  background-color: color-mix(in srgb, var(--sidebar-primary) 8%, transparent);
   font-weight: 500;
-  color: var(--sidebar-accent-foreground);
+  color: var(--sidebar-primary);
 }
 
 /* Open state hover */

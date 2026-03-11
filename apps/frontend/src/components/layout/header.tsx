@@ -54,7 +54,7 @@ export function Header() {
   return (
     <>
       <header className="flex h-14 shrink-0 items-center gap-3 border-b-2 border-border px-5 py-2">
-        <SidebarTrigger className="-ml-1" />
+        <SidebarTrigger className="-ml-1 text-muted-foreground hover:text-foreground" />
         <Separator orientation="vertical" className="mr-1.5 h-5" />
         <CompanySelector />
 
@@ -109,7 +109,7 @@ export function Header() {
           size="icon-xs"
           type="button"
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          className="size-8 shrink-0"
+          className="size-8 shrink-0 text-muted-foreground hover:text-foreground"
         >
           {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
         </Button>
