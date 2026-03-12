@@ -62,7 +62,8 @@
       "Bash(curl -sk https://media.sedjiwa.local/graphql -X POST -H \"Content-Type: application/json\" -d '{\"query\":\"{ __typename }\"}' 2>&1)",
       "Bash(curl -s http://localhost:3000/graphql -X POST -H \"Content-Type: application/json\" -d '{\"query\":\"{ __schema { mutationType { fields { name } } } }\"}' 2>&1 | python3 -m json.tool 2>/dev/null | grep -i \"media\\\\|visibility\\\\|shared\")",
       "Bash(curl -s http://localhost:3000/graphql -X POST -H \"Content-Type: application/json\" -d '{\"query\":\"{ __schema { queryType { fields { name } } } }\"}' 2>&1 | python3 -m json.tool 2>/dev/null | grep -i \"media\\\\|shared\")",
-      "Bash(curl -s http://localhost:3000/graphql -X POST -H \"Content-Type: application/json\" -d '{\"query\":\"{ __type\\(name: \\\\\"setMediaFileVisibilityInput\\\\\"\\) { inputFields { name type { name kind } } } }\"}' 2>&1 | python3 -m json.tool)"
+      "Bash(curl -s http://localhost:3000/graphql -X POST -H \"Content-Type: application/json\" -d '{\"query\":\"{ __type\\(name: \\\\\"setMediaFileVisibilityInput\\\\\"\\) { inputFields { name type { name kind } } } }\"}' 2>&1 | python3 -m json.tool)",
+      "Bash(find /home/qyubit/Workspace/qyubit/sedjiwa-portal/task-management/apps/backend -type f -name \"*.sql\" 2>/dev/null | head -20)"
     ]
   }
 }
