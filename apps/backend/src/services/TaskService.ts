@@ -334,6 +334,7 @@ export default class TaskService extends BaseService {
           createdAt: info?.createdAt ?? "",
           updatedAt: info?.updatedAt ?? "",
           completedAt: info?.completedAt ?? "",
+          createdBy: info?.createdBy ?? "",
         },
         taskAssignment: {
           assigneeIds: assignment?.assigneeIds ?? "[]",
@@ -346,6 +347,138 @@ export default class TaskService extends BaseService {
     });
 
     // Step 4: Resolve local project IDs → Core Portal IDs for display
+    const projectCoreRefMap: Record<string, string> = {};
+    for (const localId of localProjectIds) {
+      const projectEntity = await Entity.FindById(localId);
+      if (projectEntity) {
+        const coreRef = await projectEntity.get(ProjectCoreRefComponent);
+        if (coreRef?.value) projectCoreRefMap[localId] = coreRef.value;
+      }
+    }
+
+    return { tasks, moduleMap, projectCoreRefMap };
+  }
+
+  @GraphQLOperation({
+    type: "Query",
+    input: {
+      status: t.string(),
+      priority: t.string(),
+      page: t.int(),
+      pageSize: t.int(),
+    },
+    output: "JSON",
+  })
+  async listTasksByMe(
+    input: { status?: string; priority?: string; page?: number; pageSize?: number },
+    context: AuthContext,
+  ) {
+    const user = requirePermission(context, TaskResources.Tasks, Action.Read);
+    const userId = user.sub;
+
+    // Step 1: Find projects where user is a member
+    const memberships = await new Query()
+      .with(ProjectMembershipData, {
+        filters: [Query.typedFilter(ProjectMembershipData, "userId", "=", userId)],
+      })
+      .populate()
+      .exec();
+
+    const localProjectIds = [
+      ...new Set(
+        memberships
+          .map((e: any) => e.getInMemory(ProjectMembershipData)?.projectId)
+          .filter(Boolean) as string[],
+      ),
+    ];
+
+    if (localProjectIds.length === 0) return { tasks: [], moduleMap: {}, projectCoreRefMap: {} };
+
+    // Step 2: Find modules in those projects
+    const moduleEntities = await new Query()
+      .with(ModuleTag)
+      .with(ModuleNameComponent)
+      .with(ModuleProjectRefComponent, {
+        filters: [Query.filter("projectId", Query.filterOp.IN, localProjectIds)],
+      })
+      .populate()
+      .exec();
+
+    const moduleIds = moduleEntities.map((m: any) => m.id);
+    if (moduleIds.length === 0) return { tasks: [], moduleMap: {}, projectCoreRefMap: {} };
+
+    // Build moduleMap for frontend display
+    const moduleMap: Record<string, { name: string; projectId: string }> = {};
+    for (const m of moduleEntities) {
+      moduleMap[m.id] = {
+        name: (m as any).getInMemory(ModuleNameComponent)?.value ?? "",
+        projectId: (m as any).getInMemory(ModuleProjectRefComponent)?.projectId ?? "",
+      };
+    }
+
+    // Step 3: Find tasks in those modules, created by the user
+    const taskQuery = new Query()
+      .with(TaskInfo, {
+        filters: [
+          Query.typedFilter(TaskInfo, "createdBy", "=", userId),
+        ],
+      })
+      .with(TaskAssignment, {
+        filters: [
+          Query.filter("moduleId", Query.filterOp.IN, moduleIds),
+        ],
+      })
+      .with(TaskLabels);
+
+    if (input.status) {
+      taskQuery.with(TaskInfo, {
+        filters: [Query.typedFilter(TaskInfo, "status", "=", input.status)],
+      });
+    }
+    if (input.priority) {
+      taskQuery.with(TaskInfo, {
+        filters: [Query.typedFilter(TaskInfo, "priority", "=", input.priority)],
+      });
+    }
+
+    taskQuery.sortBy(TaskInfo, "order", "ASC");
+    const page = input.page ?? 1;
+    const pageSize = input.pageSize ?? 200;
+    taskQuery.take(pageSize).offset((page - 1) * pageSize);
+
+    const taskEntities = await taskQuery.populate().exec();
+
+    // Serialize tasks
+    const tasks = taskEntities.map((e: any) => {
+      const info = e.getInMemory(TaskInfo);
+      const assignment = e.getInMemory(TaskAssignment);
+      const labels = e.getInMemory(TaskLabels);
+      return {
+        id: e.id,
+        taskInfo: {
+          title: info?.title ?? "",
+          description: info?.description ?? "",
+          status: info?.status ?? "todo",
+          priority: info?.priority ?? "none",
+          startDate: info?.startDate ?? "",
+          dueDate: info?.dueDate ?? "",
+          order: info?.order ?? 0,
+          createdAt: info?.createdAt ?? "",
+          updatedAt: info?.updatedAt ?? "",
+          completedAt: info?.completedAt ?? "",
+          createdBy: info?.createdBy ?? "",
+        },
+        taskAssignment: {
+          assigneeIds: assignment?.assigneeIds ?? "[]",
+          moduleId: assignment?.moduleId ?? "",
+        },
+        taskLabels: {
+          labelIds: labels?.labelIds ?? "[]",
+        },
+      };
+    });
+
+    // Step 4: Resolve local project IDs → Core Portal IDs
     const projectCoreRefMap: Record<string, string> = {};
     for (const localId of localProjectIds) {
       const projectEntity = await Entity.FindById(localId);
@@ -415,6 +548,7 @@ export default class TaskService extends BaseService {
         createdAt: now,
         updatedAt: now,
         completedAt: input.status === "done" ? now : "",
+        createdBy: user.sub,
       },
       taskAssignment: {
         assigneeIds: encodeAssigneeIds(input.assigneeIds),

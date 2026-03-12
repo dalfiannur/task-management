@@ -55,6 +55,7 @@ export const router = createBrowserRouter([
         children: [
           { path: "dashboard", lazy: () => import("./pages/dashboard") },
           { path: "my-tasks", lazy: () => import("./pages/my-tasks") },
+          { path: "tasks-by-me", lazy: () => import("./pages/tasks-by-me") },
           { path: "settings", lazy: () => import("./pages/settings") },
           { path: "projects", lazy: () => import("./pages/projects") },
           {

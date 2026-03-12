@@ -30,6 +30,7 @@ export interface Task {
   createdAt: string;
   updatedAt: string;
   completedAt?: string;
+  createdBy?: string;
 }
 
 export interface CreateTaskInput {

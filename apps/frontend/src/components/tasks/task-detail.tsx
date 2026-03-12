@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTask, useDeleteTask, useUpdateTask } from "@/hooks/use-tasks";
+import { useUser } from "@/hooks/use-users";
 import { useModules } from "@/hooks/use-modules";
 import { usePagesByTask, usePages, useUpdatePage } from "@/hooks/use-pages";
 import { useState } from "react";
@@ -79,6 +80,7 @@ export function TaskDetail({
   const { data: linkedPages = [] } = usePagesByTask(taskId);
   const { data: allPages = [] } = usePages(projectId);
   const updatePage = useUpdatePage();
+  const { data: creator } = useUser(task?.createdBy);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [linkPageOpen, setLinkPageOpen] = useState(false);
 
@@ -347,6 +349,14 @@ export function TaskDetail({
               {/* Timestamps + Delete */}
               <div className={styles.timestampsSection}>
                 <div className={styles.timestampsDivider} />
+
+                {task.createdBy && (
+                  <PropertyRow icon={UserIcon} label="Created by">
+                    <span className={styles.moduleName}>
+                      {creator?.name ?? "Unknown"}
+                    </span>
+                  </PropertyRow>
+                )}
 
                 <div className={styles.timestamps}>
                   <p className={styles.timestampText}>

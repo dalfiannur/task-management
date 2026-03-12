@@ -24,6 +24,7 @@ const TASK_FIELDS = gql`
       createdAt
       updatedAt
       completedAt
+      createdBy
     }
     taskAssignment {
       assigneeIds
@@ -101,6 +102,12 @@ const LIST_MY_TASKS = gql`
   }
 `;
 
+const LIST_TASKS_BY_ME = gql`
+  query ListTasksByMe($input: listTasksByMeInput!) {
+    listTasksByMe(input: $input)
+  }
+`;
+
 // --- Response type from Bunsane ---
 
 interface TaskResponse {
@@ -116,6 +123,7 @@ interface TaskResponse {
     createdAt: string;
     updatedAt: string;
     completedAt: string;
+    createdBy: string;
   };
   taskAssignment: {
     assigneeIds: string;
@@ -156,6 +164,7 @@ function mapTask(t: TaskResponse): Task {
     createdAt: t.taskInfo.createdAt || new Date().toISOString(),
     updatedAt: t.taskInfo.updatedAt || new Date().toISOString(),
     completedAt: t.taskInfo.completedAt || undefined,
+    createdBy: t.taskInfo.createdBy || undefined,
   };
 }
 
@@ -233,6 +242,22 @@ export function useMyTasks(
     tasks: d.listMyTasks.tasks.map(mapTask),
     moduleMap: d.listMyTasks.moduleMap,
     projectCoreRefMap: d.listMyTasks.projectCoreRefMap,
+  }));
+}
+
+export function useTasksByMe(
+  filters: { status?: string; priority?: string } = {},
+  options?: { skip?: boolean },
+) {
+  const result = useQuery<{ listTasksByMe: MyTasksResponse }>(LIST_TASKS_BY_ME, {
+    variables: { input: { status: filters.status, priority: filters.priority } },
+    skip: options?.skip,
+    fetchPolicy: "cache-and-network",
+  });
+  return normalizeQueryResult(result, (d) => ({
+    tasks: d.listTasksByMe.tasks.map(mapTask),
+    moduleMap: d.listTasksByMe.moduleMap,
+    projectCoreRefMap: d.listTasksByMe.projectCoreRefMap,
   }));
 }
 

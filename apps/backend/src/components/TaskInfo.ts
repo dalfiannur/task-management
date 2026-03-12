@@ -31,4 +31,7 @@ export class TaskInfo extends BaseComponent {
 
   @CompData()
   completedAt: string = "";
+
+  @CompData({ indexed: true })
+  createdBy: string = "";
 }

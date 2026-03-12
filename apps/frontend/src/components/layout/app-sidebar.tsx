@@ -31,6 +31,7 @@ import {
   ChevronsUpDown,
   LayoutDashboard,
   ListChecks,
+  PenLine,
   CheckCircle2,
   ChevronRight,
 } from "lucide-react";
@@ -199,6 +200,7 @@ export function AppSidebar() {
   const { pathname } = useLocation();
   const isDashboardActive = pathname === "/dashboard" || pathname === "/dashboard/";
   const isMyTasksActive = pathname.startsWith("/my-tasks");
+  const isTasksByMeActive = pathname.startsWith("/tasks-by-me");
   const isSettingsActive = pathname.startsWith("/settings");
 
   const rootProjects = allProjects?.filter(
@@ -257,6 +259,21 @@ export function AppSidebar() {
                   <Link to="/my-tasks">
                     <ListChecks className="size-3.5" />
                     <span>My Tasks</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={isTasksByMeActive}
+                  className={cn(
+                    "border-l-[3px] border-transparent",
+                    isTasksByMeActive && "border-sidebar-primary bg-sidebar-primary/8 text-sidebar-primary",
+                  )}
+                >
+                  <Link to="/tasks-by-me">
+                    <PenLine className="size-3.5" />
+                    <span>Tasks by Me</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
