@@ -31,6 +31,7 @@ export default class ActivityService extends BaseService {
     action: "created" | "updated" | "deleted";
     changes: Array<{ field: string; from: string; to: string }>;
     taskTitle?: string;
+    coreProjectId?: string;
   }): Promise<void> {
     const archetype = new ActivityArcheType();
     archetype.fill({
@@ -41,6 +42,7 @@ export default class ActivityService extends BaseService {
         action: params.action,
         taskTitle: params.taskTitle ?? "",
         changes: JSON.stringify(params.changes),
+        coreProjectId: params.coreProjectId ?? "",
         createdAt: new Date().toISOString(),
       },
     });
@@ -52,14 +54,21 @@ export default class ActivityService extends BaseService {
     type: "Query",
     input: {
       limit: t.int(),
+      coreProjectIds: t.list(t.string()),
     },
     output: [activityArcheType],
   })
-  async listRecentActivities(input: { limit?: number }, context: AuthContext) {
+  async listRecentActivities(input: { limit?: number; coreProjectIds?: string[] }, context: AuthContext) {
     requirePermission(context, TaskResources.Tasks, Action.Read);
     const take = input.limit ?? 20;
+
+    const filters: Array<ReturnType<typeof Query.filter>> = [];
+    if (input.coreProjectIds && input.coreProjectIds.length > 0) {
+      filters.push(Query.filter("coreProjectId", Query.filterOp.IN, input.coreProjectIds));
+    }
+
     const entities = await new Query()
-      .with(ActivityInfo)
+      .with(ActivityInfo, filters.length > 0 ? { filters } : undefined)
       .sortBy(ActivityInfo, "createdAt", "DESC")
       .take(take)
       .populate()

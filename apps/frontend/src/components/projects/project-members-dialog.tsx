@@ -13,7 +13,7 @@ import {
   useAddProjectMember,
   useRemoveProjectMember,
 } from "@/hooks/use-members";
-import { useMe } from "@/hooks/use-me";
+import { useMe, useHasPermission } from "@/hooks/use-me";
 import { useUser } from "@/hooks/use-users";
 import { X, UserPlus } from "lucide-react";
 import { getInitials } from "@/lib/utils";
@@ -84,8 +84,9 @@ export function ProjectMembersDialog({
   const removeMember = useRemoveProjectMember();
   const [selectedUserId, setSelectedUserId] = useState<string | undefined>();
 
+  const hasDeleteAll = useHasPermission("task_management:projects", "delete_all");
   const canManage =
-    me?.role === "manager" || (projectLeaderId && me?.id === projectLeaderId);
+    hasDeleteAll || (projectLeaderId != null && me?.id === projectLeaderId);
 
   const memberUserIds = new Set(members?.map((m) => m.membership.userId) ?? []);
 

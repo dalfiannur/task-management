@@ -21,5 +21,8 @@ export class ActivityInfo extends BaseComponent {
   changes: string = "[]";
 
   @CompData({ indexed: true })
+  coreProjectId: string = "";
+
+  @CompData({ indexed: true })
   createdAt: string = "";
 }

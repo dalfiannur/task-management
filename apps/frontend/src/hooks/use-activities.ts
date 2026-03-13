@@ -49,12 +49,13 @@ export function useActivities(taskId: string) {
   };
 }
 
-export function useRecentActivities(limit = 20) {
+export function useRecentActivities(limit = 20, coreProjectIds?: string[]) {
   const { data, loading, error } = useQuery<{
     listRecentActivities: Activity[];
   }>(LIST_RECENT_ACTIVITIES, {
-    variables: { input: { limit } },
+    variables: { input: { limit, coreProjectIds } },
     pollInterval: 30000,
+    skip: coreProjectIds !== undefined && coreProjectIds.length === 0,
   });
 
   return {

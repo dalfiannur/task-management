@@ -73,3 +73,17 @@ export function useIsAdmin(): boolean {
     return false;
   }
 }
+
+export function useHasPermission(resource: string, action: string): boolean {
+  const auth = useAuth();
+  try {
+    const token = auth.user?.access_token;
+    if (!token) return false;
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    const permissions: string[] = payload.permissions ?? [];
+    if (permissions.includes("*")) return true;
+    return permissions.includes(`${resource}:${action}`);
+  } catch {
+    return false;
+  }
+}

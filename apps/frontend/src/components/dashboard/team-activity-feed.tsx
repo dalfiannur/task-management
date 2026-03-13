@@ -31,8 +31,8 @@ function getChangeDescription(action: string, changesJson: string): string | nul
   return null;
 }
 
-export function TeamActivityFeed() {
-  const { data: activities, isLoading } = useRecentActivities(15);
+export function TeamActivityFeed({ coreProjectIds }: { coreProjectIds?: string[] }) {
+  const { data: activities, isLoading } = useRecentActivities(15, coreProjectIds);
 
   return (
     <Card>

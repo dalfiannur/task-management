@@ -6,6 +6,7 @@ import {
   useAddProjectMember,
   useRemoveProjectMember,
 } from "@/hooks/use-members";
+import { useMe, useHasPermission } from "@/hooks/use-me";
 import { useUser } from "@/hooks/use-users";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -17,11 +18,13 @@ import styles from "./project-members.module.css";
 function MemberCard({
   userId,
   isLeader,
+  canManage,
   onRemove,
   isRemoving,
 }: {
   userId: string;
   isLeader: boolean;
+  canManage: boolean;
   onRemove: () => void;
   isRemoving: boolean;
 }) {
@@ -30,15 +33,17 @@ function MemberCard({
 
   return (
     <div className={styles.memberCard}>
-      <Button
-        variant="ghost"
-        size="icon"
-        className={styles.removeButton}
-        onClick={onRemove}
-        disabled={isRemoving}
-      >
-        <X className={styles.removeIcon} />
-      </Button>
+      {canManage && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className={styles.removeButton}
+          onClick={onRemove}
+          disabled={isRemoving}
+        >
+          <X className={styles.removeIcon} />
+        </Button>
+      )}
       <Avatar className={styles.memberAvatar}>
         <AvatarImage src={user?.avatarUrl} />
         <AvatarFallback className={styles.memberFallback}>
@@ -57,11 +62,15 @@ export function Component() {
   const { projectId } = useParams();
   const { data: project } = useProject(projectId!);
   const { data: members } = useProjectMembers(projectId!);
+  const { data: me } = useMe();
+  const hasDeleteAll = useHasPermission("task_management:projects", "delete_all");
   const addMember = useAddProjectMember();
   const removeMember = useRemoveProjectMember();
   const [selectedUserId, setSelectedUserId] = useState<string | undefined>();
 
   const projectLeaderId = project?.ref?.leaderId;
+  const canManage =
+    hasDeleteAll || (projectLeaderId != null && me?.id === projectLeaderId);
 
   const memberUserIds = new Set(
     members?.map((m) => m.membership.userId) ?? [],
@@ -82,26 +91,28 @@ export function Component() {
   return (
     <div className={styles.container}>
       {/* Add member bar */}
-      <div className={styles.addBar}>
-        <div className={styles.addCombobox}>
-          <UserCombobox
-            value={selectedUserId}
-            onChange={setSelectedUserId}
-          />
+      {canManage && (
+        <div className={styles.addBar}>
+          <div className={styles.addCombobox}>
+            <UserCombobox
+              value={selectedUserId}
+              onChange={setSelectedUserId}
+            />
+          </div>
+          <Button
+            size="sm"
+            onClick={handleAdd}
+            disabled={
+              !selectedUserId ||
+              memberUserIds.has(selectedUserId) ||
+              addMember.isLoading
+            }
+          >
+            <UserPlus className={styles.addIcon} />
+            Add
+          </Button>
         </div>
-        <Button
-          size="sm"
-          onClick={handleAdd}
-          disabled={
-            !selectedUserId ||
-            memberUserIds.has(selectedUserId) ||
-            addMember.isLoading
-          }
-        >
-          <UserPlus className={styles.addIcon} />
-          Add
-        </Button>
-      </div>
+      )}
 
       {/* Member cards grid */}
       {members && members.length > 0 ? (
@@ -111,6 +122,7 @@ export function Component() {
               key={member.id}
               userId={member.membership.userId}
               isLeader={member.membership.userId === projectLeaderId}
+              canManage={canManage}
               onRemove={() => handleRemove(member.membership.userId)}
               isRemoving={removeMember.isLoading}
             />

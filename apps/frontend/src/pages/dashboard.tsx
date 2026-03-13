@@ -156,7 +156,7 @@ export function Component() {
             </div>
             <div className={styles.contentGrid}>
               <div className={styles.mainCol} style={{ animationDelay: "550ms" }}>
-                <TeamActivityFeed />
+                <TeamActivityFeed coreProjectIds={activeProjectIds} />
               </div>
               <div className={styles.sideCol} style={{ animationDelay: "600ms" }}>
                 <ActiveProjects projects={allProjects} />
@@ -191,7 +191,7 @@ export function Component() {
               </div>
             </div>
             <div className={styles.fullWidth} style={{ animationDelay: "650ms" }}>
-              <TeamActivityFeed />
+              <TeamActivityFeed coreProjectIds={activeProjectIds} />
             </div>
           </>
         )}

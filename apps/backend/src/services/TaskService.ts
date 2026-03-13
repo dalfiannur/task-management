@@ -16,6 +16,17 @@ import { ProjectMembershipData } from "~/components/ProjectMembership";
 import { resolveLocalProjectId } from "~/lib/resolve-project-id";
 import { requirePermission, type AuthContext, TaskResources, Action } from "~/utils/auth";
 
+async function resolveCoreProjectId(moduleId: string): Promise<string> {
+  const moduleEntity = await new Query().findOneById(moduleId);
+  if (!moduleEntity) return "";
+  const moduleRef = await moduleEntity.get(ModuleProjectRefComponent);
+  if (!moduleRef?.projectId) return "";
+  const projectEntity = await Entity.FindById(moduleRef.projectId);
+  if (!projectEntity) return "";
+  const coreRef = await projectEntity.get(ProjectCoreRefComponent);
+  return coreRef?.value ?? "";
+}
+
 function encodeLabelIds(ids?: string[]): string {
   return JSON.stringify(ids ?? []);
 }
@@ -573,6 +584,7 @@ export default class TaskService extends BaseService {
     }
 
     // Record activity
+    const coreProjectId = await resolveCoreProjectId(input.moduleId);
     await ActivityService.getInstance().recordActivity({
       taskId: entity.id,
       actorId: user.sub,
@@ -580,6 +592,7 @@ export default class TaskService extends BaseService {
       action: "created",
       changes: [],
       taskTitle: input.title,
+      coreProjectId,
     });
 
     return entity;
@@ -715,6 +728,7 @@ export default class TaskService extends BaseService {
 
     // Record activity if there were changes
     if (changes.length > 0) {
+      const coreProjectId = await resolveCoreProjectId(oldAssignment?.moduleId ?? "");
       await ActivityService.getInstance().recordActivity({
         taskId: input.id,
         actorId,
@@ -722,6 +736,7 @@ export default class TaskService extends BaseService {
         action: "updated",
         changes,
         taskTitle: oldTaskInfo?.title ?? "",
+        coreProjectId,
       });
     }
 
@@ -787,9 +802,11 @@ export default class TaskService extends BaseService {
     const entity = await new Query().findOneById(input.id);
     if (!entity) throw new Error("Task not found");
 
-    // Capture title before deletion for activity record
+    // Capture title and module before deletion for activity record
     const taskInfo = await entity.get(TaskInfo);
     const taskTitle = taskInfo?.title ?? "";
+    const taskAssignment = await entity.get(TaskAssignment);
+    const coreProjectId = await resolveCoreProjectId(taskAssignment?.moduleId ?? "");
 
     // Record activity before deleting
     await ActivityService.getInstance().recordActivity({
@@ -799,6 +816,7 @@ export default class TaskService extends BaseService {
       action: "deleted",
       changes: [{ field: "title", from: taskTitle, to: "" }],
       taskTitle,
+      coreProjectId,
     });
 
     await entity.delete();

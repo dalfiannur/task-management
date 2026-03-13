@@ -4,8 +4,11 @@ import { t } from "bunsane/gql/schema";
 import { Query } from "bunsane/query";
 import { ProjectMembershipData } from "~/components/ProjectMembership";
 import { ProjectMembershipArcheTypeClass } from "~/archetypes/ProjectMembershipArcheType";
+import { ProjectLeaderIdComponent } from "~/components/ProjectComponents";
 import { resolveLocalProjectId } from "~/lib/resolve-project-id";
-import { requirePermission, type AuthContext, TaskResources, Action } from "~/utils/auth";
+import { requirePermission, requireUser, type AuthContext, TaskResources, Action } from "~/utils/auth";
+import { hasPermission } from "@qyubit/sedjiwa-permissions";
+import { GraphQLError } from "graphql";
 
 const membershipArcheType = new ProjectMembershipArcheTypeClass();
 
@@ -90,8 +93,25 @@ export default class MembershipService extends BaseService {
     input: { projectId: string; userId: string },
     context: AuthContext,
   ) {
-    requirePermission(context, TaskResources.Projects, Action.Update);
+    const user = requireUser(context);
     const localProjectId = await resolveLocalProjectId(input.projectId);
+
+    // Allow if admin, project leader, or has DeleteAll on projects
+    const isAdmin = user.permissions?.includes("*") ?? false;
+    const hasDeleteAll = hasPermission(user.permissions ?? [], TaskResources.Projects, Action.DeleteAll);
+
+    if (!isAdmin && !hasDeleteAll) {
+      // Check if user is the project leader
+      const projectEntity = await new Query().findOneById(localProjectId);
+      const leaderComp = projectEntity ? await projectEntity.get(ProjectLeaderIdComponent) : null;
+      const isLeader = leaderComp?.value === user.sub;
+
+      if (!isLeader) {
+        throw new GraphQLError("Only the project leader or admins can remove members", {
+          extensions: { code: "FORBIDDEN" },
+        });
+      }
+    }
 
     const entities = await new Query()
       .with(ProjectMembershipData, {
