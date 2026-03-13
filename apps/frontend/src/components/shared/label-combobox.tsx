@@ -68,10 +68,10 @@ export function LabelCombobox({ value, labels, onChange, projectId }: LabelCombo
           role="combobox"
           aria-expanded={open}
           className={cn(
-            "inline-flex items-center gap-2 rounded-lg h-8 transition-colors cursor-pointer",
+            "inline-flex items-center gap-1.5 rounded-full h-7 px-3 text-xs font-bold border-0 shadow-none transition-colors cursor-pointer",
             selectedLabels.length > 0
-              ? "px-2.5 border border-border bg-background hover:bg-muted/50 shadow-sm"
-              : "px-3 text-muted-foreground hover:text-foreground hover:bg-muted/50",
+              ? "bg-gray-100 text-gray-700 dark:bg-gray-800/40 dark:text-gray-300"
+              : "bg-gray-100 text-gray-500 dark:bg-gray-800/40 dark:text-gray-400",
           )}
         >
           {selectedLabels.length > 0 ? (
