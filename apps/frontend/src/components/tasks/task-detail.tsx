@@ -423,8 +423,11 @@ export function TaskDetail({
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleDelete}>
-                        Delete
+                      <AlertDialogAction
+                        disabled={deleteTask.isLoading}
+                        onClick={handleDelete}
+                      >
+                        {deleteTask.isLoading ? "Deleting..." : "Delete"}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>

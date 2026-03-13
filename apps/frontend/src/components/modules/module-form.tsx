@@ -159,9 +159,9 @@ export function ModuleForm({
               <Button
                 type="submit"
                 size="sm"
-                disabled={!name.trim()}
+                disabled={!name.trim() || createModule.isLoading || updateModule.isLoading}
               >
-                {isEditing ? "Save Changes" : "Create Module"}
+                {createModule.isLoading ? "Creating..." : updateModule.isLoading ? "Saving..." : isEditing ? "Save Changes" : "Create Module"}
               </Button>
             </div>
           </div>

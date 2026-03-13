@@ -314,9 +314,10 @@ export function Component() {
               variant="ghost"
               size="sm"
               className={styles.deleteBtn}
+              disabled={deletePage.isLoading}
             >
               <Trash2 className={styles.deleteBtnIcon} />
-              Delete
+              {deletePage.isLoading ? "Deleting..." : "Delete"}
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
@@ -329,8 +330,11 @@ export function Component() {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDelete}>
-                Delete
+              <AlertDialogAction
+                disabled={deletePage.isLoading}
+                onClick={handleDelete}
+              >
+                {deletePage.isLoading ? "Deleting..." : "Delete"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

@@ -186,9 +186,10 @@ export function MediaGrid({ files, isLoading, readOnly, projectId, visibilityMap
                     <AlertDialogFooter>
                       <AlertDialogCancel>Cancel</AlertDialogCancel>
                       <AlertDialogAction
+                        disabled={deleteMedia.isLoading}
                         onClick={() => deleteMedia.mutate(file.id)}
                       >
-                        Delete
+                        {deleteMedia.isLoading ? "Deleting..." : "Delete"}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>

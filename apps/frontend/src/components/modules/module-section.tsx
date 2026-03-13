@@ -265,8 +265,11 @@ export function ModuleSection({
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => deleteModule.mutate(module.id)}>
-                    Delete
+                  <AlertDialogAction
+                    disabled={deleteModule.isLoading}
+                    onClick={() => deleteModule.mutate(module.id)}
+                  >
+                    {deleteModule.isLoading ? "Deleting..." : "Delete"}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>

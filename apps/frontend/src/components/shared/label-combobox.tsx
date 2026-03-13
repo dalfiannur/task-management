@@ -152,9 +152,10 @@ export function LabelCombobox({ value, labels, onChange, projectId }: LabelCombo
                   value={`__create_${search}`}
                   onSelect={handleCreate}
                   className={styles.createItem}
+                  disabled={createLabel.isLoading}
                 >
                   <Plus className={styles.createIcon} />
-                  Create &ldquo;{search.trim()}&rdquo;
+                  {createLabel.isLoading ? "Creating..." : <>Create &ldquo;{search.trim()}&rdquo;</>}
                 </CommandItem>
               </CommandGroup>
             )}

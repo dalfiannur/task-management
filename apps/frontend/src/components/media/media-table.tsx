@@ -210,9 +210,10 @@ export function MediaTable({ files, isLoading, readOnly, projectId, visibilityMa
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
                             <AlertDialogAction
+                              disabled={deleteMedia.isLoading}
                               onClick={() => deleteMedia.mutate(file.id)}
                             >
-                              Delete
+                              {deleteMedia.isLoading ? "Deleting..." : "Delete"}
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>

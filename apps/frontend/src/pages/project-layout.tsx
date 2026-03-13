@@ -458,6 +458,7 @@ export function Component() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-white hover:bg-destructive/90"
+              disabled={deleteProject.isLoading}
               onClick={() =>
                 deleteProject.mutate(projectId!, {
                   onSuccess: () => {
@@ -473,7 +474,7 @@ export function Component() {
                 })
               }
             >
-              Delete
+              {deleteProject.isLoading ? "Deleting..." : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

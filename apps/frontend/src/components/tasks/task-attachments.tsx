@@ -79,6 +79,7 @@ export function TaskAttachments({ projectId, taskId }: TaskAttachmentsProps) {
             size="icon"
             variant="ghost"
             className={styles.actionButton}
+            disabled={deleteMedia.isLoading}
             onClick={() => deleteMedia.mutate(file.id)}
           >
             <X className={styles.actionIcon} />

@@ -235,9 +235,9 @@ export function TaskForm({ open, onOpenChange, task, moduleId, projectId }: Task
                   <Button
                     type="submit"
                     size="sm"
-                    disabled={!title.trim()}
+                    disabled={!title.trim() || createTask.isLoading || updateTask.isLoading}
                   >
-                    {isEditing ? "Save Changes" : "Create Task"}
+                    {createTask.isLoading ? "Creating..." : updateTask.isLoading ? "Saving..." : isEditing ? "Save Changes" : "Create Task"}
                   </Button>
                 </div>
               </div>
