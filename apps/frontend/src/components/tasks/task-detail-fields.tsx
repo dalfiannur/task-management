@@ -8,22 +8,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Check, X, ChevronsUpDown } from "lucide-react";
+import { Check } from "lucide-react";
 import {
   TASK_STATUS_CONFIG,
   TASK_PRIORITY_CONFIG,
@@ -31,12 +17,11 @@ import {
   type TaskPriority,
 } from "@/types/task";
 import type { Task, UpdateTaskInput } from "@/types/task";
-import { useSearchUsers, useUser } from "@/hooks/use-users";
 import { useLabels } from "@/hooks/use-labels";
 import { LabelCombobox } from "@/components/shared/label-combobox";
 import { DatePickerField } from "@/components/shared/date-picker-field";
+import { AssigneeCombobox } from "@/components/shared/assignee-combobox";
 import { cn } from "@/lib/utils";
-import styles from "./task-detail-fields.module.css";
 
 interface UpdateTaskMutation {
   mutate: (
@@ -46,19 +31,34 @@ interface UpdateTaskMutation {
   isLoading: boolean;
 }
 
+const STATUS_PILL_CLASSES: Record<TaskStatus, string> = {
+  todo: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
+  in_progress: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
+  done: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
+  cancelled: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+};
+
 const STATUS_DOT_COLORS: Record<TaskStatus, string> = {
-  todo: styles.dotTodo,
-  in_progress: styles.dotInProgress,
-  done: styles.dotDone,
-  cancelled: styles.dotCancelled,
+  todo: "bg-blue-400",
+  in_progress: "bg-amber-400",
+  done: "bg-emerald-400",
+  cancelled: "bg-red-400",
+};
+
+const PRIORITY_PILL_CLASSES: Record<TaskPriority, string> = {
+  none: "bg-gray-100 text-gray-600 dark:bg-gray-800/40 dark:text-gray-400",
+  low: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
+  medium: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
+  high: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300",
+  urgent: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
 };
 
 const PRIORITY_DOT_COLORS: Record<TaskPriority, string> = {
-  none: styles.dotPriorityNone,
-  low: styles.dotPriorityLow,
-  medium: styles.dotPriorityMedium,
-  high: styles.dotPriorityHigh,
-  urgent: styles.dotPriorityUrgent,
+  none: "bg-gray-300",
+  low: "bg-blue-400",
+  medium: "bg-amber-400",
+  high: "bg-orange-500",
+  urgent: "bg-red-500",
 };
 
 // --- Save indicator hook & component ---
@@ -84,8 +84,8 @@ function SaveIndicator({ visible }: { visible: boolean }) {
   return (
     <Check
       className={cn(
-        styles.saveIndicator,
-        visible ? styles.saveVisible : styles.saveHidden,
+        "size-3.5 text-green-500 transition-opacity duration-300 shrink-0",
+        visible ? "opacity-100" : "opacity-0",
       )}
     />
   );
@@ -129,16 +129,16 @@ export function EditableTitle({
 
   if (!editing) {
     return (
-      <div className={styles.titleRow}>
+      <div className="flex gap-2.5 items-start">
         <div
           className={cn(
-            styles.titleAccent,
+            "w-1 shrink-0 rounded-full mt-1 self-stretch transition-colors",
             STATUS_DOT_COLORS[status],
           )}
         />
-        <div className={styles.titleInner}>
+        <div className="flex items-center gap-2 flex-1 min-w-0">
           <h2
-            className={styles.titleText}
+            className="text-2xl font-bold tracking-tight cursor-pointer rounded-md px-1 -mx-1 hover:bg-muted/50 transition-colors"
             onClick={() => setEditing(true)}
           >
             {value}
@@ -150,17 +150,17 @@ export function EditableTitle({
   }
 
   return (
-    <div className={styles.titleRow}>
+    <div className="flex gap-2.5 items-start">
       <div
         className={cn(
-          styles.titleAccent,
+          "w-1 shrink-0 rounded-full mt-1 self-stretch transition-colors",
           STATUS_DOT_COLORS[status],
         )}
       />
-      <div className={styles.titleInner}>
+      <div className="flex items-center gap-2 flex-1 min-w-0">
         <Input
           autoFocus
-          className={styles.titleInput}
+          className="text-2xl font-bold tracking-tight h-auto py-1 px-1 -mx-1"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onBlur={save}
@@ -216,18 +216,18 @@ export function EditableDescription({
 
   if (!editing) {
     return (
-      <div className={styles.descriptionRow}>
+      <div className="flex items-start gap-2">
         <div
-          className={styles.descriptionClickable}
+          className="flex-1 cursor-pointer rounded-lg p-2 -mx-1 hover:bg-muted/30 transition-colors min-h-9"
           onClick={() => setEditing(true)}
         >
           {value ? (
             <div
-              className="prose"
+              className="prose text-muted-foreground leading-relaxed"
               dangerouslySetInnerHTML={{ __html: value }}
             />
           ) : (
-            <p className={styles.descriptionPlaceholder}>
+            <p className="text-sm leading-5 text-muted-foreground/40 italic">
               Add a description...
             </p>
           )}
@@ -239,7 +239,7 @@ export function EditableDescription({
 
   return (
     <div
-      className={styles.descriptionEditing}
+      className="space-y-1.5"
       onKeyDown={(e: ReactKeyboardEvent) => {
         if (e.key === "Escape") cancel();
       }}
@@ -249,7 +249,7 @@ export function EditableDescription({
         onChange={setDraft}
         placeholder="Add a description..."
       />
-      <div className={styles.descriptionActions}>
+      <div className="flex items-center gap-1.5 justify-end">
         <SaveIndicator visible={saved} />
         <Button variant="ghost" size="sm" onClick={cancel}>
           Cancel
@@ -275,7 +275,7 @@ export function StatusSelect({ taskId, value, startDate, updateTask }: StatusSel
   const { saved, flash } = useSaveIndicator();
 
   return (
-    <div className={styles.selectRow}>
+    <div className="flex items-center gap-1">
       <Select
         value={value}
         onValueChange={(v) => {
@@ -290,21 +290,20 @@ export function StatusSelect({ taskId, value, startDate, updateTask }: StatusSel
           );
         }}
       >
-        <SelectTrigger className={styles.propertyTrigger}>
-          <span
-            className={cn(
-              styles.dot,
-              STATUS_DOT_COLORS[value],
-            )}
-          />
+        <SelectTrigger
+          className={cn(
+            "h-7 text-xs leading-4 font-bold border-0 shadow-none px-3 w-auto gap-1 rounded-full transition-colors [&_svg:last-child]:size-3",
+            STATUS_PILL_CLASSES[value],
+          )}
+        >
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
           {(Object.entries(TASK_STATUS_CONFIG) as [TaskStatus, { label: string; color: string }][]).map(
             ([key, config]) => (
               <SelectItem key={key} value={key}>
-                <div className={styles.selectItemRow}>
-                  <span className={cn(styles.dot, STATUS_DOT_COLORS[key])} />
+                <div className="flex items-center gap-2">
+                  <span className={cn("size-2 rounded-full shrink-0", STATUS_DOT_COLORS[key])} />
                   {config.label}
                 </div>
               </SelectItem>
@@ -333,7 +332,7 @@ export function PrioritySelect({
   const { saved, flash } = useSaveIndicator();
 
   return (
-    <div className={styles.selectRow}>
+    <div className="flex items-center gap-1">
       <Select
         value={value}
         onValueChange={(v) => {
@@ -343,21 +342,20 @@ export function PrioritySelect({
           );
         }}
       >
-        <SelectTrigger className={styles.propertyTrigger}>
-          <span
-            className={cn(
-              styles.dot,
-              PRIORITY_DOT_COLORS[value],
-            )}
-          />
+        <SelectTrigger
+          className={cn(
+            "h-7 text-xs leading-4 font-bold border-0 shadow-none px-3 w-auto gap-1 rounded-full transition-colors [&_svg:last-child]:size-3",
+            PRIORITY_PILL_CLASSES[value],
+          )}
+        >
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
           {(Object.entries(TASK_PRIORITY_CONFIG) as [TaskPriority, { label: string; color: string; icon: string }][]).map(
             ([key, config]) => (
               <SelectItem key={key} value={key}>
-                <div className={styles.selectItemRow}>
-                  <span className={cn(styles.dot, PRIORITY_DOT_COLORS[key])} />
+                <div className="flex items-center gap-2">
+                  <span className={cn("size-2 rounded-full shrink-0", PRIORITY_DOT_COLORS[key])} />
                   {config.label}
                 </div>
               </SelectItem>
@@ -370,7 +368,7 @@ export function PrioritySelect({
   );
 }
 
-// --- Assignee Combobox ---
+// --- Assignee Select (wraps shared AssigneeCombobox with mutation + SaveIndicator) ---
 
 interface AssigneeSelectProps {
   taskId: string;
@@ -378,155 +376,24 @@ interface AssigneeSelectProps {
   updateTask: UpdateTaskMutation;
 }
 
-function AssigneeAvatar({ userId }: { userId: string }) {
-  const { data: user } = useUser(userId);
-  const name = user?.name ?? "...";
-  const initials = name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
-  return (
-    <Avatar className="size-4 ring-1 ring-background">
-      <AvatarImage src={user?.avatarUrl} />
-      <AvatarFallback className="text-[8px]">{initials}</AvatarFallback>
-    </Avatar>
-  );
-}
-
-function AssigneeLabel({ userIds }: { userIds: string[] }) {
-  const { data: firstUser } = useUser(userIds[0]);
-  if (userIds.length === 1) return <span className={styles.truncate}>{firstUser?.name ?? "..."}</span>;
-  return <span className={styles.truncate}>{userIds.length} assignees</span>;
-}
-
-function SelectedAssigneeItem({ userId, onDeselect }: { userId: string; onDeselect: () => void }) {
-  const { data: user } = useUser(userId);
-  const name = user?.name ?? "...";
-  const initials = name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
-  return (
-    <CommandItem
-      value={userId}
-      onSelect={onDeselect}
-      className="text-xs"
-    >
-      <Avatar className="size-5 mr-1.5">
-        <AvatarImage src={user?.avatarUrl} />
-        <AvatarFallback className="text-[9px]">{initials}</AvatarFallback>
-      </Avatar>
-      {name}
-      <Check className={cn(styles.checkIcon, styles.checkVisible)} />
-    </CommandItem>
-  );
-}
-
 export function AssigneeSelect({
   taskId,
   value,
   updateTask,
 }: AssigneeSelectProps) {
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
   const { saved, flash } = useSaveIndicator();
-  const { data: searchResults } = useSearchUsers(search);
-
-  const handleToggle = (userId: string) => {
-    const newIds = value.includes(userId)
-      ? value.filter((id) => id !== userId)
-      : [...value, userId];
-    updateTask.mutate(
-      { id: taskId, input: { assigneeIds: newIds.length > 0 ? newIds : null } },
-      { onSuccess: () => flash() },
-    );
-  };
-
-  const handleClear = () => {
-    updateTask.mutate(
-      { id: taskId, input: { assigneeIds: null } },
-      { onSuccess: () => flash() },
-    );
-  };
 
   return (
-    <div className={styles.selectRow}>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="ghost"
-            type="button"
-            role="combobox"
-            aria-expanded={open}
-            className={styles.assigneeTrigger}
-          >
-            {value.length > 0 ? (
-              <>
-                <div className={styles.avatarStack}>
-                  {value.slice(0, 3).map((id) => (
-                    <AssigneeAvatar key={id} userId={id} />
-                  ))}
-                </div>
-                <AssigneeLabel userIds={value} />
-                <X
-                  className={styles.clearIcon}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleClear();
-                  }}
-                />
-              </>
-            ) : (
-              <>
-                <span className={styles.unassignedText}>Unassigned</span>
-                <ChevronsUpDown className={styles.chevronIcon} />
-              </>
-            )}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-[200px] p-0" align="start">
-          <Command shouldFilter={false}>
-            <CommandInput
-              placeholder="Search users..."
-              className="h-8 text-xs"
-              value={search}
-              onValueChange={setSearch}
-            />
-            <CommandList>
-              <CommandEmpty className="py-3 text-xs text-center">
-                {search ? "No user found." : "Type to search..."}
-              </CommandEmpty>
-              <CommandGroup>
-                {!search && value.map((id) => (
-                  <SelectedAssigneeItem
-                    key={id}
-                    userId={id}
-                    onDeselect={() => handleToggle(id)}
-                  />
-                ))}
-                {searchResults?.filter((u) => !value.includes(u.id)).map((user) => {
-                  const initials = user.name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")
-                    .toUpperCase()
-                    .slice(0, 2);
-                  return (
-                    <CommandItem
-                      key={user.id}
-                      value={user.id}
-                      onSelect={() => handleToggle(user.id)}
-                      className="text-xs"
-                    >
-                      <Avatar className="size-5 mr-1.5">
-                        <AvatarImage src={user.avatarUrl} />
-                        <AvatarFallback className="text-[9px]">
-                          {initials}
-                        </AvatarFallback>
-                      </Avatar>
-                      {user.name}
-                    </CommandItem>
-                  );
-                })}
-              </CommandGroup>
-            </CommandList>
-          </Command>
-        </PopoverContent>
-      </Popover>
+    <div className="flex items-center gap-1">
+      <AssigneeCombobox
+        value={value}
+        onChange={(newIds) => {
+          updateTask.mutate(
+            { id: taskId, input: { assigneeIds: newIds } },
+            { onSuccess: () => flash() },
+          );
+        }}
+      />
       <SaveIndicator visible={saved} />
     </div>
   );
@@ -549,7 +416,7 @@ export function StartDatePicker({
   const date = value ? new Date(value) : undefined;
 
   return (
-    <div className={styles.selectRow}>
+    <div className="flex items-center gap-1">
       <DatePickerField
         value={date}
         onChange={(d) => {
@@ -590,7 +457,7 @@ export function LabelSelect({
   };
 
   return (
-    <div className={styles.labelRow}>
+    <div className="flex items-center gap-1">
       <LabelCombobox
         value={value}
         labels={labels}
@@ -619,7 +486,7 @@ export function DueDatePicker({
   const date = value ? new Date(value) : undefined;
 
   return (
-    <div className={styles.selectRow}>
+    <div className="flex items-center gap-1">
       <DatePickerField
         value={date}
         onChange={(d) => {

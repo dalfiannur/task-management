@@ -9,7 +9,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import styles from "./date-picker-field.module.css";
 
 interface DatePickerFieldProps {
   value: Date | undefined;
@@ -33,11 +32,11 @@ export function DatePickerField({
           variant="ghost"
           type="button"
           className={cn(
-            styles.dateTrigger,
-            !value && styles.dateTriggerEmpty,
+            "inline-flex items-center gap-[0.3125rem] rounded-md px-1.5 h-6 font-mono text-sm leading-4 border-0 bg-transparent hover:bg-muted/50 transition-colors",
+            !value && "text-muted-foreground",
           )}
         >
-          <CalendarIcon className={styles.dateIcon} />
+          <CalendarIcon className="size-3" />
           {value ? format(value, "MMM d, yyyy") : placeholder}
         </Button>
       </PopoverTrigger>
@@ -54,18 +53,18 @@ export function DatePickerField({
           initialFocus
         />
         {value && (
-          <div className={styles.calendarFooter}>
+          <div className="p-1.5 border-t border-border">
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              className={styles.clearDateButton}
+              className="w-full text-muted-foreground text-sm leading-4 h-6"
               onClick={() => {
                 onChange(undefined);
                 setOpen(false);
               }}
             >
-              <X className={styles.clearDateIcon} />
+              <X className="mr-[0.1875rem] size-3" />
               Clear
             </Button>
           </div>

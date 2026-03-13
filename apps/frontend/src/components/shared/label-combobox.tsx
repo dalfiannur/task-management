@@ -1,7 +1,6 @@
-import { useState } from "react";
-import { Check, ChevronsUpDown, Plus, X } from "lucide-react";
+import { useState, useRef } from "react";
+import { Check, Plus, Tag, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import {
   Command,
   CommandEmpty,
@@ -16,7 +15,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { useCreateLabel } from "@/hooks/use-labels";
-import styles from "./label-combobox.module.css";
 
 const LABEL_COLORS = [
   "#ef4444", "#f97316", "#eab308", "#22c55e",
@@ -34,6 +32,7 @@ export function LabelCombobox({ value, labels, onChange, projectId }: LabelCombo
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const createLabel = useCreateLabel();
+  const clearingRef = useRef(false);
   const selectedLabels = labels.filter((l) => value.includes(l.id));
 
   const hasExactMatch = labels.some(
@@ -56,38 +55,48 @@ export function LabelCombobox({ value, labels, onChange, projectId }: LabelCombo
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={(v) => {
+      if (clearingRef.current) {
+        clearingRef.current = false;
+        return;
+      }
+      setOpen(v);
+    }}>
       <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
+        <button
           type="button"
           role="combobox"
           aria-expanded={open}
-          className={styles.trigger}
+          className={cn(
+            "inline-flex items-center gap-2 rounded-lg h-8 transition-colors cursor-pointer",
+            selectedLabels.length > 0
+              ? "px-2.5 border border-border bg-background hover:bg-muted/50 shadow-sm"
+              : "px-3 text-muted-foreground hover:text-foreground hover:bg-muted/50",
+          )}
         >
           {selectedLabels.length > 0 ? (
             <>
-              <div className={styles.selectedLabels}>
-                {selectedLabels.slice(0, 3).map((label) => (
+              <div className="flex items-center gap-1 min-w-0 flex-wrap">
+                {selectedLabels.slice(0, 2).map((label) => (
                   <span
                     key={label.id}
-                    className={styles.labelChip}
+                    className="inline-flex items-center gap-1 text-xs font-medium"
                   >
                     <span
-                      className={styles.labelDot}
+                      className="size-2 rounded-full shrink-0"
                       style={{ backgroundColor: label.color }}
                     />
-                    <span className={styles.labelName}>{label.name}</span>
+                    <span className="truncate max-w-[60px]">{label.name}</span>
                   </span>
                 ))}
-                {selectedLabels.length > 3 && (
-                  <span className={styles.overflowCount}>
-                    +{selectedLabels.length - 3}
+                {selectedLabels.length > 2 && (
+                  <span className="text-[10px] text-muted-foreground">
+                    +{selectedLabels.length - 2}
                   </span>
                 )}
               </div>
               <X
-                className={styles.clearIcon}
+                className="size-3 text-muted-foreground/50 shrink-0 hover:text-foreground transition-colors ml-0.5"
                 onClick={(e) => {
                   e.stopPropagation();
                   onChange([]);
@@ -96,22 +105,22 @@ export function LabelCombobox({ value, labels, onChange, projectId }: LabelCombo
             </>
           ) : (
             <>
-              <span className={styles.emptyPlaceholder}>None</span>
-              <ChevronsUpDown className={styles.chevron} />
+              <Tag className="size-3.5" />
+              <span className="text-xs font-medium">Add label</span>
             </>
           )}
-        </Button>
+        </button>
       </PopoverTrigger>
-      <PopoverContent className={styles.popover} align="start">
+      <PopoverContent className="w-[200px] p-0" align="end">
         <Command>
           <CommandInput
             placeholder="Search labels..."
-            className={styles.searchInput}
+            className="h-8 text-xs"
             value={search}
             onValueChange={setSearch}
           />
           <CommandList>
-            <CommandEmpty className={styles.emptyMessage}>
+            <CommandEmpty className="py-2 text-xs text-center">
               No labels found.
             </CommandEmpty>
             <CommandGroup>
@@ -128,17 +137,17 @@ export function LabelCombobox({ value, labels, onChange, projectId }: LabelCombo
                           : [...value, label.id],
                       );
                     }}
-                    className={styles.labelItem}
+                    className="text-xs"
                   >
                     <span
-                      className={styles.labelColorDot}
+                      className="size-2 rounded-full shrink-0 mr-1.5"
                       style={{ backgroundColor: label.color }}
                     />
                     {label.name}
                     <Check
                       className={cn(
-                        styles.checkIcon,
-                        isSelected ? styles.checkVisible : styles.checkHidden,
+                        "ml-auto size-3.5",
+                        isSelected ? "opacity-100" : "opacity-0",
                       )}
                     />
                   </CommandItem>
@@ -151,16 +160,32 @@ export function LabelCombobox({ value, labels, onChange, projectId }: LabelCombo
                   forceMount
                   value={`__create_${search}`}
                   onSelect={handleCreate}
-                  className={styles.createItem}
+                  className="text-xs"
                   disabled={createLabel.isLoading}
                 >
-                  <Plus className={styles.createIcon} />
+                  <Plus className="size-3.5 mr-1.5" />
                   {createLabel.isLoading ? "Creating..." : <>Create &ldquo;{search.trim()}&rdquo;</>}
                 </CommandItem>
               </CommandGroup>
             )}
           </CommandList>
         </Command>
+        {value.length > 0 && (
+          <div className="border-t border-border p-1">
+            <button
+              type="button"
+              className="flex items-center gap-1.5 w-full px-2 py-1.5 text-xs text-destructive rounded-md hover:bg-destructive/10 transition-colors cursor-pointer"
+              onClick={() => {
+                clearingRef.current = true;
+                onChange([]);
+                setTimeout(() => setOpen(false), 0);
+              }}
+            >
+              <X className="size-3" />
+              Remove all
+            </button>
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   );
