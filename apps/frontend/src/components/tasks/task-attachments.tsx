@@ -76,7 +76,7 @@ export function TaskAttachments({ projectId, taskId }: TaskAttachmentsProps) {
               key={file.id}
               className="flex items-center gap-3 p-2.5 rounded-xl bg-background border border-border shadow-sm hover:shadow-md transition-all group"
             >
-              <div className="flex items-center justify-center size-8 rounded-lg bg-muted/50 shrink-0">
+              <div className="flex items-center justify-center size-8 rounded-lg bg-slate-100 dark:bg-slate-800/50 shrink-0">
                 <AttachmentIcon mimeType={file.mediaFileInfo.mimeType} />
               </div>
               <div className="flex-1 min-w-0">
