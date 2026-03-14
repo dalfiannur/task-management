@@ -129,10 +129,11 @@ export function SearchDropdown<T extends SearchDropdownOption>({
   return (
     <div
       className={cn(
-        "absolute z-50 mt-2 rounded-lg border border-border bg-background shadow-xl",
+        "absolute z-50 mt-2 rounded-lg border border-border shadow-xl",
         width,
         align === "end" ? "right-0" : "left-0",
       )}
+      style={{ backgroundColor: "var(--popover)" }}
       onKeyDown={handleKeyDown}
     >
       {/* Search input */}
