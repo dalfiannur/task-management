@@ -1,6 +1,6 @@
 .header {
   border-bottom: 1px solid var(--border);
-  background-color: var(--color-slate-50);
+  background-color: color-mix(in srgb, var(--muted) 50%, transparent);
   padding-left: 0.625rem;
   padding-right: 0.625rem;
   display: flex;
@@ -23,7 +23,7 @@
   padding-left: 0.625rem;
   padding-right: 0.625rem;
   border-bottom: 1px solid var(--border);
-  background-color: var(--color-slate-50);
+  background-color: color-mix(in srgb, var(--muted) 50%, transparent);
 }
 
 .moduleStripe {

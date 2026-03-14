@@ -58,7 +58,7 @@
 }
 
 .row:hover {
-  background-color: var(--color-slate-50);
+  background-color: color-mix(in srgb, var(--muted) 50%, transparent);
 }
 
 .row[data-state="selected"] {

@@ -127,7 +127,7 @@ export function TaskFilters({ projectId, filters }: TaskFiltersProps) {
           <PopoverTrigger asChild>
             <button
               type="button"
-              className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm transition-all hover:border-gray-300 hover:bg-gray-50"
+              className="flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 text-sm transition-all hover:border-border/80 hover:bg-muted/50"
             >
               <Users className="size-3.5 opacity-50" />
               {selectedAssignees.length > 0

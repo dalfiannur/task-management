@@ -177,11 +177,11 @@ export function ModuleSection({
     <>
       <Collapsible defaultOpen className="group/module">
         <div
-          className="rounded-xl border border-l-4 bg-white"
+          className="rounded-xl border border-l-4 bg-background"
           style={{ borderLeftColor: color }}
         >
           <div className="flex w-full min-w-0 overflow-hidden items-center gap-2 px-3.5 py-2.5">
-            <CollapsibleTrigger className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden rounded-[calc(var(--radius)-2px)] -m-0.5 p-0.5 transition-colors hover:bg-slate-50">
+            <CollapsibleTrigger className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden rounded-[calc(var(--radius)-2px)] -m-0.5 p-0.5 transition-colors hover:bg-muted/50">
               <ChevronRight className="size-3.5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]/module:rotate-90" />
               <span className="font-semibold text-sm leading-5" style={{ color }}>
                 {module.name}
@@ -434,7 +434,7 @@ export function ModuleSection({
 
                 {!(projectStatus === "proposal" && module.name !== "Proposal") && (
                   <TableRow
-                    className="cursor-pointer hover:bg-slate-50"
+                    className="cursor-pointer hover:bg-muted/50"
                     onClick={() => setTaskFormOpen(true)}
                   >
                     <TableCell colSpan={7} className="pl-8 py-1.5">
@@ -556,7 +556,7 @@ function TaskRow({
   const cleanTitle = task.title.replace(/^[•·]\s*/, "");
   return (
     <TableRow
-      className="cursor-pointer hover:bg-slate-50"
+      className="cursor-pointer hover:bg-muted/50"
       onClick={onNavigate}
     >
       <TableCell className="pl-8 font-medium">

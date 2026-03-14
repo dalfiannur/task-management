@@ -140,10 +140,10 @@ export function LabelCombobox({ value, labels, onChange, projectId }: LabelCombo
         footer={
           <>
             {search.trim() && !hasExactMatch && projectId && (
-              <div className="border-t border-gray-100 p-1">
+              <div className="border-t border-border/50 p-1">
                 <button
                   type="button"
-                  className="flex items-center gap-1.5 w-full px-3 py-2 text-xs rounded-md hover:bg-gray-50 transition-colors cursor-pointer"
+                  className="flex items-center gap-1.5 w-full px-3 py-2 text-xs rounded-md hover:bg-muted/50 transition-colors cursor-pointer"
                   onClick={handleCreate}
                   disabled={createLabel.isLoading}
                 >

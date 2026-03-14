@@ -97,7 +97,7 @@ export function Header() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-[0.8125rem] text-muted-foreground" />
             <input
               placeholder="Search tasks..."
-              className="w-full rounded-full border border-gray-200 bg-white pl-9 pr-4 h-9 text-sm transition-all placeholder:text-muted-foreground/50 focus:outline-none focus:border-gray-300 focus:bg-white"
+              className="w-full rounded-full border border-border bg-background pl-9 pr-4 h-9 text-sm transition-all placeholder:text-muted-foreground/50 focus:outline-none focus:border-border/80"
               value={searchValue}
               onChange={(e) => setSearchValue(e.target.value)}
             />

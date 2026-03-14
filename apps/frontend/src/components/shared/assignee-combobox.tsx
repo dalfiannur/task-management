@@ -25,7 +25,7 @@ function SelectedAssigneeItem({ userId, onDeselect }: { userId: string; onDesele
   const initials = getInitials(name);
   return (
     <div
-      className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-xs transition-colors hover:bg-gray-50"
+      className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-xs transition-colors hover:bg-muted/50"
       onClick={onDeselect}
     >
       <Avatar className="size-5">
@@ -113,7 +113,7 @@ export function AssigneeCombobox({ value, onChange }: AssigneeComboboxProps) {
         emptyText={search ? "No user found." : "Type to search..."}
         header={
           !search && value.length > 0 ? (
-            <div className="border-b border-gray-100 p-1">
+            <div className="border-b border-border/50 p-1">
               {value.map((id) => (
                 <SelectedAssigneeItem
                   key={id}

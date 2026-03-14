@@ -1,11 +1,11 @@
 .card {
   cursor: pointer;
-  background-color: white;
+  background-color: var(--background);
   transition: color 150ms, background-color 150ms;
 }
 
 .card:hover {
-  background-color: var(--color-gray-50);
+  background-color: color-mix(in srgb, var(--muted) 50%, transparent);
 }
 
 .headerRow {

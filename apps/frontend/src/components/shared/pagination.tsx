@@ -9,8 +9,8 @@ interface PaginationProps {
 
 export function Pagination({ currentPage, hasNextPage, onPageChange }: PaginationProps) {
   const buttonClass = cn(
-    "inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium transition-colors",
-    "hover:bg-gray-50 hover:text-gray-900",
+    "inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-sm font-medium transition-colors",
+    "hover:bg-muted/50 hover:text-foreground",
     "disabled:pointer-events-none disabled:opacity-50",
   );
 

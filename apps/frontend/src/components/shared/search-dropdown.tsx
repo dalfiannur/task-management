@@ -129,14 +129,14 @@ export function SearchDropdown<T extends SearchDropdownOption>({
   return (
     <div
       className={cn(
-        "absolute z-50 mt-2 rounded-lg border border-gray-200 bg-white shadow-xl",
+        "absolute z-50 mt-2 rounded-lg border border-border bg-background shadow-xl",
         width,
         align === "end" ? "right-0" : "left-0",
       )}
       onKeyDown={handleKeyDown}
     >
       {/* Search input */}
-      <div className="flex items-center gap-2 border-b border-gray-100 px-3 py-2">
+      <div className="flex items-center gap-2 border-b border-border/50 px-3 py-2">
         <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
         <input
           ref={searchInputRef}
@@ -170,9 +170,9 @@ export function SearchDropdown<T extends SearchDropdownOption>({
                 aria-selected={selected}
                 className={cn(
                   "flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
-                  isHighlighted && "bg-gray-50",
+                  isHighlighted && "bg-muted/50",
                   selected && "bg-blue-50 text-blue-700",
-                  !isHighlighted && !selected && "hover:bg-gray-50",
+                  !isHighlighted && !selected && "hover:bg-muted/50",
                 )}
                 onClick={() => onSelect(option)}
                 onMouseEnter={() => setHighlightIndex(index)}

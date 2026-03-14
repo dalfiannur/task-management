@@ -78,12 +78,11 @@ export function SearchSelect<T>({
         className={cn(
           "flex w-full items-center gap-2 text-sm transition-all",
           variant === "pill"
-            ? "rounded-full border border-gray-200 bg-white px-3 py-1.5 hover:border-gray-300 hover:bg-gray-50"
-            : "rounded-lg border bg-white px-4 py-2.5 hover:border-gray-300",
-          variant === "pill" && open && "border-gray-300 bg-gray-50",
+            ? "rounded-full border border-border bg-background px-3 py-1.5 hover:border-border/80 hover:bg-muted/50"
+            : "rounded-lg border border-border bg-background px-4 py-2.5 hover:border-border/80",
+          variant === "pill" && open && "border-border/80 bg-muted/50",
           variant !== "pill" && open && "border-blue-500 ring-2 ring-blue-100",
           disabled && "cursor-not-allowed opacity-50",
-          variant !== "pill" && !open && !disabled && "border-gray-200",
         )}
       >
         <span className="flex-1 truncate text-left">

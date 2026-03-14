@@ -140,7 +140,7 @@ export function Component() {
                 return next;
               })
             }
-            className="rounded-full border border-gray-200 bg-white pl-8 pr-3.5 h-7 text-sm leading-5 w-[220px] transition-colors placeholder:text-muted-foreground/60 focus:outline-none focus:border-gray-300"
+            className="rounded-full border border-border bg-background pl-8 pr-3.5 h-7 text-sm leading-5 w-[220px] transition-colors placeholder:text-muted-foreground/60 focus:outline-none focus:border-border/80"
           />
         </div>
         {getDisplayStatus(project) === "active" && (
