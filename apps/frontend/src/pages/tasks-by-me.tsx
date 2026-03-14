@@ -1,13 +1,20 @@
-import { useState, useMemo } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useSearchParams } from "react-router";
 import { useTasksByMe, useUpdateTask } from "@/hooks/use-tasks";
 import { useProjects, getProjectDisplayName } from "@/hooks/use-projects";
 import { TaskDetail } from "@/components/tasks/task-detail";
 import { TaskPriorityBadge } from "@/components/tasks/task-priority-badge";
+import { SearchSelect } from "@/components/shared/search-select";
+import {
+  SearchDropdown,
+  type SearchDropdownOption,
+} from "@/components/shared/search-dropdown";
 import {
   TASK_STATUS_CONFIG,
+  TASK_PRIORITY_CONFIG,
   type Task,
   type TaskStatus,
+  type TaskPriority,
   type UpdateTaskInput,
 } from "@/types/task";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,18 +26,33 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { PenLine } from "lucide-react";
+import { PenLine, Search } from "lucide-react";
 import { useCompanyStore } from "@/stores/company-store";
 import styles from "./my-tasks.module.css";
+
+const STATUS_DOT_COLORS: Record<TaskStatus, string> = {
+  todo: "bg-blue-400",
+  in_progress: "bg-amber-400",
+  done: "bg-emerald-400",
+  cancelled: "bg-red-400",
+};
+
+const statusOptions: (SearchDropdownOption & { _key: TaskStatus })[] = (
+  Object.entries(TASK_STATUS_CONFIG) as [TaskStatus, { label: string; color: string }][]
+).map(([key, config]) => ({ value: key, label: config.label, _key: key }));
+
+const statusFilterOptions = [
+  { value: "all", label: "All statuses" },
+  ...statusOptions.map((o) => ({ value: o.value, label: o.label })),
+];
+
+const priorityFilterOptions = [
+  { value: "all", label: "All priorities" },
+  ...(
+    Object.entries(TASK_PRIORITY_CONFIG) as [TaskPriority, { label: string }][]
+  ).map(([key, config]) => ({ value: key, label: config.label })),
+];
 
 export function Component() {
   const { data: myTasksData, isLoading: tasksLoading } = useTasksByMe();
@@ -55,7 +77,6 @@ export function Component() {
   const moduleMap = myTasksData?.moduleMap ?? {};
   const projectCoreRefMap = myTasksData?.projectCoreRefMap ?? {};
 
-  // Build project lookup by core ID
   const projectMap = useMemo(
     () => new Map((projects ?? []).map((p) => [p.id, p])),
     [projects],
@@ -63,16 +84,10 @@ export function Component() {
 
   const filteredTasks = useMemo(() => {
     if (!tasks) return [];
-
     return tasks.filter((task) => {
       if (statusFilter !== "all" && task.status !== statusFilter) return false;
-      if (priorityFilter !== "all" && task.priority !== priorityFilter)
-        return false;
-      if (
-        searchQuery &&
-        !task.title.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-        return false;
+      if (priorityFilter !== "all" && task.priority !== priorityFilter) return false;
+      if (searchQuery && !task.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
       return true;
     });
   }, [tasks, statusFilter, priorityFilter, searchQuery]);
@@ -111,7 +126,6 @@ export function Component() {
   return (
     <div className={styles.page}>
       <div className={styles.pageSpacing}>
-        {/* Header */}
         <div className={styles.header}>
           <h1 className={styles.headerTitle}>Tasks by Me</h1>
           <p className={styles.headerSubtitle}>
@@ -120,56 +134,44 @@ export function Component() {
           </p>
         </div>
 
-        {/* Filters */}
         <div className={styles.filtersRow} style={{ animationDelay: "75ms" }}>
-          <Select
+          <SearchSelect
+            options={statusFilterOptions}
             value={statusFilter}
-            onValueChange={(v) => setFilter("status", v)}
-          >
-            <SelectTrigger className={styles.filterSelect}>
-              <SelectValue placeholder="All statuses" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
-              {(
-                Object.entries(TASK_STATUS_CONFIG) as [
-                  TaskStatus,
-                  { label: string; color: string },
-                ][]
-              ).map(([key, config]) => (
-                <SelectItem key={key} value={key}>
-                  <span className={config.color}>{config.label}</span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select
-            value={priorityFilter}
-            onValueChange={(v) => setFilter("priority", v)}
-          >
-            <SelectTrigger className={styles.filterSelect}>
-              <SelectValue placeholder="All priorities" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All priorities</SelectItem>
-              <SelectItem value="urgent">Urgent</SelectItem>
-              <SelectItem value="high">High</SelectItem>
-              <SelectItem value="medium">Medium</SelectItem>
-              <SelectItem value="low">Low</SelectItem>
-              <SelectItem value="none">No priority</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Input
-            placeholder="Search tasks..."
-            value={searchQuery}
-            onChange={(e) => setFilter("q", e.target.value)}
-            className={styles.searchInput}
+            onChange={(v) => setFilter("status", v ?? "all")}
+            getOptionValue={(o) => o.value}
+            getOptionLabel={(o) => o.label}
+            filterLocally
+            clearable={false}
+            variant="pill"
+            placeholder="All statuses"
+            className="w-[10rem]"
           />
+
+          <SearchSelect
+            options={priorityFilterOptions}
+            value={priorityFilter}
+            onChange={(v) => setFilter("priority", v ?? "all")}
+            getOptionValue={(o) => o.value}
+            getOptionLabel={(o) => o.label}
+            filterLocally
+            clearable={false}
+            variant="pill"
+            placeholder="All priorities"
+            className="w-[10rem]"
+          />
+
+          <div className="relative flex-1 min-w-[12rem] max-w-[20rem]">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+            <input
+              placeholder="Search tasks..."
+              value={searchQuery}
+              onChange={(e) => setFilter("q", e.target.value)}
+              className="w-full rounded-full border border-border bg-background pl-8 pr-3.5 h-8 text-sm transition-colors placeholder:text-muted-foreground/60 focus:outline-none focus:border-border/80"
+            />
+          </div>
         </div>
 
-        {/* Tasks */}
         {filteredTasks.length === 0 ? (
           <div className={styles.emptyState} style={{ animationDelay: "150ms" }}>
             <PenLine className={styles.emptyIcon} />
@@ -215,9 +217,7 @@ export function Component() {
                         moduleId: task.moduleId,
                       })
                     }
-                    onStatusChange={(id, input) =>
-                      updateTask.mutate({ id, input })
-                    }
+                    updateTask={updateTask}
                   />
                 );
               })}
@@ -226,7 +226,6 @@ export function Component() {
         )}
       </div>
 
-      {/* Task detail dialog */}
       {selectedTask && (
         <TaskDetail
           taskId={selectedTask.taskId}
@@ -244,14 +243,17 @@ function TaskRow({
   moduleName,
   projectName,
   onSelect,
-  onStatusChange,
+  updateTask,
 }: {
   task: Task;
   moduleName: string;
   projectName?: string;
   onSelect: () => void;
-  onStatusChange: (id: string, input: UpdateTaskInput) => void;
+  updateTask: ReturnType<typeof useUpdateTask>;
 }) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
   return (
     <TableRow
       className={styles.taskRow}
@@ -265,38 +267,42 @@ function TaskRow({
       </TableCell>
       <TableCell className={styles.taskTitle}>{task.title}</TableCell>
       <TableCell onClick={(e) => e.stopPropagation()}>
-        <Select
-          value={task.status}
-          onValueChange={(v) => {
-            const newStatus = v as TaskStatus;
-            const input: UpdateTaskInput = { status: newStatus };
-            if (newStatus === "in_progress" && !task.startDate) {
-              input.startDate = new Date().toISOString();
-            }
-            onStatusChange(task.id, input);
-          }}
-        >
-          <SelectTrigger
+        <div ref={containerRef} className="relative">
+          <button
+            type="button"
+            onClick={() => setOpen(!open)}
             className={cn(
-              styles.statusTrigger,
+              "font-mono h-auto rounded-full border-transparent px-2 py-0.5 text-sm leading-4 font-medium w-fit shadow-none inline-flex items-center",
               TASK_STATUS_CONFIG[task.status].color,
             )}
           >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {(
-              Object.entries(TASK_STATUS_CONFIG) as [
-                TaskStatus,
-                { label: string; color: string },
-              ][]
-            ).map(([key, config]) => (
-              <SelectItem key={key} value={key}>
-                <span className={config.color}>{config.label}</span>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+            {TASK_STATUS_CONFIG[task.status].label}
+          </button>
+          <SearchDropdown
+            open={open}
+            onClose={() => setOpen(false)}
+            containerRef={containerRef}
+            options={statusOptions}
+            isSelected={(o) => o.value === task.status}
+            onSelect={(o) => {
+              const newStatus = o._key;
+              const input: UpdateTaskInput = { status: newStatus };
+              if (newStatus === "in_progress" && !task.startDate) {
+                input.startDate = new Date().toISOString();
+              }
+              updateTask.mutate({ id: task.id, input });
+              setOpen(false);
+            }}
+            filterLocally
+            renderOption={(o) => (
+              <div className="flex items-center gap-2">
+                <span className={cn("size-2 rounded-full shrink-0", STATUS_DOT_COLORS[o._key])} />
+                {o.label}
+              </div>
+            )}
+            width="w-[180px]"
+          />
+        </div>
       </TableCell>
       <TableCell>
         <TaskPriorityBadge priority={task.priority} />
