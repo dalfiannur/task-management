@@ -8,7 +8,6 @@ export function DateProgress({ startDate, dueDate }: DateProgressProps) {
   const total = dueDate.getTime() - startDate.getTime();
   const elapsed = now.getTime() - startDate.getTime();
   const pct = Math.min(100, Math.max(0, (elapsed / total) * 100));
-  const remaining = Math.max(0, 100 - Math.round(pct));
   const daysLeft = Math.max(0, Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
 
   return (
