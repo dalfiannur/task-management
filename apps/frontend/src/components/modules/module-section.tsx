@@ -13,13 +13,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useRef } from "react";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  SearchDropdown,
+  type SearchDropdownOption,
+} from "@/components/shared/search-dropdown";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -61,6 +59,18 @@ import { TASK_STATUS_CONFIG, type Label, type Module, type Task, type TaskStatus
 import { type ProjectDisplayStatus } from "@/types/project"
 import { cn, getInitials } from "@/lib/utils";
 import { Button } from "../ui/button";
+
+const STATUS_DOT_COLORS: Record<TaskStatus, string> = {
+  todo: "bg-blue-400",
+  in_progress: "bg-amber-400",
+  done: "bg-emerald-400",
+  cancelled: "bg-red-400",
+};
+
+const statusOptions: (SearchDropdownOption & { _key: TaskStatus })[] =
+  (Object.entries(TASK_STATUS_CONFIG) as [TaskStatus, { label: string; color: string }][]).map(
+    ([key, config]) => ({ value: key, label: config.label, _key: key }),
+  );
 
 export const MODULE_COLORS = [
   "#3b82f6", // blue
@@ -167,11 +177,11 @@ export function ModuleSection({
     <>
       <Collapsible defaultOpen className="group/module">
         <div
-          className="rounded-md border border-l-4 overflow-hidden"
+          className="rounded-xl border border-l-4 bg-white"
           style={{ borderLeftColor: color }}
         >
           <div className="flex w-full min-w-0 overflow-hidden items-center gap-2 px-3.5 py-2.5">
-            <CollapsibleTrigger className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden rounded-[calc(var(--radius)-2px)] -m-0.5 p-0.5 transition-colors hover:bg-accent/50">
+            <CollapsibleTrigger className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden rounded-[calc(var(--radius)-2px)] -m-0.5 p-0.5 transition-colors hover:bg-slate-50">
               <ChevronRight className="size-3.5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]/module:rotate-90" />
               <span className="font-semibold text-sm leading-5" style={{ color }}>
                 {module.name}
@@ -424,7 +434,7 @@ export function ModuleSection({
 
                 {!(projectStatus === "proposal" && module.name !== "Proposal") && (
                   <TableRow
-                    className="cursor-pointer hover:bg-accent/50"
+                    className="cursor-pointer hover:bg-slate-50"
                     onClick={() => setTaskFormOpen(true)}
                   >
                     <TableCell colSpan={7} className="pl-8 py-1.5">
@@ -477,6 +487,56 @@ export function ModuleSection({
   );
 }
 
+function InlineStatusCell({
+  task,
+  updateTask,
+}: {
+  task: Task;
+  updateTask: ReturnType<typeof useUpdateTask>;
+}) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className={cn(
+          "font-mono h-auto rounded-full border-transparent px-2 py-0.5 text-sm leading-4 font-medium w-fit shadow-none inline-flex items-center",
+          TASK_STATUS_CONFIG[task.status].color,
+        )}
+      >
+        {TASK_STATUS_CONFIG[task.status].label}
+      </button>
+      <SearchDropdown
+        open={open}
+        onClose={() => setOpen(false)}
+        containerRef={containerRef}
+        options={statusOptions}
+        isSelected={(o) => o.value === task.status}
+        onSelect={(o) => {
+          const newStatus = o._key;
+          const input: UpdateTaskInput = { status: newStatus };
+          if (newStatus === "in_progress" && !task.startDate) {
+            input.startDate = new Date().toISOString();
+          }
+          updateTask.mutate({ id: task.id, input });
+          setOpen(false);
+        }}
+        filterLocally
+        renderOption={(o) => (
+          <div className="flex items-center gap-2">
+            <span className={cn("size-2 rounded-full shrink-0", STATUS_DOT_COLORS[o._key])} />
+            {o.label}
+          </div>
+        )}
+        width="w-[180px]"
+      />
+    </div>
+  );
+}
+
 function TaskRow({
   task,
   labels,
@@ -496,7 +556,7 @@ function TaskRow({
   const cleanTitle = task.title.replace(/^[•·]\s*/, "");
   return (
     <TableRow
-      className="cursor-pointer hover:bg-accent/50"
+      className="cursor-pointer hover:bg-slate-50"
       onClick={onNavigate}
     >
       <TableCell className="pl-8 font-medium">
@@ -513,35 +573,10 @@ function TaskRow({
         )}
       </TableCell>
       <TableCell onClick={(e) => e.stopPropagation()}>
-        <Select
-          value={task.status}
-          onValueChange={(v) => {
-            const newStatus = v as TaskStatus;
-            const input: UpdateTaskInput = { status: newStatus };
-            if (newStatus === "in_progress" && !task.startDate) {
-              input.startDate = new Date().toISOString();
-            }
-            updateTask.mutate({ id: task.id, input });
-          }}
-        >
-          <SelectTrigger
-            className={cn(
-              "font-mono h-auto rounded-full border-transparent px-1.5 py-px text-sm leading-4 font-medium w-fit shadow-none [&>svg]:hidden",
-              TASK_STATUS_CONFIG[task.status].color,
-            )}
-          >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {(Object.entries(TASK_STATUS_CONFIG) as [TaskStatus, { label: string; color: string }][]).map(
-              ([key, config]) => (
-                <SelectItem key={key} value={key}>
-                  <span className={config.color}>{config.label}</span>
-                </SelectItem>
-              ),
-            )}
-          </SelectContent>
-        </Select>
+        <InlineStatusCell
+          task={task}
+          updateTask={updateTask}
+        />
       </TableCell>
       <TableCell>
         <TaskPriorityBadge priority={task.priority} />

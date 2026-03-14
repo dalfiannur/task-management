@@ -5,7 +5,6 @@
 .container {
   position: relative;
   width: 100%;
-  overflow-x: auto;
 }
 
 /* ============================================
@@ -59,7 +58,7 @@
 }
 
 .row:hover {
-  background-color: color-mix(in srgb, var(--muted) 50%, transparent);
+  background-color: var(--color-slate-50);
 }
 
 .row[data-state="selected"] {

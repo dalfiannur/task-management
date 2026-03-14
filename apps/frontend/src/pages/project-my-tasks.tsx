@@ -32,8 +32,8 @@ export function Component() {
       {/* Filters Row */}
       <div className={styles.filtersRow}>
         <TaskFilters filters={{ status, priority }} />
-        <div className={styles.searchWrapper}>
-          <Search className={styles.searchIcon} />
+        <div className="relative ml-auto">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
           <input
             placeholder="Search tasks..."
             value={search ?? ""}
@@ -45,7 +45,7 @@ export function Component() {
                 return next;
               })
             }
-            className={styles.searchInput}
+            className="rounded-full border border-gray-200 bg-white pl-8 pr-3.5 h-7 text-sm leading-5 w-[220px] transition-colors placeholder:text-muted-foreground/60 focus:outline-none focus:border-gray-300"
           />
         </div>
       </div>

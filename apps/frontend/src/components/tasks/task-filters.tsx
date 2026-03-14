@@ -1,20 +1,14 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchSelect } from "@/components/shared/search-select";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
-import { X, Users, Search } from "lucide-react";
+import { X, Users, Search, ChevronDown } from "lucide-react";
 import { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG } from "@/types/task";
 import { useProjectMembers } from "@/hooks/use-members";
 import { useUser } from "@/hooks/use-users";
@@ -90,49 +84,57 @@ export function TaskFilters({ projectId, filters }: TaskFiltersProps) {
 
   return (
     <div className={styles.container}>
-      <Select
+      <SearchSelect
+        options={[
+          { value: "all", label: "All Status" },
+          ...Object.entries(TASK_STATUS_CONFIG).map(([value, config]) => ({
+            value,
+            label: config.label,
+          })),
+        ]}
         value={filters.status ?? "all"}
-        onValueChange={(v) => updateFilter("status", v === "all" ? undefined : v)}
-      >
-        <SelectTrigger className={styles.filterTrigger}>
-          <SelectValue placeholder="Status" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All Status</SelectItem>
-          {Object.entries(TASK_STATUS_CONFIG).map(([value, config]) => (
-            <SelectItem key={value} value={value}>
-              {config.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+        onChange={(v) => updateFilter("status", v === "all" || !v ? undefined : v)}
+        getOptionValue={(o) => o.value}
+        getOptionLabel={(o) => o.label}
+        filterLocally
+        clearable={false}
+        variant="pill"
+        placeholder="Status"
+        className="w-[140px]"
+      />
 
-      <Select
+      <SearchSelect
+        options={[
+          { value: "all", label: "All Priority" },
+          ...Object.entries(TASK_PRIORITY_CONFIG).map(([value, config]) => ({
+            value,
+            label: config.label,
+          })),
+        ]}
         value={filters.priority ?? "all"}
-        onValueChange={(v) => updateFilter("priority", v === "all" ? undefined : v)}
-      >
-        <SelectTrigger className={styles.filterTrigger}>
-          <SelectValue placeholder="Priority" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All Priority</SelectItem>
-          {Object.entries(TASK_PRIORITY_CONFIG).map(([value, config]) => (
-            <SelectItem key={value} value={value}>
-              {config.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+        onChange={(v) => updateFilter("priority", v === "all" || !v ? undefined : v)}
+        getOptionValue={(o) => o.value}
+        getOptionLabel={(o) => o.label}
+        filterLocally
+        clearable={false}
+        variant="pill"
+        placeholder="Priority"
+        className="w-[140px]"
+      />
 
       {members && members.length > 0 && (
         <Popover onOpenChange={(open) => { if (!open) setMemberSearch(""); }}>
           <PopoverTrigger asChild>
-            <Button variant="outline" className={styles.assigneeTrigger}>
-              <Users className={styles.assigneeIcon} />
+            <button
+              type="button"
+              className="flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm transition-all hover:border-gray-300 hover:bg-gray-50"
+            >
+              <Users className="size-3.5 opacity-50" />
               {selectedAssignees.length > 0
                 ? `${selectedAssignees.length} selected`
                 : "Assignee"}
-            </Button>
+              <ChevronDown className="size-3.5 opacity-50" />
+            </button>
           </PopoverTrigger>
           <PopoverContent className={styles.assigneePopover} align="start">
             <div className={styles.searchBox}>

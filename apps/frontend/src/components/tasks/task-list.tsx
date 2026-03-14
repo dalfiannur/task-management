@@ -7,21 +7,85 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TaskPriorityBadge } from "./task-priority-badge";
 import { TaskFilters } from "./task-filters";
+import { useState, useRef } from "react";
+import {
+  SearchDropdown,
+  type SearchDropdownOption,
+} from "@/components/shared/search-dropdown";
 import { useTasks, useUpdateTask } from "@/hooks/use-tasks";
 import { TASK_STATUS_CONFIG, type TaskStatus, type UpdateTaskInput } from "@/types/task";
 import { cn } from "@/lib/utils";
 import styles from "./task-list.module.css";
+
+const STATUS_DOT_COLORS: Record<TaskStatus, string> = {
+  todo: "bg-blue-400",
+  in_progress: "bg-amber-400",
+  done: "bg-emerald-400",
+  cancelled: "bg-red-400",
+};
+
+const statusOptions: (SearchDropdownOption & { _key: TaskStatus })[] =
+  (Object.entries(TASK_STATUS_CONFIG) as [TaskStatus, { label: string; color: string }][]).map(
+    ([key, config]) => ({ value: key, label: config.label, _key: key }),
+  );
+
+function InlineStatusSelect({
+  taskId,
+  status,
+  startDate,
+  updateTask,
+}: {
+  taskId: string;
+  status: TaskStatus;
+  startDate?: string;
+  updateTask: ReturnType<typeof useUpdateTask>;
+}) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className={cn(
+          "h-auto rounded-full border-transparent py-0.5 px-2 text-sm leading-4 font-medium font-mono w-fit shadow-none inline-flex items-center",
+          TASK_STATUS_CONFIG[status].color,
+        )}
+      >
+        {TASK_STATUS_CONFIG[status].label}
+      </button>
+      <SearchDropdown
+        open={open}
+        onClose={() => setOpen(false)}
+        containerRef={containerRef}
+        options={statusOptions}
+        isSelected={(o) => o.value === status}
+        onSelect={(o) => {
+          const newStatus = o._key;
+          const input: UpdateTaskInput = { status: newStatus };
+          if (newStatus === "in_progress" && !startDate) {
+            input.startDate = new Date().toISOString();
+          }
+          updateTask.mutate({ id: taskId, input });
+          setOpen(false);
+        }}
+        filterLocally
+        renderOption={(o) => (
+          <div className="flex items-center gap-2">
+            <span className={cn("size-2 rounded-full shrink-0", STATUS_DOT_COLORS[o._key])} />
+            {o.label}
+          </div>
+        )}
+        width="w-[180px]"
+      />
+    </div>
+  );
+}
 
 interface TaskListProps {
   filters: {
@@ -91,35 +155,12 @@ export function TaskList({ filters, projectId }: TaskListProps) {
                 </TableCell>
                 <TableCell className={styles.fontMedium}>{task.title}</TableCell>
                 <TableCell onClick={(e) => e.stopPropagation()}>
-                  <Select
-                    value={task.status}
-                    onValueChange={(v) => {
-                      const newStatus = v as TaskStatus;
-                      const input: UpdateTaskInput = { status: newStatus };
-                      if (newStatus === "in_progress" && !task.startDate) {
-                        input.startDate = new Date().toISOString();
-                      }
-                      updateTask.mutate({ id: task.id, input });
-                    }}
-                  >
-                    <SelectTrigger
-                      className={cn(
-                        styles.statusTrigger,
-                        TASK_STATUS_CONFIG[task.status].color,
-                      )}
-                    >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(Object.entries(TASK_STATUS_CONFIG) as [TaskStatus, { label: string; color: string }][]).map(
-                        ([key, config]) => (
-                          <SelectItem key={key} value={key}>
-                            <span className={config.color}>{config.label}</span>
-                          </SelectItem>
-                        ),
-                      )}
-                    </SelectContent>
-                  </Select>
+                  <InlineStatusSelect
+                    taskId={task.id}
+                    status={task.status}
+                    startDate={task.startDate}
+                    updateTask={updateTask}
+                  />
                 </TableCell>
                 <TableCell>
                   <TaskPriorityBadge priority={task.priority} />

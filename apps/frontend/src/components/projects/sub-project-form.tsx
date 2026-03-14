@@ -11,13 +11,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SearchSelect } from "@/components/shared/search-select";
 import { UserCombobox } from "@/components/shared/user-combobox";
 import { DatePickerField } from "@/components/shared/date-picker-field";
 import { useCreateSubProject } from "@/hooks/use-projects";
@@ -106,22 +100,18 @@ export function SubProjectForm({
             {parentModules && parentModules.length > 0 && (
               <div className="flex flex-col gap-1.5">
                 <Label>Linked Module</Label>
-                <Select
-                  value={moduleId ?? "__none__"}
-                  onValueChange={(v) => setModuleId(v === "__none__" ? undefined : v)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select module..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__none__">None</SelectItem>
-                    {parentModules.map((mod) => (
-                      <SelectItem key={mod.id} value={mod.id}>
-                        {mod.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchSelect
+                  options={parentModules}
+                  value={moduleId}
+                  onChange={(v) => setModuleId(v)}
+                  getOptionValue={(m) => m.id}
+                  getOptionLabel={(m) => m.name}
+                  filterLocally
+                  clearable
+                  variant="pill"
+                  placeholder="Select module..."
+                  searchPlaceholder="Search modules..."
+                />
               </div>
             )}
             <div className="grid grid-cols-2 gap-3">

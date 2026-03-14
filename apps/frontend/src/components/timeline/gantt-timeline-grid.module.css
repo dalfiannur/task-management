@@ -16,7 +16,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: color-mix(in srgb, var(--muted) 50%, transparent);
+  background-color: var(--color-slate-50);
   font-family: var(--font-mono);
 }
 
@@ -46,7 +46,7 @@
 
 .dayCellWeekend {
   composes: dayCell;
-  background-color: color-mix(in srgb, var(--muted) 30%, transparent);
+  background-color: var(--color-slate-50);
   color: var(--muted-foreground);
 }
 
@@ -79,7 +79,7 @@
 .colBgWeekend {
   border-right: 1px solid var(--border);
   flex-shrink: 0;
-  background-color: color-mix(in srgb, var(--muted) 20%, transparent);
+  background-color: var(--color-slate-50);
 }
 
 .colBgNormal {
@@ -98,7 +98,7 @@
 
 .moduleRow {
   border-bottom: 1px solid var(--border);
-  background-color: color-mix(in srgb, var(--muted) 10%, transparent);
+  background-color: color-mix(in srgb, var(--color-slate-50) 50%, transparent);
 }
 
 .taskRow {

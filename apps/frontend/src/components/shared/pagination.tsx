@@ -1,6 +1,5 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import styles from "./pagination.module.css";
+import { cn } from "@/lib/utils";
 
 interface PaginationProps {
   currentPage: number;
@@ -9,27 +8,35 @@ interface PaginationProps {
 }
 
 export function Pagination({ currentPage, hasNextPage, onPageChange }: PaginationProps) {
+  const buttonClass = cn(
+    "inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium transition-colors",
+    "hover:bg-gray-50 hover:text-gray-900",
+    "disabled:pointer-events-none disabled:opacity-50",
+  );
+
   return (
-    <div className={styles.container}>
-      <Button
-        variant="outline"
-        size="sm"
+    <div className="flex items-center justify-center gap-3 pt-6">
+      <button
+        type="button"
+        className={buttonClass}
         disabled={currentPage <= 1}
         onClick={() => onPageChange(currentPage - 1)}
       >
-        <ChevronLeft className={styles.icon} />
+        <ChevronLeft className="size-4" />
         Previous
-      </Button>
-      <span className={styles.pageIndicator}>Page {currentPage}</span>
-      <Button
-        variant="outline"
-        size="sm"
+      </button>
+      <span className="min-w-16 text-center text-sm font-medium text-muted-foreground">
+        Page {currentPage}
+      </span>
+      <button
+        type="button"
+        className={buttonClass}
         disabled={!hasNextPage}
         onClick={() => onPageChange(currentPage + 1)}
       >
         Next
-        <ChevronRight className={styles.icon} />
-      </Button>
+        <ChevronRight className="size-4" />
+      </button>
     </div>
   );
 }

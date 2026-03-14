@@ -1,20 +1,11 @@
 import { useState, useRef } from "react";
-import { Check, Plus, Tag, X } from "lucide-react";
+import { Plus, Tag, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { useCreateLabel } from "@/hooks/use-labels";
+import {
+  SearchDropdown,
+  type SearchDropdownOption,
+} from "./search-dropdown";
 
 const LABEL_COLORS = [
   "#ef4444", "#f97316", "#eab308", "#22c55e",
@@ -28,11 +19,15 @@ interface LabelComboboxProps {
   projectId?: string;
 }
 
+interface LabelOption extends SearchDropdownOption {
+  color: string;
+}
+
 export function LabelCombobox({ value, labels, onChange, projectId }: LabelComboboxProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const createLabel = useCreateLabel();
-  const clearingRef = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
   const selectedLabels = labels.filter((l) => value.includes(l.id));
 
   const hasExactMatch = labels.some(
@@ -54,139 +49,127 @@ export function LabelCombobox({ value, labels, onChange, projectId }: LabelCombo
     );
   };
 
+  const dropdownOptions: LabelOption[] = labels.map((l) => ({
+    value: l.id,
+    label: l.name,
+    color: l.color,
+  }));
+
   return (
-    <Popover open={open} onOpenChange={(v) => {
-      if (clearingRef.current) {
-        clearingRef.current = false;
-        return;
-      }
-      setOpen(v);
-    }}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          role="combobox"
-          aria-expanded={open}
-          className={cn(
-            "inline-flex items-center gap-1.5 rounded-full h-7 px-3 text-xs font-bold border-0 shadow-none transition-colors cursor-pointer",
-            selectedLabels.length > 0
-              ? "bg-gray-100 text-gray-700 dark:bg-gray-800/40 dark:text-gray-300"
-              : "bg-gray-100 text-gray-500 dark:bg-gray-800/40 dark:text-gray-400",
-          )}
-        >
-          {selectedLabels.length > 0 ? (
-            <>
-              <div className="flex items-center gap-1 min-w-0 flex-wrap">
-                {selectedLabels.slice(0, 2).map((label) => (
-                  <span
-                    key={label.id}
-                    className="inline-flex items-center gap-1 text-xs font-medium"
-                  >
-                    <span
-                      className="size-2 rounded-full shrink-0"
-                      style={{ backgroundColor: label.color }}
-                    />
-                    <span className="truncate max-w-[60px]">{label.name}</span>
-                  </span>
-                ))}
-                {selectedLabels.length > 2 && (
-                  <span className="text-[10px] text-muted-foreground">
-                    +{selectedLabels.length - 2}
-                  </span>
-                )}
-              </div>
-              <X
-                className="size-3 text-muted-foreground/50 shrink-0 hover:text-foreground transition-colors ml-0.5"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onChange([]);
-                }}
-              />
-            </>
-          ) : (
-            <>
-              <Tag className="size-3.5" />
-              <span className="text-xs font-medium">Add label</span>
-            </>
-          )}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[200px] p-0" align="end">
-        <Command>
-          <CommandInput
-            placeholder="Search labels..."
-            className="h-8 text-xs"
-            value={search}
-            onValueChange={setSearch}
-          />
-          <CommandList>
-            <CommandEmpty className="py-2 text-xs text-center">
-              No labels found.
-            </CommandEmpty>
-            <CommandGroup>
-              {labels.map((label) => {
-                const isSelected = value.includes(label.id);
-                return (
-                  <CommandItem
-                    key={label.id}
-                    value={label.name}
-                    onSelect={() => {
-                      onChange(
-                        isSelected
-                          ? value.filter((id) => id !== label.id)
-                          : [...value, label.id],
-                      );
-                    }}
-                    className="text-xs"
-                  >
-                    <span
-                      className="size-2 rounded-full shrink-0 mr-1.5"
-                      style={{ backgroundColor: label.color }}
-                    />
-                    {label.name}
-                    <Check
-                      className={cn(
-                        "ml-auto size-3.5",
-                        isSelected ? "opacity-100" : "opacity-0",
-                      )}
-                    />
-                  </CommandItem>
-                );
-              })}
-            </CommandGroup>
-            {search.trim() && !hasExactMatch && projectId && (
-              <CommandGroup forceMount>
-                <CommandItem
-                  forceMount
-                  value={`__create_${search}`}
-                  onSelect={handleCreate}
-                  className="text-xs"
-                  disabled={createLabel.isLoading}
+    <div ref={containerRef} className="relative">
+      {/* Pill trigger */}
+      <button
+        type="button"
+        role="combobox"
+        aria-expanded={open}
+        onClick={() => setOpen(!open)}
+        className={cn(
+          "inline-flex items-center gap-1.5 rounded-full h-7 px-3 text-xs font-bold border-0 shadow-none transition-colors cursor-pointer",
+          selectedLabels.length > 0
+            ? "bg-gray-100 text-gray-700 dark:bg-gray-800/40 dark:text-gray-300"
+            : "bg-gray-100 text-gray-500 dark:bg-gray-800/40 dark:text-gray-400",
+        )}
+      >
+        {selectedLabels.length > 0 ? (
+          <>
+            <div className="flex items-center gap-1 min-w-0 flex-wrap">
+              {selectedLabels.slice(0, 2).map((label) => (
+                <span
+                  key={label.id}
+                  className="inline-flex items-center gap-1 text-xs font-medium"
                 >
-                  <Plus className="size-3.5 mr-1.5" />
-                  {createLabel.isLoading ? "Creating..." : <>Create &ldquo;{search.trim()}&rdquo;</>}
-                </CommandItem>
-              </CommandGroup>
-            )}
-          </CommandList>
-        </Command>
-        {value.length > 0 && (
-          <div className="border-t border-border p-1">
-            <button
-              type="button"
-              className="flex items-center gap-1.5 w-full px-2 py-1.5 text-xs text-destructive rounded-md hover:bg-destructive/10 transition-colors cursor-pointer"
-              onClick={() => {
-                clearingRef.current = true;
+                  <span
+                    className="size-2 rounded-full shrink-0"
+                    style={{ backgroundColor: label.color }}
+                  />
+                  <span className="truncate max-w-[60px]">{label.name}</span>
+                </span>
+              ))}
+              {selectedLabels.length > 2 && (
+                <span className="text-[10px] text-muted-foreground">
+                  +{selectedLabels.length - 2}
+                </span>
+              )}
+            </div>
+            <X
+              className="size-3 text-muted-foreground/50 shrink-0 hover:text-foreground transition-colors ml-0.5"
+              onClick={(e) => {
+                e.stopPropagation();
                 onChange([]);
-                setTimeout(() => setOpen(false), 0);
               }}
-            >
-              <X className="size-3" />
-              Remove all
-            </button>
+            />
+          </>
+        ) : (
+          <>
+            <Tag className="size-3.5" />
+            <span className="text-xs font-medium">Add label</span>
+          </>
+        )}
+      </button>
+
+      {/* Dropdown */}
+      <SearchDropdown
+        open={open}
+        onClose={() => setOpen(false)}
+        containerRef={containerRef}
+        options={dropdownOptions}
+        isSelected={(o) => value.includes(o.value)}
+        onSelect={(o) => {
+          const isSelected = value.includes(o.value);
+          onChange(
+            isSelected
+              ? value.filter((id) => id !== o.value)
+              : [...value, o.value],
+          );
+        }}
+        searchValue={search}
+        onSearchChange={setSearch}
+        filterLocally={true}
+        searchPlaceholder="Search labels..."
+        emptyText="No labels found."
+        width="w-[200px]"
+        renderOption={(option: LabelOption) => (
+          <div className="flex items-center gap-1.5 text-xs">
+            <span
+              className="size-2 rounded-full shrink-0"
+              style={{ backgroundColor: option.color }}
+            />
+            {option.label}
           </div>
         )}
-      </PopoverContent>
-    </Popover>
+        footer={
+          <>
+            {search.trim() && !hasExactMatch && projectId && (
+              <div className="border-t border-gray-100 p-1">
+                <button
+                  type="button"
+                  className="flex items-center gap-1.5 w-full px-3 py-2 text-xs rounded-md hover:bg-gray-50 transition-colors cursor-pointer"
+                  onClick={handleCreate}
+                  disabled={createLabel.isLoading}
+                >
+                  <Plus className="size-3.5" />
+                  {createLabel.isLoading ? "Creating..." : <>Create &ldquo;{search.trim()}&rdquo;</>}
+                </button>
+              </div>
+            )}
+            {value.length > 0 && (
+              <div className={cn("border-t border-border p-1", search.trim() && !hasExactMatch && projectId && "border-t-0")}>
+                <button
+                  type="button"
+                  className="flex items-center gap-1.5 w-full px-2 py-1.5 text-xs text-destructive rounded-md hover:bg-destructive/10 transition-colors cursor-pointer"
+                  onClick={() => {
+                    onChange([]);
+                    setOpen(false);
+                  }}
+                >
+                  <X className="size-3" />
+                  Remove all
+                </button>
+              </div>
+            )}
+          </>
+        }
+      />
+    </div>
   );
 }

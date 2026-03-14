@@ -1,15 +1,12 @@
 import { useState, useEffect, useCallback, useRef, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { Input } from "@/components/ui/input";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Check } from "lucide-react";
+import {
+  SearchDropdown,
+  type SearchDropdownOption,
+} from "@/components/shared/search-dropdown";
 import {
   TASK_STATUS_CONFIG,
   TASK_PRIORITY_CONFIG,
@@ -273,44 +270,55 @@ interface StatusSelectProps {
 
 export function StatusSelect({ taskId, value, startDate, updateTask }: StatusSelectProps) {
   const { saved, flash } = useSaveIndicator();
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const statusOptions: (SearchDropdownOption & { _key: TaskStatus })[] =
+    (Object.entries(TASK_STATUS_CONFIG) as [TaskStatus, { label: string; color: string }][]).map(
+      ([key, config]) => ({ value: key, label: config.label, _key: key }),
+    );
 
   return (
     <div className="flex items-center gap-1">
-      <Select
-        value={value}
-        onValueChange={(v) => {
-          const newStatus = v as TaskStatus;
-          const input: UpdateTaskInput = { status: newStatus };
-          if (newStatus === "in_progress" && !startDate) {
-            input.startDate = new Date().toISOString();
-          }
-          updateTask.mutate(
-            { id: taskId, input },
-            { onSuccess: () => flash() },
-          );
-        }}
-      >
-        <SelectTrigger
+      <div ref={containerRef} className="relative">
+        <button
+          type="button"
+          onClick={() => setOpen(!open)}
           className={cn(
-            "h-7 text-xs leading-4 font-bold border-0 shadow-none px-3 w-auto gap-1 rounded-full transition-colors [&_svg:last-child]:size-3",
+            "h-7 text-xs leading-4 font-bold border-0 shadow-none px-3 w-auto gap-1 rounded-full transition-colors inline-flex items-center",
             STATUS_PILL_CLASSES[value],
           )}
         >
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {(Object.entries(TASK_STATUS_CONFIG) as [TaskStatus, { label: string; color: string }][]).map(
-            ([key, config]) => (
-              <SelectItem key={key} value={key}>
-                <div className="flex items-center gap-2">
-                  <span className={cn("size-2 rounded-full shrink-0", STATUS_DOT_COLORS[key])} />
-                  {config.label}
-                </div>
-              </SelectItem>
-            ),
+          {TASK_STATUS_CONFIG[value].label}
+        </button>
+        <SearchDropdown
+          open={open}
+          onClose={() => setOpen(false)}
+          containerRef={containerRef}
+          options={statusOptions}
+          isSelected={(o) => o.value === value}
+          onSelect={(o) => {
+            const newStatus = o._key;
+            const input: UpdateTaskInput = { status: newStatus };
+            if (newStatus === "in_progress" && !startDate) {
+              input.startDate = new Date().toISOString();
+            }
+            updateTask.mutate(
+              { id: taskId, input },
+              { onSuccess: () => flash() },
+            );
+            setOpen(false);
+          }}
+          filterLocally
+          renderOption={(o) => (
+            <div className="flex items-center gap-2">
+              <span className={cn("size-2 rounded-full shrink-0", STATUS_DOT_COLORS[o._key])} />
+              {o.label}
+            </div>
           )}
-        </SelectContent>
-      </Select>
+          width="w-[180px]"
+        />
+      </div>
       <SaveIndicator visible={saved} />
     </div>
   );
@@ -330,39 +338,50 @@ export function PrioritySelect({
   updateTask,
 }: PrioritySelectProps) {
   const { saved, flash } = useSaveIndicator();
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const priorityOptions: (SearchDropdownOption & { _key: TaskPriority })[] =
+    (Object.entries(TASK_PRIORITY_CONFIG) as [TaskPriority, { label: string; color: string; icon: string }][]).map(
+      ([key, config]) => ({ value: key, label: config.label, _key: key }),
+    );
 
   return (
     <div className="flex items-center gap-1">
-      <Select
-        value={value}
-        onValueChange={(v) => {
-          updateTask.mutate(
-            { id: taskId, input: { priority: v as TaskPriority } },
-            { onSuccess: () => flash() },
-          );
-        }}
-      >
-        <SelectTrigger
+      <div ref={containerRef} className="relative">
+        <button
+          type="button"
+          onClick={() => setOpen(!open)}
           className={cn(
-            "h-7 text-xs leading-4 font-bold border-0 shadow-none px-3 w-auto gap-1 rounded-full transition-colors [&_svg:last-child]:size-3",
+            "h-7 text-xs leading-4 font-bold border-0 shadow-none px-3 w-auto gap-1 rounded-full transition-colors inline-flex items-center",
             PRIORITY_PILL_CLASSES[value],
           )}
         >
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {(Object.entries(TASK_PRIORITY_CONFIG) as [TaskPriority, { label: string; color: string; icon: string }][]).map(
-            ([key, config]) => (
-              <SelectItem key={key} value={key}>
-                <div className="flex items-center gap-2">
-                  <span className={cn("size-2 rounded-full shrink-0", PRIORITY_DOT_COLORS[key])} />
-                  {config.label}
-                </div>
-              </SelectItem>
-            ),
+          {TASK_PRIORITY_CONFIG[value].label}
+        </button>
+        <SearchDropdown
+          open={open}
+          onClose={() => setOpen(false)}
+          containerRef={containerRef}
+          options={priorityOptions}
+          isSelected={(o) => o.value === value}
+          onSelect={(o) => {
+            updateTask.mutate(
+              { id: taskId, input: { priority: o._key } },
+              { onSuccess: () => flash() },
+            );
+            setOpen(false);
+          }}
+          filterLocally
+          renderOption={(o) => (
+            <div className="flex items-center gap-2">
+              <span className={cn("size-2 rounded-full shrink-0", PRIORITY_DOT_COLORS[o._key])} />
+              {o.label}
+            </div>
           )}
-        </SelectContent>
-      </Select>
+          width="w-[180px]"
+        />
+      </div>
       <SaveIndicator visible={saved} />
     </div>
   );
