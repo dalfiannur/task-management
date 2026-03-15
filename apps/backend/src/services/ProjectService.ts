@@ -411,7 +411,7 @@ export default class ProjectService extends BaseService {
     args: { id: string; description?: string },
     context: AuthContext,
   ) {
-    const user = requirePermission(context, TaskResources.Projects, Action.Create);
+    const user = requirePermission(context, TaskResources.Projects, Action.CreateAll);
 
     const project = Entity.Create()
       .add(ProjectTag, {})

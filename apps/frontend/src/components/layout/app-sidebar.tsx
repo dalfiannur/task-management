@@ -44,6 +44,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { CoreProject, ProjectDisplayStatus } from "@/types/project";
 import { getDisplayStatus } from "@/types/project";
+import { useHasPermission } from "@/hooks/use-me";
 import { useCompanyStore } from "@/stores/company-store";
 
 const STATUS_DOT_COLORS: Record<ProjectDisplayStatus, string> = {
@@ -191,8 +192,9 @@ function UserMenu() {
 
 export function AppSidebar() {
   const selectedCompanyId = useCompanyStore((s) => s.selectedCompanyId);
+  const canManageLeads = useHasPermission("task_management:projects", "create_all");
   const { data: allProjects } = useProjects(selectedCompanyId ? { ownerId: selectedCompanyId } : undefined);
-  const { data: leads } = useNewLeads(selectedCompanyId ?? undefined);
+  const { data: leads } = useNewLeads(canManageLeads ? (selectedCompanyId ?? undefined) : undefined);
   const [projectFormOpen, setProjectFormOpen] = useState(false);
   const [approveProject, setApproveProject] = useState<CoreProject | null>(null);
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
@@ -316,7 +318,8 @@ export function AppSidebar() {
           </Collapsible>
         </SidebarGroup>
 
-        {/* New Leads */}
+        {/* New Leads — only visible to users with create_all permission */}
+        {canManageLeads && (
         <SidebarGroup>
           <Collapsible defaultOpen className="group/collapsible">
             <div className="flex items-center justify-between pr-2">
@@ -349,6 +352,7 @@ export function AppSidebar() {
             </CollapsibleContent>
           </Collapsible>
         </SidebarGroup>
+        )}
 
         {/* Commercial Projects */}
         <SidebarGroup>

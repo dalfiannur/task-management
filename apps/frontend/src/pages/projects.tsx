@@ -20,6 +20,7 @@ import { useState, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import type { CoreProject } from "@/types/project";
 import { useCompanyStore } from "@/stores/company-store";
+import { useHasPermission } from "@/hooks/use-me";
 
 type ProjectFilter = "active" | "closed" | "all";
 type ProjectType = "internal" | "leads" | "commercial";
@@ -38,6 +39,7 @@ export function Component() {
   const projectType = searchParams.get("type") as ProjectType | null;
 
   const selectedCompanyId = useCompanyStore((s) => s.selectedCompanyId);
+  const canManageLeads = useHasPermission("task_management:projects", "create_all");
   const [filter, setFilter] = useState<ProjectFilter>("active");
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -46,7 +48,7 @@ export function Component() {
   const [approveProject, setApproveProject] = useState<CoreProject | null>(null);
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
 
-  const isLeadsView = projectType === "leads";
+  const isLeadsView = projectType === "leads" && canManageLeads;
 
   // Build server-side query params
   const queryInput = isLeadsView
@@ -66,12 +68,24 @@ export function Component() {
   const { data: allProjects, isLoading } = useProjects(queryInput);
   const { data: leads, isLoading: isLeadsLoading } = useNewLeads(
     isLeadsView ? (selectedCompanyId ?? undefined) : undefined,
+    !isLeadsView,
   );
 
   // Reset page when filters change
   useEffect(() => {
     setPage(1);
   }, [filter, projectType, selectedCompanyId]);
+
+  // Redirect unauthorized users away from leads view
+  if (projectType === "leads" && !canManageLeads) {
+    return (
+      <div className="p-5">
+        <p className="text-center text-muted-foreground py-10">
+          You don't have permission to manage leads.
+        </p>
+      </div>
+    );
+  }
 
   // For leads view, use leads data directly
   if (isLeadsView) {
