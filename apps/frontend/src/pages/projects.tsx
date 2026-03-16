@@ -76,7 +76,55 @@ export function Component() {
     setPage(1);
   }, [filter, projectType, selectedCompanyId]);
 
-  // Redirect unauthorized users away from leads view
+  // Client-side filtering, searching, and sorting
+  const projects = useMemo(() => {
+    let result = allProjects?.filter(
+      (p) =>
+        p.winStage !== "pending" &&
+        // For commercial projects, show sub-projects (they are the commercial engagement)
+        (projectType === "commercial" || !p.ref?.parentId),
+    );
+
+    // Search by name or client
+    if (search.trim() && result) {
+      const q = search.trim().toLowerCase();
+      result = result.filter(
+        (p) =>
+          (p.name?.name ?? "").toLowerCase().includes(q) ||
+          (p.code ?? "").toLowerCase().includes(q) ||
+          (p.clientDetail?.name?.name ?? "").toLowerCase().includes(q),
+      );
+    }
+
+    // Sort
+    if (result) {
+      const getName = (p: CoreProject) => p.name?.name ?? "";
+      result = [...result].sort((a, b) => {
+        switch (sort) {
+          case "name-asc":
+            return getName(a).localeCompare(getName(b));
+          case "name-desc":
+            return getName(b).localeCompare(getName(a));
+          case "date-asc":
+            return (a.dates?.startDate ?? a.id).localeCompare(b.dates?.startDate ?? b.id);
+          case "date-desc":
+            return (b.dates?.startDate ?? b.id).localeCompare(a.dates?.startDate ?? a.id);
+          default:
+            return 0;
+        }
+      });
+    }
+
+    return result;
+  }, [allProjects, search, sort, projectType]);
+
+  const hasNextPage = (allProjects?.length ?? 0) === PAGE_LIMIT;
+  const title = projectType ? TYPE_TITLES[projectType] : "Projects";
+  const showNewButton = !projectType || projectType === "internal";
+
+  // --- All hooks called above this line ---
+
+  // Unauthorized users on leads view
   if (projectType === "leads" && !canManageLeads) {
     return (
       <div className="p-5">
@@ -87,9 +135,8 @@ export function Component() {
     );
   }
 
-  // For leads view, use leads data directly
+  // Leads view
   if (isLeadsView) {
-    const title = TYPE_TITLES.leads;
     if (isLeadsLoading) {
       return (
         <div className="p-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -102,7 +149,7 @@ export function Component() {
     return (
       <div className="p-5">
         <div className="flex items-center justify-between mb-5">
-          <h1 className="text-xl font-semibold">{title}</h1>
+          <h1 className="text-xl font-semibold">{TYPE_TITLES.leads}</h1>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {leads?.map((lead) => (
@@ -127,52 +174,6 @@ export function Component() {
       </div>
     );
   }
-
-  // Client-side filtering, searching, and sorting
-  const projects = useMemo(() => {
-    let result = allProjects?.filter(
-      (p) =>
-        p.winStage !== "pending" &&
-        // For commercial projects, show sub-projects (they are the commercial engagement)
-        (projectType === "commercial" || !p.ref?.parentId),
-    );
-
-    // Search by name or client
-    if (search.trim() && result) {
-      const q = search.trim().toLowerCase();
-      result = result.filter(
-        (p) =>
-          p.name.name.toLowerCase().includes(q) ||
-          p.code.toLowerCase().includes(q) ||
-          p.clientDetail?.name.name.toLowerCase().includes(q),
-      );
-    }
-
-    // Sort
-    if (result) {
-      result = [...result].sort((a, b) => {
-        switch (sort) {
-          case "name-asc":
-            return a.name.name.localeCompare(b.name.name);
-          case "name-desc":
-            return b.name.name.localeCompare(a.name.name);
-          case "date-asc":
-            return (a.dates?.startDate ?? a.id).localeCompare(b.dates?.startDate ?? b.id);
-          case "date-desc":
-            return (b.dates?.startDate ?? b.id).localeCompare(a.dates?.startDate ?? a.id);
-          default:
-            return 0;
-        }
-      });
-    }
-
-    return result;
-  }, [allProjects, search, sort]);
-
-  const hasNextPage = (allProjects?.length ?? 0) === PAGE_LIMIT;
-
-  const title = projectType ? TYPE_TITLES[projectType] : "Projects";
-  const showNewButton = !projectType || projectType === "internal";
 
   if (isLoading) {
     return (
