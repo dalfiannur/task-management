@@ -60,7 +60,11 @@ export function Component() {
           : projectType === "internal"
             ? { commercial: false }
             : {}),
-        ...(filter === "closed" ? { status: "completed" } : {}),
+        ...(filter === "closed"
+          ? { status: ["completed"] }
+          : projectType === "commercial"
+            ? { status: ["active", "completed", "archived"] }
+            : {}),
         page,
         limit: PAGE_LIMIT,
       };
