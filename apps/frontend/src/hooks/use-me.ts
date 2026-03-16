@@ -74,6 +74,24 @@ export function useIsAdmin(): boolean {
   }
 }
 
+function hasPermission(userPermissions: string[], resource: string, action: string): boolean {
+  if (userPermissions.includes("*")) return true;
+  if (userPermissions.includes(`${resource}:${action}`)) return true;
+  if (userPermissions.includes(`${resource}:manage`)) return true;
+
+  // _all variant implies the base permission (e.g. read_all grants read)
+  if (userPermissions.includes(`${resource}:${action}_all`)) return true;
+
+  // Parent-level manage: "media:manage" grants all "media:*:*" actions
+  const segments = resource.split(":");
+  for (let i = segments.length - 1; i >= 1; i--) {
+    const parent = segments.slice(0, i).join(":");
+    if (userPermissions.includes(`${parent}:manage`)) return true;
+  }
+
+  return false;
+}
+
 export function useHasPermission(resource: string, action: string): boolean {
   const auth = useAuth();
   try {
@@ -81,8 +99,7 @@ export function useHasPermission(resource: string, action: string): boolean {
     if (!token) return false;
     const payload = JSON.parse(atob(token.split(".")[1]));
     const permissions: string[] = payload.permissions ?? [];
-    if (permissions.includes("*")) return true;
-    return permissions.includes(`${resource}:${action}`);
+    return hasPermission(permissions, resource, action);
   } catch {
     return false;
   }
