@@ -148,7 +148,9 @@ const UPDATE_CORE_PROJECT = gql`
 
 export function useProjects(input?: {
   status?: string[];
+  winStage?: string[];
   parentId?: string;
+  rootOnly?: boolean;
   ownerId?: string;
   page?: number;
   limit?: number;

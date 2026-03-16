@@ -193,7 +193,11 @@ function UserMenu() {
 export function AppSidebar() {
   const selectedCompanyId = useCompanyStore((s) => s.selectedCompanyId);
   const canManageLeads = useHasPermission("task_management:projects", "create_all");
-  const { data: allProjects } = useProjects(selectedCompanyId ? { ownerId: selectedCompanyId } : undefined);
+  const { data: allProjects } = useProjects({
+    ...(selectedCompanyId ? { ownerId: selectedCompanyId } : {}),
+    status: ["active", "completed", "archived"],
+    winStage: ["inactive", "proposal", "won", "lost"],
+  });
   const { data: leads } = useNewLeads(canManageLeads ? (selectedCompanyId ?? undefined) : undefined);
   const [projectFormOpen, setProjectFormOpen] = useState(false);
   const [approveProject, setApproveProject] = useState<CoreProject | null>(null);
@@ -205,11 +209,8 @@ export function AppSidebar() {
   const isTasksByMeActive = pathname.startsWith("/tasks-by-me");
   const isSettingsActive = pathname.startsWith("/settings");
 
-  const rootProjects = allProjects?.filter(
-    (p) => !p.ref?.parentId,
-  );
-  const internalProjects = rootProjects?.filter((p) => !p.commercial);
-  const commercialProjects = allProjects?.filter((p) => p.commercial && p.winStage !== "pending")
+  const internalProjects = allProjects?.filter((p) => !p.commercial && !p.ref?.parentId);
+  const commercialProjects = allProjects?.filter((p) => p.commercial)
 
   return (
     <Sidebar>

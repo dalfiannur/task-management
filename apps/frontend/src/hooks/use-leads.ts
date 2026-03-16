@@ -40,7 +40,7 @@ const APPROVE_LEAD = gql`
 export function useNewLeads(ownerId?: string, skip?: boolean) {
   const result = useQuery<{ listProjects: CoreProject[] }>(LIST_LEADS, {
     client: coreClient,
-    variables: { input: { winStage: "pending", ownerId } },
+    variables: { input: { winStage: ["pending"], ownerId } },
     skip,
   });
   return normalizeQueryResult(result, (d) => d.listProjects);

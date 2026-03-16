@@ -58,13 +58,14 @@ export function Component() {
         ...(projectType === "commercial"
           ? { commercial: true }
           : projectType === "internal"
-            ? { commercial: false }
-            : {}),
+            ? { commercial: false, rootOnly: true }
+            : { rootOnly: true }),
         ...(filter === "closed"
           ? { status: ["completed"] }
           : projectType === "commercial"
             ? { status: ["active", "completed", "archived"] }
             : {}),
+        winStage: ["inactive", "proposal", "won", "lost"],
         page,
         limit: PAGE_LIMIT,
       };
@@ -82,12 +83,7 @@ export function Component() {
 
   // Client-side filtering, searching, and sorting
   const projects = useMemo(() => {
-    let result = allProjects?.filter(
-      (p) =>
-        p.winStage !== "pending" &&
-        // For commercial projects, show sub-projects (they are the commercial engagement)
-        (projectType === "commercial" || !p.ref?.parentId),
-    );
+    let result = allProjects ? [...allProjects] : undefined;
 
     // Search by name or client
     if (search.trim() && result) {
