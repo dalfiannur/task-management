@@ -1,5 +1,5 @@
 import { useQuery, gql } from "@/lib/graphql-client";
-import { createMutationHook, createVoidMutationHook, normalizeQueryResult } from "@/lib/hook-factories";
+import { createMutationHook, createVoidMutationHook, normalizeQueryResult, type PageInfo } from "@/lib/hook-factories";
 import type {
   Task,
   CreateTaskInput,
@@ -227,38 +227,63 @@ interface MyTasksResponse {
   tasks: TaskResponse[];
   moduleMap: Record<string, { name: string; projectId: string }>;
   projectCoreRefMap: Record<string, string>;
+  pageInfo: PageInfo;
 }
 
 export function useMyTasks(
-  filters: { status?: string; priority?: string } = {},
+  filters: { status?: string; priority?: string; page?: number; pageSize?: number } = {},
   options?: { skip?: boolean },
 ) {
   const result = useQuery<{ listMyTasks: MyTasksResponse }>(LIST_MY_TASKS, {
-    variables: { input: { status: filters.status, priority: filters.priority } },
+    variables: {
+      input: {
+        status: filters.status,
+        priority: filters.priority,
+        page: filters.page,
+        pageSize: filters.pageSize,
+      },
+    },
     skip: options?.skip,
     fetchPolicy: "cache-and-network",
   });
-  return normalizeQueryResult(result, (d) => ({
+  const normalized = normalizeQueryResult(result, (d) => ({
     tasks: d.listMyTasks.tasks.map(mapTask),
     moduleMap: d.listMyTasks.moduleMap,
     projectCoreRefMap: d.listMyTasks.projectCoreRefMap,
+    pageInfo: d.listMyTasks.pageInfo,
   }));
+  return {
+    ...normalized,
+    pageInfo: normalized.data?.pageInfo ?? null,
+  };
 }
 
 export function useTasksByMe(
-  filters: { status?: string; priority?: string } = {},
+  filters: { status?: string; priority?: string; page?: number; pageSize?: number } = {},
   options?: { skip?: boolean },
 ) {
   const result = useQuery<{ listTasksByMe: MyTasksResponse }>(LIST_TASKS_BY_ME, {
-    variables: { input: { status: filters.status, priority: filters.priority } },
+    variables: {
+      input: {
+        status: filters.status,
+        priority: filters.priority,
+        page: filters.page,
+        pageSize: filters.pageSize,
+      },
+    },
     skip: options?.skip,
     fetchPolicy: "cache-and-network",
   });
-  return normalizeQueryResult(result, (d) => ({
+  const normalized = normalizeQueryResult(result, (d) => ({
     tasks: d.listTasksByMe.tasks.map(mapTask),
     moduleMap: d.listTasksByMe.moduleMap,
     projectCoreRefMap: d.listTasksByMe.projectCoreRefMap,
+    pageInfo: d.listTasksByMe.pageInfo,
   }));
+  return {
+    ...normalized,
+    pageInfo: normalized.data?.pageInfo ?? null,
+  };
 }
 
 /** Filter tasks due today or overdue, sorted soonest first. Excludes done/cancelled. */

@@ -1,5 +1,5 @@
 import { useQuery, gql } from "@/lib/graphql-client";
-import { createMutationHook, createVoidMutationHook, normalizeQueryResult } from "@/lib/hook-factories";
+import { createMutationHook, createVoidMutationHook, normalizeQueryResult, type PageInfo } from "@/lib/hook-factories";
 import type { Comment } from "@/types/comment";
 
 const COMMENT_FIELDS = gql`
@@ -18,11 +18,8 @@ const COMMENT_FIELDS = gql`
 `;
 
 const LIST_COMMENTS = gql`
-  ${COMMENT_FIELDS}
   query ListComments($input: listCommentsInput!) {
-    listComments(input: $input) {
-      ...CommentFields
-    }
+    listComments(input: $input)
   }
 `;
 
@@ -56,12 +53,26 @@ const COMMENT_COUNTS = gql`
   }
 `;
 
-export function useComments(taskId: string) {
-  const result = useQuery<{ listComments: Comment[] }>(LIST_COMMENTS, {
-    variables: { input: { taskId } },
+interface PaginatedComments {
+  items: Comment[];
+  pageInfo: PageInfo;
+}
+
+export function useComments(taskId: string, opts?: { page?: number; pageSize?: number }) {
+  const result = useQuery<{ listComments: PaginatedComments }>(LIST_COMMENTS, {
+    variables: { input: { taskId, page: opts?.page, pageSize: opts?.pageSize } },
     skip: !taskId,
   });
-  return normalizeQueryResult(result, (d) => d.listComments);
+  const normalized = normalizeQueryResult(result, (d) => ({
+    comments: d.listComments.items,
+    pageInfo: d.listComments.pageInfo,
+  }));
+  return {
+    data: normalized.data?.comments,
+    pageInfo: normalized.data?.pageInfo ?? null,
+    isLoading: normalized.isLoading,
+    error: normalized.error,
+  };
 }
 
 export const useCreateComment = createMutationHook<

@@ -1,6 +1,6 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useAuth } from "react-oidc-context";
-import { MessageSquare, Pencil, Trash2, X, Check, Loader2 } from "lucide-react";
+import { MessageSquare, Pencil, Trash2, X, Check, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useUser } from "@/hooks/use-users";
@@ -45,13 +45,17 @@ interface TaskCommentsProps {
 export function TaskComments({ taskId }: TaskCommentsProps) {
   const auth = useAuth();
   const currentUserId = auth.user?.profile?.sub as string | undefined;
-  const { data: comments = [], isLoading } = useComments(taskId);
+  const [page, setPage] = useState(1);
+  const { data: comments = [], pageInfo, isLoading } = useComments(taskId, { page });
+
+  // Reset page when taskId changes
+  useEffect(() => { setPage(1); }, [taskId]);
 
   return (
     <div className={styles.container}>
       <p className={styles.sectionLabel}>
         <MessageSquare className={styles.sectionIcon} />
-        Comments ({comments.length})
+        Comments
       </p>
 
       {isLoading ? (
@@ -69,6 +73,30 @@ export function TaskComments({ taskId }: TaskCommentsProps) {
               taskId={taskId}
             />
           ))}
+        </div>
+      )}
+
+      {pageInfo && (pageInfo.hasNextPage || pageInfo.page > 1) && (
+        <div className="flex items-center justify-center gap-3 py-2">
+          <button
+            type="button"
+            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+            disabled={page <= 1}
+            onClick={() => setPage(page - 1)}
+          >
+            <ChevronLeft className="size-3" />
+            Prev
+          </button>
+          <span className="text-xs text-muted-foreground">Page {page}</span>
+          <button
+            type="button"
+            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+            disabled={!pageInfo.hasNextPage}
+            onClick={() => setPage(page + 1)}
+          >
+            Next
+            <ChevronRight className="size-3" />
+          </button>
         </div>
       )}
 

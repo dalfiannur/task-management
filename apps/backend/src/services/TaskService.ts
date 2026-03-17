@@ -14,6 +14,7 @@ import { ModuleNameComponent, ModuleProjectRefComponent, ModuleTag } from "../co
 import { ProjectCoreRefComponent } from "../components/ProjectComponents";
 import { ProjectMembershipData } from "~/components/ProjectMembership";
 import { resolveLocalProjectId } from "~/lib/resolve-project-id";
+import { parsePagination, paginateResults } from "~/lib/pagination";
 import { requirePermission, type AuthContext, TaskResources, Action } from "~/utils/auth";
 
 async function resolveCoreProjectId(moduleId: string): Promise<string> {
@@ -237,8 +238,7 @@ export default class TaskService extends BaseService {
     const pageSize = input.pageSize ?? 200;
     query.take(pageSize).offset((page - 1) * pageSize);
 
-    const entities = await query.populate().exec();
-    return entities;
+    return await query.populate().exec();
   }
 
   @GraphQLOperation({
@@ -274,7 +274,9 @@ export default class TaskService extends BaseService {
       ),
     ];
 
-    if (localProjectIds.length === 0) return { tasks: [], moduleMap: {}, projectCoreRefMap: {} };
+    const emptyResult = { tasks: [], moduleMap: {}, projectCoreRefMap: {}, pageInfo: { page: 1, pageSize: 20, hasNextPage: false } };
+
+    if (localProjectIds.length === 0) return emptyResult;
 
     // Step 2: Find modules in those projects
     const moduleEntities = await new Query()
@@ -287,7 +289,7 @@ export default class TaskService extends BaseService {
       .exec();
 
     const moduleIds = moduleEntities.map((m: any) => m.id);
-    if (moduleIds.length === 0) return { tasks: [], moduleMap: {}, projectCoreRefMap: {} };
+    if (moduleIds.length === 0) return emptyResult;
 
     // Build moduleMap for frontend display
     const moduleMap: Record<string, { name: string; projectId: string }> = {};
@@ -321,14 +323,14 @@ export default class TaskService extends BaseService {
     }
 
     taskQuery.sortBy(TaskInfo, "order", "ASC");
-    const page = input.page ?? 1;
-    const pageSize = input.pageSize ?? 200;
-    taskQuery.take(pageSize).offset((page - 1) * pageSize);
+    const pg = parsePagination(input, 20);
+    taskQuery.take(pg.take).offset(pg.offset);
 
     const taskEntities = await taskQuery.populate().exec();
+    const paginated = paginateResults(taskEntities, pg.page, pg.pageSize);
 
     // Serialize tasks (output: "JSON" bypasses archetype auto-serialization)
-    const tasks = taskEntities.map((e: any) => {
+    const tasks = paginated.items.map((e: any) => {
       const info = e.getInMemory(TaskInfo);
       const assignment = e.getInMemory(TaskAssignment);
       const labels = e.getInMemory(TaskLabels);
@@ -367,7 +369,7 @@ export default class TaskService extends BaseService {
       }
     }
 
-    return { tasks, moduleMap, projectCoreRefMap };
+    return { tasks, moduleMap, projectCoreRefMap, pageInfo: paginated.pageInfo };
   }
 
   @GraphQLOperation({
@@ -387,6 +389,8 @@ export default class TaskService extends BaseService {
     const user = requirePermission(context, TaskResources.Tasks, Action.Read);
     const userId = user.sub;
 
+    const emptyResult = { tasks: [], moduleMap: {}, projectCoreRefMap: {}, pageInfo: { page: 1, pageSize: 20, hasNextPage: false } };
+
     // Step 1: Find projects where user is a member
     const memberships = await new Query()
       .with(ProjectMembershipData, {
@@ -403,7 +407,7 @@ export default class TaskService extends BaseService {
       ),
     ];
 
-    if (localProjectIds.length === 0) return { tasks: [], moduleMap: {}, projectCoreRefMap: {} };
+    if (localProjectIds.length === 0) return emptyResult;
 
     // Step 2: Find modules in those projects
     const moduleEntities = await new Query()
@@ -416,7 +420,7 @@ export default class TaskService extends BaseService {
       .exec();
 
     const moduleIds = moduleEntities.map((m: any) => m.id);
-    if (moduleIds.length === 0) return { tasks: [], moduleMap: {}, projectCoreRefMap: {} };
+    if (moduleIds.length === 0) return emptyResult;
 
     // Build moduleMap for frontend display
     const moduleMap: Record<string, { name: string; projectId: string }> = {};
@@ -453,14 +457,14 @@ export default class TaskService extends BaseService {
     }
 
     taskQuery.sortBy(TaskInfo, "order", "ASC");
-    const page = input.page ?? 1;
-    const pageSize = input.pageSize ?? 200;
-    taskQuery.take(pageSize).offset((page - 1) * pageSize);
+    const pg = parsePagination(input, 20);
+    taskQuery.take(pg.take).offset(pg.offset);
 
     const taskEntities = await taskQuery.populate().exec();
+    const paginated = paginateResults(taskEntities, pg.page, pg.pageSize);
 
     // Serialize tasks
-    const tasks = taskEntities.map((e: any) => {
+    const tasks = paginated.items.map((e: any) => {
       const info = e.getInMemory(TaskInfo);
       const assignment = e.getInMemory(TaskAssignment);
       const labels = e.getInMemory(TaskLabels);
@@ -499,7 +503,7 @@ export default class TaskService extends BaseService {
       }
     }
 
-    return { tasks, moduleMap, projectCoreRefMap };
+    return { tasks, moduleMap, projectCoreRefMap, pageInfo: paginated.pageInfo };
   }
 
   @GraphQLOperation({

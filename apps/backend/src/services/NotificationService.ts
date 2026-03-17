@@ -5,6 +5,7 @@ import { Query } from "bunsane/query";
 import { NotificationInfo } from "../components/NotificationInfo";
 import { NotificationArcheType } from "../archetypes/NotificationArcheType";
 
+import { parsePagination, paginateResults } from "~/lib/pagination";
 import { requireUser, type AuthContext } from "~/utils/auth";
 
 const notificationArcheType = new NotificationArcheType();
@@ -61,28 +62,52 @@ export default class NotificationService extends BaseService {
   @GraphQLOperation({
     type: "Query",
     input: {
-      limit: t.int(),
-      offset: t.int(),
+      page: t.int(),
+      pageSize: t.int(),
     },
-    output: [notificationArcheType],
+    output: "JSON",
   })
   async listNotifications(
-    input: { limit?: number; offset?: number },
+    input: { page?: number; pageSize?: number },
     context: AuthContext,
   ) {
     const user = requireUser(context);
+    const pg = parsePagination(input, 20);
 
-    const query = new Query()
+    const entities = await new Query()
       .with(NotificationInfo, {
         filters: [
           Query.typedFilter(NotificationInfo, "recipientId", "=", user.sub),
         ],
       })
       .sortBy(NotificationInfo, "createdAt", "DESC")
-      .take(input.limit ?? 50)
-      .offset(input.offset ?? 0);
+      .take(pg.take)
+      .offset(pg.offset)
+      .populate()
+      .exec();
 
-    return await query.populate().exec();
+    const paginated = paginateResults(entities, pg.page, pg.pageSize);
+    return {
+      items: paginated.items.map((e: any) => {
+        const info = e.getInMemory(NotificationInfo);
+        return {
+          id: e.id,
+          notificationInfo: {
+            recipientId: info?.recipientId ?? "",
+            type: info?.type ?? "",
+            actorId: info?.actorId ?? "",
+            actorName: info?.actorName ?? "",
+            taskId: info?.taskId ?? "",
+            taskTitle: info?.taskTitle ?? "",
+            commentId: info?.commentId ?? "",
+            message: info?.message ?? "",
+            read: info?.read ?? "false",
+            createdAt: info?.createdAt ?? "",
+          },
+        };
+      }),
+      pageInfo: paginated.pageInfo,
+    };
   }
 
   @GraphQLOperation({

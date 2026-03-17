@@ -124,3 +124,33 @@ export function normalizeQueryResult<TData, TMapped>(
     error: result.error ?? null,
   };
 }
+
+// --- Paginated query result ---
+
+export interface PageInfo {
+  page: number;
+  pageSize: number;
+  hasNextPage: boolean;
+}
+
+export function normalizePaginatedResult<TData, TMapped>(
+  result: QueryResultLike<TData>,
+  extractFn: (data: TData) => { items: unknown[]; pageInfo: PageInfo },
+  mapFn: (item: unknown) => TMapped,
+) {
+  if (!result.data) {
+    return {
+      data: undefined as TMapped[] | undefined,
+      pageInfo: null as PageInfo | null,
+      isLoading: result.loading,
+      error: result.error ?? null,
+    };
+  }
+  const extracted = extractFn(result.data);
+  return {
+    data: extracted.items.map(mapFn),
+    pageInfo: extracted.pageInfo,
+    isLoading: result.loading,
+    error: result.error ?? null,
+  };
+}

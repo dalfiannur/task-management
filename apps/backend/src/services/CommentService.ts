@@ -7,6 +7,7 @@ import { CommentArcheType } from "../archetypes/CommentArcheType";
 import { TaskInfo } from "../components/TaskInfo";
 import NotificationService from "./NotificationService";
 
+import { parsePagination, paginateResults } from "~/lib/pagination";
 import { requirePermission, type AuthContext, TaskResources, Action } from "~/utils/auth";
 
 const commentArcheType = new CommentArcheType();
@@ -22,20 +23,45 @@ export default class CommentService extends BaseService {
     type: "Query",
     input: {
       taskId: t.string().required(),
+      page: t.int(),
+      pageSize: t.int(),
     },
-    output: [commentArcheType],
+    output: "JSON",
   })
-  async listComments(input: { taskId: string }, context: AuthContext) {
+  async listComments(input: { taskId: string; page?: number; pageSize?: number }, context: AuthContext) {
     requirePermission(context, TaskResources.Tasks, Action.Read);
+    const pg = parsePagination(input, 30);
     const entities = await new Query()
       .with(CommentInfo, {
         filters: [
           Query.typedFilter(CommentInfo, "taskId", "=", input.taskId),
         ],
       })
+      .sortBy(CommentInfo, "createdAt", "ASC")
+      .take(pg.take)
+      .offset(pg.offset)
       .populate()
       .exec();
-    return entities;
+
+    const paginated = paginateResults(entities, pg.page, pg.pageSize);
+    return {
+      items: paginated.items.map((e: any) => {
+        const info = e.getInMemory(CommentInfo);
+        return {
+          id: e.id,
+          commentInfo: {
+            taskId: info?.taskId ?? "",
+            authorId: info?.authorId ?? "",
+            authorName: info?.authorName ?? "",
+            content: info?.content ?? "",
+            createdAt: info?.createdAt ?? "",
+            updatedAt: info?.updatedAt ?? "",
+            mentionedUserIds: info?.mentionedUserIds ?? "[]",
+          },
+        };
+      }),
+      pageInfo: paginated.pageInfo,
+    };
   }
 
   @GraphQLOperation({

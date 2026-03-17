@@ -1,33 +1,12 @@
 import { useEffect, useRef } from "react";
 import { useQuery, gql } from "@/lib/graphql-client";
-import { createVoidMutationHook, normalizeQueryResult } from "@/lib/hook-factories";
+import { createVoidMutationHook, normalizeQueryResult, type PageInfo } from "@/lib/hook-factories";
 import { toast } from "sonner";
 import type { Notification } from "@/types/notification";
 
-const NOTIFICATION_FIELDS = gql`
-  fragment NotificationFields on Notification {
-    id
-    notificationInfo {
-      recipientId
-      type
-      actorId
-      actorName
-      taskId
-      taskTitle
-      commentId
-      message
-      read
-      createdAt
-    }
-  }
-`;
-
 const LIST_NOTIFICATIONS = gql`
-  ${NOTIFICATION_FIELDS}
   query ListNotifications($input: listNotificationsInput!) {
-    listNotifications(input: $input) {
-      ...NotificationFields
-    }
+    listNotifications(input: $input)
   }
 `;
 
@@ -49,12 +28,26 @@ const MARK_ALL_READ = gql`
   }
 `;
 
-export function useNotifications(limit = 50) {
-  const result = useQuery<{ listNotifications: Notification[] }>(
+interface PaginatedNotifications {
+  items: Notification[];
+  pageInfo: PageInfo;
+}
+
+export function useNotifications(opts?: { page?: number; pageSize?: number }) {
+  const result = useQuery<{ listNotifications: PaginatedNotifications }>(
     LIST_NOTIFICATIONS,
-    { variables: { input: { limit } } },
+    { variables: { input: { page: opts?.page, pageSize: opts?.pageSize } } },
   );
-  return normalizeQueryResult(result, (d) => d.listNotifications);
+  const normalized = normalizeQueryResult(result, (d) => ({
+    notifications: d.listNotifications.items,
+    pageInfo: d.listNotifications.pageInfo,
+  }));
+  return {
+    data: normalized.data?.notifications,
+    pageInfo: normalized.data?.pageInfo ?? null,
+    isLoading: normalized.isLoading,
+    error: normalized.error,
+  };
 }
 
 export function useUnreadNotificationCount() {

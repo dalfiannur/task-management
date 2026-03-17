@@ -119,8 +119,77 @@ export default class DashboardService extends BaseService {
       }
     }
 
-    // Find tasks in those modules
-    const tasks = await new Query()
+    // --- Targeted queries instead of loading ALL tasks ---
+
+    // Query 1: My active tasks (assigned to user, not done/cancelled) — limit 21 for display
+    const myTaskEntities = await new Query()
+      .with(TaskInfo)
+      .with(TaskAssignment, {
+        filters: [
+          Query.filter("moduleId", Query.filterOp.IN, moduleIds),
+          Query.typedFilter(TaskAssignment, "assigneeIds", "LIKE", `%"${userId}"%`),
+        ],
+      })
+      .with(TaskLabels)
+      .sortBy(TaskInfo, "order", "ASC")
+      .take(21)
+      .populate()
+      .exec();
+
+    const myTaskSummaries: TaskSummary[] = [];
+    let totalTasks = 0;
+    let inProgressTasks = 0;
+    let doneTasks = 0;
+
+    for (const entity of myTaskEntities) {
+      const info = entity.getInMemory(TaskInfo);
+      const assignment = entity.getInMemory(TaskAssignment);
+      if (!info || !assignment) continue;
+      const labels = entity.getInMemory(TaskLabels);
+
+      totalTasks++;
+      if (info.status === "in_progress") inProgressTasks++;
+      else if (info.status === "done") doneTasks++;
+
+      if (info.status !== "done" && info.status !== "cancelled") {
+        myTaskSummaries.push(serializeTask(entity, info, assignment, labels ?? null));
+      }
+    }
+
+    // Query 2: Deadline tasks (due today or overdue, not done/cancelled)
+    const now = new Date();
+    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const todayEndISO = todayEnd.toISOString();
+
+    const deadlineEntities = await new Query()
+      .with(TaskInfo, {
+        filters: [
+          Query.typedFilter(TaskInfo, "dueDate", "<=", todayEndISO),
+        ],
+      })
+      .with(TaskAssignment, {
+        filters: [
+          Query.filter("moduleId", Query.filterOp.IN, moduleIds),
+        ],
+      })
+      .with(TaskLabels)
+      .sortBy(TaskInfo, "dueDate", "ASC")
+      .take(21)
+      .populate()
+      .exec();
+
+    const deadlineTaskSummaries: TaskSummary[] = [];
+    for (const entity of deadlineEntities) {
+      const info = entity.getInMemory(TaskInfo);
+      const assignment = entity.getInMemory(TaskAssignment);
+      if (!info || !assignment) continue;
+      if (!info.dueDate || info.status === "done" || info.status === "cancelled") continue;
+      const labels = entity.getInMemory(TaskLabels);
+      deadlineTaskSummaries.push(serializeTask(entity, info, assignment, labels ?? null));
+    }
+
+    // Query 3: Recent tasks (sorted by updatedAt DESC, limit 10)
+    const recentEntities = await new Query()
       .with(TaskInfo)
       .with(TaskAssignment, {
         filters: [
@@ -128,36 +197,38 @@ export default class DashboardService extends BaseService {
         ],
       })
       .with(TaskLabels)
+      .sortBy(TaskInfo, "updatedAt", "DESC")
+      .take(10)
       .populate()
       .exec();
 
-    // Compute stats (user-scoped) and collect task data for widgets
-    let totalTasks = 0;
-    let inProgressTasks = 0;
-    let doneTasks = 0;
-
-    const now = new Date();
-    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-
-    const allTaskSummaries: TaskSummary[] = [];
-    const deadlineTaskSummaries: TaskSummary[] = [];
-    const myTaskSummaries: TaskSummary[] = [];
-
-    // Per-project progress tracking
-    const projectStats: Record<string, { total: number; done: number; inProgress: number }> = {};
-
-    for (const entity of tasks) {
-      const assignment = entity.getInMemory(TaskAssignment);
-      if (!assignment) continue;
+    const recentTasks: TaskSummary[] = [];
+    for (const entity of recentEntities) {
       const info = entity.getInMemory(TaskInfo);
-      if (!info) continue;
+      const assignment = entity.getInMemory(TaskAssignment);
+      if (!info || !assignment) continue;
       const labels = entity.getInMemory(TaskLabels);
+      recentTasks.push(serializeTask(entity, info, assignment, labels ?? null));
+    }
 
-      const assigneeIds = assignment.getAssigneeIdArray();
-      const isMyTask = assigneeIds.includes(userId);
-      const summary = serializeTask(entity, info, assignment, labels ?? null);
+    // Query 4: Per-project progress (all tasks, with safety limit)
+    const allTasksForProgress = await new Query()
+      .with(TaskInfo)
+      .with(TaskAssignment, {
+        filters: [
+          Query.filter("moduleId", Query.filterOp.IN, moduleIds),
+        ],
+      })
+      .take(10000)
+      .populate()
+      .exec();
 
-      // Per-project progress (all tasks, not just user's)
+    const projectStats: Record<string, { total: number; done: number; inProgress: number }> = {};
+    for (const entity of allTasksForProgress) {
+      const info = entity.getInMemory(TaskInfo);
+      const assignment = entity.getInMemory(TaskAssignment);
+      if (!info || !assignment) continue;
+
       const coreProjectId = moduleProjectMap[assignment.moduleId];
       if (coreProjectId) {
         if (!projectStats[coreProjectId]) {
@@ -167,41 +238,8 @@ export default class DashboardService extends BaseService {
         if (info.status === "done") projectStats[coreProjectId].done++;
         else if (info.status === "in_progress") projectStats[coreProjectId].inProgress++;
       }
-
-      // User-scoped counts
-      if (isMyTask) {
-        totalTasks++;
-        if (info.status === "in_progress") inProgressTasks++;
-        else if (info.status === "done") doneTasks++;
-
-        // My active tasks (not done/cancelled)
-        if (info.status !== "done" && info.status !== "cancelled") {
-          myTaskSummaries.push(summary);
-        }
-      }
-
-      // Deadline tasks: due today or overdue, not done/cancelled (all users)
-      if (info.dueDate && info.status !== "done" && info.status !== "cancelled") {
-        const dueDate = new Date(info.dueDate);
-        if (dueDate < todayEnd) {
-          deadlineTaskSummaries.push(summary);
-        }
-      }
-
-      allTaskSummaries.push(summary);
     }
 
-    // Sort deadline tasks by due date (soonest first)
-    deadlineTaskSummaries.sort((a, b) =>
-      new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
-    );
-
-    // Recent tasks: sort by updatedAt descending, limit 10
-    const recentTasks = [...allTaskSummaries]
-      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-      .slice(0, 10);
-
-    // Build project progress array
     const projectProgress = Object.entries(projectStats).map(([coreProjectId, stats]) => ({
       coreProjectId,
       ...stats,
@@ -246,7 +284,7 @@ export default class DashboardService extends BaseService {
       return { totalTasks: 0, doneTasks: 0, inProgressTasks: 0 };
     }
 
-    // Find tasks in those modules
+    // Find tasks in those modules (with safety limit)
     const tasks = await new Query()
       .with(TaskInfo)
       .with(TaskAssignment, {
@@ -254,6 +292,7 @@ export default class DashboardService extends BaseService {
           Query.filter("moduleId", Query.filterOp.IN, moduleIds),
         ],
       })
+      .take(10000)
       .populate()
       .exec();
 

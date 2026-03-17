@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bell, CheckCheck, MessageSquare, UserPlus } from "lucide-react";
+import { Bell, CheckCheck, ChevronLeft, ChevronRight, MessageSquare, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -37,8 +37,9 @@ function formatTimeAgo(iso: string): string {
 
 export function NotificationBell() {
   const [open, setOpen] = useState(false);
+  const [page, setPage] = useState(1);
   const { data: count = 0 } = useUnreadNotificationCount();
-  const { data: notifications = [], isLoading } = useNotifications();
+  const { data: notifications = [], pageInfo, isLoading } = useNotifications({ page });
   const markRead = useMarkNotificationsRead();
   const markAllRead = useMarkAllNotificationsRead();
   const navigate = useNavigate();
@@ -106,6 +107,32 @@ export function NotificationBell() {
             ))
           )}
         </div>
+
+        {pageInfo && (pageInfo.hasNextPage || pageInfo.page > 1) && (
+          <div className="flex items-center justify-between border-t border-border px-3 py-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              disabled={page <= 1}
+              onClick={() => setPage(page - 1)}
+            >
+              <ChevronLeft className="size-3.5" />
+              Prev
+            </Button>
+            <span className="text-xs text-muted-foreground">Page {page}</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              disabled={!pageInfo.hasNextPage}
+              onClick={() => setPage(page + 1)}
+            >
+              Next
+              <ChevronRight className="size-3.5" />
+            </Button>
+          </div>
+        )}
       </PopoverContent>
     </Popover>
   );

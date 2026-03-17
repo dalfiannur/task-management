@@ -26,6 +26,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Pagination } from "@/components/shared/pagination";
 import { cn } from "@/lib/utils";
 import { PenLine, Search } from "lucide-react";
 import { useCompanyStore } from "@/stores/company-store";
@@ -55,15 +56,21 @@ const priorityFilterOptions = [
 ];
 
 export function Component() {
-  const { data: myTasksData, isLoading: tasksLoading } = useTasksByMe();
+  const [page, setPage] = useState(1);
   const selectedCompanyId = useCompanyStore((s) => s.selectedCompanyId);
-  const { data: projects, isLoading: projectsLoading } = useProjects(selectedCompanyId ? { ownerId: selectedCompanyId } : undefined);
-  const updateTask = useUpdateTask();
 
   const [searchParams, setSearchParams] = useSearchParams();
   const statusFilter = searchParams.get("status") ?? "all";
   const priorityFilter = searchParams.get("priority") ?? "all";
   const searchQuery = searchParams.get("q") ?? "";
+
+  const { data: myTasksData, isLoading: tasksLoading, pageInfo } = useTasksByMe({
+    status: statusFilter !== "all" ? statusFilter : undefined,
+    priority: priorityFilter !== "all" ? priorityFilter : undefined,
+    page,
+  });
+  const { data: projects, isLoading: projectsLoading } = useProjects(selectedCompanyId ? { ownerId: selectedCompanyId } : undefined);
+  const updateTask = useUpdateTask();
 
   const [selectedTask, setSelectedTask] = useState<{
     taskId: string;
@@ -84,13 +91,11 @@ export function Component() {
 
   const filteredTasks = useMemo(() => {
     if (!tasks) return [];
-    return tasks.filter((task) => {
-      if (statusFilter !== "all" && task.status !== statusFilter) return false;
-      if (priorityFilter !== "all" && task.priority !== priorityFilter) return false;
-      if (searchQuery && !task.title.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-      return true;
-    });
-  }, [tasks, statusFilter, priorityFilter, searchQuery]);
+    if (!searchQuery) return tasks;
+    return tasks.filter((task) =>
+      task.title.toLowerCase().includes(searchQuery.toLowerCase()),
+    );
+  }, [tasks, searchQuery]);
 
   function setFilter(key: string, value: string) {
     setSearchParams((prev) => {
@@ -102,6 +107,7 @@ export function Component() {
       }
       return next;
     });
+    setPage(1);
   }
 
   if (isLoading) {
@@ -223,6 +229,14 @@ export function Component() {
               })}
             </TableBody>
           </Table>
+        )}
+
+        {filteredTasks.length > 0 && pageInfo && (pageInfo.hasNextPage || pageInfo.page > 1) && (
+          <Pagination
+            currentPage={pageInfo.page}
+            hasNextPage={pageInfo.hasNextPage}
+            onPageChange={setPage}
+          />
         )}
       </div>
 
