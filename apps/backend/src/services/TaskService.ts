@@ -595,6 +595,22 @@ export default class TaskService extends BaseService {
       coreProjectId,
     });
 
+    // Notify assigned users
+    if (input.assigneeIds?.length) {
+      const notificationService = NotificationService.getInstance();
+      for (const assigneeId of input.assigneeIds) {
+        await notificationService.createNotification({
+          recipientId: assigneeId,
+          type: "task_assigned",
+          actorId: user.sub,
+          actorName: user.name ?? user.email ?? user.sub,
+          taskId: entity.id,
+          taskTitle: input.title,
+          message: `${user.name ?? user.email ?? user.sub} assigned you to "${input.title}"`,
+        });
+      }
+    }
+
     return entity;
   }
 
