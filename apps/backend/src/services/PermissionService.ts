@@ -1,6 +1,5 @@
 import { BaseService, Get } from "bunsane/service";
-import { type PermissionManifest } from '@qyubit/sedjiwa-permissions';
-import { TASK_PERMISSIONS } from '~/utils/auth';
+import { type PermissionManifest, TASKS_PERMISSIONS } from '@qyubit/sedjiwa-permissions';
 
 export class PermissionRestService extends BaseService {
     constructor() {
@@ -12,7 +11,7 @@ export class PermissionRestService extends BaseService {
         const manifest: PermissionManifest = {
             app: "task-management",
             version: "1.0.0",
-            permissions: TASK_PERMISSIONS,
+            permissions: TASKS_PERMISSIONS,
         };
         return Response.json(manifest);
     }

@@ -192,7 +192,7 @@ function UserMenu() {
 
 export function AppSidebar() {
   const selectedCompanyId = useCompanyStore((s) => s.selectedCompanyId);
-  const canManageLeads = useHasPermission("task_management:projects", "create_all");
+  const canManageLeads = useHasPermission("core:projects", "create_all");
   const { data: allProjects } = useProjects({
     ...(selectedCompanyId ? { ownerId: selectedCompanyId } : {}),
     status: ["active", "completed", "archived"],

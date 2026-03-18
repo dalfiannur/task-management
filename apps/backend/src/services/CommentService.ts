@@ -8,7 +8,7 @@ import { TaskInfo } from "../components/TaskInfo";
 import NotificationService from "./NotificationService";
 
 import { parsePagination, paginateResults } from "~/lib/pagination";
-import { requirePermission, type AuthContext, TaskResources, Action } from "~/utils/auth";
+import { requirePermission, type AuthContext, TasksResources, Action } from "~/utils/auth";
 
 const commentArcheType = new CommentArcheType();
 
@@ -29,7 +29,7 @@ export default class CommentService extends BaseService {
     output: "JSON",
   })
   async listComments(input: { taskId: string; page?: number; pageSize?: number }, context: AuthContext) {
-    requirePermission(context, TaskResources.Tasks, Action.Read);
+    requirePermission(context, TasksResources.Tasks, Action.Read);
     const pg = parsePagination(input, 30);
     const entities = await new Query()
       .with(CommentInfo, {
@@ -77,7 +77,7 @@ export default class CommentService extends BaseService {
     input: { taskId: string; content: string; mentionedUserIds?: string[] },
     context: AuthContext,
   ) {
-    const user = requirePermission(context, TaskResources.Tasks, Action.Create);
+    const user = requirePermission(context, TasksResources.Tasks, Action.Create);
     const mentionedIds = input.mentionedUserIds ?? [];
 
     const now = new Date().toISOString();
@@ -134,7 +134,7 @@ export default class CommentService extends BaseService {
     input: { id: string; content: string; mentionedUserIds?: string[] },
     context: AuthContext,
   ) {
-    const user = requirePermission(context, TaskResources.Tasks, Action.Update);
+    const user = requirePermission(context, TasksResources.Tasks, Action.Update);
 
     const entity = await new Query().findOneById(input.id);
     if (!entity) throw new Error("Comment not found");
@@ -197,7 +197,7 @@ export default class CommentService extends BaseService {
     output: "JSON",
   })
   async commentCounts(input: { taskIds: string[] }, context: AuthContext) {
-    requirePermission(context, TaskResources.Tasks, Action.Read);
+    requirePermission(context, TasksResources.Tasks, Action.Read);
     const counts: Record<string, number> = {};
     for (const taskId of input.taskIds) {
       counts[taskId] = 0;
@@ -236,7 +236,7 @@ export default class CommentService extends BaseService {
     input: { id: string },
     context: AuthContext,
   ) {
-    const user = requirePermission(context, TaskResources.Tasks, Action.Delete);
+    const user = requirePermission(context, TasksResources.Tasks, Action.Delete);
 
     const entity = await new Query().findOneById(input.id);
     if (!entity) throw new Error("Comment not found");

@@ -8,7 +8,7 @@ import { MediaFileInfo } from "../components/MediaFileInfo";
 import { MediaFileArcheType } from "../archetypes/MediaFileArcheType";
 import { ProjectTag, ProjectParentRefComponent } from "../components/ProjectComponents";
 import { resolveLocalProjectId } from "~/lib/resolve-project-id";
-import { requirePermission, type AuthContext, TaskResources, Action } from "~/utils/auth";
+import { requirePermission, type AuthContext, TasksResources, Action } from "~/utils/auth";
 
 const taskMediaLinkArcheType = new TaskMediaLinkArcheType();
 const mediaFileArcheType = new MediaFileArcheType();
@@ -34,7 +34,7 @@ export default class MediaService extends BaseService {
     taskId: string;
     projectId: string;
   }, context: AuthContext) {
-    requirePermission(context, TaskResources.Tasks, Action.Update);
+    requirePermission(context, TasksResources.Tasks, Action.Update);
     // Check for existing link to avoid duplicates
     const existing = await new Query()
       .with(TaskMediaLinkTag)
@@ -71,7 +71,7 @@ export default class MediaService extends BaseService {
     output: "Boolean",
   })
   async unlinkMediaFile(input: { mediaFileId: string; taskId: string }, context: AuthContext) {
-    requirePermission(context, TaskResources.Tasks, Action.Update);
+    requirePermission(context, TasksResources.Tasks, Action.Update);
     const links = await new Query()
       .with(TaskMediaLinkTag)
       .with(TaskMediaLinkData, {
@@ -96,7 +96,7 @@ export default class MediaService extends BaseService {
     output: [taskMediaLinkArcheType],
   })
   async listTaskMediaLinks(input: { taskId: string }, context: AuthContext) {
-    requirePermission(context, TaskResources.Tasks, Action.Read);
+    requirePermission(context, TasksResources.Tasks, Action.Read);
     return await new Query()
       .with(TaskMediaLinkTag)
       .with(TaskMediaLinkData, {
@@ -116,7 +116,7 @@ export default class MediaService extends BaseService {
     output: [taskMediaLinkArcheType],
   })
   async listProjectMediaLinks(input: { projectId: string }, context: AuthContext) {
-    requirePermission(context, TaskResources.Tasks, Action.Read);
+    requirePermission(context, TasksResources.Tasks, Action.Read);
     const localProjectId = await resolveLocalProjectId(input.projectId);
     return await new Query()
       .with(TaskMediaLinkTag)
@@ -137,7 +137,7 @@ export default class MediaService extends BaseService {
     output: "Boolean",
   })
   async unlinkAllForMediaFile(input: { mediaFileId: string }, context: AuthContext) {
-    requirePermission(context, TaskResources.Tasks, Action.Delete);
+    requirePermission(context, TasksResources.Tasks, Action.Delete);
     const links = await new Query()
       .with(TaskMediaLinkTag)
       .with(TaskMediaLinkData, {
@@ -178,7 +178,7 @@ export default class MediaService extends BaseService {
     },
     context: AuthContext,
   ) {
-    requirePermission(context, TaskResources.Tasks, Action.Update);
+    requirePermission(context, TasksResources.Tasks, Action.Update);
     const localProjectId = await resolveLocalProjectId(input.projectId);
 
     // Find existing MediaFileInfo entity for this file
@@ -230,7 +230,7 @@ export default class MediaService extends BaseService {
     output: [mediaFileArcheType],
   })
   async listSharedMediaFiles(input: { projectId: string }, context: AuthContext) {
-    requirePermission(context, TaskResources.Tasks, Action.Read);
+    requirePermission(context, TasksResources.Tasks, Action.Read);
     const localProjectId = await resolveLocalProjectId(input.projectId);
 
     // Get all project IDs in the hierarchy, excluding the requesting project

@@ -4,7 +4,7 @@ import { t } from "bunsane/gql/schema";
 import { Query } from "bunsane/query";
 import { ActivityInfo } from "../components/ActivityInfo";
 import { ActivityArcheType } from "../archetypes/ActivityArcheType";
-import { requirePermission, type AuthContext, TaskResources, Action } from "~/utils/auth";
+import { requirePermission, type AuthContext, TasksResources, Action } from "~/utils/auth";
 
 const activityArcheType = new ActivityArcheType();
 
@@ -59,7 +59,7 @@ export default class ActivityService extends BaseService {
     output: [activityArcheType],
   })
   async listRecentActivities(input: { limit?: number; coreProjectIds?: string[] }, context: AuthContext) {
-    requirePermission(context, TaskResources.Tasks, Action.Read);
+    requirePermission(context, TasksResources.Tasks, Action.Read);
     const take = input.limit ?? 20;
 
     const filters: Array<ReturnType<typeof Query.filter>> = [];
@@ -84,7 +84,7 @@ export default class ActivityService extends BaseService {
     output: [activityArcheType],
   })
   async listActivities(input: { taskId: string }, context: AuthContext) {
-    requirePermission(context, TaskResources.Tasks, Action.Read);
+    requirePermission(context, TasksResources.Tasks, Action.Read);
     const entities = await new Query()
       .with(ActivityInfo, {
         filters: [

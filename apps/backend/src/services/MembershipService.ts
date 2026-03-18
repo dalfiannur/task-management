@@ -6,7 +6,7 @@ import { ProjectMembershipData } from "~/components/ProjectMembership";
 import { ProjectMembershipArcheTypeClass } from "~/archetypes/ProjectMembershipArcheType";
 import { ProjectLeaderIdComponent } from "~/components/ProjectComponents";
 import { resolveLocalProjectId } from "~/lib/resolve-project-id";
-import { requirePermission, requireUser, type AuthContext, TaskResources, Action } from "~/utils/auth";
+import { requirePermission, requireUser, type AuthContext, TasksResources, CoreResources, Action } from "~/utils/auth";
 import { hasPermission } from "@qyubit/sedjiwa-permissions";
 import { GraphQLError } from "graphql";
 
@@ -52,7 +52,7 @@ export default class MembershipService extends BaseService {
     output: [membershipArcheType],
   })
   async listProjectMembers(input: { projectId: string }, context: AuthContext) {
-    requirePermission(context, TaskResources.Projects, Action.Read);
+    requirePermission(context, CoreResources.Projects, Action.Read);
     const localProjectId = await resolveLocalProjectId(input.projectId);
     const entities = await new Query()
       .with(ProjectMembershipData, {
@@ -78,7 +78,7 @@ export default class MembershipService extends BaseService {
     input: { projectId: string; userId: string },
     context: AuthContext,
   ) {
-    requirePermission(context, TaskResources.Projects, Action.Update);
+    requirePermission(context, CoreResources.Projects, Action.Update);
     const localProjectId = await resolveLocalProjectId(input.projectId);
     await this.ensureMembership(localProjectId, input.userId);
     return true;
@@ -98,7 +98,7 @@ export default class MembershipService extends BaseService {
 
     // Allow if admin, project leader, or has DeleteAll on projects
     const isAdmin = user.permissions?.includes("*") ?? false;
-    const hasDeleteAll = hasPermission(user.permissions ?? [], TaskResources.Projects, Action.DeleteAll);
+    const hasDeleteAll = hasPermission(user.permissions ?? [], CoreResources.Projects, Action.DeleteAll);
 
     if (!isAdmin && !hasDeleteAll) {
       // Check if user is the project leader

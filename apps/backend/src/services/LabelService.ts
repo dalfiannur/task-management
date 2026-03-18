@@ -6,7 +6,7 @@ import { Query } from 'bunsane/query';
 import { LabelInfo } from "../components/LabelInfo";
 import { LabelArcheType } from "../archetypes/LabelArcheType";
 import { resolveLocalProjectId } from "~/lib/resolve-project-id";
-import { requirePermission, type AuthContext, TaskResources, Action } from "~/utils/auth";
+import { requirePermission, type AuthContext, TasksResources, Action } from "~/utils/auth";
 
 const labelArcheType = new LabelArcheType();
 
@@ -24,7 +24,7 @@ export default class LabelService extends BaseService {
     output: [labelArcheType],
   })
   async listLabels(input: { projectId: string }, context: AuthContext) {
-    requirePermission(context, TaskResources.Tasks, Action.Read);
+    requirePermission(context, TasksResources.Tasks, Action.Read);
     const localProjectId = await resolveLocalProjectId(input.projectId);
     const entities = await new Query()
       .with(LabelInfo, {
@@ -56,7 +56,7 @@ export default class LabelService extends BaseService {
     color: string;
     projectId: string;
   }, context: AuthContext) {
-    requirePermission(context, TaskResources.Tasks, Action.Create);
+    requirePermission(context, TasksResources.Tasks, Action.Create);
     const localProjectId = await resolveLocalProjectId(input.projectId);
     const archetype = new LabelArcheType();
     archetype.fill({
@@ -83,7 +83,7 @@ export default class LabelService extends BaseService {
     output: labelArcheType,
   })
   async updateLabel(input: { id: string; name?: string; color?: string }, context: AuthContext) {
-    requirePermission(context, TaskResources.Tasks, Action.Update);
+    requirePermission(context, TasksResources.Tasks, Action.Update);
     const entity = await Entity.FindById(input.id);
     if (!entity) throw new Error("Label not found");
 
@@ -110,7 +110,7 @@ export default class LabelService extends BaseService {
     output: "Boolean",
   })
   async deleteLabel(input: { id: string }, context: AuthContext) {
-    requirePermission(context, TaskResources.Tasks, Action.Delete);
+    requirePermission(context, TasksResources.Tasks, Action.Delete);
     const entity = await new Query().findOneById(input.id);
     if (!entity) throw new Error("Label not found");
     await entity.delete();

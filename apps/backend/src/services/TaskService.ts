@@ -15,7 +15,7 @@ import { ProjectCoreRefComponent } from "../components/ProjectComponents";
 import { ProjectMembershipData } from "~/components/ProjectMembership";
 import { resolveLocalProjectId } from "~/lib/resolve-project-id";
 import { parsePagination, paginateResults } from "~/lib/pagination";
-import { requirePermission, type AuthContext, TaskResources, Action } from "~/utils/auth";
+import { requirePermission, type AuthContext, TasksResources, Action } from "~/utils/auth";
 
 async function resolveCoreProjectId(moduleId: string): Promise<string> {
   const moduleEntity = await new Query().findOneById(moduleId);
@@ -71,7 +71,7 @@ export default class TaskService extends BaseService {
     },
     context: AuthContext,
   ) {
-    requirePermission(context, TaskResources.Tasks, Action.Read);
+    requirePermission(context, TasksResources.Tasks, Action.Read);
 
     const query = new Query()
       .with(TaskAssignment, {
@@ -150,7 +150,7 @@ export default class TaskService extends BaseService {
     },
     context: AuthContext,
   ) {
-    requirePermission(context, TaskResources.Tasks, Action.Read);
+    requirePermission(context, TasksResources.Tasks, Action.Read);
 
     // Resolve project → modules → tasks per module
     if (input.projectId) {
@@ -255,7 +255,7 @@ export default class TaskService extends BaseService {
     input: { status?: string; priority?: string; page?: number; pageSize?: number },
     context: AuthContext,
   ) {
-    const user = requirePermission(context, TaskResources.Tasks, Action.Read);
+    const user = requirePermission(context, TasksResources.Tasks, Action.Read);
     const userId = user.sub;
 
     // Step 1: Find projects where user is a member
@@ -386,7 +386,7 @@ export default class TaskService extends BaseService {
     input: { status?: string; priority?: string; page?: number; pageSize?: number },
     context: AuthContext,
   ) {
-    const user = requirePermission(context, TaskResources.Tasks, Action.Read);
+    const user = requirePermission(context, TasksResources.Tasks, Action.Read);
     const userId = user.sub;
 
     const emptyResult = { tasks: [], moduleMap: {}, projectCoreRefMap: {}, pageInfo: { page: 1, pageSize: 20, hasNextPage: false } };
@@ -514,7 +514,7 @@ export default class TaskService extends BaseService {
     output: taskArcheType,
   })
   async getTask(input: { id: string }, context: AuthContext) {
-    requirePermission(context, TaskResources.Tasks, Action.Read);
+    requirePermission(context, TasksResources.Tasks, Action.Read);
     return await Entity.FindById(input.id);
   }
 
@@ -547,7 +547,7 @@ export default class TaskService extends BaseService {
     },
     context: AuthContext,
   ) {
-    const user = requirePermission(context, TaskResources.Tasks, Action.Create);
+    const user = requirePermission(context, TasksResources.Tasks, Action.Create);
 
     const archetype = new TaskArcheType();
     const now = new Date().toISOString();
@@ -647,7 +647,7 @@ export default class TaskService extends BaseService {
     },
     context: AuthContext,
   ) {
-    const user = requirePermission(context, TaskResources.Tasks, Action.Update);
+    const user = requirePermission(context, TasksResources.Tasks, Action.Update);
 
     const entity = await new Query().findOneById(input.id);
     if (!entity) throw new Error("Task not found");
@@ -817,7 +817,7 @@ export default class TaskService extends BaseService {
     input: { id: string },
     context: AuthContext,
   ) {
-    const user = requirePermission(context, TaskResources.Tasks, Action.Delete);
+    const user = requirePermission(context, TasksResources.Tasks, Action.Delete);
 
     const entity = await new Query().findOneById(input.id);
     if (!entity) throw new Error("Task not found");
@@ -857,7 +857,7 @@ export default class TaskService extends BaseService {
     newOrder: number;
     newStatus?: string;
   }, context: AuthContext) {
-    requirePermission(context, TaskResources.Tasks, Action.Update);
+    requirePermission(context, TasksResources.Tasks, Action.Update);
 
     const entity = await new Query().findOneById(input.id);
     if (!entity) throw new Error("Task not found");

@@ -10,7 +10,7 @@ import { ProjectCoreRefComponent } from "../components/ProjectComponents";
 
 import { resolveLocalProjectId } from "~/lib/resolve-project-id";
 
-import { requirePermission, type AuthContext, TaskResources, Action } from "~/utils/auth";
+import { requirePermission, type AuthContext, TasksResources, Action } from "~/utils/auth";
 
 interface TaskSummary {
   id: string;
@@ -55,7 +55,7 @@ export default class DashboardService extends BaseService {
     output: "JSON",
   })
   async getDashboardStats(input: { coreProjectIds: string[] }, context: AuthContext) {
-    const user = requirePermission(context, TaskResources.Tasks, Action.Read);
+    const user = requirePermission(context, TasksResources.Tasks, Action.Read);
     const userId = user.sub;
 
     const emptyResult = {
@@ -265,7 +265,7 @@ export default class DashboardService extends BaseService {
     output: "JSON",
   })
   async getProjectTaskStats(input: { projectId: string }, context: AuthContext) {
-    requirePermission(context, TaskResources.Tasks, Action.Read);
+    requirePermission(context, TasksResources.Tasks, Action.Read);
 
     const localProjectId = await resolveLocalProjectId(input.projectId);
 

@@ -63,7 +63,7 @@ export function Component() {
   const { data: project } = useProject(projectId!);
   const { data: members } = useProjectMembers(projectId!);
   const { data: me } = useMe();
-  const hasDeleteAll = useHasPermission("task_management:projects", "delete_all");
+  const hasDeleteAll = useHasPermission("core:projects", "delete_all");
   const addMember = useAddProjectMember();
   const removeMember = useRemoveProjectMember();
   const [selectedUserId, setSelectedUserId] = useState<string | undefined>();

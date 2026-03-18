@@ -7,7 +7,7 @@ import { ModuleDescriptionComponent, ModuleNameComponent, ModuleOrderComponent, 
 import { ModuleArcheType } from "../archetypes/ModuleArcheType";
 import { ProjectTag, ProjectModuleRefComponent } from "../components/ProjectComponents";
 import { resolveLocalProjectId } from "~/lib/resolve-project-id";
-import { requirePermission, type AuthContext, TaskResources, Action } from "~/utils/auth";
+import { requirePermission, type AuthContext, TasksResources, Action } from "~/utils/auth";
 
 export default class ModuleService extends BaseService {
   constructor() {
@@ -24,7 +24,7 @@ export default class ModuleService extends BaseService {
     output: [ModuleArcheType],
   })
   async listAllModules(_input: unknown, context: AuthContext) {
-    requirePermission(context, TaskResources.Tasks, Action.Read);
+    requirePermission(context, TasksResources.Tasks, Action.Read);
     const query = new Query()
       .with(ModuleTag)
       .with(ModuleNameComponent)
@@ -41,7 +41,7 @@ export default class ModuleService extends BaseService {
     output: [ModuleArcheType],
   })
   async listModules(input: { projectId: string }, context: AuthContext) {
-    requirePermission(context, TaskResources.Tasks, Action.Read);
+    requirePermission(context, TasksResources.Tasks, Action.Read);
     const localProjectId = await resolveLocalProjectId(input.projectId);
     return await new Query()
       .with(ModuleTag)
@@ -65,7 +65,7 @@ export default class ModuleService extends BaseService {
     output: ModuleArcheType,
   })
   async getModule(input: { id: string }, context: AuthContext) {
-    requirePermission(context, TaskResources.Tasks, Action.Read);
+    requirePermission(context, TasksResources.Tasks, Action.Read);
     const entity = await new Query().findOneById(input.id);
     if (!entity) return null;
     return await ModuleArcheType.Unwrap(entity);
@@ -87,7 +87,7 @@ export default class ModuleService extends BaseService {
     projectId: string;
     picId?: string;
   }, context: AuthContext) {
-    requirePermission(context, TaskResources.Tasks, Action.Create);
+    requirePermission(context, TasksResources.Tasks, Action.Create);
     const localProjectId = await resolveLocalProjectId(input.projectId);
     // Shift existing modules' order +1 so new module appears at top
     const existing = await new Query()
@@ -138,7 +138,7 @@ export default class ModuleService extends BaseService {
     description?: string;
     picId?: string;
   }, context: AuthContext) {
-    requirePermission(context, TaskResources.Tasks, Action.Update);
+    requirePermission(context, TasksResources.Tasks, Action.Update);
     const entity = await new Query().findOneById(input.id);
     if (!entity) throw new Error("Module not found");
 
@@ -164,7 +164,7 @@ export default class ModuleService extends BaseService {
     output: "Boolean",
   })
   async deleteModule(input: { id: string }, context: AuthContext) {
-    requirePermission(context, TaskResources.Tasks, Action.Delete);
+    requirePermission(context, TasksResources.Tasks, Action.Delete);
     const entity = await new Query().findOneById(input.id);
     if (!entity) throw new Error("Module not found");
 
@@ -193,7 +193,7 @@ export default class ModuleService extends BaseService {
     output: "Boolean",
   })
   async reorderModules(input: { projectId: string; moduleIds: string[] }, context: AuthContext) {
-    requirePermission(context, TaskResources.Tasks, Action.Update);
+    requirePermission(context, TasksResources.Tasks, Action.Update);
     if (input.moduleIds.length === 0) return true;
 
     // Fetch all modules in parallel

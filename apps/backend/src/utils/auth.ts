@@ -1,6 +1,6 @@
 export { requireUser, requirePermission, type AuthContext } from '@qyubit/sedjiwa-permissions';
-export { Action, type PermissionEntry } from '@qyubit/sedjiwa-permissions';
-import { Action, type PermissionEntry } from '@qyubit/sedjiwa-permissions';
+export { Action, type PermissionEntry, TasksResources, TASKS_PERMISSIONS, CoreResources } from '@qyubit/sedjiwa-permissions';
+import { Action, type PermissionEntry, TasksResources, TASKS_PERMISSIONS, CoreResources } from '@qyubit/sedjiwa-permissions';
 import { requireUser } from '@qyubit/sedjiwa-permissions';
 import { GraphQLError } from 'graphql';
 import { Query } from 'bunsane/query';
@@ -16,11 +16,6 @@ export function requireAdmin(context: AuthContext) {
   }
   return user;
 }
-
-export const TaskResources = {
-  Tasks: "task_management:tasks",
-  Projects: "task_management:projects",
-} as const;
 
 export function isAdmin(user: { permissions?: string[] }): boolean {
   return user.permissions?.includes("*") ?? false;
@@ -44,22 +39,3 @@ export async function checkProjectMember(
 
   return memberships.length > 0;
 }
-
-export const TASK_PERMISSIONS: PermissionEntry[] = [
-  { resource: TaskResources.Tasks, action: Action.Create, description: "Create tasks" },
-  { resource: TaskResources.Tasks, action: Action.Read, description: "Read task information" },
-  { resource: TaskResources.Tasks, action: Action.Update, description: "Update tasks" },
-  { resource: TaskResources.Tasks, action: Action.Delete, description: "Delete tasks" },
-  { resource: TaskResources.Tasks, action: Action.CreateAll, description: "Create all tasks" },
-  { resource: TaskResources.Tasks, action: Action.ReadAll, description: "Read all tasks" },
-  { resource: TaskResources.Tasks, action: Action.UpdateAll, description: "Update all tasks" },
-  { resource: TaskResources.Tasks, action: Action.DeleteAll, description: "Delete all tasks" },
-  { resource: TaskResources.Projects, action: Action.Create, description: "Create projects" },
-  { resource: TaskResources.Projects, action: Action.Read, description: "Read project information" },
-  { resource: TaskResources.Projects, action: Action.Update, description: "Update projects" },
-  { resource: TaskResources.Projects, action: Action.Delete, description: "Delete projects" },
-  { resource: TaskResources.Projects, action: Action.CreateAll, description: "Create all projects" },
-  { resource: TaskResources.Projects, action: Action.ReadAll, description: "Read all projects" },
-  { resource: TaskResources.Projects, action: Action.UpdateAll, description: "Update all projects" },
-  { resource: TaskResources.Projects, action: Action.DeleteAll, description: "Delete all projects" },
-];

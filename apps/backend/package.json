@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.993.0",
-    "@qyubit/sedjiwa-permissions": "^0.3.1",
+    "@qyubit/sedjiwa-permissions": "^0.3.2",
     "bunsane": "^0.2.8",
     "graphql": "16.11.0",
     "jose": "^6.1.3",

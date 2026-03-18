@@ -39,7 +39,7 @@ export function Component() {
   const projectType = searchParams.get("type") as ProjectType | null;
 
   const selectedCompanyId = useCompanyStore((s) => s.selectedCompanyId);
-  const canManageLeads = useHasPermission("task_management:projects", "create_all");
+  const canManageLeads = useHasPermission("core:projects", "create_all");
   const [filter, setFilter] = useState<ProjectFilter>("active");
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");

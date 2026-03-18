@@ -84,7 +84,7 @@ export function ProjectMembersDialog({
   const removeMember = useRemoveProjectMember();
   const [selectedUserId, setSelectedUserId] = useState<string | undefined>();
 
-  const hasDeleteAll = useHasPermission("task_management:projects", "delete_all");
+  const hasDeleteAll = useHasPermission("core:projects", "delete_all");
   const canManage =
     hasDeleteAll || (projectLeaderId != null && me?.id === projectLeaderId);
 

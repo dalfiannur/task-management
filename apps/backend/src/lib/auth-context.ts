@@ -33,15 +33,4 @@ export function checkPermission(
   return hasPermission(user.permissions, resource, action);
 }
 
-export const Resources = {
-  Tasks: "task_management:tasks",
-  Projects: "task_management:projects",
-  Modules: "task_management:modules",
-  Labels: "task_management:labels",
-  Media: "task_management:media",
-  Comments: "task_management:comments",
-  Notifications: "task_management:notifications",
-  Activities: "task_management:activities",
-  Pages: "task_management:pages",
-  Memberships: "task_management:memberships",
-} as const;
+export { TasksResources, CoreResources } from "@qyubit/sedjiwa-permissions";

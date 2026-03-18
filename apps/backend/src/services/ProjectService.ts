@@ -21,7 +21,7 @@ import {
   ModuleTag,
 } from "~/components/ModuleComponents";
 import { ProjectMembershipData } from "~/components/ProjectMembership";
-import { requirePermission, requireAdmin, checkProjectMember, type AuthContext, TaskResources, Action } from "~/utils/auth";
+import { requirePermission, requireAdmin, checkProjectMember, type AuthContext, TasksResources, CoreResources, Action } from "~/utils/auth";
 import MembershipService from "./MembershipService";
 import {
   fetchCoreProject,
@@ -48,7 +48,7 @@ export default class ProjectService extends BaseService {
     output: [ProjectArcheType],
   })
   async listProjects(_input: unknown, context: AuthContext) {
-    const user = requirePermission(context, TaskResources.Projects, Action.Read);
+    const user = requirePermission(context, CoreResources.Projects, Action.Read);
 
     const allProjects = await new Query()
       .with(ProjectTag)
@@ -81,7 +81,7 @@ export default class ProjectService extends BaseService {
     output: ProjectArcheType,
   })
   async getProject(input: { id: string }, context: AuthContext) {
-    const user = requirePermission(context, TaskResources.Projects, Action.Read);
+    const user = requirePermission(context, CoreResources.Projects, Action.Read);
     const entity = await this.findProjectEntity(input.id);
     if (!entity) {
       return new GraphQLError("Project not found", { extensions: { code: "NOT_FOUND" } });
@@ -125,7 +125,7 @@ export default class ProjectService extends BaseService {
     },
     context: AuthContext,
   ) {
-    const user = requirePermission(context, TaskResources.Projects, Action.Create);
+    const user = requirePermission(context, CoreResources.Projects, Action.Create);
 
     const authToken = extractAuthToken(context.request);
 
@@ -208,7 +208,7 @@ export default class ProjectService extends BaseService {
     },
     context: AuthContext,
   ) {
-    const user = requirePermission(context, TaskResources.Projects, Action.Create);
+    const user = requirePermission(context, CoreResources.Projects, Action.Create);
 
     // 1. Find parent project and get its coreRef
     const parent = await this.findProjectEntity(input.parentProjectId);
@@ -322,7 +322,7 @@ export default class ProjectService extends BaseService {
     input: { parentProjectId: string },
     context: AuthContext,
   ) {
-    const user = requirePermission(context, TaskResources.Projects, Action.Read);
+    const user = requirePermission(context, CoreResources.Projects, Action.Read);
     const localParentId = await resolveLocalProjectId(input.parentProjectId);
     if (!await checkProjectMember(user, localParentId)) {
       return new GraphQLError("Access denied: not a project member", { extensions: { code: "FORBIDDEN" } });
@@ -361,7 +361,7 @@ export default class ProjectService extends BaseService {
     projectLeaderId?: string;
     moduleId?: string | null;
   }, context: AuthContext) {
-    requirePermission(context, TaskResources.Projects, Action.Update);
+    requirePermission(context, CoreResources.Projects, Action.Update);
     const entity = await this.findProjectEntity(input.id);
     if (!entity) {
       return new GraphQLError("Project not found", { extensions: { code: "NOT_FOUND" } });
@@ -411,7 +411,7 @@ export default class ProjectService extends BaseService {
     args: { id: string; description?: string },
     context: AuthContext,
   ) {
-    const user = requirePermission(context, TaskResources.Projects, Action.CreateAll);
+    const user = requirePermission(context, CoreResources.Projects, Action.CreateAll);
 
     const project = Entity.Create()
       .add(ProjectTag, {})
