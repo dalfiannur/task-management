@@ -11,6 +11,7 @@
   transition: background-color 150ms, border-color 150ms;
   text-align: center;
   min-width: 0;
+  height: auto;
 }
 
 .card:hover {
