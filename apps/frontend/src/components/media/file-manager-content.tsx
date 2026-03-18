@@ -118,6 +118,17 @@ export function FileManagerContent({
     return items;
   }, [tasks, taskIdsWithFiles, fileCountByTask, query]);
 
+  // Unlinked files (must be before early returns to preserve hook order)
+  const unlinkedFiles = useMemo(() => {
+    const files = allFiles.filter((f) => !f.mediaFileInfo.taskId);
+    return sortFiles(filterFiles(files, query), fm.sortBy, fm.sortDir);
+  }, [allFiles, query, fm.sortBy, fm.sortDir]);
+
+  const filteredSharedProject = showShared ? filterFiles(sharedFiles, query) : [];
+  const sortedSharedProject = sortFiles(filteredSharedProject, fm.sortBy, fm.sortDir);
+  const hasSharedToShow = showShared && sortedSharedProject.length > 0;
+  const hasContent = moduleFolders.length > 0 || unlinkedFiles.length > 0 || hasSharedToShow;
+
   // --- Task level: show task files ---
   if (fm.selectedTaskId) {
     const filtered = filterFiles(taskFiles, query);
@@ -149,17 +160,6 @@ export function FileManagerContent({
   }
 
   // --- Project level: show module folders + unlinked files ---
-  const unlinkedFiles = useMemo(() => {
-    const files = allFiles.filter((f) => !f.mediaFileInfo.taskId);
-    return sortFiles(filterFiles(files, query), fm.sortBy, fm.sortDir);
-  }, [allFiles, query, fm.sortBy, fm.sortDir]);
-
-  const filteredSharedProject = showShared ? filterFiles(sharedFiles, query) : [];
-  const sortedSharedProject = sortFiles(filteredSharedProject, fm.sortBy, fm.sortDir);
-
-  const hasSharedToShow = showShared && sortedSharedProject.length > 0;
-  const hasContent = moduleFolders.length > 0 || unlinkedFiles.length > 0 || hasSharedToShow;
-
   return (
     <div className={styles.content}>
       {moduleFolders.length > 0 && (
