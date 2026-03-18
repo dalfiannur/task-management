@@ -219,7 +219,7 @@ export function Component() {
                     onSelect={() =>
                       setSelectedTask({
                         taskId: task.id,
-                        projectId: localProjectId,
+                        projectId: coreProjectId ?? localProjectId,
                         moduleId: task.moduleId,
                       })
                     }
