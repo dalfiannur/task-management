@@ -2,12 +2,13 @@ import { useProjects } from "@/hooks/use-projects";
 import { useIsManager } from "@/hooks/use-me";
 import { useDashboardStats } from "@/hooks/use-dashboard";
 import { StatCard } from "@/components/dashboard/stat-card";
-import { MyAssignedTasks } from "@/components/dashboard/my-assigned-tasks";
-import { UpcomingDeadlines } from "@/components/dashboard/upcoming-deadlines";
+// Hidden sections — uncomment to restore
+// import { MyAssignedTasks } from "@/components/dashboard/my-assigned-tasks";
+// import { UpcomingDeadlines } from "@/components/dashboard/upcoming-deadlines";
 import { ProjectProgress } from "@/components/dashboard/project-progress";
 import { TeamActivityFeed } from "@/components/dashboard/team-activity-feed";
 import { ActiveProjects } from "@/components/dashboard/active-projects";
-import { RecentTasks } from "@/components/dashboard/recent-tasks";
+// import { RecentTasks } from "@/components/dashboard/recent-tasks";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ListTodo, Timer, CheckCircle2, FolderOpen } from "lucide-react";
 import { format } from "date-fns";
@@ -71,9 +72,9 @@ export function Component() {
   const activeProjectCount = activeProjectIds.length;
 
   // Task lists from backend (pre-filtered and sorted)
-  const myTasks = stats?.myTasks ?? [];
-  const deadlineTasks = stats?.deadlineTasks ?? [];
-  const recentTasks = stats?.recentTasks ?? [];
+  // const myTasks = stats?.myTasks ?? [];
+  // const deadlineTasks = stats?.deadlineTasks ?? [];
+  // const recentTasks = stats?.recentTasks ?? [];
   const projectProgress = stats?.projectProgress ?? [];
 
   const statCards = [
@@ -150,9 +151,9 @@ export function Component() {
                   progressData={projectProgress}
                 />
               </div>
-              <div className={styles.sideCol} style={{ animationDelay: "500ms" }}>
+              {/* <div className={styles.sideCol} style={{ animationDelay: "500ms" }}>
                 <UpcomingDeadlines tasks={deadlineTasks} />
-              </div>
+              </div> */}
             </div>
             <div className={styles.contentGrid}>
               <div className={styles.mainCol} style={{ animationDelay: "550ms" }}>
@@ -162,23 +163,23 @@ export function Component() {
                 <ActiveProjects projects={allProjects} />
               </div>
             </div>
-            <div className={styles.contentGrid}>
+            {/* <div className={styles.contentGrid}>
               <div className={styles.mainCol} style={{ animationDelay: "650ms" }}>
                 <RecentTasks tasks={recentTasks} />
               </div>
-            </div>
+            </div> */}
           </>
         ) : (
           <>
             {/* Member: personal-first */}
-            <div className={styles.contentGrid}>
+            {/* <div className={styles.contentGrid}>
               <div className={styles.mainCol} style={{ animationDelay: "400ms" }}>
                 <MyAssignedTasks tasks={myTasks} />
               </div>
               <div className={styles.sideCol} style={{ animationDelay: "500ms" }}>
                 <UpcomingDeadlines tasks={deadlineTasks} />
               </div>
-            </div>
+            </div> */}
             <div className={styles.contentGrid}>
               <div className={styles.mainCol} style={{ animationDelay: "550ms" }}>
                 <ProjectProgress
@@ -186,9 +187,9 @@ export function Component() {
                   progressData={projectProgress}
                 />
               </div>
-              <div className={styles.sideCol} style={{ animationDelay: "600ms" }}>
+              {/* <div className={styles.sideCol} style={{ animationDelay: "600ms" }}>
                 <RecentTasks tasks={recentTasks} />
-              </div>
+              </div> */}
             </div>
             <div className={styles.fullWidth} style={{ animationDelay: "650ms" }}>
               <TeamActivityFeed coreProjectIds={activeProjectIds} />
