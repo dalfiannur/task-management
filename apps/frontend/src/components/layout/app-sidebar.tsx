@@ -1,4 +1,4 @@
-import { Link, useNavigate, useParams, useLocation, useSearchParams } from "react-router";
+import { Link, useNavigate, useParams, useLocation } from "react-router";
 import { useAuth } from "react-oidc-context";
 import {
   Sidebar,
@@ -58,7 +58,6 @@ const STATUS_DOT_COLORS: Record<ProjectDisplayStatus, string> = {
   lost: "bg-red-400",
 };
 
-const MAX_SIDEBAR_ITEMS = 5;
 
 function ProjectItem({ project }: { project: CoreProject }) {
   const params = useParams();
@@ -118,24 +117,6 @@ function LeadItem({ project, onApprove }: { project: CoreProject; onApprove: () 
   );
 }
 
-function ShowAllButton({ to }: { to: string }) {
-  const { pathname } = useLocation();
-  const [searchParams] = useSearchParams();
-  const url = new URL(to, "http://x");
-  const isActive =
-    pathname === url.pathname &&
-    searchParams.get("type") === url.searchParams.get("type");
-
-  return (
-    <SidebarMenuItem>
-      <SidebarMenuButton asChild isActive={isActive} className="opacity-60 hover:opacity-100">
-        <Link to={to}>
-          <span className="text-xs font-medium text-sidebar-primary/40">Show All</span>
-        </Link>
-      </SidebarMenuButton>
-    </SidebarMenuItem>
-  );
-}
 
 function UserMenu() {
   const auth = useAuth();
@@ -306,13 +287,12 @@ export function AppSidebar() {
             <CollapsibleContent>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {internalProjects?.slice(0, MAX_SIDEBAR_ITEMS).map((project) => (
+                  {internalProjects?.map((project) => (
                     <ProjectItem key={project.id} project={project} />
                   ))}
                   {internalProjects && internalProjects.length === 0 && (
                     <li className="px-2 pl-8 py-1 text-xs text-sidebar-foreground/40">No projects</li>
                   )}
-                  <ShowAllButton to="/projects?type=internal" />
                 </SidebarMenu>
               </SidebarGroupContent>
             </CollapsibleContent>
@@ -334,7 +314,7 @@ export function AppSidebar() {
             <CollapsibleContent>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {leads?.slice(0, MAX_SIDEBAR_ITEMS).map((lead) => (
+                  {leads?.map((lead) => (
                     <LeadItem
                       key={lead.id}
                       project={lead}
@@ -347,7 +327,6 @@ export function AppSidebar() {
                   {leads && leads.length === 0 && (
                     <li className="px-2 pl-8 py-1 text-xs text-sidebar-foreground/40">No leads</li>
                   )}
-                  <ShowAllButton to="/projects?type=leads" />
                 </SidebarMenu>
               </SidebarGroupContent>
             </CollapsibleContent>
@@ -369,13 +348,12 @@ export function AppSidebar() {
             <CollapsibleContent>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {commercialProjects?.slice(0, MAX_SIDEBAR_ITEMS).map((project, index) => (
-                    <ProjectItem key={project.id + index} project={project} />
+                  {commercialProjects?.map((project) => (
+                    <ProjectItem key={project.id} project={project} />
                   ))}
                   {commercialProjects && commercialProjects.length === 0 && (
                     <li className="px-2 pl-8 py-1 text-xs text-sidebar-foreground/40">No projects</li>
                   )}
-                  <ShowAllButton to="/projects?type=commercial" />
                 </SidebarMenu>
               </SidebarGroupContent>
             </CollapsibleContent>
