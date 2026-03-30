@@ -30,6 +30,7 @@ import {
   extractAuthToken,
   fetchUserCompanyIds,
 } from "~/lib/core-client";
+import { fetchUserIdsByPermission } from "~/lib/oidc-client";
 
 export default class ProjectService extends BaseService {
   constructor() {
@@ -428,8 +429,22 @@ export default class ProjectService extends BaseService {
 
     await module.save();
 
-    // Auto-add approver as member
-    await MembershipService.getInstance().ensureMembership(project.id, user.sub);
+    // Auto-add all users with core:projects:read_all as members
+    const authToken = extractAuthToken(context.request);
+    const userIds = await fetchUserIdsByPermission(
+      CoreResources.Projects,
+      Action.ReadAll,
+      authToken,
+    );
+
+    const memberIds = new Set(userIds);
+    memberIds.add(user.sub); // Always include the approver
+
+    await Promise.all(
+      Array.from(memberIds).map(id =>
+        MembershipService.getInstance().ensureMembership(project.id, id)
+      )
+    );
 
     return project;
   }
