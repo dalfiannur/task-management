@@ -8,7 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useApproveProject } from "@/hooks/use-projects";
-import { client } from "@/lib/graphql-client";
+import { client, coreClient } from "@/lib/graphql-client";
 import type { CoreProject } from "@/types/project";
 import { useApproveLead, useDealBrief, useProjectMediaFiles } from "@/hooks/use-leads";
 import { FileText } from "lucide-react";
@@ -35,7 +35,9 @@ export function ApproveLeadDialog({
     try {
       await approveProject.mutateAsync({ id: project.id, description: dealBrief?.briefDescription });
       await approveLead.mutateAsync({ id: project.id, winStage: "proposal", status: "active" });
-      // Refetch tasks project list after Core winStage is updated so commercial section shows it
+      // Refetch sidebar queries on coreClient (leads list + project lists)
+      await coreClient.refetchQueries({ include: ['ListLeadProjects', 'ListCoreProjects'] });
+      // Refetch tasks project list on local backend
       await client.refetchQueries({ include: ['ListProjects'] });
       onOpenChange(false);
     } catch (err) {
