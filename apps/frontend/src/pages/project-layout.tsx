@@ -70,7 +70,7 @@ import { cn, getInitials } from "@/lib/utils";
 const DOT_CLASS: Record<string, string> = {
   draft: "bg-gray-400",
   pending: "bg-gray-400",
-  proposal: "bg-yellow-400",
+  proposal: "bg-orange-400",
   won: "bg-emerald-400",
   active: "bg-blue-400",
   completed: "bg-purple-500",
@@ -228,7 +228,7 @@ export function Component() {
             <Badge variant="outline" className="font-[family-name:var(--font-mono)] text-sm tracking-wide border-primary/30">
               {project.code}
             </Badge>
-            <Badge className={cn(statusConfig.color, "border-0 text-sm font-[family-name:var(--font-mono)]")}>
+            <Badge variant="outline" className={cn(statusConfig.color, "border-0 text-sm font-[family-name:var(--font-mono)]")}>
               <span className={cn("size-1.5 rounded-full mr-1.5 inline-block", dotClass)} />
               {statusConfig.label}
             </Badge>

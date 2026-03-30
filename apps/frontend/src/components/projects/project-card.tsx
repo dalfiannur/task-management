@@ -48,7 +48,7 @@ export function ProjectCard({ project, parentName, onClick }: ProjectCardProps) 
                   {project.code}
                 </Badge>
               )}
-              <Badge className={cn(statusConfig.color, styles.statusBadge)}>
+              <Badge variant="outline" className={cn(statusConfig.color, styles.statusBadge)}>
                 {statusConfig.label}
               </Badge>
               {parentName && (

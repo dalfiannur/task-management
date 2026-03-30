@@ -50,7 +50,7 @@ import { useCompanyStore } from "@/stores/company-store";
 const STATUS_DOT_COLORS: Record<ProjectDisplayStatus, string> = {
   draft: "bg-gray-400",
   pending: "bg-gray-400",
-  proposal: "bg-yellow-400",
+  proposal: "bg-orange-400",
   won: "bg-emerald-400",
   active: "bg-blue-400",
   completed: "bg-purple-500",
