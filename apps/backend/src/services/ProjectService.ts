@@ -429,7 +429,7 @@ export default class ProjectService extends BaseService {
 
     await module.save();
 
-    // Auto-add all users with core:projects:read_all as members
+    // Auto-add all users with tasks:projects:read_all as members
     const authToken = extractAuthToken(context.request);
     const userIds = await fetchUserIdsByPermission(
       TasksResources.Projects,
