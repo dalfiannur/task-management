@@ -13,7 +13,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ListTodo, Timer, CheckCircle2, FolderOpen } from "lucide-react";
 import { format } from "date-fns";
 import { useCompanyStore } from "@/stores/company-store";
-import styles from "./dashboard.module.css";
 
 const STAT_ACCENTS = {
   tasks: "#3b82f6",
@@ -38,22 +37,22 @@ export function Component() {
 
   if (isLoading) {
     return (
-      <div className={styles.skeletonPage}>
-        <div className={styles.skeletonHeader}>
+      <div className="space-y-5 p-5">
+        <div className="space-y-1.5">
           <Skeleton className="h-9 w-40" />
           <Skeleton className="h-4 w-64" />
         </div>
-        <div className={styles.skeletonStatsGrid}>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
             <Skeleton key={i} className="h-[120px]" />
           ))}
         </div>
-        <div className={styles.skeletonContentGrid}>
-          <div className={styles.skeletonMainCol}>
+        <div className="grid gap-5 lg:grid-cols-3">
+          <div className="space-y-5 lg:col-span-2">
             <Skeleton className="h-72" />
             <Skeleton className="h-48" />
           </div>
-          <div className={styles.skeletonSideCol}>
+          <div className="space-y-5">
             <Skeleton className="h-64" />
             <Skeleton className="h-48" />
           </div>
@@ -109,12 +108,12 @@ export function Component() {
   ];
 
   return (
-    <div className={styles.page}>
-      <div className={styles.pageSpacing}>
+    <div className="p-5">
+      <div className="space-y-6">
         {/* Header */}
-        <div className={styles.header}>
-          <h1 className={styles.headerTitle}>Dashboard</h1>
-          <p className={styles.headerSubtitle}>
+        <div className="animate-[fade-up_0.4s_ease-out_both]">
+          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+          <p className="mt-0.5 font-mono text-sm text-muted-foreground">
             {format(today, "EEEE, MMMM d, yyyy")} &middot; {totalTasks}{" "}
             {totalTasks === 1 ? "task" : "tasks"} across {activeProjectCount}{" "}
             {activeProjectCount === 1 ? "project" : "projects"}
@@ -122,11 +121,11 @@ export function Component() {
         </div>
 
         {/* Stats Grid */}
-        <div className={styles.statsGrid}>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {statCards.map((stat, i) => (
             <div
               key={stat.title}
-              className={styles.statItem}
+              className="animate-[fade-up_0.4s_ease-out_both]"
               style={{ animationDelay: `${i * 75 + 50}ms` }}
             >
               <StatCard
@@ -144,27 +143,27 @@ export function Component() {
         {isManager ? (
           <>
             {/* Manager: oversight-first */}
-            <div className={styles.contentGrid}>
-              <div className={styles.mainCol} style={{ animationDelay: "400ms" }}>
+            <div className="grid gap-5 lg:grid-cols-3">
+              <div className="animate-[fade-up_0.4s_ease-out_both] space-y-5 lg:col-span-2" style={{ animationDelay: "400ms" }}>
                 <ProjectProgress
                   projects={allProjects}
                   progressData={projectProgress}
                 />
               </div>
-              {/* <div className={styles.sideCol} style={{ animationDelay: "500ms" }}>
+              {/* <div className="animate-[fade-up_0.4s_ease-out_both] space-y-5" style={{ animationDelay: "500ms" }}>
                 <UpcomingDeadlines tasks={deadlineTasks} />
               </div> */}
             </div>
-            <div className={styles.contentGrid}>
-              <div className={styles.mainCol} style={{ animationDelay: "550ms" }}>
+            <div className="grid gap-5 lg:grid-cols-3">
+              <div className="animate-[fade-up_0.4s_ease-out_both] space-y-5 lg:col-span-2" style={{ animationDelay: "550ms" }}>
                 <TeamActivityFeed coreProjectIds={activeProjectIds} />
               </div>
-              <div className={styles.sideCol} style={{ animationDelay: "600ms" }}>
+              <div className="animate-[fade-up_0.4s_ease-out_both] space-y-5" style={{ animationDelay: "600ms" }}>
                 <ActiveProjects projects={allProjects} />
               </div>
             </div>
-            {/* <div className={styles.contentGrid}>
-              <div className={styles.mainCol} style={{ animationDelay: "650ms" }}>
+            {/* <div className="grid gap-5 lg:grid-cols-3">
+              <div className="animate-[fade-up_0.4s_ease-out_both] space-y-5 lg:col-span-2" style={{ animationDelay: "650ms" }}>
                 <RecentTasks tasks={recentTasks} />
               </div>
             </div> */}
@@ -172,26 +171,26 @@ export function Component() {
         ) : (
           <>
             {/* Member: personal-first */}
-            {/* <div className={styles.contentGrid}>
-              <div className={styles.mainCol} style={{ animationDelay: "400ms" }}>
+            {/* <div className="grid gap-5 lg:grid-cols-3">
+              <div className="animate-[fade-up_0.4s_ease-out_both] space-y-5 lg:col-span-2" style={{ animationDelay: "400ms" }}>
                 <MyAssignedTasks tasks={myTasks} />
               </div>
-              <div className={styles.sideCol} style={{ animationDelay: "500ms" }}>
+              <div className="animate-[fade-up_0.4s_ease-out_both] space-y-5" style={{ animationDelay: "500ms" }}>
                 <UpcomingDeadlines tasks={deadlineTasks} />
               </div>
             </div> */}
-            <div className={styles.contentGrid}>
-              <div className={styles.mainCol} style={{ animationDelay: "550ms" }}>
+            <div className="grid gap-5">
+              <div className="animate-[fade-up_0.4s_ease-out_both] space-y-5" style={{ animationDelay: "550ms" }}>
                 <ProjectProgress
                   projects={allProjects}
                   progressData={projectProgress}
                 />
               </div>
-              {/* <div className={styles.sideCol} style={{ animationDelay: "600ms" }}>
+              {/* <div className="animate-[fade-up_0.4s_ease-out_both] space-y-5" style={{ animationDelay: "600ms" }}>
                 <RecentTasks tasks={recentTasks} />
               </div> */}
             </div>
-            {/* <div className={styles.fullWidth} style={{ animationDelay: "650ms" }}>
+            {/* <div className="animate-[fade-up_0.4s_ease-out_both]" style={{ animationDelay: "650ms" }}>
               <TeamActivityFeed coreProjectIds={activeProjectIds} />
             </div> */}
           </>
