@@ -172,14 +172,21 @@ function UserMenu() {
 }
 
 export function AppSidebar() {
+  const auth = useAuth();
   const selectedCompanyId = useCompanyStore((s) => s.selectedCompanyId);
-  const canManageLeads = useHasPermission("core:projects", "create_all");
-  const { data: allProjects } = useProjects({
-    ...(selectedCompanyId ? { ownerId: selectedCompanyId } : {}),
-    status: ["active", "completed", "archived"],
-    winStage: ["inactive", "proposal", "won", "lost"],
-  });
-  const { data: leads } = useNewLeads(canManageLeads ? (selectedCompanyId ?? undefined) : undefined);
+  const canManageLeads = useHasPermission("tasks:projects", "read_all");
+  const skipQueries = !auth.user?.access_token;
+  const { data: allProjects } = useProjects(
+    skipQueries ? undefined : {
+      ...(selectedCompanyId ? { ownerId: selectedCompanyId } : {}),
+      status: ["active", "completed", "archived"],
+      winStage: ["inactive", "proposal", "won", "lost"],
+    }
+  );
+  const { data: leads } = useNewLeads(
+    canManageLeads ? (selectedCompanyId ?? undefined) : undefined,
+    skipQueries
+  );
   const [projectFormOpen, setProjectFormOpen] = useState(false);
   const [approveProject, setApproveProject] = useState<CoreProject | null>(null);
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
