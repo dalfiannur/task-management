@@ -191,9 +191,9 @@ export function Component() {
                 <RecentTasks tasks={recentTasks} />
               </div> */}
             </div>
-            <div className={styles.fullWidth} style={{ animationDelay: "650ms" }}>
+            {/* <div className={styles.fullWidth} style={{ animationDelay: "650ms" }}>
               <TeamActivityFeed coreProjectIds={activeProjectIds} />
-            </div>
+            </div> */}
           </>
         )}
       </div>
