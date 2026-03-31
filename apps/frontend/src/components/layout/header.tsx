@@ -9,9 +9,9 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import { LayoutList, LayoutGrid, Plus, Search, Sun, Moon } from "lucide-react";
+import { LayoutList, LayoutGrid, Plus, Sun, Moon } from "lucide-react";
 import { useUIStore } from "@/stores/ui-store";
-import { Link, useParams, useSearchParams } from "react-router";
+import { Link, useParams } from "react-router";
 import { useState } from "react";
 import { useTheme } from "next-themes";
 import { TaskForm } from "@/components/tasks/task-form";
@@ -24,7 +24,6 @@ import { cn } from "@/lib/utils";
 export function Header() {
   const { viewMode, setViewMode } = useUIStore();
   const { theme, setTheme } = useTheme();
-  const [, setSearchParams] = useSearchParams();
   const params = useParams();
   const projectId = (params as { projectId?: string }).projectId;
   const moduleId = (params as { moduleId?: string }).moduleId;
@@ -32,22 +31,7 @@ export function Header() {
   const { data: project } = useProject(projectId ?? "");
   const { data: module } = useModule(moduleId ?? "");
 
-  const [searchValue, setSearchValue] = useState("");
   const [taskFormOpen, setTaskFormOpen] = useState(false);
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (projectId) {
-      setSearchParams((prev) => {
-        if (searchValue) {
-          prev.set("search", searchValue);
-        } else {
-          prev.delete("search");
-        }
-        return prev;
-      });
-    }
-  };
 
   const projectName = project ? getProjectDisplayName(project) : undefined;
 
@@ -60,11 +44,6 @@ export function Header() {
 
         <Breadcrumb>
           <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink asChild>
-                <Link to="/projects">Projects</Link>
-              </BreadcrumbLink>
-            </BreadcrumbItem>
             {project && (
               <>
                 <BreadcrumbSeparator />
@@ -92,17 +71,7 @@ export function Header() {
           </BreadcrumbList>
         </Breadcrumb>
 
-        <form onSubmit={handleSearch} className="ml-auto flex-1 max-w-[28rem]">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-[0.8125rem] text-muted-foreground" />
-            <input
-              placeholder="Search tasks..."
-              className="w-full rounded-full border border-border bg-background pl-9 pr-4 h-9 text-sm transition-all placeholder:text-muted-foreground/50 focus:outline-none focus:border-border/80"
-              value={searchValue}
-              onChange={(e) => setSearchValue(e.target.value)}
-            />
-          </div>
-        </form>
+        <div className="ml-auto flex-1 max-w-[28rem]"/>
 
         <Button
           variant="ghost"
