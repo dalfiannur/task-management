@@ -158,7 +158,7 @@ export function useProjects(input?: {
 }) {
   const result = useQuery<{ listProjects: CoreProject[] }>(LIST_CORE_PROJECTS, {
     client: coreClient,
-    variables: { input },
+    variables: { input: input ?? {} },
     errorPolicy: "all",
   });
   return normalizeQueryResult(result, (d) => d.listProjects);
