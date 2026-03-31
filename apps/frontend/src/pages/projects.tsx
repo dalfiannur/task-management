@@ -6,15 +6,8 @@ import { ProjectForm } from "@/components/projects/project-form";
 import { ApproveLeadDialog } from "@/components/dashboard/approve-lead-dialog";
 import { Pagination } from "@/components/shared/pagination";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Plus, Search, ArrowUpDown } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState, useEffect, useMemo } from "react";
 import { cn } from "@/lib/utils";
@@ -24,7 +17,6 @@ import { useHasPermission } from "@/hooks/use-me";
 
 type ProjectFilter = "active" | "closed" | "all";
 type ProjectType = "internal" | "leads" | "commercial";
-type SortOption = "name-asc" | "name-desc" | "date-desc" | "date-asc";
 
 const TYPE_TITLES: Record<ProjectType, string> = {
   internal: "Internal Projects",
@@ -43,7 +35,6 @@ export function Component() {
   const [filter, setFilter] = useState<ProjectFilter>("active");
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
-  const [sort, setSort] = useState<SortOption>("date-desc");
   const [formOpen, setFormOpen] = useState(false);
   const [approveProject, setApproveProject] = useState<CoreProject | null>(null);
   const [approveDialogOpen, setApproveDialogOpen] = useState(false);
@@ -81,7 +72,7 @@ export function Component() {
     setPage(1);
   }, [filter, projectType, selectedCompanyId]);
 
-  // Client-side filtering, searching, and sorting
+  // Client-side search filtering (sorting handled by backend)
   const projects = useMemo(() => {
     let result = allProjects ? [...allProjects] : undefined;
 
@@ -96,27 +87,8 @@ export function Component() {
       );
     }
 
-    // Sort
-    if (result) {
-      const getName = (p: CoreProject) => p.name?.name ?? "";
-      result = [...result].sort((a, b) => {
-        switch (sort) {
-          case "name-asc":
-            return getName(a).localeCompare(getName(b));
-          case "name-desc":
-            return getName(b).localeCompare(getName(a));
-          case "date-asc":
-            return (a.dates?.startDate ?? a.id).localeCompare(b.dates?.startDate ?? b.id);
-          case "date-desc":
-            return (b.dates?.startDate ?? b.id).localeCompare(a.dates?.startDate ?? a.id);
-          default:
-            return 0;
-        }
-      });
-    }
-
     return result;
-  }, [allProjects, search, sort, projectType]);
+  }, [allProjects, search, projectType]);
 
   const hasNextPage = (allProjects?.length ?? 0) === PAGE_LIMIT;
   const title = projectType ? TYPE_TITLES[projectType] : "Projects";
@@ -221,18 +193,6 @@ export function Component() {
             className="!pl-8 h-9 text-sm"
           />
         </div>
-        <Select value={sort} onValueChange={(v) => setSort(v as SortOption)}>
-          <SelectTrigger className="w-auto min-w-36 h-9 text-sm gap-1.5">
-            <ArrowUpDown className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="date-desc">Newest first</SelectItem>
-            <SelectItem value="date-asc">Oldest first</SelectItem>
-            <SelectItem value="name-asc">Name A–Z</SelectItem>
-            <SelectItem value="name-desc">Name Z–A</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {projects?.map((project) => (
