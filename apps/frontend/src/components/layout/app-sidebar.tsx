@@ -59,7 +59,7 @@ const STATUS_DOT_COLORS: Record<ProjectDisplayStatus, string> = {
 };
 
 
-function ProjectItem({ project }: { project: CoreProject }) {
+function ProjectItem({ project, isChild }: { project: CoreProject; isChild?: boolean }) {
   const params = useParams();
   const activeProjectId = (params as { projectId?: string }).projectId;
   const isActive = activeProjectId === project.id;
@@ -72,6 +72,7 @@ function ProjectItem({ project }: { project: CoreProject }) {
         tooltip={getProjectDisplayName(project)}
         className={cn(
           "border-l-[3px] border-transparent",
+          isChild && "pl-6",
           isActive && "border-sidebar-primary bg-sidebar-primary/8 text-sidebar-primary font-medium",
         )}
       >
@@ -87,6 +88,30 @@ function ProjectItem({ project }: { project: CoreProject }) {
       </SidebarMenuButton>
     </SidebarMenuItem>
   );
+}
+
+function buildProjectTree(projects: CoreProject[]) {
+  const roots = projects.filter((p) => !p.ref?.parentId);
+  const childrenByParent = new Map<string, CoreProject[]>();
+  for (const p of projects) {
+    const parentId = p.ref?.parentId;
+    if (parentId) {
+      const children = childrenByParent.get(parentId) ?? [];
+      children.push(p);
+      childrenByParent.set(parentId, children);
+    }
+  }
+  const result: { project: CoreProject; isChild: boolean }[] = [];
+  for (const root of roots) {
+    result.push({ project: root, isChild: false });
+    const children = childrenByParent.get(root.id);
+    if (children) {
+      for (const child of children) {
+        result.push({ project: child, isChild: true });
+      }
+    }
+  }
+  return result;
 }
 
 function LeadItem({ project, onApprove }: { project: CoreProject; onApprove: () => void }) {
@@ -197,8 +222,8 @@ export function AppSidebar() {
   const isTasksByMeActive = pathname.startsWith("/tasks-by-me");
   const isSettingsActive = pathname.startsWith("/settings");
 
-  const internalProjects = allProjects?.filter((p) => !p.commercial && !p.ref?.parentId);
-  const commercialProjects = allProjects?.filter((p) => p.commercial)
+  const internalTree = buildProjectTree(allProjects?.filter((p) => !p.commercial) ?? []);
+  const commercialTree = buildProjectTree(allProjects?.filter((p) => p.commercial) ?? []);
 
   return (
     <Sidebar>
@@ -294,10 +319,10 @@ export function AppSidebar() {
             <CollapsibleContent>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {internalProjects?.map((project) => (
-                    <ProjectItem key={project.id} project={project} />
+                  {internalTree.map(({ project, isChild }) => (
+                    <ProjectItem key={project.id} project={project} isChild={isChild} />
                   ))}
-                  {internalProjects && internalProjects.length === 0 && (
+                  {internalTree.length === 0 && (
                     <li className="px-2 pl-8 py-1 text-xs text-sidebar-foreground/40">No projects</li>
                   )}
                 </SidebarMenu>
@@ -355,10 +380,10 @@ export function AppSidebar() {
             <CollapsibleContent>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {commercialProjects?.map((project) => (
-                    <ProjectItem key={project.id} project={project} />
+                  {commercialTree.map(({ project, isChild }) => (
+                    <ProjectItem key={project.id} project={project} isChild={isChild} />
                   ))}
-                  {commercialProjects && commercialProjects.length === 0 && (
+                  {commercialTree.length === 0 && (
                     <li className="px-2 pl-8 py-1 text-xs text-sidebar-foreground/40">No projects</li>
                   )}
                 </SidebarMenu>
