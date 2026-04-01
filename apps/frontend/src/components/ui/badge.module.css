@@ -76,6 +76,7 @@ a.badge[data-variant="destructive"]:hover {
 
 /* variant: outline */
 .badge[data-variant="outline"] {
+  background-color: transparent;
   border-color: var(--border);
   color: var(--foreground);
 }
@@ -105,4 +106,3 @@ a.badge[data-variant="ghost"]:hover {
 a.badge[data-variant="link"]:hover {
   text-decoration: underline;
 }
-
