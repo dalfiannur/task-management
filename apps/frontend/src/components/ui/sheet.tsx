@@ -34,7 +34,7 @@ function SheetOverlay({
     <SheetPrimitive.Overlay
       data-slot="sheet-overlay"
       className={cn(
-        "fixed inset-0 z-50 bg-black/20 backdrop-blur-sm dark:bg-black/50",
+        "fixed inset-0 z-50 bg-black/50 backdrop-blur-sm",
         "data-[state=open]:[animation:fade-in_150ms_ease-out]",
         "data-[state=closed]:[animation:fade-out_150ms_ease-in]",
         className,
@@ -64,26 +64,25 @@ function SheetContent({
           // Base
           "fixed z-50 flex flex-col gap-3",
           // Solid background
-          "bg-white shadow-xl",
-          "dark:bg-gray-950 dark:shadow-black/60",
+          "bg-[hsl(228_20%_10%_/_0.9)] backdrop-blur-[20px] shadow-[0_8px_32px_rgba(0,0,0,0.4)]",
           // Side: right
           "data-[side=right]:inset-y-0 data-[side=right]:right-0 data-[side=right]:h-full data-[side=right]:w-3/4 data-[side=right]:sm:max-w-sm",
-          "data-[side=right]:border-l data-[side=right]:border-black/[0.08] data-[side=right]:dark:border-white/[0.12]",
+          "data-[side=right]:border-l data-[side=right]:border-white/[0.1]",
           "data-[side=right]:data-[state=open]:[animation:slide-in-from-right_500ms_ease-in-out]",
           "data-[side=right]:data-[state=closed]:[animation:slide-out-to-right_300ms_ease-in-out]",
           // Side: left
           "data-[side=left]:inset-y-0 data-[side=left]:left-0 data-[side=left]:h-full data-[side=left]:w-3/4 data-[side=left]:sm:max-w-sm",
-          "data-[side=left]:border-r data-[side=left]:border-black/[0.08] data-[side=left]:dark:border-white/[0.12]",
+          "data-[side=left]:border-r data-[side=left]:border-white/[0.1]",
           "data-[side=left]:data-[state=open]:[animation:slide-in-from-left_500ms_ease-in-out]",
           "data-[side=left]:data-[state=closed]:[animation:slide-out-to-left_300ms_ease-in-out]",
           // Side: top
           "data-[side=top]:inset-x-0 data-[side=top]:top-0 data-[side=top]:h-auto",
-          "data-[side=top]:border-b data-[side=top]:border-black/[0.08] data-[side=top]:dark:border-white/[0.12]",
+          "data-[side=top]:border-b data-[side=top]:border-white/[0.1]",
           "data-[side=top]:data-[state=open]:[animation:slide-in-from-top_500ms_ease-in-out]",
           "data-[side=top]:data-[state=closed]:[animation:slide-out-to-top_300ms_ease-in-out]",
           // Side: bottom
           "data-[side=bottom]:inset-x-0 data-[side=bottom]:bottom-0 data-[side=bottom]:h-auto",
-          "data-[side=bottom]:border-t data-[side=bottom]:border-black/[0.08] data-[side=bottom]:dark:border-white/[0.12]",
+          "data-[side=bottom]:border-t data-[side=bottom]:border-white/[0.1]",
           "data-[side=bottom]:data-[state=open]:[animation:slide-in-from-bottom_500ms_ease-in-out]",
           "data-[side=bottom]:data-[state=closed]:[animation:slide-out-to-bottom_300ms_ease-in-out]",
           className,
