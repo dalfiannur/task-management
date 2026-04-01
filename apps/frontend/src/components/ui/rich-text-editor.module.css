@@ -250,7 +250,7 @@
 }
 
 .editorContent :global(.tiptap) :global(mark) {
-  background-color: #fef08a;
+  background-color: hsl(50 90% 60% / 0.3);
   border-radius: 2px;
   padding: 0.0625rem 0.125rem;
 }
