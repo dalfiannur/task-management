@@ -88,10 +88,10 @@ const STATUS_DOT_COLORS: Record<TaskStatus, string> = {
 };
 
 const STATUS_PILL_CLASSES: Record<TaskStatus, string> = {
-  todo: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
-  in_progress: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
-  done: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
-  cancelled: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+  todo: "bg-blue-900/40 text-blue-300",
+  in_progress: "bg-amber-900/40 text-amber-300",
+  done: "bg-emerald-900/40 text-emerald-300",
+  cancelled: "bg-red-900/40 text-red-300",
 };
 
 const PRIORITY_DOT_COLORS: Record<TaskPriority, string> = {
@@ -103,11 +103,11 @@ const PRIORITY_DOT_COLORS: Record<TaskPriority, string> = {
 };
 
 const PRIORITY_PILL_CLASSES: Record<TaskPriority, string> = {
-  none: "bg-gray-100 text-gray-600 dark:bg-gray-800/40 dark:text-gray-400",
-  low: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
-  medium: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
-  high: "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300",
-  urgent: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+  none: "bg-gray-800/40 text-gray-400",
+  low: "bg-blue-900/40 text-blue-300",
+  medium: "bg-amber-900/40 text-amber-300",
+  high: "bg-orange-900/40 text-orange-300",
+  urgent: "bg-red-900/40 text-red-300",
 };
 
 // --- Edit mode (existing task) ---
@@ -211,7 +211,7 @@ export function TaskDetail({
               </div>
 
               {/* Footer */}
-              <div className="mt-auto p-4 bg-slate-50 dark:bg-slate-900/50 border-t border-border">
+              <div className="mt-auto p-4 bg-slate-900/50 border-t border-border">
                 <Button
                   variant="ghost"
                   className="text-muted-foreground text-sm gap-1.5 hover:text-foreground"
@@ -429,7 +429,7 @@ export function TaskCreate({
               </div>
 
               {/* Footer */}
-              <div className="mt-auto p-4 bg-slate-50 dark:bg-slate-900/50 border-t border-border flex items-center justify-between">
+              <div className="mt-auto p-4 bg-slate-900/50 border-t border-border flex items-center justify-between">
                 <span className="text-sm font-mono text-muted-foreground">
                   <kbd className="px-1.5 py-0.5 rounded-xl bg-accent text-sm font-mono">
                     &#8984;
@@ -888,7 +888,7 @@ function RightPanel({
                   <span
                     className={
                       new Date(task.completedAt) <= new Date(task.dueDate)
-                        ? " text-green-500 dark:text-green-400"
+                        ? " text-green-400"
                         : " text-destructive"
                     }
                   >

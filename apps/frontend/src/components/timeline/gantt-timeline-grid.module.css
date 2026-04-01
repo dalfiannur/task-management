@@ -35,13 +35,9 @@
 
 .dayCellToday {
   composes: dayCell;
-  background-color: #fee2e2;
+  background-color: color-mix(in srgb, #7f1d1d 50%, transparent);
   font-weight: 700;
   color: #dc2626;
-}
-
-:global(.dark) .dayCellToday {
-  background-color: color-mix(in srgb, #7f1d1d 50%, transparent);
 }
 
 .dayCellWeekend {
@@ -69,10 +65,6 @@
 .colBgToday {
   border-right: 1px solid var(--border);
   flex-shrink: 0;
-  background-color: color-mix(in srgb, #fef2f2 50%, transparent);
-}
-
-:global(.dark) .colBgToday {
   background-color: color-mix(in srgb, #7f1d1d 20%, transparent);
 }
 
@@ -155,10 +147,6 @@
 
 .segmentGreen {
   composes: barSegment;
-  background-color: #22c55e;
-}
-
-:global(.dark) .segmentGreen {
   background-color: #4ade80;
 }
 

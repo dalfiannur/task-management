@@ -52,12 +52,8 @@
 
 /* Aria-invalid state */
 .toggle[aria-invalid="true"] {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--destructive) 20%, transparent);
-  border-color: var(--destructive);
-}
-
-:global(.dark) .toggle[aria-invalid="true"] {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--destructive) 40%, transparent);
+  border-color: var(--destructive);
 }
 
 /* ============================================

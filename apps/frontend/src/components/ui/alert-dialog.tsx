@@ -34,7 +34,7 @@ function AlertDialogOverlay({
     <AlertDialogPrimitive.Overlay
       data-slot="alert-dialog-overlay"
       className={cn(
-        "fixed inset-0 z-50 bg-black/20 backdrop-blur-sm dark:bg-black/50",
+        "fixed inset-0 z-50 bg-black/50 backdrop-blur-sm",
         "data-[state=open]:[animation:fade-in_150ms_ease-out]",
         "data-[state=closed]:[animation:fade-out_150ms_ease-in]",
         className,
@@ -63,8 +63,7 @@ function AlertDialogContent({
             "relative w-full max-w-[calc(100%-2rem)] sm:max-w-lg",
             "grid gap-3.5 p-5 text-foreground outline-none",
             // Solid background + frosted border
-            "bg-white border border-black/[0.08] shadow-2xl rounded-2xl",
-            "dark:bg-gray-950 dark:border-white/[0.12] dark:shadow-black/80",
+            "bg-gray-950 border border-white/[0.12] shadow-2xl shadow-black/80 rounded-2xl",
             // Animation
             "data-[state=open]:[animation:fade-in_200ms_ease-out,zoom-in_200ms_ease-out]",
             "data-[state=closed]:[animation:fade-out_150ms_ease-in,zoom-out_150ms_ease-in]",

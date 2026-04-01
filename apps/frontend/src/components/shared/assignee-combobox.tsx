@@ -75,8 +75,8 @@ export function AssigneeCombobox({ value, onChange }: AssigneeComboboxProps) {
         className={cn(
           "inline-flex items-center gap-1.5 rounded-full h-7 px-3 text-xs font-bold border-0 shadow-none transition-colors cursor-pointer",
           value.length > 0
-            ? "bg-gray-100 text-gray-700 dark:bg-gray-800/40 dark:text-gray-300"
-            : "bg-gray-100 text-gray-500 dark:bg-gray-800/40 dark:text-gray-400",
+            ? "bg-gray-800/40 text-gray-300"
+            : "bg-gray-800/40 text-gray-400",
         )}
       >
         {value.length > 0 ? (

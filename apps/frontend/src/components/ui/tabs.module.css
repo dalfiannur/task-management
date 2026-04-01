@@ -65,7 +65,7 @@
   font-weight: 500;
   white-space: nowrap;
   transition: all 150ms ease;
-  color: color-mix(in srgb, var(--foreground) 60%, transparent);
+  color: var(--muted-foreground);
   outline: none;
   cursor: pointer;
   background: transparent;
@@ -107,8 +107,9 @@
 /* ---- Active state (data-state=active) ---- */
 
 .tabsTrigger[data-state="active"] {
-  background-color: var(--background);
+  background-color: color-mix(in srgb, var(--input) 30%, transparent);
   color: var(--foreground);
+  border-color: var(--input);
 }
 
 /* Default variant: shadow on active */
@@ -123,6 +124,7 @@
 
 .tabsList[data-variant="line"] .tabsTrigger[data-state="active"] {
   background-color: transparent;
+  border-color: transparent;
   box-shadow: none;
 }
 
@@ -153,27 +155,6 @@
 /* Line variant active: show the bar */
 .tabsList[data-variant="line"] .tabsTrigger[data-state="active"]::after {
   opacity: 1;
-}
-
-/* ---- Dark mode ---- */
-
-:global(.dark) .tabsTrigger {
-  color: var(--muted-foreground);
-}
-
-:global(.dark) .tabsTrigger:hover {
-  color: var(--foreground);
-}
-
-:global(.dark) .tabsTrigger[data-state="active"] {
-  color: var(--foreground);
-  border-color: var(--input);
-  background-color: color-mix(in srgb, var(--input) 30%, transparent);
-}
-
-:global(.dark) .tabsList[data-variant="line"] .tabsTrigger[data-state="active"] {
-  border-color: transparent;
-  background-color: transparent;
 }
 
 /* ============================================

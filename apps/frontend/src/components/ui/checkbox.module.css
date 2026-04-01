@@ -7,6 +7,7 @@
   box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   transition: box-shadow 150ms ease;
   outline: none;
+  background-color: color-mix(in srgb, var(--input) 30%, transparent);
 }
 
 /* Checked state */
@@ -31,7 +32,7 @@
 /* Aria-invalid */
 .checkbox[aria-invalid="true"] {
   border-color: var(--destructive);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--destructive) 20%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--destructive) 40%, transparent);
 }
 
 /* ============================================
@@ -50,18 +51,3 @@
   height: 0.875rem;
 }
 
-/* ============================================
-   DARK MODE
-   ============================================ */
-
-:global(.dark) .checkbox {
-  background-color: color-mix(in srgb, var(--input) 30%, transparent);
-}
-
-:global(.dark) .checkbox[data-state="checked"] {
-  background-color: var(--primary);
-}
-
-:global(.dark) .checkbox[aria-invalid="true"] {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--destructive) 40%, transparent);
-}
