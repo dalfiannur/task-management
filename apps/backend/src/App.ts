@@ -1,6 +1,7 @@
 import "reflect-metadata";
 import App from "bunsane/core/App";
 import { ServiceRegistry } from "bunsane/service";
+import { createRequestContextPlugin } from 'bunsane/core/RequestContext';
 
 // Import components to trigger decorator registration
 import "./components/TaskInfo";
@@ -37,6 +38,10 @@ export default class TasksAPI extends App {
 
     // Register plugins
     this.addPlugin(new AuthPlugin());
+
+    // DataLoader plugin: batches entity/component queries to fix N+1 in BelongsTo resolvers
+    this.addYogaPlugin(createRequestContextPlugin());
+
     this.enableStudio();
 
     // Set up auth context — let individual resolvers enforce auth via requirePermission
