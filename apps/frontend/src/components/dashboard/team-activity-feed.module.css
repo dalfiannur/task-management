@@ -27,17 +27,17 @@
 
 .iconCreated {
   background-color: color-mix(in srgb, #10b981 15%, transparent);
-  color: #059669;
+  color: #10b981;
 }
 
 .iconUpdated {
   background-color: color-mix(in srgb, #3b82f6 15%, transparent);
-  color: #2563eb;
+  color: #3b82f6;
 }
 
 .iconDeleted {
   background-color: color-mix(in srgb, #ef4444 15%, transparent);
-  color: #dc2626;
+  color: #ef4444;
 }
 
 .actionIcon {
