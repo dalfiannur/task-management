@@ -9,8 +9,8 @@
   justify-content: space-between;
   gap: 0.375rem;
   border-radius: var(--radius-md);
-  border: 1px solid var(--input);
-  background-color: transparent;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
   padding: 0.375rem 0.625rem;
   font-size: 0.875rem;
   line-height: 1.25rem;
@@ -101,12 +101,12 @@
   overflow-x: hidden;
   overflow-y: auto;
   border-radius: var(--radius-md);
-  border: 1px solid var(--border);
-  background-color: var(--popover);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: hsl(228 20% 10% / 0.9);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   color: var(--popover-foreground);
-  box-shadow:
-    0 4px 6px -1px rgb(0 0 0 / 0.1),
-    0 2px 4px -2px rgb(0 0 0 / 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   transform-origin: var(--radix-select-content-transform-origin);
 
   /* Enter animation */
@@ -281,22 +281,6 @@
 .scrollIcon {
   width: 1rem;
   height: 1rem;
-}
-
-/* ============================================
-   Dark mode
-   ============================================ */
-
-:global(.dark) .trigger {
-  background-color: color-mix(in srgb, var(--input) 30%, transparent);
-}
-
-:global(.dark) .trigger:hover {
-  background-color: color-mix(in srgb, var(--input) 50%, transparent);
-}
-
-:global(.dark) .trigger[aria-invalid="true"] {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--destructive) 40%, transparent);
 }
 
 /* ============================================
