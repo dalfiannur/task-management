@@ -9,6 +9,7 @@ import {
   X,
   Download,
 } from "lucide-react";
+import { toast } from "sonner";
 import { useTaskMediaFiles, useUploadMedia, useDeleteMedia } from "@/hooks/use-media";
 import { useProject, getProjectDisplayName } from "@/hooks/use-projects";
 import { useResolveMediaProjectId } from "@/hooks/use-media-project";
@@ -41,8 +42,17 @@ export function TaskAttachments({ projectId, taskId }: TaskAttachmentsProps) {
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const fileList = e.target.files;
     if (!fileList) return;
+    if (!mediaProjectId) {
+      toast.error("Unable to upload files: project not found");
+      e.target.value = "";
+      return;
+    }
     for (const file of Array.from(fileList)) {
-      await uploadMedia.mutateAsync({ file, mediaProjectId: mediaProjectId ?? "", projectId, taskId });
+      try {
+        await uploadMedia.mutateAsync({ file, mediaProjectId, projectId, taskId });
+      } catch (err) {
+        toast.error(`Failed to upload ${file.name}`);
+      }
     }
     e.target.value = "";
   };
@@ -55,7 +65,14 @@ export function TaskAttachments({ projectId, taskId }: TaskAttachmentsProps) {
           <Paperclip className="size-4" />
           <span className="text-sm font-medium">Files</span>
         </div>
-        <label htmlFor={inputId} className="inline-flex items-center gap-1 text-xs font-medium text-primary cursor-pointer hover:text-primary/80 transition-colors">
+        <label
+          htmlFor={inputId}
+          className={
+            mediaProjectId
+              ? "inline-flex items-center gap-1 text-xs font-medium text-primary cursor-pointer hover:text-primary/80 transition-colors"
+              : "inline-flex items-center gap-1 text-xs font-medium text-muted-foreground cursor-not-allowed"
+          }
+        >
           <Plus className="size-3" />
           Attach
           <input
@@ -63,6 +80,7 @@ export function TaskAttachments({ projectId, taskId }: TaskAttachmentsProps) {
             type="file"
             multiple
             className="hidden"
+            disabled={!mediaProjectId}
             onChange={handleFileSelect}
           />
         </label>
