@@ -3,8 +3,8 @@
   width: 100%;
   min-width: 0;
   border-radius: var(--radius-md);
-  border: 1px solid var(--input);
-  background-color: transparent;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
   padding: 0.25rem 0.625rem;
   font-size: 0.875rem;
   line-height: 1.25rem;
@@ -54,14 +54,3 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--destructive) 20%, transparent);
 }
 
-/* ============================================
-   DARK MODE
-   ============================================ */
-
-:global(.dark) .input {
-  background-color: color-mix(in srgb, var(--input) 30%, transparent);
-}
-
-:global(.dark) .input[aria-invalid="true"] {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--destructive) 40%, transparent);
-}
