@@ -15,7 +15,6 @@ import {
 import { useNavigate } from "react-router";
 import { cn } from "@/lib/utils";
 import type { Notification } from "@/types/notification";
-import styles from "./notification-bell.module.css";
 
 function formatTimeAgo(iso: string): string {
   const now = Date.now();
@@ -59,43 +58,49 @@ export function NotificationBell() {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className={styles.bellBtn}>
-          <Bell className={styles.bellIcon} />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="relative size-8 rounded-full text-muted-foreground hover:text-foreground"
+        >
+          <Bell className="size-4" />
           {count > 0 && (
-            <span className={styles.badge}>
+            <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-4 h-4 px-1 rounded-full bg-destructive text-destructive-foreground text-xs font-medium">
               {count > 99 ? "99+" : count}
             </span>
           )}
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className={styles.popoverContent}
+        className="w-80 p-0"
         align="end"
         sideOffset={8}
       >
-        <div className={styles.popoverHeader}>
-          <span className={styles.popoverTitle}>Notifications</span>
+        <div className="flex items-center justify-between px-3 py-2 border-b border-border">
+          <span className="text-sm font-semibold">Notifications</span>
           {count > 0 && (
             <Button
               variant="ghost"
               size="sm"
-              className={styles.markAllBtn}
+              className="h-7 text-xs gap-1"
               onClick={handleMarkAllRead}
               disabled={markAllRead.isLoading}
             >
-              <CheckCheck className={styles.markAllIcon} />
+              <CheckCheck className="size-3" />
               Mark all read
             </Button>
           )}
         </div>
 
-        <div className={styles.notifList}>
+        <div className="max-h-80 overflow-y-auto">
           {isLoading ? (
-            <div className={styles.loadingState}>Loading...</div>
+            <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
+              Loading...
+            </div>
           ) : notifications.length === 0 ? (
-            <div className={styles.emptyState}>
-              <Bell className={styles.emptyIcon} />
-              <p className={styles.emptyText}>No notifications yet</p>
+            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+              <Bell className="size-8 mb-2 opacity-20" />
+              <p className="text-sm">No notifications yet</p>
             </div>
           ) : (
             notifications.map((n) => (
@@ -151,20 +156,35 @@ function NotificationItem({
   const Icon = info.type === "mention" ? MessageSquare : UserPlus;
 
   return (
-    <Button
-      variant="ghost"
+    <button
       type="button"
-      className={cn(styles.notifItem, isUnread && styles.notifItemUnread)}
+      className={cn(
+        "w-full flex items-start gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-muted/50",
+        isUnread && "bg-accent/30"
+      )}
       onClick={onClick}
     >
-      <div className={info.type === "mention" ? styles.notifIconMention : styles.notifIconAssignment}>
-        <Icon className={styles.notifIconSvg} />
+      <div
+        className={cn(
+          "mt-0.5 flex items-center justify-center size-7 rounded-full shrink-0",
+          info.type === "mention"
+            ? "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
+            : "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400"
+        )}
+      >
+        <Icon className="size-3.5" />
       </div>
-      <div className={styles.notifBody}>
-        <p className={styles.notifMessage}>{info.message}</p>
-        <p className={styles.notifTime}>{formatTimeAgo(info.createdAt)}</p>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm leading-snug break-words whitespace-normal">
+          {info.message}
+        </p>
+        <p className="text-xs text-muted-foreground/60 mt-0.5">
+          {formatTimeAgo(info.createdAt)}
+        </p>
       </div>
-      {isUnread && <div className={styles.unreadDot} />}
-    </Button>
+      {isUnread && (
+        <div className="mt-2 size-2 rounded-full bg-primary shrink-0" />
+      )}
+    </button>
   );
 }
