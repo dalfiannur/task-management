@@ -9,6 +9,10 @@ tokio = { workspace = true }
 axum = { workspace = true }
 prost = { workspace = true }
 connectrpc-axum = { workspace = true }
+time = { workspace = true }
 auth = { path = "../auth" }
 persistence = { path = "../persistence" }
 domain = { path = "../domain" }
+
+[build-dependencies]
+connectrpc-axum-build = { workspace = true }

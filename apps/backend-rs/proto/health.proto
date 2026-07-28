@@ -1,0 +1,20 @@
+syntax = "proto3";
+package sedjiwa.tasks.health.v1;
+
+service HealthService {
+  rpc Check(CheckRequest) returns (CheckResponse);
+  rpc DbCheck(DbCheckRequest) returns (DbCheckResponse);
+  rpc WhoAmI(WhoAmIRequest) returns (WhoAmIResponse);
+}
+
+message CheckRequest {}
+message CheckResponse { string status = 1; }
+
+message DbCheckRequest {}
+message DbCheckResponse {
+  string heartbeat_id = 1;
+  string ts = 2;
+}
+
+message WhoAmIRequest {}
+message WhoAmIResponse { string user_id = 1; }

@@ -272,6 +272,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "connectrpc-axum-build"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "917d6e139d8ab6e453e77314bda346242c253b0f5a8f7ccc0f654486d24617f9"
+dependencies = [
+ "heck",
+ "pbjson-build",
+ "proc-macro2",
+ "prost 0.14.4",
+ "prost-build",
+ "prost-types",
+ "quote",
+]
+
+[[package]]
 name = "connectrpc-axum-core"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2051,10 +2066,12 @@ dependencies = [
  "auth",
  "axum",
  "connectrpc-axum",
+ "connectrpc-axum-build",
  "domain",
  "persistence",
  "prost 0.13.5",
  "serde",
+ "time",
  "tokio",
 ]
 
