@@ -11,7 +11,7 @@
 ```mermaid
 graph TD
   F[Fondasi: Rust+Arke+Connect+JWT] --> U[Users & Auth]
-  F --> STORE[Store generalisasi get&lt;T&gt;/put&lt;T&gt;]
+  F --> STORE[Store generalisasi lintas-komponen]
   U --> P[Project: create + list/detail]
   STORE --> P
   MEM[Membership] --> P
@@ -60,7 +60,7 @@ graph TD
 Dirujuk oleh banyak dok; diselesaikan di fondasi saat relevan:
 
 1. **Cache hasil-query + invalidasi silang** (fondasi §12 no.5) — memengaruhi `ListProjects` (list/detail §6), agregasi Dashboard (§5). *Mulai tanpa cache.*
-2. **Fan-out real-time multi-instance** (fondasi §12 no.4) — memengaruhi Notifications `StreamNotifications` (§6). *Mulai single-instance; LISTEN/NOTIFY saat scale.*
+2. **Fan-out real-time multi-instance** — memengaruhi Notifications `StreamNotifications` (§6). **Sekelas** dengan koherensi cache multi-instance (fondasi §12 no.4): solusi sama (LISTEN/NOTIFY / broker). *Mulai single-instance.*
 3. **`Store` generalisasi** (fondasi §12 no.6) — prasyarat fase 3+.
 4. **Migrasi data lama** (Core/Bun → Rust) — dok tersendiri; belum dijadwalkan.
 
