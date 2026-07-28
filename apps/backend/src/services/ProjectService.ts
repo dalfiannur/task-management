@@ -57,7 +57,7 @@ export default class ProjectService extends BaseService {
       .populate()
       .exec();
 
-    const memberProjectIds = await this.getMemberProjectIds(user.sub);
+    const memberProjectIds = await this.getMemberProjectIds(user.id);
 
     // Exclude sub-projects (those with a parent reference)
     // and filter by membership (admins see all)
@@ -130,7 +130,7 @@ export default class ProjectService extends BaseService {
 
     const authToken = extractAuthToken(context.request);
 
-    const projectLeaderId = input.projectLeaderId ?? user.sub;
+    const projectLeaderId = input.projectLeaderId ?? user.id;
 
     // Create project in Core (no parentId for root projects)
     let coreProject: Awaited<ReturnType<typeof createCoreProject>>;
@@ -140,7 +140,7 @@ export default class ProjectService extends BaseService {
           name: input.name,
           description: input.description,
           clientId: input.clientId,
-          authorId: user.sub,
+          authorId: user.id,
           ownerId: input.ownerId,
           divisionId: input.divisionId,
           commercial: input.commercial,
@@ -168,8 +168,8 @@ export default class ProjectService extends BaseService {
     await entity.save();
 
     // Auto-add creator and leader as members
-    await MembershipService.getInstance().ensureMembership(entity.id, user.sub);
-    if (projectLeaderId !== user.sub) {
+    await MembershipService.getInstance().ensureMembership(entity.id, user.id);
+    if (projectLeaderId !== user.id) {
       await MembershipService.getInstance().ensureMembership(entity.id, projectLeaderId);
     }
 
@@ -258,7 +258,7 @@ export default class ProjectService extends BaseService {
           name: input.name,
           description: input.description,
           clientId,
-          authorId: user.sub,
+          authorId: user.id,
           parentId: parentCoreRef.value,
           ownerId,
           divisionId: input.divisionId,
@@ -306,7 +306,7 @@ export default class ProjectService extends BaseService {
     await entity.save();
 
     // 6. Auto-add creator and leader as members
-    await MembershipService.getInstance().ensureMembership(entity.id, user.sub);
+    await MembershipService.getInstance().ensureMembership(entity.id, user.id);
     if (input.projectLeaderId) {
       await MembershipService.getInstance().ensureMembership(entity.id, input.projectLeaderId);
     }
@@ -433,7 +433,7 @@ export default class ProjectService extends BaseService {
     const userIds = await listActiveUserIds();
 
     const memberIds = new Set(userIds);
-    memberIds.add(user.sub); // Always include the approver
+    memberIds.add(user.id); // Always include the approver
 
     await Promise.all(
       Array.from(memberIds).map(id =>

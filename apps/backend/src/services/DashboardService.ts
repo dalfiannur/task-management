@@ -56,7 +56,7 @@ export default class DashboardService extends BaseService {
   })
   async getDashboardStats(input: { coreProjectIds: string[] }, context: AuthContext) {
     const user = requirePermission(context, TasksResources.Tasks, Action.Read);
-    const userId = user.sub;
+    const userId = user.id;
 
     const emptyResult = {
       totalTasks: 0,

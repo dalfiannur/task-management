@@ -85,8 +85,8 @@ export default class CommentService extends BaseService {
     archetype.fill({
       commentInfo: {
         taskId: input.taskId,
-        authorId: user.sub,
-        authorName: user.name ?? user.email ?? user.sub,
+        authorId: user.id,
+        authorName: user.displayName ?? user.email ?? user.id,
         content: input.content,
         createdAt: now,
         updatedAt: now,
@@ -103,12 +103,12 @@ export default class CommentService extends BaseService {
       const taskTitle = taskInfo?.title ?? "a task";
 
       const notificationService = NotificationService.getInstance();
-      const displayName = user.name ?? user.email ?? user.sub;
+      const displayName = user.displayName ?? user.email ?? user.id;
       for (const mentionedUserId of mentionedIds) {
         await notificationService.createNotification({
           recipientId: mentionedUserId,
           type: "mention",
-          actorId: user.sub,
+          actorId: user.id,
           actorName: displayName,
           taskId: input.taskId,
           taskTitle,
@@ -140,7 +140,7 @@ export default class CommentService extends BaseService {
     if (!entity) throw new Error("Comment not found");
 
     const info = await entity.get(CommentInfo);
-    if (info?.authorId !== user.sub) {
+    if (info?.authorId !== user.id) {
       throw new Error("Not authorized to edit this comment");
     }
 
@@ -171,12 +171,12 @@ export default class CommentService extends BaseService {
       const taskTitle = taskInfo?.title ?? "a task";
 
       const notificationService = NotificationService.getInstance();
-      const displayName = user.name ?? user.email ?? user.sub;
+      const displayName = user.displayName ?? user.email ?? user.id;
       for (const mentionedUserId of newlyMentioned) {
         await notificationService.createNotification({
           recipientId: mentionedUserId,
           type: "mention",
-          actorId: user.sub,
+          actorId: user.id,
           actorName: displayName,
           taskId,
           taskTitle,
@@ -242,7 +242,7 @@ export default class CommentService extends BaseService {
     if (!entity) throw new Error("Comment not found");
 
     const info = await entity.get(CommentInfo);
-    if (info?.authorId !== user.sub) {
+    if (info?.authorId !== user.id) {
       throw new Error("Not authorized to delete this comment");
     }
 

@@ -77,7 +77,7 @@ export default class NotificationService extends BaseService {
     const entities = await new Query()
       .with(NotificationInfo, {
         filters: [
-          Query.typedFilter(NotificationInfo, "recipientId", "=", user.sub),
+          Query.typedFilter(NotificationInfo, "recipientId", "=", user.id),
         ],
       })
       .sortBy(NotificationInfo, "createdAt", "DESC")
@@ -126,7 +126,7 @@ export default class NotificationService extends BaseService {
     const entities = await new Query()
       .with(NotificationInfo, {
         filters: [
-          Query.typedFilter(NotificationInfo, "recipientId", "=", user.sub),
+          Query.typedFilter(NotificationInfo, "recipientId", "=", user.id),
           Query.typedFilter(NotificationInfo, "read", "=", "false"),
         ],
       })
@@ -159,7 +159,7 @@ export default class NotificationService extends BaseService {
       if (!entity) continue;
 
       const info = await entity.get(NotificationInfo);
-      if (info?.recipientId !== user.sub) continue;
+      if (info?.recipientId !== user.id) continue;
 
       await entity.set(NotificationInfo, { read: "true" });
       await entity.save();
@@ -184,7 +184,7 @@ export default class NotificationService extends BaseService {
     const entities = await new Query()
       .with(NotificationInfo, {
         filters: [
-          Query.typedFilter(NotificationInfo, "recipientId", "=", user.sub),
+          Query.typedFilter(NotificationInfo, "recipientId", "=", user.id),
           Query.typedFilter(NotificationInfo, "read", "=", "false"),
         ],
       })
