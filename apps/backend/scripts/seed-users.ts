@@ -3,10 +3,16 @@ import "reflect-metadata";
 import "~/components/UserComponents";
 import { Entity } from "bunsane/core/Entity";
 import { Query } from "bunsane/query";
+import { ComponentRegistry } from "bunsane/core/components";
 import {
   PhoneComponent, PasswordComponent, UserProfileComponent, UserStatusComponent, UserTag, AdminTag,
 } from "~/components/UserComponents";
 import { hashPassword } from "~/lib/user-serializer";
+
+// Headless bunsane init so component type-ids + storage are registered
+// (mirrors App startup; required for standalone scripts).
+ComponentRegistry.init();
+await ComponentRegistry.registerAllComponents();
 
 const SEED = [
   { phone: "081200000001", password: "admin123", displayName: "Admin", isAdmin: true },
