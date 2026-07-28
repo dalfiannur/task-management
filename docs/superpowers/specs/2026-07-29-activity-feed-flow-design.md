@@ -104,7 +104,7 @@ Activity **bukan tab tersendiri**; ia muncul di beberapa tempat:
 
 - **Riwayat per-task:** di dialog task (bersama Comments) via `ListEntityActivity(TASK, taskId)` — mis. `task-activity-timeline`.
 - **Feed projek:** section opsional di shell detail atau panel — `ListProjectActivity`.
-- **Feed terbaru (Dashboard):** `ListRecentActivity` lintas-projek — dikonsumsi [Dashboard](#) (dok tersendiri).
+- **Feed terbaru (Dashboard):** `ListRecentActivity` lintas-projek — dikonsumsi [Dashboard](./2026-07-29-dashboard-my-tasks-flow-design.md).
 - **Render item:** avatar actor (`useUser`), `summary`, waktu; untuk `Updated`, tampilkan diff ringkas (field: dari→ke). Klik → deep-link ke entity bila masih ada.
 - **Hooks (Connect):** `useProjectActivity`, `useEntityActivity`, `useRecentActivity`.
 

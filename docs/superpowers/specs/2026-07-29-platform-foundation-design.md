@@ -179,7 +179,7 @@ Skeleton dianggap selesai bila **semua** berikut terbukti:
 
 ## 11. Di Luar Cakupan
 
-- Auth/login penuh (register/login/me), model permissions & guards lengkap, Membership.
+- Auth/login penuh (register/login/me), model permissions & guards lengkap, Membership. → didefinisikan di [Users & Auth](./2026-07-29-users-auth-flow-design.md).
 - Semua flow domain (Project, Task, dst.) dan migrasi data lama dari Core/Bun.
 - Koherensi cache antar-instance (multi-node).
 - Observability/logging/metrics lanjutan (skeleton cukup log dasar).

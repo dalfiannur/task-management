@@ -101,6 +101,7 @@ message ReorderPagesRequest { string project_id = 1; repeated string page_ids = 
 | `ReorderPages` | **semua member** | Menata `order` sesuai `page_ids` (semua halaman projek). |
 
 - **Validasi projek:** `CreatePage.project_id` harus projek tempat user jadi member. `Update/Delete/Reorder` menurunkan projek dari halaman untuk cek membership.
+- **Side-effect (emit):** setelah mutasi sukses, emit **Activity** (`Page` · Created/Updated/Deleted) — lihat [Activity](./2026-07-29-activity-feed-flow-design.md) §5.
 
 ## 5. Frontend
 

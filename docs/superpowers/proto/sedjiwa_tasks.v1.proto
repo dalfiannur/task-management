@@ -1,0 +1,492 @@
+// Sedjiwa Portal Task Management — kontrak gRPC/Connect gabungan.
+//
+// Sumber: 14 dok desain di docs/superpowers/specs/2026-07-29-*.md.
+// Package tunggal `sedjiwa.tasks.v1` (keputusan review: satu package, satu file)
+// → tak ada import lintas-package; tipe bersama (Task/MyTask/User/…) didefinisikan sekali.
+//
+// CATATAN MERGE (F4): `ProjectService` di spec tersebar di 3 dok
+// (create-project, list-detail, members) sebagai penambahan aditif — di sini DIGABUNG.
+//
+// Status: cetak biru desain. Nomor field final mengikuti implementasi;
+// enum diberi *_UNSPECIFIED = 0 sesuai gaya proto3.
+
+syntax = "proto3";
+
+package sedjiwa.tasks.v1;
+
+// ============================================================================
+// ENUM BERSAMA
+// ============================================================================
+
+enum ProjectStatus {
+  PROJECT_STATUS_UNSPECIFIED = 0;
+  PROJECT_STATUS_ACTIVE = 1;
+  PROJECT_STATUS_COMPLETED = 2;
+  PROJECT_STATUS_ARCHIVED = 3;
+}
+
+enum TaskStatus {
+  TASK_STATUS_UNSPECIFIED = 0;
+  TODO = 1;
+  IN_PROGRESS = 2;
+  DONE = 3;
+  CANCELLED = 4;
+}
+
+enum TaskPriority {
+  TASK_PRIORITY_UNSPECIFIED = 0;
+  NONE = 1;
+  LOW = 2;
+  MEDIUM = 3;
+  HIGH = 4;
+  URGENT = 5;
+}
+
+enum UserStatus {
+  USER_STATUS_UNSPECIFIED = 0;
+  PENDING = 1;
+  ACTIVE = 2;
+  SUSPENDED = 3;
+}
+
+enum MediaStatus {
+  MEDIA_STATUS_UNSPECIFIED = 0;
+  MEDIA_PENDING = 1;
+  MEDIA_READY = 2;
+}
+
+enum NotificationType {
+  NOTIFICATION_TYPE_UNSPECIFIED = 0;
+  MENTION = 1;
+  TASK_ASSIGNED = 2;
+  PROJECT_MEMBER_ADDED = 3;
+  OWNERSHIP_TRANSFERRED = 4;
+  ACCOUNT_APPROVED = 5;
+}
+
+enum EntityType {
+  ENTITY_TYPE_UNSPECIFIED = 0;
+  ENTITY_TASK = 1;
+  ENTITY_MODULE = 2;
+  ENTITY_MEMBERSHIP = 3;
+  ENTITY_OWNERSHIP = 4;
+  ENTITY_PAGE = 5;
+  ENTITY_MEDIA = 6;
+}
+
+enum ActivityAction {
+  ACTIVITY_ACTION_UNSPECIFIED = 0;
+  CREATED = 1;
+  UPDATED = 2;
+  DELETED = 3;
+}
+
+// ============================================================================
+// PESAN ENTITAS BERSAMA (didefinisikan sekali, dipakai lintas service)
+// ============================================================================
+
+message Project {
+  string id = 1;
+  string name = 2;
+  optional string description = 3;
+  ProjectStatus status = 4;
+  string owner_id = 5;
+  optional string start_date = 6; // ISO-8601
+  optional string end_date = 7;
+}
+
+message User {
+  string id = 1;
+  string phone = 2;
+  string display_name = 3;
+  string email = 4;
+  string avatar_url = 5;
+  UserStatus status = 6;
+  bool is_admin = 7;
+  string created_at = 8;
+  optional string last_login_at = 9;
+}
+
+message Member {
+  string user_id = 1;
+  bool is_owner = 2; // = (user_id == project.owner_id)
+}
+
+message Module {
+  string id = 1;
+  string project_id = 2;
+  string name = 3;
+  optional string description = 4;
+  int32 order = 5;
+}
+
+message Task {
+  string id = 1;
+  string module_id = 2;
+  string title = 3;
+  string description = 4;
+  TaskStatus status = 5;
+  TaskPriority priority = 6;
+  optional string start_date = 7;
+  optional string due_date = 8;
+  int32 order = 9;
+  repeated string assignee_ids = 10;
+  repeated string label_ids = 11;
+  string created_at = 12;
+  string updated_at = 13;
+  optional string completed_at = 14;
+  string created_by = 15;
+}
+
+message Label {
+  string id = 1;
+  string project_id = 2;
+  string name = 3;
+  string color = 4; // hex "#RRGGBB"
+}
+
+message Page {
+  string id = 1;
+  string project_id = 2;
+  string title = 3;
+  string icon = 4;
+  string content = 5; // Markdown
+  int32 order = 6;
+  string created_by = 7;
+  string last_edited_by = 8;
+  string created_at = 9;
+  string updated_at = 10;
+}
+
+message Comment {
+  string id = 1;
+  string task_id = 2;
+  string author_id = 3;
+  string content = 4; // Markdown
+  repeated string mentioned_user_ids = 5;
+  string created_at = 6;
+  string updated_at = 7;
+}
+
+message MediaFile {
+  string id = 1;
+  string project_id = 2;
+  string file_name = 3;
+  string original_file_name = 4;
+  string mime_type = 5;
+  int64 size = 6;
+  string uploaded_by = 7;
+  string created_at = 8;
+  MediaStatus status = 9;
+}
+
+message Notification {
+  string id = 1;
+  NotificationType type = 2;
+  string actor_id = 3;
+  string message = 4;
+  bool read = 5;
+  string created_at = 6;
+  optional string project_id = 7;
+  optional string task_id = 8;
+  optional string comment_id = 9;
+}
+
+message FieldChange {
+  string field = 1;
+  optional string from = 2;
+  optional string to = 3;
+}
+
+message Activity {
+  string id = 1;
+  string project_id = 2;
+  string actor_id = 3;
+  EntityType entity_type = 4;
+  string entity_id = 5;
+  ActivityAction action = 6;
+  string summary = 7;
+  repeated FieldChange changes = 8;
+  string created_at = 9;
+}
+
+// Task diperkaya konteks projek/module untuk daftar lintas-projek.
+message MyTask {
+  Task task = 1;
+  string project_id = 2;
+  string project_name = 3;
+  string module_name = 4;
+}
+
+message OkResponse { bool ok = 1; }
+
+// ============================================================================
+// HEALTH (walking skeleton — fondasi)
+// ============================================================================
+
+service HealthService {
+  rpc Check(CheckRequest) returns (CheckResponse);
+  rpc DbCheck(DbCheckRequest) returns (DbCheckResponse);
+  rpc WhoAmI(WhoAmIRequest) returns (WhoAmIResponse);
+}
+message CheckRequest {}
+message CheckResponse { string status = 1; }
+message DbCheckRequest {}
+message DbCheckResponse { string heartbeat_id = 1; string ts = 2; }
+message WhoAmIRequest {}
+message WhoAmIResponse { string user_id = 1; }
+
+// ============================================================================
+// AUTH & USERS
+// ============================================================================
+
+service AuthService {
+  rpc Register(RegisterRequest) returns (User);
+  rpc Login(LoginRequest) returns (LoginResponse);
+  rpc Me(MeRequest) returns (User);
+  rpc UpdateMyProfile(UpdateMyProfileRequest) returns (User);
+  rpc ChangeMyPassword(ChangeMyPasswordRequest) returns (OkResponse);
+}
+message RegisterRequest { string phone = 1; string password = 2; string display_name = 3; }
+message LoginRequest { string phone = 1; string password = 2; }
+message LoginResponse { string token = 1; User user = 2; }
+message MeRequest {}
+message UpdateMyProfileRequest { optional string display_name = 1; optional string avatar_url = 2; optional string email = 3; }
+message ChangeMyPasswordRequest { string current_password = 1; string new_password = 2; }
+
+service UserDirectoryService {
+  rpc SearchUsers(SearchUsersRequest) returns (ListUsersResponse);
+  rpc GetUser(GetUserRequest) returns (User);
+  // Admin
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+  rpc CreateUser(CreateUserRequest) returns (User);
+  rpc UpdateUser(UpdateUserRequest) returns (User);
+  rpc ActivateUser(UserIdRequest) returns (User);
+  rpc SuspendUser(UserIdRequest) returns (User);
+  rpc SetAdmin(SetAdminRequest) returns (User);
+  rpc ResetPassword(ResetPasswordRequest) returns (OkResponse);
+  rpc DeleteUser(UserIdRequest) returns (OkResponse);
+}
+message SearchUsersRequest { optional string q = 1; }
+message GetUserRequest { string id = 1; }
+message ListUsersRequest { optional UserStatus status = 1; }
+message ListUsersResponse { repeated User users = 1; }
+message CreateUserRequest { string phone = 1; string password = 2; string display_name = 3; bool is_admin = 4; }
+message UpdateUserRequest { string id = 1; optional string display_name = 2; optional string email = 3; optional string avatar_url = 4; }
+message UserIdRequest { string id = 1; }
+message SetAdminRequest { string id = 1; bool is_admin = 2; }
+message ResetPasswordRequest { string id = 1; string new_password = 2; }
+
+// ============================================================================
+// PROJECT (create + list/detail + members — DIGABUNG)
+// ============================================================================
+
+service ProjectService {
+  // create
+  rpc CreateProject(CreateProjectRequest) returns (Project);
+  // list/detail
+  rpc ListProjects(ListProjectsRequest) returns (ListProjectsResponse);
+  rpc GetProject(GetProjectRequest) returns (Project);
+  rpc SetProjectStatus(SetProjectStatusRequest) returns (Project);
+  rpc TransferProjectOwnership(TransferProjectOwnershipRequest) returns (Project);
+  rpc DeleteProject(DeleteProjectRequest) returns (OkResponse);
+  // members
+  rpc ListProjectMembers(ListProjectMembersRequest) returns (ListProjectMembersResponse);
+  rpc AddProjectMember(AddProjectMemberRequest) returns (ListProjectMembersResponse);
+  rpc RemoveProjectMember(RemoveProjectMemberRequest) returns (ListProjectMembersResponse);
+  rpc LeaveProject(LeaveProjectRequest) returns (OkResponse);
+}
+message CreateProjectRequest { string name = 1; optional string description = 2; optional string owner_id = 3; }
+message ListProjectsRequest { repeated ProjectStatus status = 1; optional string search = 2; uint32 page = 3; uint32 limit = 4; }
+message ListProjectsResponse { repeated Project projects = 1; uint32 total = 2; }
+message GetProjectRequest { string id = 1; }
+message SetProjectStatusRequest { string id = 1; ProjectStatus status = 2; }
+message TransferProjectOwnershipRequest { string id = 1; string new_owner_id = 2; }
+message DeleteProjectRequest { string id = 1; }
+message ListProjectMembersRequest { string project_id = 1; }
+message ListProjectMembersResponse { repeated Member members = 1; string owner_id = 2; }
+message AddProjectMemberRequest { string project_id = 1; string user_id = 2; }
+message RemoveProjectMemberRequest { string project_id = 1; string user_id = 2; }
+message LeaveProjectRequest { string project_id = 1; }
+
+// ============================================================================
+// MODULE & TASK (tab all-tasks)
+// ============================================================================
+
+service ModuleService {
+  rpc ListModules(ListModulesRequest) returns (ListModulesResponse);
+  rpc CreateModule(CreateModuleRequest) returns (Module);
+  rpc UpdateModule(UpdateModuleRequest) returns (Module);
+  rpc DeleteModule(DeleteModuleRequest) returns (OkResponse);
+  rpc ReorderModules(ReorderModulesRequest) returns (ListModulesResponse);
+}
+message ListModulesRequest { string project_id = 1; }
+message ListModulesResponse { repeated Module modules = 1; }
+message CreateModuleRequest { string project_id = 1; string name = 2; optional string description = 3; }
+message UpdateModuleRequest { string id = 1; optional string name = 2; optional string description = 3; }
+message DeleteModuleRequest { string id = 1; }
+message ReorderModulesRequest { string project_id = 1; repeated string module_ids = 2; }
+
+service TaskService {
+  rpc ListTasks(ListTasksRequest) returns (ListTasksResponse);
+  rpc CreateTask(CreateTaskRequest) returns (Task);
+  rpc UpdateTask(UpdateTaskRequest) returns (Task);
+  rpc DeleteTask(DeleteTaskRequest) returns (OkResponse);
+  rpc MoveTask(MoveTaskRequest) returns (Task);
+}
+message ListTasksRequest { string project_id = 1; optional string module_id = 2; }
+message ListTasksResponse { repeated Task tasks = 1; }
+message CreateTaskRequest {
+  string module_id = 1; string title = 2; optional string description = 3;
+  TaskStatus status = 4; TaskPriority priority = 5;
+  optional string start_date = 6; optional string due_date = 7;
+  repeated string assignee_ids = 8; repeated string label_ids = 9;
+}
+message UpdateTaskRequest {
+  string id = 1;
+  optional string title = 2; optional string description = 3;
+  optional TaskStatus status = 4; optional TaskPriority priority = 5;
+  optional string start_date = 6; optional string due_date = 7;
+  repeated string assignee_ids = 8; // absen = tak diubah; [] = kosongkan
+  repeated string label_ids = 9;
+}
+message DeleteTaskRequest { string id = 1; }
+message MoveTaskRequest { string id = 1; string module_id = 2; int32 order = 3; }
+
+// ============================================================================
+// LABELS
+// ============================================================================
+
+service LabelService {
+  rpc ListLabels(ListLabelsRequest) returns (ListLabelsResponse);
+  rpc CreateLabel(CreateLabelRequest) returns (Label);
+  rpc UpdateLabel(UpdateLabelRequest) returns (Label);
+  rpc DeleteLabel(DeleteLabelRequest) returns (OkResponse);
+}
+message ListLabelsRequest { string project_id = 1; }
+message ListLabelsResponse { repeated Label labels = 1; }
+message CreateLabelRequest { string project_id = 1; string name = 2; string color = 3; }
+message UpdateLabelRequest { string id = 1; optional string name = 2; optional string color = 3; }
+message DeleteLabelRequest { string id = 1; }
+
+// ============================================================================
+// PAGES
+// ============================================================================
+
+service PageService {
+  rpc ListPages(ListPagesRequest) returns (ListPagesResponse);
+  rpc GetPage(GetPageRequest) returns (Page);
+  rpc CreatePage(CreatePageRequest) returns (Page);
+  rpc UpdatePage(UpdatePageRequest) returns (Page);
+  rpc DeletePage(DeletePageRequest) returns (OkResponse);
+  rpc ReorderPages(ReorderPagesRequest) returns (ListPagesResponse);
+}
+message ListPagesRequest { string project_id = 1; }
+message ListPagesResponse { repeated Page pages = 1; }
+message GetPageRequest { string id = 1; }
+message CreatePageRequest { string project_id = 1; optional string title = 2; optional string icon = 3; optional string content = 4; }
+message UpdatePageRequest { string id = 1; optional string title = 2; optional string icon = 3; optional string content = 4; }
+message DeletePageRequest { string id = 1; }
+message ReorderPagesRequest { string project_id = 1; repeated string page_ids = 2; }
+
+// ============================================================================
+// MEDIA (presigned S3 + task linking)
+// ============================================================================
+
+service MediaService {
+  rpc CreateMediaUpload(CreateMediaUploadRequest) returns (CreateMediaUploadResponse);
+  rpc CompleteMediaUpload(CompleteMediaUploadRequest) returns (MediaFile);
+  rpc ListProjectMedia(ListProjectMediaRequest) returns (ListMediaResponse);
+  rpc GetMediaDownloadUrl(GetMediaDownloadUrlRequest) returns (GetMediaDownloadUrlResponse);
+  rpc DeleteMediaFile(DeleteMediaFileRequest) returns (OkResponse);
+  rpc LinkTaskMedia(LinkTaskMediaRequest) returns (OkResponse);
+  rpc UnlinkTaskMedia(UnlinkTaskMediaRequest) returns (OkResponse);
+  rpc ListTaskMedia(ListTaskMediaRequest) returns (ListMediaResponse);
+}
+message CreateMediaUploadRequest { string project_id = 1; string file_name = 2; string mime_type = 3; int64 size = 4; }
+message CreateMediaUploadResponse { string media_file_id = 1; string upload_url = 2; string storage_key = 3; }
+message CompleteMediaUploadRequest { string media_file_id = 1; }
+message ListProjectMediaRequest { string project_id = 1; }
+message ListMediaResponse { repeated MediaFile files = 1; }
+message GetMediaDownloadUrlRequest { string media_file_id = 1; }
+message GetMediaDownloadUrlResponse { string url = 1; uint32 expires_in = 2; }
+message DeleteMediaFileRequest { string media_file_id = 1; }
+message LinkTaskMediaRequest { string task_id = 1; string media_file_id = 2; }
+message UnlinkTaskMediaRequest { string task_id = 1; string media_file_id = 2; }
+message ListTaskMediaRequest { string task_id = 1; }
+
+// ============================================================================
+// COMMENTS
+// ============================================================================
+
+service CommentService {
+  rpc ListComments(ListCommentsRequest) returns (ListCommentsResponse);
+  rpc CreateComment(CreateCommentRequest) returns (Comment);
+  rpc UpdateComment(UpdateCommentRequest) returns (Comment);
+  rpc DeleteComment(DeleteCommentRequest) returns (OkResponse);
+}
+message ListCommentsRequest { string task_id = 1; uint32 page = 2; uint32 page_size = 3; }
+message ListCommentsResponse { repeated Comment comments = 1; uint32 total = 2; }
+message CreateCommentRequest { string task_id = 1; string content = 2; repeated string mentioned_user_ids = 3; }
+message UpdateCommentRequest { string id = 1; string content = 2; repeated string mentioned_user_ids = 3; }
+message DeleteCommentRequest { string id = 1; }
+
+// ============================================================================
+// NOTIFICATIONS (in-app + real-time server-streaming)
+// ============================================================================
+
+service NotificationService {
+  rpc ListNotifications(ListNotificationsRequest) returns (ListNotificationsResponse);
+  rpc UnreadCount(UnreadCountRequest) returns (UnreadCountResponse);
+  rpc MarkRead(MarkReadRequest) returns (OkResponse);
+  rpc MarkAllRead(MarkAllReadRequest) returns (OkResponse);
+  rpc StreamNotifications(StreamNotificationsRequest) returns (stream Notification);
+}
+message ListNotificationsRequest { uint32 page = 1; uint32 page_size = 2; }
+message ListNotificationsResponse { repeated Notification notifications = 1; uint32 total = 2; }
+message UnreadCountRequest {}
+message UnreadCountResponse { uint32 count = 1; }
+message MarkReadRequest { repeated string ids = 1; }
+message MarkAllReadRequest {}
+message StreamNotificationsRequest {}
+
+// ============================================================================
+// ACTIVITY (audit log)
+// ============================================================================
+
+service ActivityService {
+  rpc ListProjectActivity(ListProjectActivityRequest) returns (ListActivityResponse);
+  rpc ListEntityActivity(ListEntityActivityRequest) returns (ListActivityResponse);
+  rpc ListRecentActivity(ListRecentActivityRequest) returns (ListActivityResponse);
+}
+message ListProjectActivityRequest { string project_id = 1; uint32 page = 2; uint32 page_size = 3; }
+message ListEntityActivityRequest { EntityType entity_type = 1; string entity_id = 2; }
+message ListRecentActivityRequest { uint32 page = 1; uint32 page_size = 2; }
+message ListActivityResponse { repeated Activity activities = 1; uint32 total = 2; }
+
+// ============================================================================
+// DASHBOARD & MY-TASKS (agregasi lintas-projek)
+// ============================================================================
+
+service DashboardService {
+  rpc GetDashboardStats(GetDashboardStatsRequest) returns (DashboardStats);
+  rpc GetUpcomingDeadlines(GetUpcomingDeadlinesRequest) returns (MyTasksResponse);
+}
+message GetDashboardStatsRequest {}
+message ProjectProgress { string project_id = 1; string project_name = 2; uint32 done = 3; uint32 total = 4; }
+message DashboardStats {
+  uint32 total_tasks = 1;
+  uint32 in_progress_tasks = 2;
+  uint32 done_tasks = 3;
+  uint32 overdue_tasks = 4;
+  repeated ProjectProgress per_project = 5;
+}
+message GetUpcomingDeadlinesRequest { uint32 within_days = 1; }
+
+service MyTasksService {
+  rpc ListAssignedToMe(MyTasksRequest) returns (MyTasksResponse);
+  rpc ListCreatedByMe(MyTasksRequest) returns (MyTasksResponse);
+  rpc ListInvolvingMe(MyTasksRequest) returns (MyTasksResponse);
+}
+message MyTasksRequest { optional TaskStatus status = 1; optional TaskPriority priority = 2; uint32 page = 3; uint32 page_size = 4; }
+message MyTasksResponse { repeated MyTask items = 1; uint32 total = 2; }

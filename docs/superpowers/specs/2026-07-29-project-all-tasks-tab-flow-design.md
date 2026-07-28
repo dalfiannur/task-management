@@ -152,6 +152,9 @@ Aturan lintas-operasi:
 4. **Ordering.** `order` unik-relatif dalam satu module. `MoveTask` menetapkan `module_id` + `order` baru; server merapikan urutan module tujuan (dan asal). `ReorderModules` menata ulang `ModuleOrder` sesuai `module_ids`.
 5. **Validasi module.** `CreateTask.module_id` & `MoveTask.module_id` harus module milik projek yang sama tempat user jadi member.
 6. **Label refs.** `label_ids` divalidasi ada (opsional) tapi manajemen palette label = flow lain.
+7. **Side-effects (emit).** Setelah mutasi sukses, handler **meng-emit**:
+   - **Activity** (`record_activity`) untuk tiap create/update/delete Task & Module — lihat [Activity](./2026-07-29-activity-feed-flow-design.md) §5.
+   - **Notifikasi `TaskAssigned`** ke assignee **baru** saat `CreateTask`/`UpdateTask` menambah assignee — lihat [Notifications](./2026-07-29-notifications-flow-design.md) §2.
 
 ## 5. Frontend — Tab All-Tasks
 

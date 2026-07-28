@@ -26,7 +26,7 @@ Keputusan yang membentuk desain:
 | `UserPhone` | `value: String` `#[pg(index, unique)]`, `verified: bool` | Nomor telepon = identitas login. **Unik.** |
 | `UserPassword` | `hash: String`, `changed_at: String` | Hash **Argon2id** (PHC string). Tak pernah diekspos. |
 | `UserProfile` | `display_name: String` `#[pg(index)]`, `avatar_url: String`, `email: String` | Profil tampil. |
-| `UserStatus` | `value: UserStatusEnum` `#[pg(index)]`, `created_at: String`, `last_login_at: Option<String>` | `Pending / Active / Suspended`. |
+| `UserStatusComponent` | `value: UserStatus` (enum) `#[pg(index)]`, `created_at: String`, `last_login_at: Option<String>` | `Pending / Active / Suspended`. Enum `UserStatus` senama dgn proto. |
 
 ```rust
 #[derive(Component)] struct UserTag;
@@ -42,12 +42,12 @@ struct UserPassword { hash: String, changed_at: String } // Argon2id PHC
 struct UserProfile { #[pg(index)] display_name: String, avatar_url: String, email: String }
 
 #[derive(Component)]
-struct UserStatus {
-    #[pg(index)] value: UserStatusEnum,
+struct UserStatusComponent {
+    #[pg(index)] value: UserStatus,
     created_at: String,
     last_login_at: Option<String>,
 }
-#[derive(Component)] enum UserStatusEnum { Pending, Active, Suspended }
+#[derive(Component)] enum UserStatus { Pending, Active, Suspended }
 ```
 
 ## 3. AuthUser & Permission

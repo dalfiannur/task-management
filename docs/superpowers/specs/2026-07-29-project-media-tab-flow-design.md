@@ -129,6 +129,7 @@ message ListTaskMediaRequest { string task_id = 1; }
 
 - **Validasi ukuran/tipe** (opsional): batas ukuran & allow-list MIME diterapkan di `CreateMediaUpload` (keputusan §8).
 - **Presigned scope:** PUT dibatasi `storage_key` + `mime_type`; GET ber-TTL pendek.
+- **Side-effect (emit):** `CompleteMediaUpload` & `DeleteMediaFile` meng-emit **Activity** (`Media` · Created/Deleted) — lihat [Activity](./2026-07-29-activity-feed-flow-design.md) §5.
 
 ## 6. Konfigurasi Storage (S3/RustFS)
 
