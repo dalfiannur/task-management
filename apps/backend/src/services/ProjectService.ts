@@ -21,7 +21,7 @@ import {
   ModuleTag,
 } from "~/components/ModuleComponents";
 import { ProjectMembershipData } from "~/components/ProjectMembership";
-import { requirePermission, requireAdmin, checkProjectMember, type AuthContext, TasksResources, CoreResources, Action } from "~/utils/auth";
+import { requirePermission, requireAdmin, checkProjectMember, type AuthContext, CoreResources, Action } from "~/utils/auth";
 import MembershipService from "./MembershipService";
 import {
   fetchCoreProject,
@@ -30,7 +30,7 @@ import {
   extractAuthToken,
   fetchUserCompanyIds,
 } from "~/lib/core-client";
-import { fetchUserIdsByPermission } from "~/lib/oidc-client";
+import { listActiveUserIds } from "~/lib/user-directory";
 
 export default class ProjectService extends BaseService {
   constructor() {
@@ -429,13 +429,8 @@ export default class ProjectService extends BaseService {
 
     await module.save();
 
-    // Auto-add all users with tasks:projects:read_all as members
-    const authToken = extractAuthToken(context.request);
-    const userIds = await fetchUserIdsByPermission(
-      TasksResources.Projects,
-      Action.ReadAll,
-      authToken,
-    );
+    // Auto-add all active users as members
+    const userIds = await listActiveUserIds();
 
     const memberIds = new Set(userIds);
     memberIds.add(user.sub); // Always include the approver
