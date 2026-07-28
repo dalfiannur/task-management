@@ -133,7 +133,7 @@ message ListTaskMediaRequest { string task_id = 1; }
 
 ## 6. Konfigurasi Storage (S3/RustFS)
 
-Env backend Rust: `S3_ENDPOINT` (mis. `http://localhost:9000`), `S3_BUCKET` (`tasks-media`), `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_REGION`, `S3_FORCE_PATH_STYLE=true` (untuk RustFS/MinIO). Backend memakai SDK S3 (mis. `aws-sdk-s3` / `rust-s3`) untuk presign.
+Env backend Rust: `S3_ENDPOINT` (mis. `http://localhost:9000`), `S3_BUCKET` (`tasks-media`), `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_REGION`, `S3_FORCE_PATH_STYLE=true` (untuk RustFS/MinIO). Backend memakai **`rust-s3`** untuk presign (lihat [tech-stack](./2026-07-29-tech-stack-decisions.md)).
 
 ## 7. Frontend
 
@@ -160,4 +160,4 @@ Halaman `media.tsx` + komponen `file-manager-*` (disederhanakan). Migrasi CSS Mo
 2. **Batas ukuran & allow-list MIME.** — *Usul: batas wajar (mis. 50–100MB) + allow-list umum; angka final saat implementasi.*
 3. **Verifikasi `CompleteMediaUpload`** (HEAD objek / cek ETag) vs percaya client. — *Usul: HEAD objek untuk pastikan ada + ambil size sebenarnya.*
 4. **Nama file duplikat** — biarkan (storage_key unik via uuid) vs dedup. — *Usul: biarkan; keunikan dijamin `storage_key`.*
-5. **SDK S3 Rust** (`aws-sdk-s3` vs `rust-s3`). — *Perlu diputuskan saat implementasi; keduanya mendukung presign + path-style.*
+5. **SDK S3 Rust.** — *Diputuskan: `rust-s3` (lihat [tech-stack](./2026-07-29-tech-stack-decisions.md)).*

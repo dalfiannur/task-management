@@ -76,7 +76,12 @@ jsonwebtoken = "9"
 dotenvy = "0.15"
 arke = "0.6"
 arke-postgres = "0.6"
+rust-s3 = "0.35"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 ```
+
+> Stack lengkap & rasional: [tech-stack decisions](../specs/2026-07-29-tech-stack-decisions.md). `rust-s3` dipakai flow media (bukan fase skeleton ini); `tracing` dipakai sejak boot (Task 9).
 
 - [ ] **Step 2: Create each library crate with a placeholder root**
 
@@ -116,6 +121,8 @@ tower-http = { workspace = true }
 anyhow = { workspace = true }
 dotenvy = { workspace = true }
 serde = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
 auth = { path = "../auth" }
 persistence = { path = "../persistence" }
 transport = { path = "../transport" }
@@ -787,6 +794,9 @@ use persistence::Store;
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let _ = dotenvy::dotenv();
+    tracing_subscriber::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .init();
     let cfg = Config::from_env()?;
     let store = Arc::new(Store::connect(&cfg.database_url).await?);
     store.migrate().await?;

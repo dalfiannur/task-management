@@ -28,7 +28,8 @@ Prinsip:
 | ECS | `bunsane` | **Arke** (`arke` crate) |
 | Persistensi | bunsane→Postgres | **`arke-postgres`** (Postgres = sumber kebenaran kolom-tipe) + lapisan **cache in-memory (World)** |
 | Auth | `AuthPlugin` (GraphQL context) | **Interceptor Tower** (verifikasi JWT HS256) |
-| Client browser | Apollo Client | **`@connectrpc/connect-web`** |
+| Observability | — | **`tracing`** + `tracing-subscriber` (sejak skeleton) |
+| Client browser | Apollo Client | **`@connectrpc/connect-web`** (+ TanStack Router/Query, Jotai — [tech-stack](./2026-07-29-tech-stack-decisions.md)) |
 
 > Sintaks Arke/arke-postgres/connectrpc-axum di dok ini memakai bentuk idiomatik dari dokumentasi masing-masing crate; bentuk final mengikuti versi terpakai. Sesuaikan saat implementasi.
 
