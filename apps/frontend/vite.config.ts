@@ -32,11 +32,6 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           rewrite: (path: string) => path.replace(/^\/api\/core/, ""),
         },
-        "/api/oidc/": {
-          target: env.VITE_OIDC_API_BASE_URL ?? "http://localhost:3100",
-          changeOrigin: true,
-          rewrite: (path: string) => path.replace(/^\/api\/oidc/, ""),
-        },
         "/api/media/": {
           target: env.VITE_MEDIA_API_BASE_URL ?? "http://localhost:3103",
           changeOrigin: true,
