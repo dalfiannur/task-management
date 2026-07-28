@@ -1,5 +1,4 @@
 import { Link, useNavigate, useParams, useLocation } from "react-router";
-import { useAuth } from "react-oidc-context";
 import {
   Sidebar,
   SidebarContent,
@@ -46,6 +45,7 @@ import type { CoreProject, ProjectDisplayStatus } from "@/types/project";
 import { getDisplayStatus } from "@/types/project";
 import { useHasPermission } from "@/hooks/use-me";
 import { useCompanyStore } from "@/stores/company-store";
+import { useAuthStore } from "@/stores/auth-store";
 
 const STATUS_DOT_COLORS: Record<ProjectDisplayStatus, string> = {
   draft: "bg-gray-400",
@@ -144,10 +144,9 @@ function LeadItem({ project, onApprove }: { project: CoreProject; onApprove: () 
 
 
 function UserMenu() {
-  const auth = useAuth();
   const navigate = useNavigate();
-  const name = (auth.user?.profile?.name as string) ?? "";
-  const email = (auth.user?.profile?.email as string) ?? "";
+  const name = useAuthStore((s) => s.user?.displayName) ?? "";
+  const email = useAuthStore((s) => s.user?.email) ?? "";
   const initials = name
     ? name
       .split(" ")
@@ -197,10 +196,10 @@ function UserMenu() {
 }
 
 export function AppSidebar() {
-  const auth = useAuth();
+  const token = useAuthStore((s) => s.token);
   const selectedCompanyId = useCompanyStore((s) => s.selectedCompanyId);
   const canManageLeads = useHasPermission("tasks:projects", "read_all");
-  const skipQueries = !auth.user?.access_token;
+  const skipQueries = !token;
   const { data: allProjects } = useProjects(
     skipQueries ? undefined : {
       ...(selectedCompanyId ? { ownerId: selectedCompanyId } : {}),

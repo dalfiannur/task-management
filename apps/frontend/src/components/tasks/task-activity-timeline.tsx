@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { useAuth } from "react-oidc-context";
 import { Loader2 } from "lucide-react";
 import { useComments } from "@/hooks/use-comments";
 import { useActivities } from "@/hooks/use-activities";
@@ -17,6 +16,7 @@ import {
 } from "@/types/task";
 import type { Activity, FieldChange } from "@/types/activity";
 import type { Comment } from "@/types/comment";
+import { useAuthStore } from "@/stores/auth-store";
 import styles from "./task-activity-timeline.module.css";
 
 type TimelineEntry =
@@ -32,8 +32,7 @@ export function TaskActivityTimeline({
   taskId,
   projectId,
 }: TaskActivityTimelineProps) {
-  const auth = useAuth();
-  const currentUserId = auth.user?.profile?.sub as string | undefined;
+  const currentUserId = useAuthStore((s) => s.user?.id);
   const { data: comments = [], isLoading: commentsLoading } =
     useComments(taskId);
   const { data: activities = [], isLoading: activitiesLoading } =
