@@ -17,6 +17,7 @@ import "./components/NotificationInfo";
 import "./components/ActivityInfo";
 import "./components/PageInfo";
 import "./components/ProjectMembership";
+import "./components/UserComponents";
 
 import TaskService from "./services/TaskService";
 import ProjectService from "./services/ProjectService";
@@ -31,6 +32,8 @@ import MembershipService from "./services/MembershipService";
 import DashboardService from "./services/DashboardService";
 import { AuthPlugin } from "./plugins/AuthPlugin";
 import { PermissionRestService } from "./services/PermissionService";
+import AuthService from "./services/AuthService";
+import UserService from "./services/UserService";
 
 export default class TasksAPI extends App {
   constructor() {
@@ -71,5 +74,7 @@ export default class TasksAPI extends App {
     ServiceRegistry.registerService(new DashboardService());
 
     ServiceRegistry.registerService(new PermissionRestService());
+    ServiceRegistry.registerService(new AuthService());
+    ServiceRegistry.registerService(new UserService());
   }
 }
