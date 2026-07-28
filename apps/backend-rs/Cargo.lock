@@ -31,6 +31,7 @@ dependencies = [
  "auth",
  "axum",
  "dotenvy",
+ "jsonwebtoken",
  "persistence",
  "serde",
  "thiserror",
