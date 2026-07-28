@@ -2,13 +2,19 @@
 
 - **Tanggal:** 2026-07-29
 - **Status:** Draft (menunggu review)
-- **Cakupan dok ini:** Definisi **model data Project lokal** + **flow membuat projek baru** (root project). Migrasi read-path (list/detail/timeline/media), migrasi data projek Core lama, flow sub-project, dan fondasi platform (skeleton Rust/Connect) = **dokumen terpisah**.
+- **Cakupan dok ini:** Definisi **model data Project lokal** + **flow membuat projek baru**. Migrasi read-path, migrasi data projek Core lama, dan fondasi platform (skeleton Rust/Connect) = **dokumen terpisah**.
+- **Terkait:** [Fondasi Platform](./2026-07-29-platform-foundation-design.md) · [Flow List & Detail Projek](./2026-07-29-project-list-detail-flow-design.md)
 
 ---
 
 ## 1. Konteks & Prinsip
 
 Projek berpindah **penuh ke lokal** (backend task-management) dan menjadi entity **delivery/task murni**. Seluruh konsep sales dari Core Portal — `winStage`, `commercial`, `value`, referensi `clientId`/`companyId`/`divisionId`/`eventId` — **dibuang**. Projek baru **langsung aktif** tanpa approval.
+
+Dua keputusan model yang menyederhanakan struktur:
+
+- **Tidak ada sub-project.** Hierarki cukup **Project → Modules → Tasks**. Komponen `ProjectParentRef`/`ProjectModuleRef` dan flow `createSubProject` **dihapus**. (Bisa ditambah lagi sengaja bila kebutuhan program/portfolio muncul.)
+- **Konsep "leader" diganti "ownership".** Setiap projek punya **satu owner** (default = pembuat) dengan **otoritas**: kelola member, ubah status, hapus, dan transfer ownership. Owner otomatis jadi member.
 
 Prinsip penulisan dok:
 
@@ -28,7 +34,7 @@ Dok ini mengasumsikan platform target berikut. Migrasinya sendiri **di luar caku
 | Client browser | Apollo Client | **`@connectrpc/connect-web`** (client TS ter-generate dari `.proto`) |
 | DB | PostgreSQL | PostgreSQL (via `arke-postgres`, sumber kebenaran kolom-tipe) |
 
-> Catatan sintaks Arke: `arke` adalah crate internal yang masih berkembang. Contoh kode di bawah memakai bentuk idiomatik (`#[derive(Component)]`, `spawn_bundle`, `#[pg(...)]`). Bentuk final (derive vs `impl Component` manual, nama atribut) **mengikuti API Arke versi terpakai** — sesuaikan saat implementasi.
+> Catatan sintaks Arke: `arke` adalah crate internal yang masih berkembang. Contoh kode di bawah memakai bentuk idiomatik (`#[derive(Component)]`, `spawn_bundle`, `#[pg(...)]`). Bentuk final **mengikuti API Arke versi terpakai** — sesuaikan saat implementasi.
 
 ## 3. Model Data — ECS Arke
 
@@ -38,14 +44,12 @@ Sebuah **projek adalah satu `Entity`** yang membawa sekumpulan komponen. Berbeda
 
 | Komponen | Field | Semantik | Status |
 |---|---|---|---|
-| `ProjectTag` | — (marker) | Menandai entity sebagai Project (root/sub). | **baru** |
+| `ProjectTag` | — (marker) | Menandai entity sebagai Project. | **baru** |
 | `ProjectName` | `value: String` | Nama projek (wajib). | **baru** |
 | `ProjectDescription` | `value: String` | Deskripsi (opsional — komponen absen jika kosong). | **baru** |
-| `ProjectLeaderId` | `value: String` | User ID leader. Default = pembuat. | port dari legacy |
+| `ProjectOwnerId` | `value: String` `#[pg(index)]` | User ID **owner** (default = pembuat). Owner punya otoritas atas projek (§5). | **baru** (ganti leader) |
 | `ProjectStatus` | `value: {Active, Completed, Archived}` | Status kerja (lihat §7). | **baru** |
 | `ProjectDates` | `start_date: Option<Date>`, `end_date: Option<Date>` | Tanggal untuk timeline. **Diisi belakangan**, bukan saat create. | **baru** |
-| `ProjectParentRef` | `parent_project_id: String` `#[pg(index)]` | Referensi induk (khusus sub-project; dipakai flow lain). | port dari legacy |
-| `ProjectModuleRef` | `module_id: String` `#[pg(index)]` | Linking sub-project ↔ module (flow lain). | port dari legacy |
 | `ProjectCoreRef` | `value: String` `#[pg(index)]` | **Legacy.** Tidak diisi untuk projek baru; dipertahankan sementara untuk transisi data lama. | legacy |
 
 ### 3.2 Definisi komponen (bentuk idiomatik Arke)
@@ -61,7 +65,10 @@ struct ProjectName { value: String }
 struct ProjectDescription { value: String }
 
 #[derive(Component)]
-struct ProjectLeaderId { value: String }
+struct ProjectOwnerId {
+    #[pg(index)]
+    value: String,
+}
 
 #[derive(Component)]
 enum ProjectStatus { Active, Completed, Archived }
@@ -70,18 +77,6 @@ enum ProjectStatus { Active, Completed, Archived }
 struct ProjectDates {
     start_date: Option<String>, // ISO-8601 "yyyy-MM-dd"
     end_date: Option<String>,
-}
-
-#[derive(Component)]
-struct ProjectParentRef {
-    #[pg(index)]
-    parent_project_id: String,
-}
-
-#[derive(Component)]
-struct ProjectModuleRef {
-    #[pg(index)]
-    module_id: String,
 }
 
 // Legacy — tidak di-insert untuk projek baru.
@@ -94,12 +89,12 @@ struct ProjectCoreRef {
 
 ### 3.3 Membership
 
-Membership tetap entity/komponen tersendiri (mengikuti pola `ProjectMembership` yang sudah ada). Detail modelnya milik flow membership, tapi flow create **wajib** membuat baris membership untuk pembuat + leader (lihat §5).
+Membership tetap entity/komponen tersendiri (mengikuti pola `ProjectMembership` yang sudah ada). Detail modelnya milik flow membership, tapi flow create **wajib** membuat baris membership untuk **owner** (= pembuat pada create). Lihat §5.
 
 ### 3.4 Persistensi (arke-postgres)
 
 - Tiap komponen → kolom bertipe di Postgres; **Postgres = sumber kebenaran**.
-- Field ber-`#[pg(index)]` (mis. `parent_project_id`, `module_id`, `value` pada CoreRef) terindeks untuk lookup.
+- Field ber-`#[pg(index)]` (`value` pada `ProjectOwnerId` & `ProjectCoreRef`) terindeks untuk lookup (mis. "projek milik owner X").
 - Handler create memakai `save` / `save_incremental` untuk mem-persist entity baru dalam satu transaksi logis bersama membership.
 
 ## 4. Kontrak Operasi
@@ -110,10 +105,10 @@ Dinyatakan dua lapis: **domain (agnostik)** yang wajib, dan **binding gRPC/Conne
 
 **Operasi:** `CreateProject`
 
-- **Input:** `name: String` (wajib, di-trim, non-kosong), `description?: String`, `projectLeaderId?: String`
+- **Input:** `name: String` (wajib, di-trim, non-kosong), `description?: String`, `ownerId?: String`
 - **Output:** `Project` (representasi flat — lihat §4.2)
 - **Auth:** memerlukan permission `Projects.Create`. Pemanggil harus terautentikasi (JWT). **Siapa yang memilikinya:** karena ini tool delivery self-serve, `Projects.Create` diberikan ke **semua user terautentikasi** (bukan admin-only); admin membawa `*` sehingga tetap tercakup. Definisi permission final milik dok auth/permissions — dok ini hanya mematok bahwa create tidak dibatasi admin.
-- **Efek:** membuat 1 entity Project lokal + baris membership (§5). Tidak menyentuh Core Portal.
+- **Efek:** membuat 1 entity Project lokal + baris membership owner (§5). Tidak menyentuh Core Portal.
 - **Error:**
   - `name` kosong/whitespace → `INVALID_ARGUMENT`
   - tak terautentikasi → `UNAUTHENTICATED`
@@ -128,13 +123,13 @@ package sedjiwa.tasks.project.v1;
 
 service ProjectService {
   rpc CreateProject(CreateProjectRequest) returns (Project);
-  // Operasi lain (List/Get/Update/Archive) didefinisikan di flow masing-masing.
+  // Operasi lain (List/Get/Update) didefinisikan di flow masing-masing.
 }
 
 message CreateProjectRequest {
   string name = 1;
   optional string description = 2;
-  optional string project_leader_id = 3;
+  optional string owner_id = 3; // kosong → owner = pemanggil
 }
 
 message Project {
@@ -142,10 +137,9 @@ message Project {
   string name = 2;
   optional string description = 3;
   ProjectStatus status = 4;
-  optional string project_leader_id = 5;
+  string owner_id = 5;
   optional string start_date = 6; // ISO-8601, diisi di flow lain
   optional string end_date = 7;
-  optional string parent_project_id = 8; // null untuk root project
 }
 
 enum ProjectStatus {
@@ -167,22 +161,22 @@ let user = ctx.require_permission(Projects, Create)?;
 // 2. Validasi
 let name = req.name.trim();
 if name.is_empty() { return Err(invalid_argument("name is required")); }
-let leader_id = req.project_leader_id.unwrap_or(user.id.clone());
+let owner_id = req.owner_id.unwrap_or(user.id.clone());
 
 // 3. Spawn entity + komponen inti (satu transisi archetype)
 let e = world.spawn_bundle((
     ProjectTag,
     ProjectName { value: name.to_string() },
-    ProjectLeaderId { value: leader_id.clone() },
+    ProjectOwnerId { value: owner_id.clone() },
     ProjectStatus::Active,
 ));
 if let Some(desc) = req.description.filter(|d| !d.trim().is_empty()) {
     world.insert(e, ProjectDescription { value: desc });
 }
 
-// 4. Membership: pembuat + leader
-ensure_membership(e, &user.id);
-if leader_id != user.id { ensure_membership(e, &leader_id); }
+// 4. Membership: owner (creator, atau owner_id bila ditunjuk)
+ensure_membership(e, &owner_id);
+if owner_id != user.id { ensure_membership(e, &user.id); } // pembuat tetap member
 
 // 5. Persist (arke-postgres, sumber kebenaran)
 store.save(&world, e)?;
@@ -193,12 +187,12 @@ Ok(project_message(&world, e))
 
 ## 5. Aturan Perilaku
 
-1. **Leader default.** `project_leader_id` kosong → di-set ke ID pemanggil.
-2. **Auto-membership.** Pembuat selalu jadi member. Leader jadi member (jika berbeda dari pembuat). *(Tidak lagi menambahkan "semua user aktif" seperti `approveProject` legacy.)*
-3. **Status awal `Active`.** Tanpa approval, tanpa `winStage`.
-4. **Tanpa panggilan Core Portal.** Create murni lokal.
-5. **Tanpa auto-module.** Projek lahir kosong (tak ada module "Proposal" default). **Dependensi lintas-flow:** flow detail/modules **tidak boleh** mengasumsikan minimal satu module ada — ia harus menangani projek tanpa module (empty state). Catatan ini wajib dibawa ke dok flow detail.
-6. **Root only.** Flow ini hanya membuat root project (tanpa `ProjectParentRef`). Sub-project = flow terpisah.
+1. **Owner default = pembuat.** `owner_id` kosong → di-set ke ID pemanggil.
+2. **Auto-membership.** Owner selalu jadi member. Bila `owner_id` ditunjuk berbeda dari pembuat, pembuat tetap ditambahkan sebagai member. *(Tidak lagi menambahkan "semua user aktif" seperti `approveProject` legacy.)*
+3. **Otoritas owner (ditetapkan di sini, dieksekusi di flow lain).** Owner sebuah projek boleh: kelola member, ubah status, hapus projek, dan **transfer ownership**. Admin (`*`) selalu tercakup. Kontrak & UI aksi-aksi ini hidup di flow list/detail & update — flow create hanya **menetapkan** siapa owner-nya.
+4. **Status awal `Active`.** Tanpa approval, tanpa `winStage`.
+5. **Tanpa panggilan Core Portal.** Create murni lokal.
+6. **Tanpa auto-module.** Projek lahir kosong (tak ada module "Proposal" default). **Dependensi lintas-flow:** flow detail/modules **tidak boleh** mengasumsikan minimal satu module ada — ia harus menangani projek tanpa module (empty state).
 
 ## 6. Frontend — Dialog yang Dipoles
 
@@ -207,7 +201,7 @@ Komponen: `apps/frontend/src/components/projects/project-form.tsx` (dipertahanka
 - **Field:**
   - **Name** — `Input`, autofocus, wajib, di-trim.
   - **Description** — `Textarea`, opsional.
-  - **Project Leader** — `UserCombobox`, opsional (kosong → default pembuat di backend).
+  - **Owner** — `UserCombobox`, opsional (kosong → default pembuat di backend). Menggantikan field "Project Leader".
 - **Poles UX:**
   - Tombol *Create* disable saat nama kosong atau saat loading.
   - State loading eksplisit ("Creating…").
@@ -231,7 +225,7 @@ Active → Completed → Archived
 - **Completed** — pekerjaan selesai.
 - **Archived** — diarsipkan/disembunyikan.
 
-Transisi antar-status (siapa boleh, tombol UI) = milik flow update/close, **bukan** flow ini. Config badge (label/warna) disederhanakan dari 8 status turunan menjadi 3.
+Transisi antar-status (tombol UI, guard owner/admin) = milik flow list/detail & update, **bukan** flow ini. Config badge (label/warna) disederhanakan dari 8 status turunan menjadi 3.
 
 ## 8. Dependensi & Prasyarat (di luar cakupan, tapi memblokir implementasi)
 
@@ -239,17 +233,17 @@ Flow create tidak bisa berdiri sendiri sampai fondasi berikut ada:
 
 1. **Skeleton backend Rust + Arke + arke-postgres** (World, store, migrasi skema Project).
 2. **Transport Connect** + interceptor auth (verifikasi JWT) di backend, dan setup `connect-web` + interceptor di frontend.
-3. **Operasi pendukung** yang dipakai UI: daftar user (untuk leader picker) & daftar projek (untuk refetch) via transport baru — selama transisi, keduanya mungkin masih di jalur lama (Apollo/Core). Perlu keputusan urutan migrasi.
+3. **Operasi pendukung** yang dipakai UI: daftar user (untuk **owner** picker) & daftar projek (untuk refetch) via transport baru — selama transisi, keduanya mungkin masih di jalur lama. Perlu keputusan urutan migrasi.
 4. **Model & operasi Membership** di platform baru.
 
 ## 9. Di Luar Cakupan
 
 - Fondasi/migrasi platform (Rust/Arke/Connect) — dok tersendiri.
 - Migrasi read-path (list/detail/timeline/media) & data projek Core lama.
-- Flow **sub-project** (`createSubProject`).
+- Sub-project (dihapus dari model — lihat §1).
 - Pembuatan module default.
 - `code` projek human-readable.
-- Transisi status (complete/archive) & edit projek.
+- Transisi status, edit projek, kelola member, transfer ownership (flow list/detail & update).
 
 ## 10. Keputusan Terbuka
 
