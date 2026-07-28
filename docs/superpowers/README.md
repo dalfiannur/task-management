@@ -8,6 +8,7 @@ Titik masuk untuk seluruh dokumen desain re-platform per **2026-07-29**.
 
 1. **[Keputusan Tech Stack](./specs/2026-07-29-tech-stack-decisions.md)** — library/tool final (backend Rust + frontend TanStack/Jotai). **Men-supersede** penyebutan lib di dok flow.
 2. **[Struktur Folder Frontend](./specs/2026-07-29-frontend-structure.md)** — feature-based + routes file-based + api per-fitur.
+2b. **[Kebijakan Testing](./specs/2026-07-29-testing-policy.md)** — testcontainers · Vitest+RTL+Playwright · TDD domain+guards · CI sejak awal.
 3. **[Peta Dependensi & Urutan Implementasi](./specs/2026-07-29-implementation-order.md)** — graf + urutan build (fase 0–9).
 4. **[Kontrak gabungan `sedjiwa_tasks.v1.proto`](./proto/sedjiwa_tasks.v1.proto)** — semua service/message dalam satu package.
 
