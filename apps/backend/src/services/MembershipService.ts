@@ -7,7 +7,7 @@ import { ProjectMembershipArcheTypeClass } from "~/archetypes/ProjectMembershipA
 import { ProjectLeaderIdComponent } from "~/components/ProjectComponents";
 import { resolveLocalProjectId } from "~/lib/resolve-project-id";
 import { requirePermission, requireUser, type AuthContext, TasksResources, CoreResources, Action } from "~/utils/auth";
-import { hasPermission } from "@qyubit/sedjiwa-permissions";
+import { hasPermission } from "~/auth";
 import { GraphQLError } from "graphql";
 
 const membershipArcheType = new ProjectMembershipArcheTypeClass();
