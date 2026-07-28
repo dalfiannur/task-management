@@ -33,13 +33,13 @@ export const useAuthStore = create<AuthState>()(
       isAdmin: false,
       async login(phone, password) {
         const { data } = await client.mutate({ mutation: LOGIN, variables: { input: { phone, password } } });
-        const { token, user } = data.login as { token: string; user: AuthUser };
+        const { token, user } = (data as any).login as { token: string; user: AuthUser };
         setAuthToken(token);
         set({ token, user, isAdmin: user.isAdmin });
       },
       async register(phone, password, displayName) {
         const { data } = await client.mutate({ mutation: REGISTER, variables: { input: { phone, password, displayName } } });
-        return (data.register as { user: AuthUser }).user;
+        return ((data as any).register as { user: AuthUser }).user;
       },
       logout() {
         setAuthToken(null);
