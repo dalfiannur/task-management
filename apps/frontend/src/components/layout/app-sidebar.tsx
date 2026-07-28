@@ -1,4 +1,4 @@
-import { Link, useNavigate, useParams, useLocation } from "react-router";
+import { Link, useParams, useLocation } from "react-router";
 import {
   Sidebar,
   SidebarContent,
@@ -144,7 +144,7 @@ function LeadItem({ project, onApprove }: { project: CoreProject; onApprove: () 
 
 
 function UserMenu() {
-  const navigate = useNavigate();
+  const logout = useAuthStore((s) => s.logout);
   const name = useAuthStore((s) => s.user?.displayName) ?? "";
   const email = useAuthStore((s) => s.user?.email) ?? "";
   const initials = name
@@ -184,7 +184,14 @@ function UserMenu() {
             align="start"
             sideOffset={4}
           >
-            <DropdownMenuItem onSelect={() => navigate("/logout")}>
+            <DropdownMenuItem
+              onSelect={() => {
+                logout();
+                // Hard redirect (not SPA nav) so logout never depends on
+                // fetching a code-split chunk and always loads fresh app code.
+                window.location.assign("/login");
+              }}
+            >
               <LogOut className="mr-2 size-3.5" />
               Sign out
             </DropdownMenuItem>

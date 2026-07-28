@@ -1,6 +1,9 @@
 import { createBrowserRouter, Outlet, Navigate, useLocation } from "react-router";
 import { useAuthStore } from "@/stores/auth-store";
 import { AppLayout } from "@/components/layout/app-layout";
+// Eager (not lazy) so signing out never depends on fetching a code-split
+// chunk — a stale chunk after a redeploy must not break logout.
+import { Component as LogoutRoute } from "@/pages/logout";
 
 function RootLayout() {
   return <Outlet />;
@@ -44,7 +47,7 @@ export const router = createBrowserRouter([
       { index: true, element: <Navigate to="/dashboard" replace /> },
       { path: "login", lazy: () => import("./pages/login") },
       { path: "register", lazy: () => import("./pages/register") },
-      { path: "logout", lazy: () => import("./pages/logout") },
+      { path: "logout", Component: LogoutRoute },
       {
         Component: AuthenticatedLayout,
         children: [
