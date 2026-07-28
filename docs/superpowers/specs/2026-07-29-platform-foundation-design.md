@@ -17,6 +17,7 @@ Prinsip:
 2. **Seams jelas sejak awal.** Batas antar-lapis (transport / domain / persistence / auth) dikunci sebagai crate terpisah supaya penambahan flow berikutnya rapi.
 3. **Mulai sederhana (YAGNI).** Hybrid cache dimulai single-instance dengan invalidasi-saat-write; koherensi multi-instance ditunda.
 4. **Kompatibel dengan frontend saat ini di titik auth.** Kontrak JWT dipertahankan agar token yang sudah ada tetap valid.
+5. **Big-bang bertahap, bukan cutover mendadak.** Target akhir mengganti Bun total, tapi selama dibangun backend-rs **hidup berdampingan** dengan Bun (lihat §2.1) — Bun tetap melayani semua flow lama sampai satu per satu diport, baru port `:3000` ditukar.
 
 ## 2. Platform Target
 
@@ -30,6 +31,15 @@ Prinsip:
 | Client browser | Apollo Client | **`@connectrpc/connect-web`** |
 
 > Sintaks Arke/arke-postgres/connectrpc-axum di dok ini memakai bentuk idiomatik dari dokumentasi masing-masing crate; bentuk final mengikuti versi terpakai. Sesuaikan saat implementasi.
+
+### 2.1 Koeksistensi selama transisi
+
+Selama porting, backend-rs **tidak** merebut endpoint Bun:
+
+- **Port terpisah:** backend-rs listen di **`:3010`** (Bun tetap `:3000`, frontend dev tetap `:3001`).
+- **Prefix terpisah:** frontend memanggil backend-rs lewat **`/api/tasks-rs`** (proxy dev → `:3010`), sementara `/api/tasks` (GraphQL Bun) tetap utuh.
+- **DB bersama, tabel terpisah:** keduanya memakai instance Postgres yang sama (`sedjiwa_tasks`), tapi arke-postgres menulis ke tabel-tabelnya sendiri — tidak menyentuh tabel Bun.
+- **Cutover:** setelah semua flow diport, `/api/tasks` diarahkan ke backend-rs (dan `:3000`↔`:3010` ditukar), lalu Bun dimatikan. Cutover = di luar cakupan skeleton.
 
 ## 3. Struktur Workspace
 
@@ -67,7 +77,7 @@ apps/backend-rs/
 | `DATABASE_URL` | ya | — | koneksi Postgres |
 | `AUTH_JWT_SECRET` | ya | — | kunci verifikasi JWT (HS256) |
 | `AUTH_JWT_EXPIRES_IN` | tidak | `7d` | (untuk paritas; belum dipakai di skeleton karena tak ada login) |
-| `PORT` | tidak | `3000` | port HTTP |
+| `PORT` | tidak | `3010` | port HTTP (terpisah dari Bun `:3000` selama transisi — lihat §2.1) |
 | `CORS_ORIGINS` | tidak | `http://localhost:3001` | daftar origin diizinkan (dipisah koma) |
 
 Boot (`app`):
@@ -92,7 +102,9 @@ Store {
 - **Read `get<T>(key)`** → cek `cache`; jika miss → `load_where::<T>` dari Postgres → isi `cache` → kembalikan.
 - **Write `put(entity, components)`** → `save`/`save_incremental` ke Postgres → **invalidasi** entri cache untuk entity itu.
 - **Konsistensi:** Postgres selalu sumber kebenaran. Cache hanya akselerator baca; setiap write meng-invalidasi sebelum sukses dikembalikan.
-- **Batas skeleton:** cache **single-instance**, strategi invalidasi = **buang entri saat write**. Koherensi antar-instance (mis. beberapa pod) **di luar cakupan** — dicatat sebagai risiko yang harus dijawab sebelum scale horizontal (opsi masa depan: LISTEN/NOTIFY Postgres, TTL, atau matikan cache).
+- **Batas skeleton (klaim jujur):** skeleton **hanya** membuktikan jalur **tulis → invalidasi → baca-ulang untuk satu entity by-id**. Ia **tidak** membuktikan bagian tersulit dari hybrid cache: **caching hasil query** (mis. `list projek by-membership`) dan **invalidasi silang** (satu write yang harus meng-invalidasi banyak hasil query). Desain itu adalah **keputusan terbuka** (lihat §12) yang dikerjakan saat flow list projek — bukan di skeleton.
+- **Batas lain:** cache **single-instance**, invalidasi = **buang entri saat write**. Koherensi antar-instance (mis. beberapa pod) **di luar cakupan** (opsi masa depan: LISTEN/NOTIFY Postgres, TTL, atau matikan cache).
+- **Generalisasi (utang teknis):** di skeleton, `Store` cukup melayani satu komponen (`HeartbeatAt`). Sebelum flow nyata (create/list projek), `Store` **wajib digeneralisasi** menjadi API `get<T>`/`put<T>` lintas-komponen. Utang ini dicatat eksplisit agar tak jadi kejutan.
 
 ## 6. Transport Connect (Axum + connectrpc-axum)
 
@@ -178,3 +190,14 @@ Skeleton dianggap selesai bila **semua** berikut terbukti:
 2. **Codegen proto:** `buf`. — *Usul: ya.*
 3. **Pemisahan crate `domain`/`transport`** sejak skeleton. — *Usul: pisah, agar batas terkunci lebih awal.*
 4. **Strategi invalidasi cache lanjutan** (LISTEN/NOTIFY vs TTL vs no-cache) sebelum scale horizontal. — *Ditunda; diputuskan saat kebutuhan multi-instance muncul.*
+5. **Desain caching hasil query + invalidasi silang** (bagian tersulit hybrid cache, lihat §5). — *Terbuka; diputuskan & diuji saat flow list projek, bukan di skeleton.*
+6. **Kapan & bagaimana `Store` digeneralisasi** dari single-component ke `get<T>`/`put<T>`. — *Usul: tepat sebelum flow create-project, sebagai task pertama flow itu.*
+
+## 13. Risiko Utama
+
+1. **🔴 Ketergantungan pada `arke` / `arke-postgres` yang muda.** Seluruh platform bersandar pada crate internal versi `0.6` (ekosistem kecil, API mungkin masih berubah, dokumentasi terbatas). Jika sebuah kebutuhan (mis. query builder, migrasi, tipe kolom) belum didukung, ia bisa memblokir fondasi.
+   - **Mitigasi:** jadikan **Task 4–5 (komponen + Store/arke-postgres) sebagai spike de-risking paling awal** — buktikan persist/load/reconcile jalan sebelum membangun transport & app di atasnya. Bila ada gap API, itu keputusan `arke` (yang kita kontrol sebagai penulisnya) atau fallback (mis. SQL langsung untuk kasus yang belum didukung).
+2. **🟡 Kematangan `connectrpc-axum` (`0.2`) & kompatibilitas versi `axum`.** Codegen & bentuk service-impl bisa berbeda dari asumsi dok.
+   - **Mitigasi:** Task 6–7 wajib membuka contoh crate lebih dulu; gate compile menangkap ketidakcocokan.
+3. **🟡 Hybrid cache menunda kompleksitas, bukan menghilangkannya.** Bagian tersulit (query-cache + invalidasi silang) sengaja ditunda (§5, §12). Risiko: keputusan itu ternyata memaksa perubahan bentuk `Store`.
+   - **Mitigasi:** desain `Store::get<T>`/`put<T>` sejak generalisasi (§12 no.6) dengan ruang untuk lapisan query-cache, agar penambahan nanti aditif.

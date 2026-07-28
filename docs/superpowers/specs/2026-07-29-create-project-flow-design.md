@@ -112,7 +112,7 @@ Dinyatakan dua lapis: **domain (agnostik)** yang wajib, dan **binding gRPC/Conne
 
 - **Input:** `name: String` (wajib, di-trim, non-kosong), `description?: String`, `projectLeaderId?: String`
 - **Output:** `Project` (representasi flat — lihat §4.2)
-- **Auth:** memerlukan permission `Projects.Create`. Pemanggil harus terautentikasi (JWT).
+- **Auth:** memerlukan permission `Projects.Create`. Pemanggil harus terautentikasi (JWT). **Siapa yang memilikinya:** karena ini tool delivery self-serve, `Projects.Create` diberikan ke **semua user terautentikasi** (bukan admin-only); admin membawa `*` sehingga tetap tercakup. Definisi permission final milik dok auth/permissions — dok ini hanya mematok bahwa create tidak dibatasi admin.
 - **Efek:** membuat 1 entity Project lokal + baris membership (§5). Tidak menyentuh Core Portal.
 - **Error:**
   - `name` kosong/whitespace → `INVALID_ARGUMENT`
@@ -197,7 +197,7 @@ Ok(project_message(&world, e))
 2. **Auto-membership.** Pembuat selalu jadi member. Leader jadi member (jika berbeda dari pembuat). *(Tidak lagi menambahkan "semua user aktif" seperti `approveProject` legacy.)*
 3. **Status awal `Active`.** Tanpa approval, tanpa `winStage`.
 4. **Tanpa panggilan Core Portal.** Create murni lokal.
-5. **Tanpa auto-module.** Projek lahir kosong (tak ada module "Proposal" default).
+5. **Tanpa auto-module.** Projek lahir kosong (tak ada module "Proposal" default). **Dependensi lintas-flow:** flow detail/modules **tidak boleh** mengasumsikan minimal satu module ada — ia harus menangani projek tanpa module (empty state). Catatan ini wajib dibawa ke dok flow detail.
 6. **Root only.** Flow ini hanya membuat root project (tanpa `ProjectParentRef`). Sub-project = flow terpisah.
 
 ## 6. Frontend — Dialog yang Dipoles

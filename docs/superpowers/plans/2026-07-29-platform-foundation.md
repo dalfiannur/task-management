@@ -18,6 +18,8 @@
 - **Novel crates (`arke`, `arke-postgres`, `connectrpc-axum`):** These are less-documented. In any task that first touches one of them, Step 1 is always: open its examples/docs and copy the real signatures. Do not invent method names — verify, then write.
 - **Test database:** Integration tests that hit Postgres require `TEST_DATABASE_URL` pointing at a throwaway database (e.g. `postgres://localhost:5432/sedjiwa_tasks_rs_test`). Create it once: `createdb sedjiwa_tasks_rs_test`. Tests that need it must skip cleanly (not fail) when the env var is absent.
 - **Working directory:** All `cargo` commands run from `apps/backend-rs/` unless noted.
+- **Coexistence (do NOT collide with Bun):** backend-rs listens on **`:3010`** (Bun stays `:3000`, frontend dev `:3001`). The frontend reaches it via a **new** proxy prefix **`/api/tasks-rs`** — the existing `/api/tasks` (GraphQL Bun) is left untouched. Same Postgres instance, separate arke-postgres tables. See spec §2.1.
+- **Store is single-component in this skeleton (known debt):** `persistence::Store` only serves `HeartbeatAt` here. It MUST be generalized to `get<T>`/`put<T>` as the first task of the create-project flow (spec §12 no.6). Do not over-build it now.
 
 ## File Structure
 
@@ -468,7 +470,13 @@ mod tests {
         let store = Store::connect(&url).await.unwrap();
         store.migrate().await.unwrap();
 
-        let id = "hb-test-1";
+        // Unique id per run → idempotent across repeated `cargo test` runs (no leftover collisions).
+        let id_owned = format!(
+            "hb-test-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()
+        );
+        let id = id_owned.as_str();
         store.put_heartbeat(id, HeartbeatAt { ts: "2026-07-29T00:00:00Z".into() }).await.unwrap();
         let first = store.get_heartbeat(id).await.unwrap().unwrap();
         assert_eq!(first.ts, "2026-07-29T00:00:00Z");
@@ -755,13 +763,14 @@ pub fn build_router(cfg: &Config, store: Arc<Store>) -> Router {
 }
 
 fn iso_now() -> String {
-    // Minimal ISO-8601 without extra deps: seconds since epoch is enough to prove change.
-    let secs = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH).unwrap().as_secs();
-    format!("1970-01-01T00:00:{secs}Z-epoch") // placeholder-free: monotonic, human-visible
+    use time::OffsetDateTime;
+    use time::format_description::well_known::Rfc3339;
+    OffsetDateTime::now_utc()
+        .format(&Rfc3339)
+        .expect("format current time as RFC-3339")
 }
 ```
-> If a real RFC-3339 timestamp is wanted, add `time = { version = "0.3", features = ["formatting"] }` and format `OffsetDateTime::now_utc()`. Not required for the skeleton — only that consecutive `DbCheck` calls differ.
+> Add `time = { version = "0.3", features = ["formatting", "std"] }` to `crates/app/Cargo.toml`. This yields a real RFC-3339 timestamp; consecutive `DbCheck` calls differ (sub-second precision), satisfying the acceptance check.
 
 - [ ] **Step 2: Boot in main**
 
@@ -797,14 +806,14 @@ async fn main() -> anyhow::Result<()> {
 DATABASE_URL=postgres://localhost:5432/sedjiwa_tasks
 AUTH_JWT_SECRET=change-me
 AUTH_JWT_EXPIRES_IN=7d
-PORT=3000
+PORT=3010            # separate from Bun :3000 during transition (spec §2.1)
 CORS_ORIGINS=http://localhost:3001
 ```
 
 - [ ] **Step 4: Boot smoke test**
 
-Run: `DATABASE_URL=... AUTH_JWT_SECRET=dev cargo run -p app` then in another shell:
-`curl -sS -X POST http://localhost:3000/sedjiwa.tasks.health.v1.HealthService/Check -H 'Content-Type: application/json' -d '{}'`
+Run: `DATABASE_URL=... AUTH_JWT_SECRET=dev PORT=3010 cargo run -p app` then in another shell:
+`curl -sS -X POST http://localhost:3010/sedjiwa.tasks.health.v1.HealthService/Check -H 'Content-Type: application/json' -d '{}'`
 Expected: `{"status":"ok"}` (adjust the Connect URL/path to what connectrpc-axum mounts).
 
 - [ ] **Step 5: Commit**
@@ -858,18 +867,21 @@ git commit -m "test(app): end-to-end HealthService (auth + db + cache)"
 
 - [ ] **Step 1: Generate the TS client**
 
-Add `@connectrpc/connect`, `@connectrpc/connect-web`, `@bufbuild/protobuf` deps. `apps/frontend/buf.gen.yaml`:
+Add these deps, **all v2** (Connect-ES v2 keeps the service descriptor inside the generated `_pb` module — there is no separate `protoc-gen-connect-es` plugin):
+`@connectrpc/connect@^2`, `@connectrpc/connect-web@^2`, `@bufbuild/protobuf@^2`, and dev dep `@bufbuild/protoc-gen-es@^2` (+ `@bufbuild/buf`).
+
+`apps/frontend/buf.gen.yaml`:
 ```yaml
 version: v2
 inputs:
   - directory: ../backend-rs/proto
 plugins:
-  - remote: buf.build/bufbuild/es
+  - local: protoc-gen-es
     out: src/lib/gen
     opt: target=ts
 ```
 Run: `cd apps/frontend && bunx buf generate`
-Expected: `src/lib/gen/health_pb.ts` (and service) created.
+Expected: `src/lib/gen/health_pb.ts` created, exporting both the message types **and** the `HealthService` service descriptor (v2 co-locates them).
 
 - [ ] **Step 2: Create the transport + auth interceptor**
 
@@ -877,7 +889,7 @@ Expected: `src/lib/gen/health_pb.ts` (and service) created.
 ```ts
 import { createConnectTransport } from "@connectrpc/connect-web";
 import { createClient, type Interceptor } from "@connectrpc/connect";
-import { HealthService } from "./gen/health_connect"; // adjust to generated path
+import { HealthService } from "./gen/health_pb"; // connect-es v2: service descriptor lives in the _pb module
 import { useAuthStore } from "@/stores/auth-store";
 
 const authInterceptor: Interceptor = (next) => async (req) => {
@@ -887,16 +899,24 @@ const authInterceptor: Interceptor = (next) => async (req) => {
 };
 
 export const connectTransport = createConnectTransport({
-  baseUrl: "/api/tasks", // proxied to backend-rs in dev
+  baseUrl: "/api/tasks-rs", // NEW prefix → backend-rs :3010 in dev (leaves /api/tasks = Bun untouched)
   interceptors: [authInterceptor],
 });
 
 export const healthClient = createClient(HealthService, connectTransport);
 ```
 
-- [ ] **Step 2b: Point the dev proxy at backend-rs**
+- [ ] **Step 2b: Add a dev proxy for backend-rs (do NOT touch `/api/tasks`)**
 
-In `apps/frontend/vite.config.ts`, ensure `/api/tasks` proxies to the Rust server port (3000). Confirm against the existing proxy block.
+In `apps/frontend/vite.config.ts`, add a **new** proxy entry alongside the existing ones — leave `/api/tasks/` (→ Bun `:3000`) exactly as it is:
+```ts
+"/api/tasks-rs/": {
+  target: env.VITE_TASKS_RS_BASE_URL ?? "http://localhost:3010",
+  changeOrigin: true,
+  rewrite: (path: string) => path.replace(/^\/api\/tasks-rs/, ""),
+},
+```
+This mirrors the existing `/api/tasks/` block (which strips its prefix) so the backend receives the bare Connect path `/<package>.HealthService/<Method>`.
 
 - [ ] **Step 3: Manual smoke**
 
@@ -928,4 +948,4 @@ git commit -m "feat(frontend): Connect transport + auth interceptor + Health cli
 
 **Type consistency:** `HeartbeatAt { ts }`, `AuthUser { id, permissions }`, `Config` fields, `Store::{connect, migrate, put_heartbeat, get_heartbeat}`, `HealthApi::{check, db_check, who_am_i}`, and the proto messages are named identically everywhere they appear.
 
-**Known API-pinning points** (must be resolved during execution, all gated by a build/test): arke component derives (Task 4), arke-postgres `PgStore` connect/save/load/reconcile (Task 5), connectrpc-axum-build codegen entrypoint + generated module path (Task 6), connectrpc-axum service-impl + router shape (Task 7), generated TS path `health_connect` (Task 11).
+**Known API-pinning points** (must be resolved during execution, all gated by a build/test): arke component derives (Task 4), arke-postgres `PgStore` connect/save/load/reconcile (Task 5), connectrpc-axum-build codegen entrypoint + generated module path (Task 6), connectrpc-axum service-impl + router shape (Task 7), generated TS module `health_pb` exporting the `HealthService` descriptor (Task 11).
