@@ -1,7 +1,6 @@
 import { createBrowserRouter, Outlet, Navigate, useLocation } from "react-router";
-import { useAuth } from "react-oidc-context";
+import { useAuthStore } from "@/stores/auth-store";
 import { AppLayout } from "@/components/layout/app-layout";
-import { Loader2 } from "lucide-react";
 
 function RootLayout() {
   return <Outlet />;
@@ -19,22 +18,11 @@ function NotFound() {
 }
 
 function AuthenticatedLayout() {
-  const auth = useAuth();
+  const token = useAuthStore((s) => s.token);
   const location = useLocation();
-
-  if (auth.isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="size-8 animate-spin text-muted-foreground" />
-      </div>
-    );
+  if (!token) {
+    return <Navigate to={`/login?redirect=${encodeURIComponent(location.pathname)}`} replace />;
   }
-
-  if (!auth.isAuthenticated) {
-    const redirectTo = `/callback?redirect=${encodeURIComponent(location.pathname)}`;
-    return <Navigate to={redirectTo} replace />;
-  }
-
   return (
     <AppLayout>
       <Outlet />
@@ -42,13 +30,20 @@ function AuthenticatedLayout() {
   );
 }
 
+function AdminOnly() {
+  const isAdmin = useAuthStore((s) => s.isAdmin);
+  if (!isAdmin) return <Navigate to="/dashboard" replace />;
+  return <Outlet />;
+}
+
 export const router = createBrowserRouter([
   {
     path: "/",
     Component: RootLayout,
     children: [
-      { index: true, lazy: () => import("./pages/landing") },
-      { path: "callback", lazy: () => import("./pages/callback") },
+      { index: true, element: <Navigate to="/dashboard" replace /> },
+      { path: "login", lazy: () => import("./pages/login") },
+      { path: "register", lazy: () => import("./pages/register") },
       { path: "logout", lazy: () => import("./pages/logout") },
       {
         Component: AuthenticatedLayout,
@@ -58,6 +53,12 @@ export const router = createBrowserRouter([
           { path: "tasks-by-me", lazy: () => import("./pages/tasks-by-me") },
           { path: "settings", lazy: () => import("./pages/settings") },
           { path: "projects", lazy: () => import("./pages/projects") },
+          {
+            Component: AdminOnly,
+            children: [
+              { path: "admin/users", lazy: () => import("./pages/admin-users") },
+            ],
+          },
           {
             path: "projects/:projectId",
             lazy: () => import("./pages/project-layout"),
@@ -69,10 +70,7 @@ export const router = createBrowserRouter([
               { path: "media", lazy: () => import("./pages/media") },
               { path: "timeline", lazy: () => import("./pages/timeline") },
               { path: "pages", lazy: () => import("./pages/pages-list") },
-              {
-                path: "pages/:pageId",
-                lazy: () => import("./pages/page-editor"),
-              },
+              { path: "pages/:pageId", lazy: () => import("./pages/page-editor") },
             ],
           },
         ],

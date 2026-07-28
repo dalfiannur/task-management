@@ -130,7 +130,7 @@ export default class PageService extends BaseService {
       .exec();
     const maxOrder = existing.length;
 
-    const displayName = user.name ?? user.email ?? user.sub;
+    const displayName = user.displayName ?? user.email ?? user.id;
     const now = new Date().toISOString();
     const archetype = new PageArcheType();
     archetype.fill({
@@ -140,9 +140,9 @@ export default class PageService extends BaseService {
         icon: input.icon ?? "",
         content: input.content ?? "",
         order: maxOrder,
-        createdById: user.sub,
+        createdById: user.id,
         createdByName: displayName,
-        lastEditedById: user.sub,
+        lastEditedById: user.id,
         lastEditedByName: displayName,
         createdAt: now,
         updatedAt: now,
@@ -193,8 +193,8 @@ export default class PageService extends BaseService {
     if (!entity) throw new Error("Page not found");
 
     const updates: Record<string, unknown> = {
-      lastEditedById: user.sub,
-      lastEditedByName: user.name ?? user.email ?? user.sub,
+      lastEditedById: user.id,
+      lastEditedByName: user.displayName ?? user.email ?? user.id,
       updatedAt: new Date().toISOString(),
     };
 

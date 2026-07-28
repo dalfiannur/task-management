@@ -256,7 +256,7 @@ export default class TaskService extends BaseService {
     context: AuthContext,
   ) {
     const user = requirePermission(context, TasksResources.Tasks, Action.Read);
-    const userId = user.sub;
+    const userId = user.id;
 
     // Step 1: Find projects where user is a member
     const memberships = await new Query()
@@ -387,7 +387,7 @@ export default class TaskService extends BaseService {
     context: AuthContext,
   ) {
     const user = requirePermission(context, TasksResources.Tasks, Action.Read);
-    const userId = user.sub;
+    const userId = user.id;
 
     const emptyResult = { tasks: [], moduleMap: {}, projectCoreRefMap: {}, pageInfo: { page: 1, pageSize: 20, hasNextPage: false } };
 
@@ -563,7 +563,7 @@ export default class TaskService extends BaseService {
         createdAt: now,
         updatedAt: now,
         completedAt: input.status === "done" ? now : "",
-        createdBy: user.sub,
+        createdBy: user.id,
       },
       taskAssignment: {
         assigneeIds: encodeAssigneeIds(input.assigneeIds),
@@ -591,8 +591,8 @@ export default class TaskService extends BaseService {
     const coreProjectId = await resolveCoreProjectId(input.moduleId);
     await ActivityService.getInstance().recordActivity({
       taskId: entity.id,
-      actorId: user.sub,
-      actorName: user.name ?? user.email ?? user.sub,
+      actorId: user.id,
+      actorName: user.displayName ?? user.email ?? user.id,
       action: "created",
       changes: [],
       taskTitle: input.title,
@@ -606,11 +606,11 @@ export default class TaskService extends BaseService {
         await notificationService.createNotification({
           recipientId: assigneeId,
           type: "task_assigned",
-          actorId: user.sub,
-          actorName: user.name ?? user.email ?? user.sub,
+          actorId: user.id,
+          actorName: user.displayName ?? user.email ?? user.id,
           taskId: entity.id,
           taskTitle: input.title,
-          message: `${user.name ?? user.email ?? user.sub} assigned you to "${input.title}"`,
+          message: `${user.displayName ?? user.email ?? user.id} assigned you to "${input.title}"`,
         });
       }
     }
@@ -707,8 +707,8 @@ export default class TaskService extends BaseService {
 
     await entity.save();
 
-    const actorId = user.sub;
-    const actorName = user.name ?? user.email ?? user.sub;
+    const actorId = user.id;
+    const actorName = user.displayName ?? user.email ?? user.id;
 
     // Build activity changes
     const changes: Array<{ field: string; from: string; to: string }> = [];
@@ -831,8 +831,8 @@ export default class TaskService extends BaseService {
     // Record activity before deleting
     await ActivityService.getInstance().recordActivity({
       taskId: input.id,
-      actorId: user.sub,
-      actorName: user.name ?? user.email ?? user.sub,
+      actorId: user.id,
+      actorName: user.displayName ?? user.email ?? user.id,
       action: "deleted",
       changes: [{ field: "title", from: taskTitle, to: "" }],
       taskTitle,

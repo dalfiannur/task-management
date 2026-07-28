@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from "react";
-import { useAuth } from "react-oidc-context";
 import { MessageSquare, Pencil, Trash2, X, Check, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -15,6 +14,7 @@ import type { CommentEditorHandle } from "./comment-editor";
 import { CommentContent } from "./comment-content";
 import type { Comment } from "@/types/comment";
 import { getInitials } from "@/lib/utils";
+import { useAuthStore } from "@/stores/auth-store";
 import styles from "./task-comments.module.css";
 
 export function formatRelativeTime(iso: string): string {
@@ -43,8 +43,7 @@ interface TaskCommentsProps {
 }
 
 export function TaskComments({ taskId }: TaskCommentsProps) {
-  const auth = useAuth();
-  const currentUserId = auth.user?.profile?.sub as string | undefined;
+  const currentUserId = useAuthStore((s) => s.user?.id);
   const [page, setPage] = useState(1);
   const { data: comments = [], pageInfo, isLoading } = useComments(taskId, { page });
 
@@ -225,11 +224,10 @@ export function CommentItem({
 }
 
 export function AddCommentForm({ taskId }: { taskId: string }) {
-  const auth = useAuth();
   const createComment = useCreateComment();
   const editorRef = useRef<CommentEditorHandle>(null);
 
-  const currentUserId = auth.user?.profile?.sub as string | undefined;
+  const currentUserId = useAuthStore((s) => s.user?.id);
   const { data: currentUser } = useUser(currentUserId);
   const displayName = currentUser?.name ?? "You";
 

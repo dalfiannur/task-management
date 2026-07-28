@@ -1,90 +1,47 @@
-import { useQuery, gql, coreClient } from "@/lib/graphql-client";
+import { useQuery, gql } from "@/lib/graphql-client";
 import type { User } from "@/types/task";
 
-// --- GraphQL operations (Core Portal) ---
+const SEARCH_USERS = gql`query SearchUsers($input: searchUsersInput!) { searchUsers(input: $input) }`;
+const GET_USER = gql`query GetUser($input: getUserInput!) { getUser(input: $input) }`;
 
-const SEARCH_USERS = gql`
-  query SearchUsers($input: searchUsersInput!) {
-    searchUsers(input: $input) {
-      id
-      info {
-        displayName
-        email
-        avatarUrl
-      }
-    }
-  }
-`;
-
-const GET_USER = gql`
-  query GetUser($input: getUserInput!) {
-    getUser(input: $input) {
-      id
-      info {
-        displayName
-        email
-        avatarUrl
-      }
-    }
-  }
-`;
-
-// --- Response interfaces ---
-
-interface CoreUserResponse {
+interface LocalUserResponse {
   id: string;
-  info: {
-    displayName: string;
-    email: string;
-    avatarUrl: string;
-  };
+  displayName: string;
+  email: string;
+  avatarUrl: string;
 }
 
-// --- Mapper ---
-
-function mapCoreUser(raw: CoreUserResponse): User {
+function mapLocalUser(raw: LocalUserResponse): User {
   return {
     id: raw.id,
     externalId: raw.id,
-    email: raw.info.email,
-    name: raw.info.displayName,
-    avatarUrl: raw.info.avatarUrl || undefined,
+    email: raw.email,
+    name: raw.displayName,
+    avatarUrl: raw.avatarUrl || undefined,
   };
 }
 
-// --- Hooks ---
-
 export function useSearchUsers(query: string) {
-  const { data, loading, error } = useQuery<{
-    searchUsers: CoreUserResponse[];
-  }>(SEARCH_USERS, {
+  const { data, loading, error } = useQuery<{ searchUsers: LocalUserResponse[] }>(SEARCH_USERS, {
     variables: { input: { q: query } },
-    skip: !query || query.length < 1,
-    client: coreClient,
   });
-
   return {
-    data: data?.searchUsers.map(mapCoreUser),
+    data: data?.searchUsers.map(mapLocalUser),
     isLoading: loading,
     error: error ?? null,
   };
 }
 
 export function useUser(id: string | undefined) {
-  const { data, loading, error } = useQuery<{
-    getUser: CoreUserResponse;
-  }>(GET_USER, {
+  const { data, loading, error } = useQuery<{ getUser: LocalUserResponse | null }>(GET_USER, {
     variables: { input: { id } },
     skip: !id,
-    client: coreClient,
   });
-
   return {
-    data: data?.getUser ? mapCoreUser(data.getUser) : undefined,
+    data: data?.getUser ? mapLocalUser(data.getUser) : undefined,
     isLoading: loading,
     error: error ?? null,
   };
 }
 
-// Re-export for consumers that still import SEARCH_USERS directly
-export { SEARCH_USERS, type CoreUserResponse, mapCoreUser };
+export { SEARCH_USERS, type LocalUserResponse, mapLocalUser };

@@ -1,5 +1,5 @@
 import { BaseService, Get } from "bunsane/service";
-import { type PermissionManifest, TASKS_PERMISSIONS } from '@qyubit/sedjiwa-permissions';
+import { type PermissionManifest, TASKS_PERMISSIONS } from '~/auth';
 
 export class PermissionRestService extends BaseService {
     constructor() {

@@ -7,7 +7,7 @@
       "ES2022"
     ],
     "types": [
-      "bun-types"
+      "bun"
     ],
     "paths": {
       "~/*": [

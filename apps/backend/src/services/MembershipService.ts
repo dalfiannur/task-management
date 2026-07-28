@@ -7,7 +7,7 @@ import { ProjectMembershipArcheTypeClass } from "~/archetypes/ProjectMembershipA
 import { ProjectLeaderIdComponent } from "~/components/ProjectComponents";
 import { resolveLocalProjectId } from "~/lib/resolve-project-id";
 import { requirePermission, requireUser, type AuthContext, TasksResources, CoreResources, Action } from "~/utils/auth";
-import { hasPermission } from "@qyubit/sedjiwa-permissions";
+import { hasPermission } from "~/auth";
 import { GraphQLError } from "graphql";
 
 const membershipArcheType = new ProjectMembershipArcheTypeClass();
@@ -104,7 +104,7 @@ export default class MembershipService extends BaseService {
       // Check if user is the project leader
       const projectEntity = await new Query().findOneById(localProjectId);
       const leaderComp = projectEntity ? await projectEntity.get(ProjectLeaderIdComponent) : null;
-      const isLeader = leaderComp?.value === user.sub;
+      const isLeader = leaderComp?.value === user.id;
 
       if (!isLeader) {
         throw new GraphQLError("Only the project leader or admins can remove members", {
