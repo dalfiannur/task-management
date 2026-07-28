@@ -13,7 +13,7 @@ import {
   UserTag,
   AdminTag,
 } from "~/components/UserComponents";
-import { serializeUser, hashPassword, type UserJSON } from "~/lib/user-serializer";
+import { serializeUser, hashPassword, findUserByPhone, type UserJSON } from "~/lib/user-serializer";
 import { requireUser, requireAdmin, type AuthContext } from "~/auth";
 
 async function allUserEntities(): Promise<Entity[]> {
@@ -82,12 +82,11 @@ export default class UserService extends BaseService {
     context: AuthContext,
   ): Promise<UserJSON> {
     requireAdmin(context);
+    if (input.password.length < 6) {
+      throw new GraphQLError("Password must be at least 6 characters", { extensions: { code: "BAD_REQUEST" } });
+    }
     const phone = input.phone.trim();
-    const existing = await new Query()
-      .with(PhoneComponent, { filters: [Query.typedFilter(PhoneComponent, "value", "=", phone)] })
-      .take(1)
-      .exec();
-    if (existing.length > 0) {
+    if (await findUserByPhone(phone)) {
       throw new GraphQLError("Phone number already registered", { extensions: { code: "BAD_REQUEST" } });
     }
     const hash = await hashPassword(input.password);

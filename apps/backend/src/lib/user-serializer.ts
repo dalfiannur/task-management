@@ -1,4 +1,5 @@
-import type { Entity } from "bunsane/core/Entity";
+import { Entity } from "bunsane/core/Entity";
+import { Query } from "bunsane/query";
 import {
   PhoneComponent,
   UserProfileComponent,
@@ -27,11 +28,19 @@ export async function verifyPassword(plain: string, hash: string): Promise<boole
   return await Bun.password.verify(plain, hash);
 }
 
+export async function findUserByPhone(phone: string): Promise<Entity | null> {
+  const matches = await new Query()
+    .with(PhoneComponent, { filters: [Query.typedFilter(PhoneComponent, "value", "=", phone)] })
+    .take(1)
+    .exec();
+  return matches[0] ?? null;
+}
+
 export async function serializeUser(entity: Entity): Promise<UserJSON> {
   const phone = await entity.get(PhoneComponent);
   const profile = await entity.get(UserProfileComponent);
   const status = await entity.get(UserStatusComponent);
-  const isAdmin = await entity.has(AdminTag);
+  const isAdmin = !!(await entity.get(AdminTag));
   return {
     id: entity.id,
     phone: phone?.value ?? "",

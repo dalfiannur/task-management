@@ -3,7 +3,6 @@ import { BaseService } from "bunsane/service";
 import { GraphQLOperation } from "bunsane/gql";
 import { t } from "bunsane/gql/schema";
 import { Entity } from "bunsane/core/Entity";
-import { Query } from "bunsane/query";
 import { GraphQLError } from "graphql";
 import {
   PhoneComponent,
@@ -12,16 +11,8 @@ import {
   UserStatusComponent,
   UserTag,
 } from "~/components/UserComponents";
-import { serializeUser, hashPassword, verifyPassword, toAuthUser } from "~/lib/user-serializer";
+import { serializeUser, hashPassword, verifyPassword, toAuthUser, findUserByPhone } from "~/lib/user-serializer";
 import { signToken, requireUser, type AuthContext } from "~/auth";
-
-async function findUserByPhone(phone: string): Promise<Entity | null> {
-  const matches = await new Query()
-    .with(PhoneComponent, { filters: [Query.typedFilter(PhoneComponent, "value", "=", phone)] })
-    .take(1)
-    .exec();
-  return matches[0] ?? null;
-}
 
 export default class AuthService extends BaseService {
   @GraphQLOperation({
