@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Sedjiwa Portal Task Management — a project/task management tool with a React SPA frontend and a Bun API backend. Part of the larger Sedjiwa Portal ecosystem (core portal, OIDC provider, task management).
+Sedjiwa Portal Task Management — a project/task management tool with a React SPA frontend and a Bun API backend. Part of the larger Sedjiwa Portal ecosystem (core portal, task management). **Identity is self-contained**: the app has its own local users and phone+password auth and no longer depends on the Sedjiwa OIDC provider (see Auth below).
 
 ## Repository Structure
 
@@ -35,7 +35,9 @@ bun run start        # Run production bundle
 bun run lint         # ESLint on src/**/*.ts
 ```
 
-No test framework is configured in either package.
+Backend has `bun test` coverage for auth/user pure units (`apps/backend/src/**/*.test.ts`); the frontend has no test framework configured.
+
+**Backend auth env:** `AUTH_JWT_SECRET` (required — signing key for the local JWT) and optional `AUTH_JWT_EXPIRES_IN` (default `7d`).
 
 ## Architecture
 
@@ -43,14 +45,14 @@ No test framework is configured in either package.
 
 **Stack:** React 19, React Router v7, Apollo Client, Zustand, Tailwind CSS + CSS Modules, shadcn/ui (Radix primitives).
 
-**Auth:** OIDC via `react-oidc-context` / `oidc-client-ts`. Token extracted from OIDC provider, set on GraphQL client via `setAuthToken()`. Unauthenticated users redirect to `/callback` which triggers `signinRedirect()`.
+**Auth:** Local phone + password against this backend. `useAuthStore` (`src/stores/auth-store.ts`, Zustand + `persist`) holds `{ token, user, isAdmin }` in `localStorage`; on login/rehydrate it sets the JWT on the Apollo client via `setAuthToken()`. Routes are gated on the store's token in `src/router.tsx` (unauthenticated → `/login?redirect=…`); admin-only routes (e.g. `/admin/users`) gate on `isAdmin`. Pages: `login.tsx`, `register.tsx` (self-register → `pending` → admin approval), `admin-users.tsx`. `use-me.ts` reads the current user; `useIsAdmin`/`useHasPermission` read the store (admin ⇒ all permissions). No OIDC/`react-oidc-context`.
 
-**Data flow:** All server data flows through Apollo Client hooks in `src/hooks/` (use-tasks, use-projects, use-modules, use-labels, use-media, use-leads, use-users, etc.). Each hook file defines its own GraphQL operations inline using `gql` tagged templates.
+**Data flow:** All server data flows through Apollo Client hooks in `src/hooks/` (use-tasks, use-projects, use-modules, use-labels, use-media, use-leads, use-users, use-admin-users, etc.). Each hook file defines its own GraphQL operations inline using `gql` tagged templates. Every bunsane operation wraps its args in a single required `input` object arg named `<opName>Input` (e.g. `login(input: loginInput!)`); user/auth ops return a JSON scalar (the whole object, no subfield selection).
 
-**Three GraphQL endpoints** (configured in `src/lib/graphql-client.ts`):
-- `graphqlClient` → `/api-tasks/graphql` (this backend, proxied in dev)
-- `coreGraphClient` → `/api-core/graphql` (core portal, proxied in dev)
-- `oidcGraphClient` → `VITE_OIDC_API_URL` (OIDC API, direct)
+**GraphQL endpoints** (configured in `src/lib/graphql-client.ts`):
+- `client` → `/api/tasks/graphql` (this backend — auth, users, tasks; proxied in dev)
+- `coreClient` → `/api/core/graphql` (core portal, proxied in dev)
+- `mediaClient` / `salesClient` → media & sales services (proxied in dev)
 
 **Client state:** Zustand store in `src/stores/ui-store.ts` for UI-only state (sidebar, view mode).
 
@@ -103,7 +105,7 @@ All data hooks live in `src/hooks/`. Use the factory functions from `src/lib/hoo
   }
   ```
 - All hooks return `isLoading` (not `isPending`). Apollo's `loading` field is mapped to `isLoading` in factories and `normalizeQueryResult`.
-- For non-default GraphQL endpoints, pass `client` option: `{ client: coreClient }` or `{ client: oidcClient }`.
+- For non-default GraphQL endpoints, pass `client` option: `{ client: coreClient }`, `{ client: mediaClient }`, etc.
 
 #### Hook File Structure
 
@@ -139,7 +141,9 @@ Before creating new components, check for existing shared utilities:
 - **Archetypes** (`src/archetypes/`): Define entity shapes via `@ArcheType` / `@ArcheTypeField` decorators
 - **Components** (`src/components/`): Data containers via `@Component` / `@CompData` decorators (e.g., TaskInfo, TaskAssignment)
 - **Services** (`src/services/`): Business logic via `@GraphQLOperation` decorator which auto-generates the GraphQL schema from Zod input schemas and archetype outputs
-- **Plugins** (`src/plugins/`): Middleware (AuthPlugin extracts OIDC JWT)
+- **Plugins** (`src/plugins/`): Middleware. `AuthPlugin.extractUser` verifies the locally-issued JWT (HS256, `AUTH_JWT_SECRET`) and returns an `AuthUser` onto the GraphQL context — no OIDC/JWKS.
+
+**Auth & Users:** `src/auth/` is a self-contained module (`types` `AuthUser`/`AuthContext`, `jwt` sign/verify, `permissions` `hasPermission` + `TasksResources`/`TASKS_PERMISSIONS`, `guards` `requireUser`/`requirePermission`/`requireAdmin`) that replaces the former `@qyubit/sedjiwa-permissions` package. User identity lives in `src/components/UserComponents.ts` (Phone/Password/Profile/Status + `UserTag`/`AdminTag`); `AuthService` (register/login/me) and `UserService` (directory + admin CRUD) expose the GraphQL API. The auth-user identity key is `user.id` (admins carry `permissions: ["*"]`). Seed local users with `bun scripts/seed-users.ts` (idempotent). Pure units have `bun test` coverage (`src/auth/*.test.ts`, `src/lib/user-serializer.test.ts`).
 
 **Path alias:** `~/*` → `./src/*`
 
@@ -151,5 +155,6 @@ Before creating new components, check for existing shared utilities:
 
 - **PostgreSQL** on localhost:5432 (db: `sedjiwa_tasks`)
 - **S3-compatible storage** (RustFS) on localhost:9000 (bucket: `tasks-media`) for file uploads
-- **OIDC provider** on localhost:4000 for authentication
 - **Core Portal API** on localhost:3200 for leads/project data
+
+Authentication is handled **locally** (no external OIDC provider). Note: cross-service calls to Core/Media/Sales still send the local JWT, which those services do not yet verify — that integration is handled separately.
