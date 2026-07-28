@@ -1,0 +1,9 @@
+[package]
+name = "domain"
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+arke = { workspace = true }
+arke-postgres = { workspace = true }

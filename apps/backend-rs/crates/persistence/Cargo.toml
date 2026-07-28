@@ -1,0 +1,12 @@
+[package]
+name = "persistence"
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+arke = { workspace = true }
+arke-postgres = { workspace = true }
+tokio = { workspace = true }
+anyhow = { workspace = true }
+domain = { path = "../domain" }

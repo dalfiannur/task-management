@@ -1,0 +1,14 @@
+[package]
+name = "transport"
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+tokio = { workspace = true }
+axum = { workspace = true }
+prost = { workspace = true }
+connectrpc-axum = { workspace = true }
+auth = { path = "../auth" }
+persistence = { path = "../persistence" }
+domain = { path = "../domain" }
