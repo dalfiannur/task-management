@@ -152,6 +152,16 @@ pub fn title_ok(title: &str) -> bool {
     !title.trim().is_empty()
 }
 
+/// Date range is valid unless both bounds are present and `start` is after `due`.
+/// Dates are ISO-8601 (`yyyy-MM-dd`), so lexicographic order = chronological order.
+/// Backs the timeline reschedule clamp server-side (the UI clamps too).
+pub fn dates_ok(start: Option<&str>, due: Option<&str>) -> bool {
+    match (start, due) {
+        (Some(s), Some(d)) => s <= d,
+        _ => true,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -190,5 +200,15 @@ mod tests {
     fn title_validation() {
         assert!(title_ok("Ship it"));
         assert!(!title_ok("   "));
+    }
+
+    #[test]
+    fn date_range_validation() {
+        assert!(dates_ok(Some("2026-01-01"), Some("2026-01-02")));
+        assert!(dates_ok(Some("2026-01-02"), Some("2026-01-02"))); // equal ok
+        assert!(!dates_ok(Some("2026-01-05"), Some("2026-01-01"))); // start after due
+        assert!(dates_ok(Some("2026-01-05"), None)); // one-sided ok
+        assert!(dates_ok(None, Some("2026-01-01")));
+        assert!(dates_ok(None, None));
     }
 }

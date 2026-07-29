@@ -9,8 +9,8 @@ use auth::AuthUser;
 use axum::Extension;
 use connectrpc_axum::{ConnectError, ConnectRequest, ConnectResponse};
 use domain::task::{
-    title_ok, TaskAssignees, TaskAudit, TaskInfo, TaskLabels, TaskModuleRef, TaskPriority,
-    TaskStatus,
+    dates_ok, title_ok, TaskAssignees, TaskAudit, TaskInfo, TaskLabels, TaskModuleRef,
+    TaskPriority, TaskStatus,
 };
 use persistence::Store;
 
@@ -114,6 +114,13 @@ async fn create_task(
 
     let status = TaskStatus::from_proto(r.status).unwrap_or(TaskStatus::Todo);
     let priority = TaskPriority::from_proto(r.priority).unwrap_or(TaskPriority::None);
+    let start_date = r.start_date.filter(|s| !s.is_empty());
+    let due_date = r.due_date.filter(|s| !s.is_empty());
+    if !dates_ok(start_date.as_deref(), due_date.as_deref()) {
+        return Err(ConnectError::new_invalid_argument(
+            "start_date must be on or before due_date",
+        ));
+    }
     let order = next_order_in_module(&store, &r.module_id).await?;
     let now = now_iso();
     let completed_at = (status == TaskStatus::Done).then(|| now.clone());
@@ -125,8 +132,8 @@ async fn create_task(
                 description: r.description.unwrap_or_default(),
                 status: status.as_str().to_string(),
                 priority: priority.as_str().to_string(),
-                start_date: r.start_date.filter(|s| !s.is_empty()),
-                due_date: r.due_date.filter(|s| !s.is_empty()),
+                start_date,
+                due_date,
                 sort_order: order,
             },
             TaskModuleRef {
@@ -190,6 +197,11 @@ async fn update_task(
     };
     let start_date = clean(r.start_date, t.start_date.clone());
     let due_date = clean(r.due_date, t.due_date.clone());
+    if !dates_ok(start_date.as_deref(), due_date.as_deref()) {
+        return Err(ConnectError::new_invalid_argument(
+            "start_date must be on or before due_date",
+        ));
+    }
 
     // Assignees / labels: present wrapper = replace, absent = unchanged.
     let assignees = match r.assignee_ids {

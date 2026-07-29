@@ -220,3 +220,58 @@ async fn tasks_lifecycle_and_rules() {
     let remaining: Vec<&str> = after["tasks"].as_array().unwrap().iter().map(|t| t["id"].as_str().unwrap()).collect();
     assert_eq!(remaining, vec![t1id.as_str()], "only the moved task survives the cascade");
 }
+
+// Timeline tab is a frontend-only view over ListModules/ListTasks/UpdateTask; the
+// only backend contract it needs is date reschedule via UpdateTask. This locks
+// that in: schedule-from-unscheduled, preserve-duration shift, left/right resize,
+// field preservation, the start<=due invariant, and unschedule.
+#[tokio::test]
+async fn timeline_reschedule_via_update_task() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let owner = mk_user(&store).await;
+    let member = mk_user(&store).await;
+    let pid = project_with(&router, &owner, &[&member]).await;
+    let to = token(&owner);
+    let tm = token(&member);
+    let m = ok(&router, &format!("{MODULE}/CreateModule"), &to, json!({ "projectId": pid, "name": "Plan" })).await["id"].as_str().unwrap().to_string();
+
+    // Unscheduled task (no dates).
+    let t = ok(&router, &format!("{TASK}/CreateTask"), &tm, json!({ "moduleId": m, "title": "Design", "assigneeIds": [member] })).await;
+    let tid = t["id"].as_str().unwrap().to_string();
+    assert!(t["startDate"].is_null() && t["dueDate"].is_null(), "starts unscheduled");
+
+    // Schedule from unscheduled: set both; other fields preserved.
+    let sched = ok(&router, &format!("{TASK}/UpdateTask"), &tm, json!({ "id": tid, "startDate": "2026-03-01", "dueDate": "2026-03-05" })).await;
+    assert_eq!(sched["startDate"], "2026-03-01");
+    assert_eq!(sched["dueDate"], "2026-03-05");
+    assert_eq!(sched["title"], "Design");
+    assert_eq!(sched["assigneeIds"], json!([member]), "assignees preserved on reschedule");
+
+    // Preserve-duration shift (both new dates).
+    let shifted = ok(&router, &format!("{TASK}/UpdateTask"), &tm, json!({ "id": tid, "startDate": "2026-03-03", "dueDate": "2026-03-07" })).await;
+    assert_eq!(shifted["startDate"], "2026-03-03");
+    assert_eq!(shifted["dueDate"], "2026-03-07");
+
+    // Left-resize: change only start; due unchanged.
+    let lr = ok(&router, &format!("{TASK}/UpdateTask"), &tm, json!({ "id": tid, "startDate": "2026-03-02" })).await;
+    assert_eq!(lr["startDate"], "2026-03-02");
+    assert_eq!(lr["dueDate"], "2026-03-07", "due unchanged on left-resize");
+
+    // Right-resize: change only due; start unchanged.
+    let rr = ok(&router, &format!("{TASK}/UpdateTask"), &tm, json!({ "id": tid, "dueDate": "2026-03-10" })).await;
+    assert_eq!(rr["startDate"], "2026-03-02", "start unchanged on right-resize");
+    assert_eq!(rr["dueDate"], "2026-03-10");
+
+    // Invariant: start after due rejected (update + create).
+    let (st, _) = call(&router, &format!("{TASK}/UpdateTask"), Some(&tm), json!({ "id": tid, "startDate": "2026-03-20", "dueDate": "2026-03-10" })).await;
+    assert_ne!(st, StatusCode::OK, "start after due rejected on update");
+    let (st, _) = call(&router, &format!("{TASK}/CreateTask"), Some(&tm), json!({ "moduleId": m, "title": "Bad", "startDate": "2026-05-05", "dueDate": "2026-05-01" })).await;
+    assert_ne!(st, StatusCode::OK, "start after due rejected on create");
+
+    // Unschedule: clear both → back to unscheduled.
+    let un = ok(&router, &format!("{TASK}/UpdateTask"), &tm, json!({ "id": tid, "startDate": "", "dueDate": "" })).await;
+    assert!(un["startDate"].is_null() && un["dueDate"].is_null(), "cleared → unscheduled");
+}
