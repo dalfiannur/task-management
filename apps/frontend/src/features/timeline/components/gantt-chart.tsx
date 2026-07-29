@@ -1,0 +1,211 @@
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
+import { useModules, useTasks, useUpdateTask, type Task } from "@/features/tasks";
+import {
+  PX_PER_DAY,
+  ROW_HEIGHT,
+  barGeometry,
+  buildTicks,
+  computeRange,
+  effectiveSpan,
+  isScheduled,
+  rangeDays,
+  toIso,
+  type Zoom,
+} from "../timeline-utils";
+import { GanttBar, type ReschedulePatch } from "./gantt-bar";
+import { UnscheduledPanel } from "./unscheduled-panel";
+
+const ZOOMS: Zoom[] = ["day", "week", "month"];
+const NAME_COL = 220;
+const HEADER_H = 32;
+
+interface Row {
+  kind: "module" | "task";
+  id: string;
+  name: string;
+  task?: Task;
+  span?: { start: Date; end: Date };
+}
+
+export function GanttChart({ projectId }: { projectId: string }) {
+  const { modules, isLoading: ml } = useModules(projectId);
+  const { tasks, isLoading: tl } = useTasks(projectId);
+  const update = useUpdateTask();
+  const [zoom, setZoom] = useState<Zoom>("day");
+
+  // Viewers reach this tab only as members/admins (GetProject/ListTasks gate),
+  // so date edits are allowed; the backend re-checks on UpdateTask.
+  const canEdit = true;
+  const pxPerDay = PX_PER_DAY[zoom];
+  const today = useMemo(() => new Date(), []);
+  const range = useMemo(() => computeRange(tasks, today), [tasks, today]);
+  const days = useMemo(() => rangeDays(range), [range]);
+  const ticks = useMemo(() => buildTicks(range, zoom), [range, zoom]);
+  const gridWidth = days.length * pxPerDay;
+
+  const { rows, unscheduled } = useMemo(() => {
+    const byModule: Record<string, Task[]> = {};
+    const unsched: Task[] = [];
+    for (const t of tasks) {
+      if (isScheduled(t)) (byModule[t.moduleId] ??= []).push(t);
+      else unsched.push(t);
+    }
+    const rowList: Row[] = [];
+    for (const m of modules) {
+      const mt = (byModule[m.id] ?? []).sort((a, b) => a.order - b.order);
+      if (mt.length === 0) continue;
+      rowList.push({ kind: "module", id: m.id, name: m.name });
+      for (const t of mt) {
+        rowList.push({
+          kind: "task",
+          id: t.id,
+          name: t.title,
+          task: t,
+          span: effectiveSpan(t)!,
+        });
+      }
+    }
+    return { rows: rowList, unscheduled: unsched };
+  }, [modules, tasks]);
+
+  function reschedule(taskId: string, patch: ReschedulePatch) {
+    update.mutate(
+      { id: taskId, ...patch },
+      { onError: (e) => toast.error(e.message || "Reschedule failed") },
+    );
+  }
+  function schedule(taskId: string, date: Date) {
+    const iso = toIso(date);
+    update.mutate(
+      { id: taskId, startDate: iso, dueDate: iso },
+      { onError: (e) => toast.error(e.message || "Schedule failed") },
+    );
+  }
+
+  if (ml || tl) {
+    return (
+      <div className="space-y-3 p-6">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4 p-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-medium">Timeline</h2>
+        <div className="inline-flex rounded-md border p-0.5">
+          {ZOOMS.map((z) => (
+            <button
+              key={z}
+              onClick={() => setZoom(z)}
+              className={cn(
+                "rounded px-3 py-1 text-sm capitalize transition-colors",
+                zoom === z
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {z}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {rows.length === 0 ? (
+        <div className="rounded-lg border border-dashed p-12 text-center text-muted-foreground">
+          No scheduled tasks yet. Schedule tasks below to see them here.
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-lg border">
+          <div className="flex">
+            {/* Left: names */}
+            <div
+              className="shrink-0 border-r"
+              style={{ width: NAME_COL }}
+            >
+              <div style={{ height: HEADER_H }} className="border-b" />
+              {rows.map((r) => (
+                <div
+                  key={r.id}
+                  style={{ height: ROW_HEIGHT }}
+                  className={cn(
+                    "flex items-center truncate px-3 text-sm",
+                    r.kind === "module"
+                      ? "bg-muted/40 font-medium"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  {r.kind === "task" ? "· " : ""}
+                  {r.name}
+                </div>
+              ))}
+            </div>
+
+            {/* Right: grid */}
+            <div className="relative" style={{ width: gridWidth }}>
+              <div
+                className="relative border-b"
+                style={{ height: HEADER_H }}
+              >
+                {ticks.map((t) => (
+                  <div
+                    key={t.offset}
+                    className={cn(
+                      "absolute top-0 flex h-full items-center border-l pl-1 text-[0.65rem] text-muted-foreground",
+                      t.major && "border-foreground/20",
+                    )}
+                    style={{ left: t.offset * pxPerDay }}
+                  >
+                    {t.label}
+                  </div>
+                ))}
+              </div>
+              {rows.map((r) => (
+                <div
+                  key={r.id}
+                  style={{ height: ROW_HEIGHT }}
+                  className={cn(
+                    "relative border-b",
+                    r.kind === "module" && "bg-muted/40",
+                  )}
+                >
+                  {/* major vertical gridlines */}
+                  {ticks
+                    .filter((t) => t.major)
+                    .map((t) => (
+                      <div
+                        key={t.offset}
+                        className="absolute top-0 h-full border-l border-foreground/10"
+                        style={{ left: t.offset * pxPerDay }}
+                      />
+                    ))}
+                  {r.kind === "task" && r.task && r.span && (
+                    <GanttBar
+                      task={r.task}
+                      span={r.span}
+                      {...barGeometry(r.span, range.start, pxPerDay)}
+                      pxPerDay={pxPerDay}
+                      canEdit={canEdit}
+                      onReschedule={reschedule}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <UnscheduledPanel
+        tasks={unscheduled}
+        canEdit={canEdit}
+        onSchedule={schedule}
+      />
+    </div>
+  );
+}
