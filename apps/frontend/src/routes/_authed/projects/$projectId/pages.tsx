@@ -1,6 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { TabPlaceholder } from "@/features/projects";
+import { PagesTab } from "@/features/pages";
 
 export const Route = createFileRoute("/_authed/projects/$projectId/pages")({
-  component: () => <TabPlaceholder title="Pages" />,
+  component: Pages,
 });
+
+function Pages() {
+  const { projectId } = Route.useParams();
+  return <PagesTab projectId={projectId} />;
+}
