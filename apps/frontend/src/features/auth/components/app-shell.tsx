@@ -2,6 +2,7 @@ import { Link, Outlet, useNavigate } from "@tanstack/react-router";
 import { useAtomValue } from "jotai";
 import { Button } from "@/components/ui/button";
 import { getInitials } from "@/lib/utils";
+import { NotificationBell } from "@/features/notifications";
 import { currentUserAtom } from "../atoms/session";
 import { useLogout } from "../api/hooks";
 
@@ -40,6 +41,7 @@ export function AppShell() {
           </nav>
         </div>
         <div className="flex items-center gap-3">
+          <NotificationBell />
           {user && (
             <span className="flex items-center gap-2 text-sm">
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-xs">
