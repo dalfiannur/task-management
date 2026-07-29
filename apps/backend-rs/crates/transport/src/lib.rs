@@ -14,6 +14,7 @@ use std::sync::Arc;
 use auth::AuthUser;
 use axum::Extension;
 use connectrpc_axum::{ConnectError, ConnectRequest, ConnectResponse};
+use domain::HeartbeatAt;
 use persistence::Store;
 
 use sedjiwa::tasks::health::v1 as pb;
@@ -33,17 +34,17 @@ async fn db_check(
     Extension(store): Extension<Arc<Store>>,
     _req: ConnectRequest<pb::DbCheckRequest>,
 ) -> Result<ConnectResponse<pb::DbCheckResponse>, ConnectError> {
-    let e = store
-        .write_heartbeat(now_iso())
+    let pid = store
+        .create((HeartbeatAt { ts: now_iso() },))
         .await
         .map_err(|e| ConnectError::new_internal(e.to_string()))?;
     let hb = store
-        .read_heartbeat_from_db(e)
+        .get::<HeartbeatAt>(pid)
         .await
         .map_err(|e| ConnectError::new_internal(e.to_string()))?
         .ok_or_else(|| ConnectError::new_internal("heartbeat missing after write"))?;
     Ok(ConnectResponse::new(pb::DbCheckResponse {
-        heartbeat_id: e.index().to_string(),
+        heartbeat_id: pid.to_string(),
         ts: hb.ts,
     }))
 }

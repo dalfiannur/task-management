@@ -1,117 +1,166 @@
-//! Persistence: `Store` wraps an arke `World` (in-memory working set) + `arke-postgres`
-//! `PgStore` (source of truth).
+//! Generic, per-operation, stateless `Store` over arke-postgres's pid API (RFC-0034).
 //!
-//! Threading model (why two locks): arke's `World` is `Send` but `!Sync`, and the
-//! async DB writes must not hold `&World` across `.await`. arke-postgres 0.11's
-//! two-phase API solves this: `stage(&World)` is **synchronous** (reads the World
-//! into an owned snapshot), and `commit(snapshot)` is **async** (touches no World).
-//! So we keep the `World` under a **std mutex held only during the sync `stage`**,
-//! and the `PgStore` under a **tokio mutex held across the async `commit`**. The
-//! World is never held across `.await`, so handler futures are `Send` — no `unsafe`,
-//! no actor.
-//!
-//! Skeleton scope: a single "heartbeat" entity to prove the Arke↔Postgres round-trip.
+//! Each op builds a fresh `PgStore` (shared pool) + a fresh `World`, does one
+//! pid-addressed operation, and drops. `pid` (DB `BIGSERIAL`) is the persistent id
+//! — decoupled from arke's ephemeral World index — so per-op create yields globally
+//! unique ids (no collisions, no dense-Vec blowup). Postgres is the source of truth;
+//! stateless → multi-replica safe. Writes read the World synchronously before any
+//! `.await`, so handler futures stay `Send` (no unsafe, no actor).
 
-use std::sync::Mutex as StdMutex;
+use std::sync::Arc;
 
 use anyhow::Result;
-use arke::{Entity, World};
-use arke_postgres::PgStore;
-use domain::HeartbeatAt;
-use tokio::sync::Mutex as TokioMutex;
+use arke::{Bundle, Component, Entity, World};
+use arke_postgres::{PgComponent, PgStore};
+use sqlx::postgres::PgPoolOptions;
+use sqlx::PgPool;
 
 pub struct Store {
-    /// In-memory working set. Guarded by a std mutex held **only** during the
-    /// synchronous `stage` — never across `.await`.
-    world: StdMutex<WorldState>,
-    /// Source of truth. Guarded by a tokio mutex (Send guard) held across `commit`.
-    pg: TokioMutex<PgStore>,
-}
-
-struct WorldState {
-    world: World,
-    heartbeat: Option<Entity>,
+    pool: PgPool,
+    /// Registers every persisted component type on a fresh `PgStore` each op.
+    register: Arc<dyn Fn(&mut PgStore) + Send + Sync>,
 }
 
 impl Store {
-    /// Connect, register persisted components, and reconcile schema.
-    pub async fn connect(database_url: &str) -> Result<Self> {
-        let mut pg = PgStore::connect(database_url).await?;
-        pg.register::<HeartbeatAt>();
+    /// Connect, register components, reconcile schema once.
+    pub async fn connect(
+        database_url: &str,
+        register: impl Fn(&mut PgStore) + Send + Sync + 'static,
+    ) -> Result<Self> {
+        let pool = PgPoolOptions::new()
+            .max_connections(5)
+            .connect(database_url)
+            .await?;
+        let mut pg = PgStore::from_pool(pool.clone());
+        register(&mut pg);
         pg.migrate().await?;
         Ok(Self {
-            world: StdMutex::new(WorldState {
-                world: World::new(),
-                heartbeat: None,
-            }),
-            pg: TokioMutex::new(pg),
+            pool,
+            register: Arc::new(register),
         })
     }
 
-    /// Write/overwrite the singleton heartbeat and persist the world.
-    /// Returns the heartbeat entity handle.
-    pub async fn write_heartbeat(&self, ts: String) -> Result<Entity> {
-        let mut pg = self.pg.lock().await; // tokio guard (Send) held across commit
-        let (e, staged) = {
-            // Sync scope: mutate the World and stage it. The std guard is dropped
-            // at the end of this block, before any `.await`.
-            let mut ws = self.world.lock().unwrap();
-            let e = match ws.heartbeat {
-                Some(e) => {
-                    ws.world.remove::<HeartbeatAt>(e);
-                    ws.world.insert(e, HeartbeatAt { ts });
-                    e
-                }
-                None => {
-                    let e = ws.world.spawn();
-                    ws.world.insert(e, HeartbeatAt { ts });
-                    ws.heartbeat = Some(e);
-                    e
-                }
-            };
-            let staged = pg.stage(&ws.world); // synchronous — no await, owned result
-            (e, staged)
-        };
-        pg.commit(staged).await?; // async — touches no World
-        Ok(e)
+    /// A fresh registered `PgStore` sharing the pool.
+    fn fresh(&self) -> PgStore {
+        let mut pg = PgStore::from_pool(self.pool.clone());
+        (self.register)(&mut pg);
+        pg
     }
 
-    /// Read a heartbeat back **from Postgres** via a fresh `World` load — proves the
-    /// round-trip and that the value is the source of truth, not a stale cache.
-    pub async fn read_heartbeat_from_db(&self, e: Entity) -> Result<Option<HeartbeatAt>> {
-        let mut pg = self.pg.lock().await;
-        let mut fresh = World::new(); // local, not shared — Send is enough
-        pg.load(&mut fresh).await?;
-        Ok(fresh.get::<HeartbeatAt>(e).cloned())
+    /// Create an entity from a component bundle; return its persistent `pid`.
+    pub async fn create<B: Bundle>(&self, bundle: B) -> Result<i64> {
+        let pg = self.fresh();
+        let mut world = World::new();
+        let e = world.spawn_bundle(bundle);
+        let staged = pg.stage_insert(&world, e);
+        Ok(pg.commit_insert(staged).await?)
+    }
+
+    /// Read one entity's component `T` by `pid`.
+    pub async fn get<T: PgComponent + Component + Clone>(&self, pid: i64) -> Result<Option<T>> {
+        let pg = self.fresh();
+        let mut world = World::new();
+        Ok(pg
+            .fetch(&mut world, pid)
+            .await?
+            .and_then(|e| world.get::<T>(e).cloned()))
+    }
+
+    /// Load `pid`, run a mutator, persist the change.
+    pub async fn update(&self, pid: i64, mutate: impl FnOnce(&mut World, Entity)) -> Result<()> {
+        let pg = self.fresh();
+        let mut world = World::new();
+        if let Some(e) = pg.fetch(&mut world, pid).await? {
+            mutate(&mut world, e);
+            let staged = pg.stage_update(&world, e);
+            pg.commit_update(pid, staged).await?;
+        }
+        Ok(())
+    }
+
+    /// Delete an entity by `pid`.
+    pub async fn delete(&self, pid: i64) -> Result<()> {
+        Ok(self.fresh().remove(pid).await?)
+    }
+
+    /// Query entities matching `predicate` (trusted SQL `WHERE` over `T`'s table);
+    /// map the loaded `World` + `(pid, Entity)` pairs to results.
+    pub async fn query<T, R>(
+        &self,
+        predicate: Option<&str>,
+        map: impl FnOnce(&World, &[(i64, Entity)]) -> Vec<R>,
+    ) -> Result<Vec<R>>
+    where
+        T: PgComponent,
+    {
+        let pg = self.fresh();
+        let mut world = World::new();
+        let pairs = pg.query_pids::<T>(&mut world, predicate).await?;
+        Ok(map(&world, &pairs))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use arke_postgres::PgComponent;
 
-    // Integration test. Target per testing policy: testcontainers (ephemeral Postgres).
-    // Until Docker is available this gated form compiles and skips cleanly.
+    #[derive(PgComponent, Debug, Clone, PartialEq)]
+    struct Note {
+        text: String,
+    }
+
+    fn register(pg: &mut PgStore) {
+        pg.register::<Note>();
+    }
+
+    async fn store() -> Option<Store> {
+        let url = std::env::var("ARKE_TEST_DATABASE_URL").ok()?;
+        Some(Store::connect(&url, register).await.unwrap())
+    }
+
     #[tokio::test]
-    async fn write_then_read_roundtrips_and_reflects_latest_write() {
-        let Ok(url) = std::env::var("TEST_DATABASE_URL") else {
-            eprintln!("skipping: TEST_DATABASE_URL not set");
+    async fn create_get_update_delete() {
+        let Some(s) = store().await else {
+            eprintln!("skip: ARKE_TEST_DATABASE_URL not set");
             return;
         };
-        let store = Store::connect(&url).await.unwrap();
+        let id = s.create((Note { text: "hello".into() },)).await.unwrap();
+        assert_eq!(s.get::<Note>(id).await.unwrap().unwrap().text, "hello");
+        s.update(id, |w, e| {
+            w.remove::<Note>(e);
+            w.insert(e, Note { text: "world".into() });
+        })
+        .await
+        .unwrap();
+        assert_eq!(s.get::<Note>(id).await.unwrap().unwrap().text, "world");
+        s.delete(id).await.unwrap();
+        assert!(s.get::<Note>(id).await.unwrap().is_none());
+    }
 
-        let e = store
-            .write_heartbeat("2026-07-29T00:00:00Z".into())
+    #[tokio::test]
+    async fn two_creates_have_distinct_pids_and_both_queried() {
+        let Some(s) = store().await else {
+            eprintln!("skip: ARKE_TEST_DATABASE_URL not set");
+            return;
+        };
+        let a = s.create((Note { text: "tc-alpha".into() },)).await.unwrap();
+        let b = s.create((Note { text: "tc-beta".into() },)).await.unwrap();
+        assert_ne!(a, b, "per-op create must yield distinct pids");
+
+        let texts = s
+            .query::<Note, String>(None, |w, pairs| {
+                pairs
+                    .iter()
+                    .filter_map(|(_, e)| w.get::<Note>(*e).map(|n| n.text.clone()))
+                    .collect()
+            })
             .await
             .unwrap();
-        let first = store.read_heartbeat_from_db(e).await.unwrap().unwrap();
-        assert_eq!(first.ts, "2026-07-29T00:00:00Z");
+        assert!(texts.contains(&"tc-alpha".to_string()));
+        assert!(texts.contains(&"tc-beta".to_string()));
 
-        let e2 = store
-            .write_heartbeat("2026-07-29T01:00:00Z".into())
-            .await
-            .unwrap();
-        let second = store.read_heartbeat_from_db(e2).await.unwrap().unwrap();
-        assert_eq!(second.ts, "2026-07-29T01:00:00Z");
+        s.delete(a).await.unwrap();
+        s.delete(b).await.unwrap();
     }
 }

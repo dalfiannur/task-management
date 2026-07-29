@@ -30,6 +30,7 @@ dependencies = [
  "anyhow",
  "auth",
  "axum",
+ "domain",
  "dotenvy",
  "jsonwebtoken",
  "persistence",
@@ -1176,8 +1177,8 @@ dependencies = [
  "anyhow",
  "arke",
  "arke-postgres",
- "domain",
  "serde",
+ "sqlx",
  "tokio",
 ]
 

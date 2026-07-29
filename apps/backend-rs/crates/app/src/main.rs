@@ -15,7 +15,12 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     let cfg = Config::from_env()?;
-    let store = Arc::new(Store::connect(&cfg.database_url).await?);
+    let store = Arc::new(
+        Store::connect(&cfg.database_url, |pg| {
+            pg.register::<domain::HeartbeatAt>();
+        })
+        .await?,
+    );
     let app = router::build_router(&cfg, store);
 
     let listener = tokio::net::TcpListener::bind(("0.0.0.0", cfg.port)).await?;

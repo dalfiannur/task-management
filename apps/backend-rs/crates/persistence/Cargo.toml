@@ -7,6 +7,6 @@ version.workspace = true
 serde = { workspace = true }
 arke = { workspace = true }
 arke-postgres = { workspace = true }
+sqlx = { workspace = true }
 tokio = { workspace = true }
 anyhow = { workspace = true }
-domain = { path = "../domain" }
