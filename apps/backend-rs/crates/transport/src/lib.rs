@@ -7,7 +7,16 @@
 //! state `()`, so we keep the builder at `S = ()` and inject shared state via
 //! `Extension` (state-independent) layered onto the router — not axum `State`.
 
+// `ConnectError` (connectrpc-axum) is a large enum, so every Connect handler's
+// `Result<_, ConnectError>` trips `result_large_err`; boxing isn't possible (the
+// handler signatures are fixed by the framework). `useless_borrows_in_formatting`
+// fires inside the generated proto code (included below), not our own.
+#![allow(clippy::result_large_err, clippy::useless_borrows_in_formatting)]
+
 include!(concat!(env!("OUT_DIR"), "/generated.rs"));
+
+mod users;
+pub use users::{auth_router, user_router, JwtConfig};
 
 use std::sync::Arc;
 

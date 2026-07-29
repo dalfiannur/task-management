@@ -36,11 +36,24 @@ dependencies = [
  "persistence",
  "serde",
  "thiserror",
+ "time",
  "tokio",
  "tower-http 0.6.11",
  "tracing",
  "tracing-subscriber",
  "transport",
+]
+
+[[package]]
+name = "argon2"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3c3610892ee6e0cbce8ae2700349fcf8f98adb0dbfbee85aec3c9179d29cc072"
+dependencies = [
+ "base64ct",
+ "blake2",
+ "cpufeatures",
+ "password-hash",
 ]
 
 [[package]]
@@ -120,6 +133,7 @@ checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 name = "auth"
 version = "0.1.0"
 dependencies = [
+ "argon2",
  "jsonwebtoken",
  "serde",
  "thiserror",
@@ -191,10 +205,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 
 [[package]]
+name = "base64ct"
+version = "1.8.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2af50177e190e07a26ab74f8b1efbfe2ef87da2116221318cb1c2e82baf7de06"
+
+[[package]]
 name = "bitflags"
 version = "2.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b588b76d00fde79687d7646a9b5bdf3cc0f655e0bbd080335a95d7e96f3587da"
+
+[[package]]
+name = "blake2"
+version = "0.10.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "46502ad458c9a52b69d4d4d32775c788b7a1b85e8bc9d482d92250fc0e3f8efe"
+dependencies = [
+ "digest",
+]
 
 [[package]]
 name = "block-buffer"
@@ -1115,6 +1144,17 @@ dependencies = [
  "redox_syscall 0.5.18",
  "smallvec",
  "windows-link",
+]
+
+[[package]]
+name = "password-hash"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "346f04948ba92c43e8469c1ee6736c7563d71012b17d40745260fe106aac2166"
+dependencies = [
+ "base64ct",
+ "rand_core",
+ "subtle",
 ]
 
 [[package]]
@@ -2045,6 +2085,8 @@ dependencies = [
 name = "transport"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "arke",
  "auth",
  "axum",
  "connectrpc-axum",
@@ -2053,8 +2095,10 @@ dependencies = [
  "persistence",
  "prost",
  "serde",
+ "serde_json",
  "time",
  "tokio",
+ "tower",
 ]
 
 [[package]]

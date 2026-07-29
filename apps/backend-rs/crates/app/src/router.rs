@@ -12,6 +12,10 @@ use crate::interceptor::auth_layer;
 /// wrapped with the JWT auth middleware and CORS.
 pub fn build_router(cfg: &Config, store: Arc<Store>) -> Router {
     let secret: Arc<str> = Arc::from(cfg.jwt_secret.as_str());
+    let jwt = Arc::new(transport::JwtConfig {
+        secret: cfg.jwt_secret.clone(),
+        ttl_secs: cfg.jwt_ttl_secs(),
+    });
 
     let origins: Vec<_> = cfg
         .cors_origins
@@ -23,7 +27,10 @@ pub fn build_router(cfg: &Config, store: Arc<Store>) -> Router {
         .allow_methods(Any)
         .allow_origin(AllowOrigin::list(origins));
 
-    transport::health_router(store)
+    // Merge all service routers, then apply JWT extraction + CORS over the whole API.
+    transport::health_router(store.clone())
+        .merge(transport::auth_router(store.clone(), jwt))
+        .merge(transport::user_router(store))
         .layer(axum::middleware::from_fn_with_state(secret, auth_layer))
         .layer(cors)
 }

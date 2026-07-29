@@ -19,6 +19,7 @@ connectrpc-axum = "0.2"
 connectrpc-axum-build = "0.2"
 prost = "0.14" # must match connectrpc-axum's prost (generated code uses ::prost)
 jsonwebtoken = "9"
+argon2 = { version = "0.5", features = ["std"] }
 dotenvy = "0.15"
 arke = { path = "/home/qyubit/Workspace/personal/rust-ecs" }
 arke-postgres = { path = "/home/qyubit/Workspace/personal/rust-ecs/arke-postgres" }

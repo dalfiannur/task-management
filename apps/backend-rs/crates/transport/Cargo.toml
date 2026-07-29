@@ -10,9 +10,15 @@ axum = { workspace = true }
 prost = { workspace = true }
 connectrpc-axum = { workspace = true }
 time = { workspace = true }
+anyhow = { workspace = true }
+arke = { workspace = true }
 auth = { path = "../auth" }
 persistence = { path = "../persistence" }
 domain = { path = "../domain" }
+
+[dev-dependencies]
+tower = { workspace = true }
+serde_json = { workspace = true }
 
 [build-dependencies]
 connectrpc-axum-build = { workspace = true }
