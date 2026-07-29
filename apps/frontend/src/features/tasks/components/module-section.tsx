@@ -20,6 +20,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import type { AppUser } from "@/features/auth";
+import type { Label } from "@/features/labels";
 import type { Module, Task } from "../types";
 import { useCreateTask, useDeleteModule } from "../api/hooks";
 import { TaskRow } from "./task-row";
@@ -29,6 +30,7 @@ export function ModuleSection({
   tasks,
   canManage,
   userMap,
+  labelMap,
   onEditTask,
   onEditModule,
   onMoveUp,
@@ -40,6 +42,7 @@ export function ModuleSection({
   tasks: Task[];
   canManage: boolean;
   userMap: Record<string, AppUser>;
+  labelMap: Record<string, Label>;
   onEditTask: (task: Task) => void;
   onEditModule: (module: Module) => void;
   onMoveUp: () => void;
@@ -153,6 +156,7 @@ export function ModuleSection({
               key={task.id}
               task={task}
               userMap={userMap}
+              labelMap={labelMap}
               onEdit={onEditTask}
             />
           ))}

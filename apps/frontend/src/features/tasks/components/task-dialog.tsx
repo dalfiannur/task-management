@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { DatePickerField } from "@/components/shared/date-picker-field";
 import type { AppUser } from "@/features/auth";
+import { LabelCombobox } from "@/features/labels";
 import type { Task, TaskPriority, TaskStatus } from "../types";
 import { TASK_PRIORITIES, TASK_STATUSES } from "../types";
 import { TASK_PRIORITY_CONFIG, TASK_STATUS_CONFIG } from "../config";
@@ -38,6 +39,7 @@ function dateToIso(d: Date | undefined): string | undefined {
 interface Props {
   open: boolean;
   onOpenChange: (o: boolean) => void;
+  projectId: string;
   /** Create mode: target module. */
   moduleId: string;
   /** Edit mode: existing task (omit for create). */
@@ -49,6 +51,7 @@ interface Props {
 export function TaskDialog({
   open,
   onOpenChange,
+  projectId,
   moduleId,
   task,
   memberIds,
@@ -65,6 +68,7 @@ export function TaskDialog({
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [dueDate, setDueDate] = useState<Date | undefined>();
   const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
+  const [labelIds, setLabelIds] = useState<string[]>([]);
 
   // Reset the form whenever the dialog opens (for create or a specific task).
   useEffect(() => {
@@ -76,6 +80,7 @@ export function TaskDialog({
     setStartDate(isoToDate(task?.startDate));
     setDueDate(isoToDate(task?.dueDate));
     setAssigneeIds(task?.assigneeIds ?? []);
+    setLabelIds(task?.labelIds ?? []);
   }, [open, task]);
 
   const pending = create.isPending || update.isPending;
@@ -97,6 +102,7 @@ export function TaskDialog({
           startDate: dateToIso(startDate),
           dueDate: dateToIso(dueDate),
           assigneeIds: { values: assigneeIds },
+          labelIds: { values: labelIds },
         },
         { onSuccess: () => onOpenChange(false), onError },
       );
@@ -111,7 +117,7 @@ export function TaskDialog({
           startDate: dateToIso(startDate),
           dueDate: dateToIso(dueDate),
           assigneeIds,
-          labelIds: [],
+          labelIds,
         },
         { onSuccess: () => onOpenChange(false), onError },
       );
@@ -200,6 +206,11 @@ export function TaskDialog({
               userMap={userMap}
               value={assigneeIds}
               onChange={setAssigneeIds}
+            />
+            <LabelCombobox
+              projectId={projectId}
+              value={labelIds}
+              onChange={setLabelIds}
             />
           </div>
           <DialogFooter>

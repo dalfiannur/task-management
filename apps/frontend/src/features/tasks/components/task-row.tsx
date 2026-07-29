@@ -6,6 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { AppUser } from "@/features/auth";
+import { LabelChips, type Label } from "@/features/labels";
 import type { Task } from "../types";
 import { statusToProto } from "../api/mappers";
 import { useUpdateTask, useDeleteTask } from "../api/hooks";
@@ -15,10 +16,12 @@ import { AssigneeAvatars } from "./assignee-picker";
 export function TaskRow({
   task,
   userMap,
+  labelMap,
   onEdit,
 }: {
   task: Task;
   userMap: Record<string, AppUser>;
+  labelMap: Record<string, Label>;
   onEdit: (task: Task) => void;
 }) {
   const update = useUpdateTask();
@@ -82,6 +85,7 @@ export function TaskRow({
         >
           {task.title}
         </span>
+        <LabelChips ids={task.labelIds} labelMap={labelMap} max={2} />
         <PriorityLabel priority={task.priority} />
         {task.dueDate && (
           <span className="text-xs text-muted-foreground">{task.dueDate}</span>

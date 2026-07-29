@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { currentUserAtom, isAdminAtom } from "@/features/auth";
 import { useProject, useProjectMembers } from "@/features/projects";
 import { useUserMap } from "@/features/users";
+import { useLabelMap } from "@/features/labels";
 import type { Module, Task } from "../types";
 import { useModules, useTasks, useMoveTask, useReorderModules } from "../api/hooks";
 import { ModuleSection } from "./module-section";
@@ -28,6 +29,7 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
   const { tasks, isLoading: tasksLoading } = useTasks(projectId);
   const { memberIds } = useProjectMembers(projectId);
   const userMap = useUserMap();
+  const labelMap = useLabelMap(projectId);
   const move = useMoveTask();
   const reorder = useReorderModules();
 
@@ -140,6 +142,7 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
                 tasks={tasksByModule[m.id] ?? []}
                 canManage={canManage}
                 userMap={userMap}
+                labelMap={labelMap}
                 onEditTask={(task) =>
                   setTaskDialog({ open: true, moduleId: m.id, task })
                 }
@@ -159,6 +162,7 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
         onOpenChange={(open) =>
           setTaskDialog((s) => ({ ...s, open }))
         }
+        projectId={projectId}
         moduleId={taskDialog.moduleId}
         task={taskDialog.task}
         memberIds={memberIds}
