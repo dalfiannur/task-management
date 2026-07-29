@@ -12,3 +12,9 @@ use connectrpc_axum::ConnectError;
 pub(crate) fn internal(e: impl std::fmt::Display) -> ConnectError {
     ConnectError::new_internal(e.to_string())
 }
+
+/// Parse a user-supplied id into a `pid`, or `not_found` on a malformed id.
+pub(crate) fn parse_pid(id: &str) -> Result<i64, ConnectError> {
+    id.parse::<i64>()
+        .map_err(|_| ConnectError::new_not_found("project not found"))
+}

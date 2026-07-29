@@ -5,6 +5,13 @@ package sedjiwa.tasks.project.v1;
 
 service ProjectService {
   rpc CreateProject(CreateProjectRequest) returns (Project);
+  rpc ListProjects(ListProjectsRequest) returns (ListProjectsResponse);
+  rpc GetProject(GetProjectRequest) returns (Project);
+
+  // Owner/admin authority actions surfaced by the detail shell.
+  rpc SetProjectStatus(SetProjectStatusRequest) returns (Project);
+  rpc TransferProjectOwnership(TransferProjectOwnershipRequest) returns (Project);
+  rpc DeleteProject(DeleteProjectRequest) returns (DeleteProjectResponse);
 }
 
 message CreateProjectRequest {
@@ -12,6 +19,30 @@ message CreateProjectRequest {
   optional string description = 2;
   optional string owner_id = 3; // empty → owner = caller
 }
+
+message ListProjectsRequest {
+  repeated ProjectStatus status = 1; // empty = all statuses
+  optional string search = 2;
+  uint32 page = 3;   // 1-based; 0/absent → 1
+  uint32 limit = 4;  // default 12
+}
+message ListProjectsResponse {
+  repeated Project projects = 1;
+  uint32 total = 2; // total after filtering (for pagination)
+}
+
+message GetProjectRequest { string id = 1; }
+
+message SetProjectStatusRequest {
+  string id = 1;
+  ProjectStatus status = 2;
+}
+message TransferProjectOwnershipRequest {
+  string id = 1;
+  string new_owner_id = 2;
+}
+message DeleteProjectRequest { string id = 1; }
+message DeleteProjectResponse { bool ok = 1; }
 
 message Project {
   string id = 1;

@@ -91,6 +91,16 @@ impl ProjectStatus {
             Self::Archived => 3,
         }
     }
+
+    /// From the proto wire value; `None` for UNSPECIFIED(0) or anything unknown.
+    pub fn from_proto(code: i32) -> Option<Self> {
+        match code {
+            1 => Some(Self::Active),
+            2 => Some(Self::Completed),
+            3 => Some(Self::Archived),
+            _ => None,
+        }
+    }
 }
 
 /// A project name is valid iff it has non-whitespace content.
@@ -115,6 +125,9 @@ mod tests {
         assert_eq!(ProjectStatus::Active.to_proto(), 1);
         assert_eq!(ProjectStatus::Completed.to_proto(), 2);
         assert_eq!(ProjectStatus::Archived.to_proto(), 3);
+        assert_eq!(ProjectStatus::from_proto(2), Some(ProjectStatus::Completed));
+        assert_eq!(ProjectStatus::from_proto(0), None); // UNSPECIFIED
+        assert_eq!(ProjectStatus::from_proto(9), None);
     }
 
     #[test]

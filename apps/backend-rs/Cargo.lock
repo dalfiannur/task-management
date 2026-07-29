@@ -2092,6 +2092,7 @@ dependencies = [
  "connectrpc-axum",
  "connectrpc-axum-build",
  "domain",
+ "pbjson",
  "persistence",
  "prost",
  "serde",

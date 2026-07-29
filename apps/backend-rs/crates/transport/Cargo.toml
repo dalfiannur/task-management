@@ -8,6 +8,7 @@ serde = { workspace = true }
 tokio = { workspace = true }
 axum = { workspace = true }
 prost = { workspace = true }
+pbjson = { workspace = true }
 connectrpc-axum = { workspace = true }
 time = { workspace = true }
 anyhow = { workspace = true }

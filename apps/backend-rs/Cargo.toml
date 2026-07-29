@@ -18,6 +18,7 @@ tower-http = { version = "0.6", features = ["cors"] }
 connectrpc-axum = "0.2"
 connectrpc-axum-build = "0.2"
 prost = "0.14" # must match connectrpc-axum's prost (generated code uses ::prost)
+pbjson = "0.9" # generated Connect JSON serde for numeric fields uses ::pbjson
 jsonwebtoken = "9"
 argon2 = { version = "0.5", features = ["std"] }
 dotenvy = "0.15"

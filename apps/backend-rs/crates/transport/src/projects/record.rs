@@ -2,8 +2,8 @@
 
 use arke::{Entity, World};
 use domain::project::{
-    ProjectDates, ProjectDescription, ProjectName, ProjectOwnerId, ProjectStatus,
-    ProjectStatusComponent,
+    ProjectDates, ProjectDescription, ProjectMembership, ProjectName, ProjectOwnerId,
+    ProjectStatus, ProjectStatusComponent,
 };
 use persistence::Store;
 
@@ -61,4 +61,77 @@ pub(crate) async fn load_project(store: &Store, pid: i64) -> anyhow::Result<Opti
         })
         .await?;
     Ok(v.pop())
+}
+
+/// Every project (loads all `ProjectName` entities). O(n) — cache deferred (spec §6).
+pub(crate) async fn load_all_projects(store: &Store) -> anyhow::Result<Vec<ProjectRecord>> {
+    store
+        .query::<ProjectName, ProjectRecord>(None, |world, pairs| {
+            pairs
+                .iter()
+                .filter_map(|(pid, e)| read_project(world, *e, *pid))
+                .collect()
+        })
+        .await
+}
+
+/// True if `user_id` is a member of `project_id`.
+pub(crate) async fn is_member(
+    store: &Store,
+    project_id: &str,
+    user_id: &str,
+) -> anyhow::Result<bool> {
+    let pj = project_id.to_string();
+    let uid = user_id.to_string();
+    let hits = store
+        .query::<ProjectMembership, ()>(None, move |world, pairs| {
+            pairs
+                .iter()
+                .filter_map(|(_, e)| world.get::<ProjectMembership>(*e))
+                .filter(|m| m.project_id == pj && m.user_id == uid)
+                .map(|_| ())
+                .collect()
+        })
+        .await?;
+    Ok(!hits.is_empty())
+}
+
+/// Project ids `user_id` is a member of.
+pub(crate) async fn member_project_ids(
+    store: &Store,
+    user_id: &str,
+) -> anyhow::Result<Vec<String>> {
+    let uid = user_id.to_string();
+    store
+        .query::<ProjectMembership, String>(None, move |world, pairs| {
+            pairs
+                .iter()
+                .filter_map(|(_, e)| world.get::<ProjectMembership>(*e))
+                .filter(|m| m.user_id == uid)
+                .map(|m| m.project_id.clone())
+                .collect()
+        })
+        .await
+}
+
+/// Membership entity `pid`s for `project_id` (used to cascade-delete on project delete).
+pub(crate) async fn membership_pids_for_project(
+    store: &Store,
+    project_id: &str,
+) -> anyhow::Result<Vec<i64>> {
+    let pj = project_id.to_string();
+    store
+        .query::<ProjectMembership, i64>(None, move |world, pairs| {
+            pairs
+                .iter()
+                .filter(|(_, e)| {
+                    world
+                        .get::<ProjectMembership>(*e)
+                        .map(|m| m.project_id == pj)
+                        .unwrap_or(false)
+                })
+                .map(|(pid, _)| *pid)
+                .collect()
+        })
+        .await
 }
