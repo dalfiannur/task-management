@@ -10,6 +10,8 @@ use persistence::Store;
 
 use super::record::{load_page, pages_for_project, to_proto, PageRecord};
 use super::{internal, parse_pid, require_auth, require_member, StoreExt};
+use crate::activity::record;
+use domain::activity::{ActivityAction, EntityType};
 use crate::sedjiwa::tasks::page::v1 as pb;
 use crate::sedjiwa::tasks::page::v1::page_service_connect::PageServiceBuilder;
 
@@ -99,6 +101,17 @@ async fn create_page(
         .await
         .map_err(internal)?;
     let p = require_page(&store, pid).await?;
+    record(
+        &store,
+        &p.project_id,
+        &auth.id,
+        EntityType::Page,
+        &pid.to_string(),
+        ActivityAction::Created,
+        format!("created page '{}'", p.title),
+        vec![],
+    )
+    .await;
     Ok(ConnectResponse::new(to_proto(&p)))
 }
 
@@ -136,6 +149,17 @@ async fn update_page(
         .await
         .map_err(internal)?;
     let p = require_page(&store, pid).await?;
+    record(
+        &store,
+        &p.project_id,
+        &auth.id,
+        EntityType::Page,
+        &pid.to_string(),
+        ActivityAction::Updated,
+        format!("updated page '{}'", p.title),
+        vec![],
+    )
+    .await;
     Ok(ConnectResponse::new(to_proto(&p)))
 }
 
@@ -150,6 +174,17 @@ async fn delete_page(
     let p = require_page(&store, pid).await?;
     require_member(&store, &p.project_id, &auth).await?;
     store.delete(pid).await.map_err(internal)?;
+    record(
+        &store,
+        &p.project_id,
+        &auth.id,
+        EntityType::Page,
+        &pid.to_string(),
+        ActivityAction::Deleted,
+        format!("deleted page '{}'", p.title),
+        vec![],
+    )
+    .await;
     Ok(ConnectResponse::new(pb::DeletePageResponse { ok: true }))
 }
 

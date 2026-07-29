@@ -15,8 +15,10 @@ use super::task_record::task_pids_for_module;
 use super::{
     internal, parse_pid, require_auth, require_member, require_owner_or_admin, StoreExt,
 };
+use crate::activity::record;
 use crate::sedjiwa::tasks::work::v1 as pb;
 use crate::sedjiwa::tasks::work::v1::module_service_connect::ModuleServiceBuilder;
+use domain::activity::{ActivityAction, EntityType};
 
 fn list_response(modules: &[ModuleRecord]) -> pb::ListModulesResponse {
     pb::ListModulesResponse {
@@ -87,6 +89,17 @@ async fn create_module(
             .await
             .map_err(internal)?;
     }
+    record(
+        &store,
+        &r.project_id,
+        &auth.id,
+        EntityType::Module,
+        &pid.to_string(),
+        ActivityAction::Created,
+        format!("created module '{name}'"),
+        vec![],
+    )
+    .await;
     let m = require_module(&store, pid).await?;
     Ok(ConnectResponse::new(to_proto(&m)))
 }
@@ -125,6 +138,17 @@ async fn update_module(
         .await
         .map_err(internal)?;
     let m = require_module(&store, pid).await?;
+    record(
+        &store,
+        &m.project_id,
+        &auth.id,
+        EntityType::Module,
+        &pid.to_string(),
+        ActivityAction::Updated,
+        format!("updated module '{}'", m.name),
+        vec![],
+    )
+    .await;
     Ok(ConnectResponse::new(to_proto(&m)))
 }
 
@@ -146,6 +170,17 @@ async fn delete_module(
         store.delete(tpid).await.map_err(internal)?;
     }
     store.delete(pid).await.map_err(internal)?;
+    record(
+        &store,
+        &m.project_id,
+        &auth.id,
+        EntityType::Module,
+        &pid.to_string(),
+        ActivityAction::Deleted,
+        format!("deleted module '{}'", m.name),
+        vec![],
+    )
+    .await;
     Ok(ConnectResponse::new(pb::DeleteModuleResponse { ok: true }))
 }
 
@@ -176,6 +211,17 @@ async fn reorder_modules(
             _ => continue,
         }
     }
+    record(
+        &store,
+        &r.project_id,
+        &auth.id,
+        EntityType::Module,
+        &r.project_id,
+        ActivityAction::Updated,
+        "reordered modules".to_string(),
+        vec![],
+    )
+    .await;
     let modules = modules_for_project(&store, &r.project_id)
         .await
         .map_err(internal)?;

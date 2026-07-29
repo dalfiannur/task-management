@@ -17,8 +17,10 @@ use persistence::Store;
 use super::record::{load_module, modules_for_project};
 use super::task_record::{load_task, tasks_for_module, tasks_for_modules, to_proto, TaskRecord};
 use super::{internal, parse_pid, require_auth, require_member, StoreExt};
+use crate::activity::record;
 use crate::notifications::{emit, NotifRefs, Notifier};
 use crate::projects::record::project_member_ids;
+use domain::activity::{ActivityAction, EntityType, FieldChange};
 use domain::notification::NotificationType;
 use crate::sedjiwa::tasks::work::v1 as pb;
 use crate::sedjiwa::tasks::work::v1::task_service_connect::TaskServiceBuilder;
@@ -174,6 +176,17 @@ async fn create_task(
             .await;
         }
     }
+    record(
+        &store,
+        &project_id,
+        &auth.id,
+        EntityType::Task,
+        &pid.to_string(),
+        ActivityAction::Created,
+        format!("created task '{title}'"),
+        vec![],
+    )
+    .await;
     let t = require_task(&store, pid).await?;
     Ok(ConnectResponse::new(to_proto(&t)))
 }
@@ -247,6 +260,45 @@ async fn update_task(
         None
     };
 
+    // Diff for the audit log (important fields only, spec §8.1).
+    let mut changes = Vec::new();
+    if status != t.status {
+        changes.push(FieldChange {
+            field: "status".into(),
+            from: Some(t.status.as_str().into()),
+            to: Some(status.as_str().into()),
+        });
+    }
+    if priority != t.priority {
+        changes.push(FieldChange {
+            field: "priority".into(),
+            from: Some(t.priority.as_str().into()),
+            to: Some(priority.as_str().into()),
+        });
+    }
+    if title != t.title {
+        changes.push(FieldChange {
+            field: "title".into(),
+            from: Some(t.title.clone()),
+            to: Some(title.clone()),
+        });
+    }
+    if start_date != t.start_date {
+        changes.push(FieldChange {
+            field: "start_date".into(),
+            from: t.start_date.clone(),
+            to: start_date.clone(),
+        });
+    }
+    if due_date != t.due_date {
+        changes.push(FieldChange {
+            field: "due_date".into(),
+            from: t.due_date.clone(),
+            to: due_date.clone(),
+        });
+    }
+    let summary = format!("updated task '{title}'");
+
     let info = TaskInfo {
         title,
         description,
@@ -292,6 +344,17 @@ async fn update_task(
             .await;
         }
     }
+    record(
+        &store,
+        &project_id,
+        &auth.id,
+        EntityType::Task,
+        &pid.to_string(),
+        ActivityAction::Updated,
+        summary,
+        changes,
+    )
+    .await;
     let t = require_task(&store, pid).await?;
     Ok(ConnectResponse::new(to_proto(&t)))
 }
@@ -308,6 +371,17 @@ async fn delete_task(
     let (_mpid, project_id) = module_project(&store, &t.module_id).await?;
     require_member(&store, &project_id, &auth).await?;
     store.delete(pid).await.map_err(internal)?;
+    record(
+        &store,
+        &project_id,
+        &auth.id,
+        EntityType::Task,
+        &pid.to_string(),
+        ActivityAction::Deleted,
+        format!("deleted task '{}'", t.title),
+        vec![],
+    )
+    .await;
     Ok(ConnectResponse::new(pb::DeleteTaskResponse { ok: true }))
 }
 

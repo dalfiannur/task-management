@@ -18,7 +18,9 @@ use super::record::{
     membership_pids_for_project_user, project_member_ids, to_proto, user_exists, ProjectRecord,
 };
 use super::{internal, parse_pid};
+use crate::activity::record;
 use crate::notifications::{emit, NotifRefs, Notifier};
+use domain::activity::{ActivityAction, EntityType};
 use crate::sedjiwa::tasks::project::v1 as pb;
 use crate::sedjiwa::tasks::project::v1::project_service_connect::ProjectServiceBuilder;
 
@@ -266,6 +268,17 @@ async fn transfer_project_ownership(
         )
         .await;
     }
+    record(
+        &store,
+        &pid.to_string(),
+        &auth.id,
+        EntityType::Ownership,
+        &new_owner,
+        ActivityAction::Updated,
+        "transferred ownership".to_string(),
+        vec![],
+    )
+    .await;
     let updated = require_project(&store, pid).await?;
     Ok(ConnectResponse::new(to_proto(&updated)))
 }
@@ -377,6 +390,17 @@ async fn add_project_member(
             )
             .await;
         }
+        record(
+            &store,
+            &pid.to_string(),
+            &auth.id,
+            EntityType::Membership,
+            &uid,
+            ActivityAction::Created,
+            "added a member".to_string(),
+            vec![],
+        )
+        .await;
     }
     Ok(ConnectResponse::new(
         members_response(&store, &p.owner_id, &pid.to_string()).await?,
@@ -401,11 +425,25 @@ async fn remove_project_member(
             "cannot remove the owner; transfer ownership first",
         ));
     }
-    for mpid in membership_pids_for_project_user(&store, &pid.to_string(), &uid)
+    let removed = membership_pids_for_project_user(&store, &pid.to_string(), &uid)
         .await
-        .map_err(internal)?
-    {
+        .map_err(internal)?;
+    let was_member = !removed.is_empty();
+    for mpid in removed {
         store.delete(mpid).await.map_err(internal)?;
+    }
+    if was_member {
+        record(
+            &store,
+            &pid.to_string(),
+            &auth.id,
+            EntityType::Membership,
+            &uid,
+            ActivityAction::Deleted,
+            "removed a member".to_string(),
+            vec![],
+        )
+        .await;
     }
     Ok(ConnectResponse::new(
         members_response(&store, &p.owner_id, &pid.to_string()).await?,

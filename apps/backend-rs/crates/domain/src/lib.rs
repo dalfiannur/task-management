@@ -6,6 +6,7 @@
 
 use arke_postgres::PgComponent;
 
+pub mod activity;
 pub mod comment;
 pub mod label;
 pub mod media;
@@ -58,6 +59,9 @@ pub fn register_all(pg: &mut arke_postgres::PgStore) {
     // Notifications.
     pg.register::<notification::NotificationInfo>();
     pg.register::<notification::NotificationRefs>();
+    // Activity.
+    pg.register::<activity::ActivityInfo>();
+    pg.register::<activity::ActivityChanges>();
 }
 
 /// Skeleton entity: a single timestamp, used only to prove Arke↔Postgres round-trips.

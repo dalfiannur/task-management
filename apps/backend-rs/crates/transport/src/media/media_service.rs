@@ -17,6 +17,8 @@ use super::{
     internal, parse_pid, require_auth, require_member, require_uploader_owner_or_admin, StorageExt,
     StoreExt,
 };
+use crate::activity::record;
+use domain::activity::{ActivityAction, EntityType};
 use crate::sedjiwa::tasks::media::v1 as pb;
 use crate::sedjiwa::tasks::media::v1::media_service_connect::MediaServiceBuilder;
 use crate::work::task_project_id;
@@ -113,6 +115,17 @@ async fn complete_media_upload(
         .await
         .map_err(internal)?;
     let m = require_media(&store, pid).await?;
+    record(
+        &store,
+        &m.project_id,
+        &auth.id,
+        EntityType::Media,
+        &pid.to_string(),
+        ActivityAction::Created,
+        format!("uploaded {}", m.file_name),
+        vec![],
+    )
+    .await;
     Ok(ConnectResponse::new(to_proto(&m)))
 }
 
@@ -175,6 +188,17 @@ async fn delete_media_file(
         store.delete(lpid).await.map_err(internal)?;
     }
     store.delete(pid).await.map_err(internal)?;
+    record(
+        &store,
+        &m.project_id,
+        &auth.id,
+        EntityType::Media,
+        &pid.to_string(),
+        ActivityAction::Deleted,
+        format!("deleted {}", m.file_name),
+        vec![],
+    )
+    .await;
     Ok(ConnectResponse::new(pb::DeleteMediaFileResponse { ok: true }))
 }
 

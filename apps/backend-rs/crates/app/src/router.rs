@@ -47,6 +47,7 @@ pub fn build_router(
         .merge(transport::label_router(store.clone()))
         .merge(transport::comment_router(store.clone()))
         .merge(transport::media_router(store.clone(), media_storage))
+        .merge(transport::activity_router(store.clone()))
         .merge(transport::notification_router(store, notifier.clone()))
         // Global: mutating handlers extract the Notifier to emit.
         .layer(Extension(notifier))

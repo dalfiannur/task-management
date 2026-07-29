@@ -1,0 +1,61 @@
+syntax = "proto3";
+package sedjiwa.tasks.activity.v1;
+
+// Project-wide audit log. Read = member-scoped. Records are written internally by
+// mutation handlers (no public record RPC).
+
+service ActivityService {
+  rpc ListProjectActivity(ListProjectActivityRequest) returns (ListActivityResponse);
+  rpc ListEntityActivity(ListEntityActivityRequest) returns (ListActivityResponse);
+  rpc ListRecentActivity(ListRecentActivityRequest) returns (ListActivityResponse);
+}
+
+message FieldChange {
+  string field = 1;
+  optional string from = 2;
+  optional string to = 3;
+}
+message Activity {
+  string id = 1;
+  string project_id = 2;
+  string actor_id = 3;
+  EntityType entity_type = 4;
+  string entity_id = 5;
+  ActivityAction action = 6;
+  string summary = 7;
+  repeated FieldChange changes = 8;
+  string created_at = 9;
+}
+enum EntityType {
+  ENTITY_TYPE_UNSPECIFIED = 0;
+  TASK = 1;
+  MODULE = 2;
+  MEMBERSHIP = 3;
+  OWNERSHIP = 4;
+  PAGE = 5;
+  MEDIA = 6;
+}
+enum ActivityAction {
+  ACTIVITY_ACTION_UNSPECIFIED = 0;
+  CREATED = 1;
+  UPDATED = 2;
+  DELETED = 3;
+}
+
+message ListProjectActivityRequest {
+  string project_id = 1;
+  uint32 page = 2;
+  uint32 page_size = 3;
+}
+message ListEntityActivityRequest {
+  EntityType entity_type = 1;
+  string entity_id = 2;
+}
+message ListRecentActivityRequest {
+  uint32 page = 1;
+  uint32 page_size = 2;
+}
+message ListActivityResponse {
+  repeated Activity activities = 1;
+  uint32 total = 2;
+}

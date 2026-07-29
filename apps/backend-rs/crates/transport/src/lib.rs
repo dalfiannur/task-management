@@ -15,6 +15,7 @@
 
 include!(concat!(env!("OUT_DIR"), "/generated.rs"));
 
+mod activity;
 mod comments;
 mod labels;
 mod media;
@@ -23,6 +24,7 @@ mod pages;
 mod projects;
 mod users;
 mod work;
+pub use activity::activity_router;
 pub use comments::comment_router;
 pub use labels::label_router;
 pub use notifications::{notification_router, Notifier};
