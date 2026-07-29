@@ -30,7 +30,8 @@ pub fn build_router(cfg: &Config, store: Arc<Store>) -> Router {
     // Merge all service routers, then apply JWT extraction + CORS over the whole API.
     transport::health_router(store.clone())
         .merge(transport::auth_router(store.clone(), jwt))
-        .merge(transport::user_router(store))
+        .merge(transport::user_router(store.clone()))
+        .merge(transport::project_router(store))
         .layer(axum::middleware::from_fn_with_state(secret, auth_layer))
         .layer(cors)
 }

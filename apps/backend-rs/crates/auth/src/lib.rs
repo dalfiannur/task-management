@@ -26,6 +26,11 @@ impl AuthUser {
     pub fn is_admin(&self) -> bool {
         self.permissions.iter().any(|p| p == "*")
     }
+
+    /// True if the user is admin (`*`) or carries the exact `perm`.
+    pub fn has(&self, perm: &str) -> bool {
+        self.is_admin() || self.permissions.iter().any(|p| p == perm)
+    }
 }
 
 #[derive(Debug, thiserror::Error, PartialEq)]
@@ -104,6 +109,21 @@ mod tests {
     fn expired_token_rejected() {
         let t = mint("s3cret", "user-1", &[], 1); // 1970
         assert_eq!(verify_jwt(&t, "s3cret"), Err(AuthError::Invalid));
+    }
+
+    #[test]
+    fn permission_has() {
+        let u = AuthUser {
+            id: "1".into(),
+            permissions: vec!["projects:create".into()],
+        };
+        assert!(u.has("projects:create"));
+        assert!(!u.has("users:admin"));
+        let admin = AuthUser {
+            id: "2".into(),
+            permissions: vec!["*".into()],
+        };
+        assert!(admin.has("anything"));
     }
 
     #[test]

@@ -1,0 +1,31 @@
+syntax = "proto3";
+package sedjiwa.tasks.project.v1;
+
+// Local delivery-only projects. Create only; List/Get/Update live in later flows.
+
+service ProjectService {
+  rpc CreateProject(CreateProjectRequest) returns (Project);
+}
+
+message CreateProjectRequest {
+  string name = 1;
+  optional string description = 2;
+  optional string owner_id = 3; // empty → owner = caller
+}
+
+message Project {
+  string id = 1;
+  string name = 2;
+  optional string description = 3;
+  ProjectStatus status = 4;
+  string owner_id = 5;
+  optional string start_date = 6; // set in a later flow
+  optional string end_date = 7;
+}
+
+enum ProjectStatus {
+  PROJECT_STATUS_UNSPECIFIED = 0;
+  PROJECT_STATUS_ACTIVE = 1;
+  PROJECT_STATUS_COMPLETED = 2;
+  PROJECT_STATUS_ARCHIVED = 3;
+}

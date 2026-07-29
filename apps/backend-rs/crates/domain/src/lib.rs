@@ -6,17 +6,27 @@
 
 use arke_postgres::PgComponent;
 
+pub mod project;
 pub mod user;
 
 /// Register every persisted component on a fresh `PgStore`. Shared by the server
 /// and the seed binary so the schema stays in one place.
 pub fn register_all(pg: &mut arke_postgres::PgStore) {
     pg.register::<HeartbeatAt>();
+    // Users.
     pg.register::<user::UserPhone>();
     pg.register::<user::UserPassword>();
     pg.register::<user::UserProfile>();
     pg.register::<user::UserStatusComponent>();
     pg.register::<user::AdminMark>();
+    // Projects.
+    pg.register::<project::ProjectName>();
+    pg.register::<project::ProjectDescription>();
+    pg.register::<project::ProjectOwnerId>();
+    pg.register::<project::ProjectStatusComponent>();
+    pg.register::<project::ProjectDates>();
+    pg.register::<project::ProjectCoreRef>();
+    pg.register::<project::ProjectMembership>();
 }
 
 /// Skeleton entity: a single timestamp, used only to prove Arke↔Postgres round-trips.

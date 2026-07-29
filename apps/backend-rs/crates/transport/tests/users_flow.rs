@@ -106,14 +106,26 @@ async fn seed_admin(store: &Store, phone: &str) -> String {
 const AUTH: &str = "/sedjiwa.tasks.auth.v1.AuthService";
 const DIR: &str = "/sedjiwa.tasks.auth.v1.UserDirectoryService";
 
+/// Unique suffix so reruns on a persistent DB don't collide on the phone unique
+/// index (the per-op Store never wipes).
+fn uniq() -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos()
+        .to_string()
+}
+
 #[tokio::test]
 async fn register_approve_login_me_and_change_password() {
     let Some((router, store)) = setup().await else {
         eprintln!("skip: DATABASE_URL not set");
         return;
     };
-    let admin_token = seed_admin(&store, "admin-flow-1").await;
-    let phone = "0811flow1";
+    let admin_token = seed_admin(&store, &format!("admin-{}", uniq())).await;
+    let phone_owned = format!("0811{}", uniq());
+    let phone = phone_owned.as_str();
 
     // 1) Register → 200, status Pending, no token.
     let (st, body) = call(
@@ -212,8 +224,9 @@ async fn non_admin_cannot_activate_and_duplicate_phone_rejected() {
         eprintln!("skip: DATABASE_URL not set");
         return;
     };
-    let _ = seed_admin(&store, "admin-flow-2").await;
-    let phone = "0811flow2";
+    let _ = seed_admin(&store, &format!("admin-{}", uniq())).await;
+    let phone_owned = format!("0811{}", uniq());
+    let phone = phone_owned.as_str();
 
     // Register once → ok; twice → already exists (non-200).
     let (st, _) = call(
