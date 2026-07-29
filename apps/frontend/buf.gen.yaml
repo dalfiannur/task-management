@@ -1,0 +1,8 @@
+version: v2
+inputs:
+  - directory: ../backend-rs/proto
+plugins:
+  - local: ./node_modules/.bin/protoc-gen-es
+    out: src/lib/gen
+    opt:
+      - target=ts

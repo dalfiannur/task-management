@@ -27,6 +27,12 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           rewrite: (path: string) => path.replace(/^\/api\/tasks/, ""),
         },
+        // backend-rs (Rust + Connect) during transition — leaves /api/tasks (Bun) untouched.
+        "/api/tasks-rs/": {
+          target: env.VITE_TASKS_RS_BASE_URL ?? "http://localhost:3010",
+          changeOrigin: true,
+          rewrite: (path: string) => path.replace(/^\/api\/tasks-rs/, ""),
+        },
         "/api/core/": {
           target: env.VITE_CORE_API_BASE_URL ?? "http://localhost:3101",
           changeOrigin: true,
