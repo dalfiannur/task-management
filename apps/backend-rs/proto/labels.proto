@@ -1,0 +1,34 @@
+syntax = "proto3";
+package sedjiwa.tasks.label.v1;
+
+// Per-project label palette (name + hex color). All ops member-gated. Delete is
+// tolerant: tasks keep dangling label_ids (frontend filters).
+
+service LabelService {
+  rpc ListLabels(ListLabelsRequest) returns (ListLabelsResponse);
+  rpc CreateLabel(CreateLabelRequest) returns (Label);
+  rpc UpdateLabel(UpdateLabelRequest) returns (Label);
+  rpc DeleteLabel(DeleteLabelRequest) returns (DeleteLabelResponse);
+}
+
+message Label {
+  string id = 1;
+  string project_id = 2;
+  string name = 3;
+  string color = 4;
+}
+
+message ListLabelsRequest { string project_id = 1; }
+message ListLabelsResponse { repeated Label labels = 1; }
+message CreateLabelRequest {
+  string project_id = 1;
+  string name = 2;
+  string color = 3;
+}
+message UpdateLabelRequest {
+  string id = 1;
+  optional string name = 2;
+  optional string color = 3;
+}
+message DeleteLabelRequest { string id = 1; }
+message DeleteLabelResponse { bool ok = 1; }

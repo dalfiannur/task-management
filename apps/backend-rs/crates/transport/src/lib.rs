@@ -15,11 +15,13 @@
 
 include!(concat!(env!("OUT_DIR"), "/generated.rs"));
 
+mod labels;
 mod media;
 mod pages;
 mod projects;
 mod users;
 mod work;
+pub use labels::label_router;
 pub use media::media_router;
 pub use pages::page_router;
 pub use projects::project_router;

@@ -6,6 +6,7 @@
 
 use arke_postgres::PgComponent;
 
+pub mod label;
 pub mod media;
 pub mod module;
 pub mod page;
@@ -48,6 +49,8 @@ pub fn register_all(pg: &mut arke_postgres::PgStore) {
     // Media.
     pg.register::<media::MediaFileInfo>();
     pg.register::<media::TaskMediaLinkData>();
+    // Labels.
+    pg.register::<label::LabelInfo>();
 }
 
 /// Skeleton entity: a single timestamp, used only to prove Arke↔Postgres round-trips.
