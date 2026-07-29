@@ -56,7 +56,7 @@ version = "0.3.0"
 
 [[package]]
 name = "arke-postgres"
-version = "0.11.0"
+version = "0.13.0"
 dependencies = [
  "arke",
  "arke-postgres-derive",
@@ -66,7 +66,7 @@ dependencies = [
 
 [[package]]
 name = "arke-postgres-derive"
-version = "0.5.0"
+version = "0.6.0"
 
 [[package]]
 name = "async-stream"
