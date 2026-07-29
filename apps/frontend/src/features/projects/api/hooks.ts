@@ -53,6 +53,21 @@ export function useProject(id: string) {
   return { ...result, project: result.data ? mapProject(result.data) : null };
 }
 
+/** Member roster of a project (read). Used by assignee pickers + the members tab. */
+export function useProjectMembers(projectId: string) {
+  const result = useQuery(
+    ProjectService.method.listProjectMembers,
+    { projectId },
+    { enabled: !!projectId },
+  );
+  return {
+    ...result,
+    members: result.data?.members ?? [],
+    memberIds: result.data?.members.map((m) => m.userId) ?? [],
+    ownerId: result.data?.ownerId ?? "",
+  };
+}
+
 export function useCreateProject() {
   return useMutation(ProjectService.method.createProject, {
     onSuccess: invalidateProjects,

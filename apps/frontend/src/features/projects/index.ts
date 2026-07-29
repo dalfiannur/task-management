@@ -6,6 +6,7 @@ export { mapProject, statusFromProto, statusToProto } from "./api/mappers";
 export {
   useProjects,
   useProject,
+  useProjectMembers,
   useCreateProject,
   useSetProjectStatus,
   useTransferOwnership,
