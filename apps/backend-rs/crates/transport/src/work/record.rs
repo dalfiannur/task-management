@@ -50,6 +50,18 @@ pub(crate) async fn load_module(store: &Store, pid: i64) -> anyhow::Result<Optio
     Ok(v.pop())
 }
 
+/// Every module (for cross-project aggregation).
+pub(crate) async fn load_all_modules(store: &Store) -> anyhow::Result<Vec<ModuleRecord>> {
+    store
+        .query::<ModuleName, ModuleRecord>(None, |world, pairs| {
+            pairs
+                .iter()
+                .filter_map(|(pid, e)| read_module(world, *e, *pid))
+                .collect()
+        })
+        .await
+}
+
 /// Modules of a project, sorted by order then pid.
 pub(crate) async fn modules_for_project(
     store: &Store,

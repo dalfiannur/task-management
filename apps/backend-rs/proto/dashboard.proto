@@ -1,0 +1,55 @@
+syntax = "proto3";
+package sedjiwa.tasks.dashboard.v1;
+
+import "work.proto";
+
+// Cross-project read aggregation over Tasks/Projects/Comments. All scoped to the
+// caller's member projects (admin: all). No new entities.
+
+service DashboardService {
+  rpc GetDashboardStats(GetDashboardStatsRequest) returns (DashboardStats);
+  rpc GetUpcomingDeadlines(GetUpcomingDeadlinesRequest) returns (TaskListResponse);
+}
+
+service MyTasksService {
+  rpc ListAssignedToMe(MyTasksRequest) returns (MyTasksResponse);
+  rpc ListCreatedByMe(MyTasksRequest) returns (MyTasksResponse);
+  rpc ListInvolvingMe(MyTasksRequest) returns (MyTasksResponse);
+}
+
+// A task enriched with project/module context for cross-project lists.
+message MyTask {
+  sedjiwa.tasks.work.v1.Task task = 1;
+  string project_id = 2;
+  string project_name = 3;
+  string module_name = 4;
+}
+
+message GetDashboardStatsRequest {}
+message ProjectProgress {
+  string project_id = 1;
+  string project_name = 2;
+  uint32 done = 3;
+  uint32 total = 4;
+}
+message DashboardStats {
+  uint32 total_tasks = 1;
+  uint32 in_progress_tasks = 2;
+  uint32 done_tasks = 3;
+  uint32 overdue_tasks = 4;
+  repeated ProjectProgress per_project = 5;
+}
+
+message GetUpcomingDeadlinesRequest { uint32 within_days = 1; } // default 7
+message TaskListResponse { repeated MyTask items = 1; }
+
+message MyTasksRequest {
+  optional sedjiwa.tasks.work.v1.TaskStatus status = 1;
+  optional sedjiwa.tasks.work.v1.TaskPriority priority = 2;
+  uint32 page = 3;
+  uint32 page_size = 4;
+}
+message MyTasksResponse {
+  repeated MyTask items = 1;
+  uint32 total = 2;
+}

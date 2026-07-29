@@ -5,8 +5,8 @@
 //! Deferred (systems not built yet): activity + notification emits (spec §4.7).
 
 mod module_service;
-mod record;
-mod task_record;
+pub(crate) mod record;
+pub(crate) mod task_record;
 mod task_service;
 
 pub use module_service::module_router;

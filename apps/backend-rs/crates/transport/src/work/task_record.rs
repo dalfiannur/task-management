@@ -91,6 +91,18 @@ pub(crate) async fn load_task(store: &Store, pid: i64) -> anyhow::Result<Option<
     Ok(v.pop())
 }
 
+/// Every task (for cross-project aggregation).
+pub(crate) async fn load_all_tasks(store: &Store) -> anyhow::Result<Vec<TaskRecord>> {
+    store
+        .query::<TaskInfo, TaskRecord>(None, |world, pairs| {
+            pairs
+                .iter()
+                .filter_map(|(pid, e)| read_task(world, *e, *pid))
+                .collect()
+        })
+        .await
+}
+
 /// Tasks in a module, sorted by (order, pid).
 pub(crate) async fn tasks_for_module(
     store: &Store,
