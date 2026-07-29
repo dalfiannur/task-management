@@ -14,6 +14,14 @@ import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as AuthedDashboardRouteImport } from './routes/_authed/dashboard'
+import { Route as AuthedProjectsIndexRouteImport } from './routes/_authed/projects/index'
+import { Route as AuthedProjectsProjectIdRouteImport } from './routes/_authed/projects/$projectId'
+import { Route as AuthedProjectsProjectIdIndexRouteImport } from './routes/_authed/projects/$projectId/index'
+import { Route as AuthedProjectsProjectIdAllTasksRouteImport } from './routes/_authed/projects/$projectId/all-tasks'
+import { Route as AuthedProjectsProjectIdMediaRouteImport } from './routes/_authed/projects/$projectId/media'
+import { Route as AuthedProjectsProjectIdMembersRouteImport } from './routes/_authed/projects/$projectId/members'
+import { Route as AuthedProjectsProjectIdPagesRouteImport } from './routes/_authed/projects/$projectId/pages'
+import { Route as AuthedProjectsProjectIdTimelineRouteImport } from './routes/_authed/projects/$projectId/timeline'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -39,18 +47,79 @@ const AuthedDashboardRoute = AuthedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthedRoute,
 } as any)
+const AuthedProjectsIndexRoute = AuthedProjectsIndexRouteImport.update({
+  id: '/projects/',
+  path: '/projects/',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedProjectsProjectIdRoute = AuthedProjectsProjectIdRouteImport.update({
+  id: '/projects/$projectId',
+  path: '/projects/$projectId',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedProjectsProjectIdIndexRoute =
+  AuthedProjectsProjectIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthedProjectsProjectIdRoute,
+  } as any)
+const AuthedProjectsProjectIdAllTasksRoute =
+  AuthedProjectsProjectIdAllTasksRouteImport.update({
+    id: '/all-tasks',
+    path: '/all-tasks',
+    getParentRoute: () => AuthedProjectsProjectIdRoute,
+  } as any)
+const AuthedProjectsProjectIdMediaRoute =
+  AuthedProjectsProjectIdMediaRouteImport.update({
+    id: '/media',
+    path: '/media',
+    getParentRoute: () => AuthedProjectsProjectIdRoute,
+  } as any)
+const AuthedProjectsProjectIdMembersRoute =
+  AuthedProjectsProjectIdMembersRouteImport.update({
+    id: '/members',
+    path: '/members',
+    getParentRoute: () => AuthedProjectsProjectIdRoute,
+  } as any)
+const AuthedProjectsProjectIdPagesRoute =
+  AuthedProjectsProjectIdPagesRouteImport.update({
+    id: '/pages',
+    path: '/pages',
+    getParentRoute: () => AuthedProjectsProjectIdRoute,
+  } as any)
+const AuthedProjectsProjectIdTimelineRoute =
+  AuthedProjectsProjectIdTimelineRouteImport.update({
+    id: '/timeline',
+    path: '/timeline',
+    getParentRoute: () => AuthedProjectsProjectIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/dashboard': typeof AuthedDashboardRoute
+  '/projects/$projectId': typeof AuthedProjectsProjectIdRouteWithChildren
+  '/projects/': typeof AuthedProjectsIndexRoute
+  '/projects/$projectId/all-tasks': typeof AuthedProjectsProjectIdAllTasksRoute
+  '/projects/$projectId/media': typeof AuthedProjectsProjectIdMediaRoute
+  '/projects/$projectId/members': typeof AuthedProjectsProjectIdMembersRoute
+  '/projects/$projectId/pages': typeof AuthedProjectsProjectIdPagesRoute
+  '/projects/$projectId/timeline': typeof AuthedProjectsProjectIdTimelineRoute
+  '/projects/$projectId/': typeof AuthedProjectsProjectIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/dashboard': typeof AuthedDashboardRoute
+  '/projects': typeof AuthedProjectsIndexRoute
+  '/projects/$projectId/all-tasks': typeof AuthedProjectsProjectIdAllTasksRoute
+  '/projects/$projectId/media': typeof AuthedProjectsProjectIdMediaRoute
+  '/projects/$projectId/members': typeof AuthedProjectsProjectIdMembersRoute
+  '/projects/$projectId/pages': typeof AuthedProjectsProjectIdPagesRoute
+  '/projects/$projectId/timeline': typeof AuthedProjectsProjectIdTimelineRoute
+  '/projects/$projectId': typeof AuthedProjectsProjectIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -59,12 +128,43 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/_authed/dashboard': typeof AuthedDashboardRoute
+  '/_authed/projects/$projectId': typeof AuthedProjectsProjectIdRouteWithChildren
+  '/_authed/projects/': typeof AuthedProjectsIndexRoute
+  '/_authed/projects/$projectId/all-tasks': typeof AuthedProjectsProjectIdAllTasksRoute
+  '/_authed/projects/$projectId/media': typeof AuthedProjectsProjectIdMediaRoute
+  '/_authed/projects/$projectId/members': typeof AuthedProjectsProjectIdMembersRoute
+  '/_authed/projects/$projectId/pages': typeof AuthedProjectsProjectIdPagesRoute
+  '/_authed/projects/$projectId/timeline': typeof AuthedProjectsProjectIdTimelineRoute
+  '/_authed/projects/$projectId/': typeof AuthedProjectsProjectIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/register' | '/dashboard'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/register'
+    | '/dashboard'
+    | '/projects/$projectId'
+    | '/projects/'
+    | '/projects/$projectId/all-tasks'
+    | '/projects/$projectId/media'
+    | '/projects/$projectId/members'
+    | '/projects/$projectId/pages'
+    | '/projects/$projectId/timeline'
+    | '/projects/$projectId/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/register' | '/dashboard'
+  to:
+    | '/'
+    | '/login'
+    | '/register'
+    | '/dashboard'
+    | '/projects'
+    | '/projects/$projectId/all-tasks'
+    | '/projects/$projectId/media'
+    | '/projects/$projectId/members'
+    | '/projects/$projectId/pages'
+    | '/projects/$projectId/timeline'
+    | '/projects/$projectId'
   id:
     | '__root__'
     | '/'
@@ -72,6 +172,14 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/_authed/dashboard'
+    | '/_authed/projects/$projectId'
+    | '/_authed/projects/'
+    | '/_authed/projects/$projectId/all-tasks'
+    | '/_authed/projects/$projectId/media'
+    | '/_authed/projects/$projectId/members'
+    | '/_authed/projects/$projectId/pages'
+    | '/_authed/projects/$projectId/timeline'
+    | '/_authed/projects/$projectId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -118,15 +226,99 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedDashboardRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/_authed/projects/': {
+      id: '/_authed/projects/'
+      path: '/projects'
+      fullPath: '/projects/'
+      preLoaderRoute: typeof AuthedProjectsIndexRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/projects/$projectId': {
+      id: '/_authed/projects/$projectId'
+      path: '/projects/$projectId'
+      fullPath: '/projects/$projectId'
+      preLoaderRoute: typeof AuthedProjectsProjectIdRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/projects/$projectId/': {
+      id: '/_authed/projects/$projectId/'
+      path: '/'
+      fullPath: '/projects/$projectId/'
+      preLoaderRoute: typeof AuthedProjectsProjectIdIndexRouteImport
+      parentRoute: typeof AuthedProjectsProjectIdRoute
+    }
+    '/_authed/projects/$projectId/all-tasks': {
+      id: '/_authed/projects/$projectId/all-tasks'
+      path: '/all-tasks'
+      fullPath: '/projects/$projectId/all-tasks'
+      preLoaderRoute: typeof AuthedProjectsProjectIdAllTasksRouteImport
+      parentRoute: typeof AuthedProjectsProjectIdRoute
+    }
+    '/_authed/projects/$projectId/media': {
+      id: '/_authed/projects/$projectId/media'
+      path: '/media'
+      fullPath: '/projects/$projectId/media'
+      preLoaderRoute: typeof AuthedProjectsProjectIdMediaRouteImport
+      parentRoute: typeof AuthedProjectsProjectIdRoute
+    }
+    '/_authed/projects/$projectId/members': {
+      id: '/_authed/projects/$projectId/members'
+      path: '/members'
+      fullPath: '/projects/$projectId/members'
+      preLoaderRoute: typeof AuthedProjectsProjectIdMembersRouteImport
+      parentRoute: typeof AuthedProjectsProjectIdRoute
+    }
+    '/_authed/projects/$projectId/pages': {
+      id: '/_authed/projects/$projectId/pages'
+      path: '/pages'
+      fullPath: '/projects/$projectId/pages'
+      preLoaderRoute: typeof AuthedProjectsProjectIdPagesRouteImport
+      parentRoute: typeof AuthedProjectsProjectIdRoute
+    }
+    '/_authed/projects/$projectId/timeline': {
+      id: '/_authed/projects/$projectId/timeline'
+      path: '/timeline'
+      fullPath: '/projects/$projectId/timeline'
+      preLoaderRoute: typeof AuthedProjectsProjectIdTimelineRouteImport
+      parentRoute: typeof AuthedProjectsProjectIdRoute
+    }
   }
 }
 
+interface AuthedProjectsProjectIdRouteChildren {
+  AuthedProjectsProjectIdAllTasksRoute: typeof AuthedProjectsProjectIdAllTasksRoute
+  AuthedProjectsProjectIdMediaRoute: typeof AuthedProjectsProjectIdMediaRoute
+  AuthedProjectsProjectIdMembersRoute: typeof AuthedProjectsProjectIdMembersRoute
+  AuthedProjectsProjectIdPagesRoute: typeof AuthedProjectsProjectIdPagesRoute
+  AuthedProjectsProjectIdTimelineRoute: typeof AuthedProjectsProjectIdTimelineRoute
+  AuthedProjectsProjectIdIndexRoute: typeof AuthedProjectsProjectIdIndexRoute
+}
+
+const AuthedProjectsProjectIdRouteChildren: AuthedProjectsProjectIdRouteChildren =
+  {
+    AuthedProjectsProjectIdAllTasksRoute: AuthedProjectsProjectIdAllTasksRoute,
+    AuthedProjectsProjectIdMediaRoute: AuthedProjectsProjectIdMediaRoute,
+    AuthedProjectsProjectIdMembersRoute: AuthedProjectsProjectIdMembersRoute,
+    AuthedProjectsProjectIdPagesRoute: AuthedProjectsProjectIdPagesRoute,
+    AuthedProjectsProjectIdTimelineRoute: AuthedProjectsProjectIdTimelineRoute,
+    AuthedProjectsProjectIdIndexRoute: AuthedProjectsProjectIdIndexRoute,
+  }
+
+const AuthedProjectsProjectIdRouteWithChildren =
+  AuthedProjectsProjectIdRoute._addFileChildren(
+    AuthedProjectsProjectIdRouteChildren,
+  )
+
 interface AuthedRouteChildren {
   AuthedDashboardRoute: typeof AuthedDashboardRoute
+  AuthedProjectsProjectIdRoute: typeof AuthedProjectsProjectIdRouteWithChildren
+  AuthedProjectsIndexRoute: typeof AuthedProjectsIndexRoute
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedDashboardRoute: AuthedDashboardRoute,
+  AuthedProjectsProjectIdRoute: AuthedProjectsProjectIdRouteWithChildren,
+  AuthedProjectsIndexRoute: AuthedProjectsIndexRoute,
 }
 
 const AuthedRouteWithChildren =

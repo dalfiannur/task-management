@@ -1,4 +1,4 @@
-import { Outlet, useNavigate } from "@tanstack/react-router";
+import { Link, Outlet, useNavigate } from "@tanstack/react-router";
 import { useAtomValue } from "jotai";
 import { Button } from "@/components/ui/button";
 import { getInitials } from "@/lib/utils";
@@ -20,7 +20,25 @@ export function AppShell() {
   return (
     <div className="min-h-screen">
       <header className="flex h-14 items-center justify-between border-b px-4">
-        <span className="font-semibold">Sedjiwa · Tasks</span>
+        <div className="flex items-center gap-6">
+          <span className="font-semibold">Sedjiwa · Tasks</span>
+          <nav className="flex items-center gap-1 text-sm">
+            <Link
+              to="/dashboard"
+              className="rounded px-2 py-1 text-muted-foreground transition-colors hover:text-foreground"
+              activeProps={{ className: "text-foreground" }}
+            >
+              Dashboard
+            </Link>
+            <Link
+              to="/projects"
+              className="rounded px-2 py-1 text-muted-foreground transition-colors hover:text-foreground"
+              activeProps={{ className: "text-foreground" }}
+            >
+              Projects
+            </Link>
+          </nav>
+        </div>
         <div className="flex items-center gap-3">
           {user && (
             <span className="flex items-center gap-2 text-sm">
