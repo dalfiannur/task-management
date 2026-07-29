@@ -2584,7 +2584,9 @@ dependencies = [
  "storage",
  "time",
  "tokio",
+ "tokio-stream",
  "tower",
+ "tracing",
 ]
 
 [[package]]

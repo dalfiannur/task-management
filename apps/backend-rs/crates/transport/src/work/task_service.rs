@@ -17,7 +17,9 @@ use persistence::Store;
 use super::record::{load_module, modules_for_project};
 use super::task_record::{load_task, tasks_for_module, tasks_for_modules, to_proto, TaskRecord};
 use super::{internal, parse_pid, require_auth, require_member, StoreExt};
+use crate::notifications::{emit, NotifRefs, Notifier};
 use crate::projects::record::project_member_ids;
+use domain::notification::NotificationType;
 use crate::sedjiwa::tasks::work::v1 as pb;
 use crate::sedjiwa::tasks::work::v1::task_service_connect::TaskServiceBuilder;
 
@@ -98,6 +100,7 @@ async fn list_tasks(
 
 async fn create_task(
     Extension(store): StoreExt,
+    notifier: Option<Extension<Arc<Notifier>>>,
     user: Option<Extension<AuthUser>>,
     req: ConnectRequest<pb::CreateTaskRequest>,
 ) -> Result<ConnectResponse<pb::Task>, ConnectError> {
@@ -111,6 +114,7 @@ async fn create_task(
         return Err(ConnectError::new_invalid_argument("title is required"));
     }
     validate_assignees(&store, &project_id, &r.assignee_ids).await?;
+    let assignees = r.assignee_ids.clone();
 
     let status = TaskStatus::from_proto(r.status).unwrap_or(TaskStatus::Todo);
     let priority = TaskPriority::from_proto(r.priority).unwrap_or(TaskPriority::None);
@@ -154,12 +158,29 @@ async fn create_task(
         ))
         .await
         .map_err(internal)?;
+    // Notify each assignee (emit no-ops on self-assignment).
+    if let Some(Extension(n)) = notifier {
+        let refs = NotifRefs::task(&project_id, &pid.to_string());
+        for a in &assignees {
+            emit(
+                &store,
+                &n,
+                a,
+                NotificationType::TaskAssigned,
+                &auth.id,
+                "You were assigned to a task".to_string(),
+                refs.clone(),
+            )
+            .await;
+        }
+    }
     let t = require_task(&store, pid).await?;
     Ok(ConnectResponse::new(to_proto(&t)))
 }
 
 async fn update_task(
     Extension(store): StoreExt,
+    notifier: Option<Extension<Arc<Notifier>>>,
     user: Option<Extension<AuthUser>>,
     req: ConnectRequest<pb::UpdateTaskRequest>,
 ) -> Result<ConnectResponse<pb::Task>, ConnectError> {
@@ -241,6 +262,7 @@ async fn update_task(
         completed_at,
         created_by: t.created_by.clone(),
     };
+    let new_assignees = assignees.clone();
     store
         .update(pid, move |w, e| {
             w.remove::<TaskInfo>(e);
@@ -254,6 +276,22 @@ async fn update_task(
         })
         .await
         .map_err(internal)?;
+    // Notify only newly-added assignees.
+    if let Some(Extension(n)) = notifier {
+        let refs = NotifRefs::task(&project_id, &pid.to_string());
+        for a in new_assignees.iter().filter(|a| !t.assignee_ids.contains(a)) {
+            emit(
+                &store,
+                &n,
+                a,
+                NotificationType::TaskAssigned,
+                &auth.id,
+                "You were assigned to a task".to_string(),
+                refs.clone(),
+            )
+            .await;
+        }
+    }
     let t = require_task(&store, pid).await?;
     Ok(ConnectResponse::new(to_proto(&t)))
 }
@@ -327,10 +365,11 @@ async fn move_task(
 /// TaskService router; injects the Store as a request extension.
 pub fn task_router(store: Arc<Store>) -> axum::Router<()> {
     type A = Option<Extension<AuthUser>>;
+    type N = Option<Extension<Arc<Notifier>>>;
     TaskServiceBuilder::<()>::new()
         .list_tasks::<_, (StoreExt, A, ConnectRequest<pb::ListTasksRequest>)>(list_tasks)
-        .create_task::<_, (StoreExt, A, ConnectRequest<pb::CreateTaskRequest>)>(create_task)
-        .update_task::<_, (StoreExt, A, ConnectRequest<pb::UpdateTaskRequest>)>(update_task)
+        .create_task::<_, (StoreExt, N, A, ConnectRequest<pb::CreateTaskRequest>)>(create_task)
+        .update_task::<_, (StoreExt, N, A, ConnectRequest<pb::UpdateTaskRequest>)>(update_task)
         .delete_task::<_, (StoreExt, A, ConnectRequest<pb::DeleteTaskRequest>)>(delete_task)
         .move_task::<_, (StoreExt, A, ConnectRequest<pb::MoveTaskRequest>)>(move_task)
         .build()

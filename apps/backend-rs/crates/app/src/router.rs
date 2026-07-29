@@ -1,18 +1,25 @@
 use std::sync::Arc;
 
 use axum::http::header::{AUTHORIZATION, CONTENT_TYPE};
-use axum::Router;
+use axum::{Extension, Router};
 use persistence::Store;
 use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 
 use storage::Storage;
+use transport::Notifier;
 
 use crate::config::Config;
 use crate::interceptor::auth_layer;
 
 /// Build the app router: all services (Store injected as an extension; Media also
-/// gets the object Storage), wrapped with the JWT auth middleware and CORS.
-pub fn build_router(cfg: &Config, store: Arc<Store>, media_storage: Arc<dyn Storage>) -> Router {
+/// gets the object Storage; the Notifier is layered globally so mutating handlers
+/// can emit notifications), wrapped with the JWT auth middleware and CORS.
+pub fn build_router(
+    cfg: &Config,
+    store: Arc<Store>,
+    media_storage: Arc<dyn Storage>,
+    notifier: Arc<Notifier>,
+) -> Router {
     let secret: Arc<str> = Arc::from(cfg.jwt_secret.as_str());
     let jwt = Arc::new(transport::JwtConfig {
         secret: cfg.jwt_secret.clone(),
@@ -39,7 +46,10 @@ pub fn build_router(cfg: &Config, store: Arc<Store>, media_storage: Arc<dyn Stor
         .merge(transport::page_router(store.clone()))
         .merge(transport::label_router(store.clone()))
         .merge(transport::comment_router(store.clone()))
-        .merge(transport::media_router(store, media_storage))
+        .merge(transport::media_router(store.clone(), media_storage))
+        .merge(transport::notification_router(store, notifier.clone()))
+        // Global: mutating handlers extract the Notifier to emit.
+        .layer(Extension(notifier))
         .layer(axum::middleware::from_fn_with_state(secret, auth_layer))
         .layer(cors)
 }

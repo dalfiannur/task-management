@@ -6,11 +6,13 @@ version.workspace = true
 [dependencies]
 serde = { workspace = true }
 tokio = { workspace = true }
+tokio-stream = { workspace = true }
 axum = { workspace = true }
 prost = { workspace = true }
 pbjson = { workspace = true }
 connectrpc-axum = { workspace = true }
 time = { workspace = true }
+tracing = { workspace = true }
 anyhow = { workspace = true }
 arke = { workspace = true }
 auth = { path = "../auth" }

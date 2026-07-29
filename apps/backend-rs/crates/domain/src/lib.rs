@@ -10,6 +10,7 @@ pub mod comment;
 pub mod label;
 pub mod media;
 pub mod module;
+pub mod notification;
 pub mod page;
 pub mod project;
 pub mod task;
@@ -54,6 +55,9 @@ pub fn register_all(pg: &mut arke_postgres::PgStore) {
     pg.register::<label::LabelInfo>();
     // Comments.
     pg.register::<comment::CommentInfo>();
+    // Notifications.
+    pg.register::<notification::NotificationInfo>();
+    pg.register::<notification::NotificationRefs>();
 }
 
 /// Skeleton entity: a single timestamp, used only to prove Arke↔Postgres round-trips.

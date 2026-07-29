@@ -5,6 +5,7 @@ use std::sync::Arc;
 use auth::{hash_password, AuthUser};
 use axum::Extension;
 use connectrpc_axum::{ConnectError, ConnectRequest, ConnectResponse};
+use domain::notification::NotificationType;
 use domain::user::{
     password_ok, AdminMark, UserPassword, UserPhone, UserProfile, UserStatus, UserStatusComponent,
 };
@@ -12,6 +13,7 @@ use persistence::Store;
 
 use super::record::{find_by_phone, load_all_users, load_user, to_proto, UserRecord};
 use super::{internal, now_iso, parse_pid};
+use crate::notifications::{emit, NotifRefs, Notifier};
 use crate::sedjiwa::tasks::auth::v1 as pb;
 use crate::sedjiwa::tasks::auth::v1::user_directory_service_connect::UserDirectoryServiceBuilder;
 
@@ -234,6 +236,7 @@ async fn update_user(
 
 async fn activate_user(
     Extension(store): Extension<Arc<Store>>,
+    notifier: Option<Extension<Arc<Notifier>>>,
     user: Option<Extension<AuthUser>>,
     req: ConnectRequest<pb::UserIdRequest>,
 ) -> Result<ConnectResponse<pb::User>, ConnectError> {
@@ -242,6 +245,19 @@ async fn activate_user(
     let ConnectRequest(r) = req;
     let pid = parse_pid(&r.id)?;
     let u = set_status(&store, pid, UserStatus::Active).await?;
+    // Notify the approved user.
+    if let Some(Extension(n)) = notifier {
+        emit(
+            &store,
+            &n,
+            &pid.to_string(),
+            NotificationType::AccountApproved,
+            &auth.id,
+            "Your account was approved".to_string(),
+            NotifRefs::default(),
+        )
+        .await;
+    }
     Ok(ConnectResponse::new(to_proto(&u)))
 }
 
@@ -335,13 +351,14 @@ async fn delete_user(
 pub fn user_router(store: Arc<Store>) -> axum::Router<()> {
     type S = Extension<Arc<Store>>;
     type A = Option<Extension<AuthUser>>;
+    type N = Option<Extension<Arc<Notifier>>>;
     UserDirectoryServiceBuilder::<()>::new()
         .search_users::<_, (S, A, ConnectRequest<pb::SearchUsersRequest>)>(search_users)
         .get_user::<_, (S, A, ConnectRequest<pb::GetUserRequest>)>(get_user)
         .list_users::<_, (S, A, ConnectRequest<pb::ListUsersRequest>)>(list_users)
         .create_user::<_, (S, A, ConnectRequest<pb::CreateUserRequest>)>(create_user)
         .update_user::<_, (S, A, ConnectRequest<pb::UpdateUserRequest>)>(update_user)
-        .activate_user::<_, (S, A, ConnectRequest<pb::UserIdRequest>)>(activate_user)
+        .activate_user::<_, (S, N, A, ConnectRequest<pb::UserIdRequest>)>(activate_user)
         .suspend_user::<_, (S, A, ConnectRequest<pb::UserIdRequest>)>(suspend_user)
         .set_admin::<_, (S, A, ConnectRequest<pb::SetAdminRequest>)>(set_admin)
         .reset_password::<_, (S, A, ConnectRequest<pb::ResetPasswordRequest>)>(reset_password)

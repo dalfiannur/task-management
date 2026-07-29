@@ -1,0 +1,47 @@
+syntax = "proto3";
+package sedjiwa.tasks.notification.v1;
+
+// In-app notifications + real-time push. All ops scoped to the caller (recipient).
+
+service NotificationService {
+  rpc ListNotifications(ListNotificationsRequest) returns (ListNotificationsResponse);
+  rpc UnreadCount(UnreadCountRequest) returns (UnreadCountResponse);
+  rpc MarkRead(MarkReadRequest) returns (OkResponse);
+  rpc MarkAllRead(MarkAllReadRequest) returns (OkResponse);
+  rpc StreamNotifications(StreamNotificationsRequest) returns (stream Notification);
+}
+
+message Notification {
+  string id = 1;
+  NotificationType type = 2;
+  string actor_id = 3;
+  string message = 4;
+  bool read = 5;
+  string created_at = 6;
+  optional string project_id = 7;
+  optional string task_id = 8;
+  optional string comment_id = 9;
+}
+enum NotificationType {
+  NOTIFICATION_TYPE_UNSPECIFIED = 0;
+  MENTION = 1;
+  TASK_ASSIGNED = 2;
+  PROJECT_MEMBER_ADDED = 3;
+  OWNERSHIP_TRANSFERRED = 4;
+  ACCOUNT_APPROVED = 5;
+}
+
+message ListNotificationsRequest {
+  uint32 page = 1;
+  uint32 page_size = 2;
+}
+message ListNotificationsResponse {
+  repeated Notification notifications = 1;
+  uint32 total = 2;
+}
+message UnreadCountRequest {}
+message UnreadCountResponse { uint32 count = 1; }
+message MarkReadRequest { repeated string ids = 1; }
+message MarkAllReadRequest {}
+message StreamNotificationsRequest {}
+message OkResponse { bool ok = 1; }

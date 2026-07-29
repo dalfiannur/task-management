@@ -8,6 +8,7 @@ use auth::AuthUser;
 use axum::Extension;
 use connectrpc_axum::{ConnectError, ConnectRequest, ConnectResponse};
 use domain::comment::{content_ok, CommentInfo};
+use domain::notification::NotificationType;
 use persistence::Store;
 
 use super::record::{comments_for_task, load_comment, to_proto, CommentRecord};
@@ -15,6 +16,7 @@ use super::{
     internal, parse_pid, require_auth, require_author, require_author_owner_or_admin,
     require_member, StoreExt,
 };
+use crate::notifications::{emit, NotifRefs, Notifier};
 use crate::projects::record::project_member_ids;
 use crate::sedjiwa::tasks::comment::v1 as pb;
 use crate::sedjiwa::tasks::comment::v1::comment_service_connect::CommentServiceBuilder;
@@ -101,6 +103,7 @@ async fn list_comments(
 
 async fn create_comment(
     Extension(store): StoreExt,
+    notifier: Option<Extension<Arc<Notifier>>>,
     user: Option<Extension<AuthUser>>,
     req: ConnectRequest<pb::CreateCommentRequest>,
 ) -> Result<ConnectResponse<pb::Comment>, ConnectError> {
@@ -119,19 +122,35 @@ async fn create_comment(
             task_id: r.task_id.clone(),
             author_id: auth.id.clone(),
             content: content.to_string(),
-            mentioned_user_ids: mentions,
+            mentioned_user_ids: mentions.clone(),
             created_at: now.clone(),
             updated_at: now,
         },))
         .await
         .map_err(internal)?;
-    // notify(new mentions except self) — deferred: Notifications flow not built.
+    // Notify each mentioned member (emit no-ops on self-mention).
+    if let Some(Extension(n)) = notifier {
+        let refs = NotifRefs::comment(&project_id, &r.task_id, &pid.to_string());
+        for m in &mentions {
+            emit(
+                &store,
+                &n,
+                m,
+                NotificationType::Mention,
+                &auth.id,
+                "You were mentioned in a comment".to_string(),
+                refs.clone(),
+            )
+            .await;
+        }
+    }
     let c = require_comment(&store, pid).await?;
     Ok(ConnectResponse::new(to_proto(&c)))
 }
 
 async fn update_comment(
     Extension(store): StoreExt,
+    notifier: Option<Extension<Arc<Notifier>>>,
     user: Option<Extension<AuthUser>>,
     req: ConnectRequest<pb::UpdateCommentRequest>,
 ) -> Result<ConnectResponse<pb::Comment>, ConnectError> {
@@ -151,7 +170,7 @@ async fn update_comment(
         task_id: c.task_id.clone(),
         author_id: c.author_id.clone(),
         content: content.to_string(),
-        mentioned_user_ids: mentions,
+        mentioned_user_ids: mentions.clone(),
         created_at: c.created_at.clone(),
         updated_at: now_iso(),
     };
@@ -162,7 +181,22 @@ async fn update_comment(
         })
         .await
         .map_err(internal)?;
-    // notify(mentions added vs before) — deferred: Notifications flow not built.
+    // Notify only newly-added mentions.
+    if let Some(Extension(n)) = notifier {
+        let refs = NotifRefs::comment(&project_id, &c.task_id, &pid.to_string());
+        for m in mentions.iter().filter(|m| !c.mentioned_user_ids.contains(m)) {
+            emit(
+                &store,
+                &n,
+                m,
+                NotificationType::Mention,
+                &auth.id,
+                "You were mentioned in a comment".to_string(),
+                refs.clone(),
+            )
+            .await;
+        }
+    }
     let c = require_comment(&store, pid).await?;
     Ok(ConnectResponse::new(to_proto(&c)))
 }
@@ -185,10 +219,15 @@ async fn delete_comment(
 /// CommentService router; injects the Store as a request extension.
 pub fn comment_router(store: Arc<Store>) -> axum::Router<()> {
     type A = Option<Extension<AuthUser>>;
+    type N = Option<Extension<Arc<Notifier>>>;
     CommentServiceBuilder::<()>::new()
         .list_comments::<_, (StoreExt, A, ConnectRequest<pb::ListCommentsRequest>)>(list_comments)
-        .create_comment::<_, (StoreExt, A, ConnectRequest<pb::CreateCommentRequest>)>(create_comment)
-        .update_comment::<_, (StoreExt, A, ConnectRequest<pb::UpdateCommentRequest>)>(update_comment)
+        .create_comment::<_, (StoreExt, N, A, ConnectRequest<pb::CreateCommentRequest>)>(
+            create_comment,
+        )
+        .update_comment::<_, (StoreExt, N, A, ConnectRequest<pb::UpdateCommentRequest>)>(
+            update_comment,
+        )
         .delete_comment::<_, (StoreExt, A, ConnectRequest<pb::DeleteCommentRequest>)>(delete_comment)
         .build()
         .layer(Extension(store))

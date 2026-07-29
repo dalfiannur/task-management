@@ -6,6 +6,7 @@ use std::sync::Arc;
 use auth::AuthUser;
 use axum::Extension;
 use connectrpc_axum::{ConnectError, ConnectRequest, ConnectResponse};
+use domain::notification::NotificationType;
 use domain::project::{
     project_name_ok, ProjectDescription, ProjectMembership, ProjectName, ProjectOwnerId,
     ProjectStatus, ProjectStatusComponent,
@@ -17,6 +18,7 @@ use super::record::{
     membership_pids_for_project_user, project_member_ids, to_proto, user_exists, ProjectRecord,
 };
 use super::{internal, parse_pid};
+use crate::notifications::{emit, NotifRefs, Notifier};
 use crate::sedjiwa::tasks::project::v1 as pb;
 use crate::sedjiwa::tasks::project::v1::project_service_connect::ProjectServiceBuilder;
 
@@ -218,6 +220,7 @@ async fn set_project_status(
 /// Owner/admin: move ownership; the new owner is ensured to be a member.
 async fn transfer_project_ownership(
     Extension(store): Extension<Arc<Store>>,
+    notifier: Option<Extension<Arc<Notifier>>>,
     user: Option<Extension<AuthUser>>,
     req: ConnectRequest<pb::TransferProjectOwnershipRequest>,
 ) -> Result<ConnectResponse<pb::Project>, ConnectError> {
@@ -245,10 +248,23 @@ async fn transfer_project_ownership(
         store
             .create((ProjectMembership {
                 project_id: pid.to_string(),
-                user_id: new_owner,
+                user_id: new_owner.clone(),
             },))
             .await
             .map_err(internal)?;
+    }
+    // Notify the new owner.
+    if let Some(Extension(n)) = notifier {
+        emit(
+            &store,
+            &n,
+            &new_owner,
+            NotificationType::OwnershipTransferred,
+            &auth.id,
+            "You are now the project owner".to_string(),
+            NotifRefs::project(&pid.to_string()),
+        )
+        .await;
     }
     let updated = require_project(&store, pid).await?;
     Ok(ConnectResponse::new(to_proto(&updated)))
@@ -321,6 +337,7 @@ async fn list_project_members(
 /// Owner/admin: add a member (idempotent; user must exist).
 async fn add_project_member(
     Extension(store): Extension<Arc<Store>>,
+    notifier: Option<Extension<Arc<Notifier>>>,
     user: Option<Extension<AuthUser>>,
     req: ConnectRequest<pb::AddProjectMemberRequest>,
 ) -> Result<ConnectResponse<pb::ListProjectMembersResponse>, ConnectError> {
@@ -343,10 +360,23 @@ async fn add_project_member(
         store
             .create((ProjectMembership {
                 project_id: pid.to_string(),
-                user_id: uid,
+                user_id: uid.clone(),
             },))
             .await
             .map_err(internal)?;
+        // Notify the newly-added member.
+        if let Some(Extension(n)) = notifier {
+            emit(
+                &store,
+                &n,
+                &uid,
+                NotificationType::ProjectMemberAdded,
+                &auth.id,
+                "You were added to a project".to_string(),
+                NotifRefs::project(&pid.to_string()),
+            )
+            .await;
+        }
     }
     Ok(ConnectResponse::new(
         members_response(&store, &p.owner_id, &pid.to_string()).await?,
@@ -416,6 +446,7 @@ async fn leave_project(
 pub fn project_router(store: Arc<Store>) -> axum::Router<()> {
     type S = Extension<Arc<Store>>;
     type A = Option<Extension<AuthUser>>;
+    type N = Option<Extension<Arc<Notifier>>>;
     ProjectServiceBuilder::<()>::new()
         .create_project::<_, (S, A, ConnectRequest<pb::CreateProjectRequest>)>(create_project)
         .list_projects::<_, (S, A, ConnectRequest<pb::ListProjectsRequest>)>(list_projects)
@@ -425,6 +456,7 @@ pub fn project_router(store: Arc<Store>) -> axum::Router<()> {
         )
         .transfer_project_ownership::<_, (
             S,
+            N,
             A,
             ConnectRequest<pb::TransferProjectOwnershipRequest>,
         )>(transfer_project_ownership)
@@ -432,7 +464,7 @@ pub fn project_router(store: Arc<Store>) -> axum::Router<()> {
         .list_project_members::<_, (S, A, ConnectRequest<pb::ListProjectMembersRequest>)>(
             list_project_members,
         )
-        .add_project_member::<_, (S, A, ConnectRequest<pb::AddProjectMemberRequest>)>(
+        .add_project_member::<_, (S, N, A, ConnectRequest<pb::AddProjectMemberRequest>)>(
             add_project_member,
         )
         .remove_project_member::<_, (S, A, ConnectRequest<pb::RemoveProjectMemberRequest>)>(
