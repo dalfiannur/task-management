@@ -22,6 +22,7 @@ import {
 import { DatePickerField } from "@/components/shared/date-picker-field";
 import type { AppUser } from "@/features/auth";
 import { LabelCombobox } from "@/features/labels";
+import { CommentThread } from "@/features/comments";
 import type { Task, TaskPriority, TaskStatus } from "../types";
 import { TASK_PRIORITIES, TASK_STATUSES } from "../types";
 import { TASK_PRIORITY_CONFIG, TASK_STATUS_CONFIG } from "../config";
@@ -126,7 +127,7 @@ export function TaskDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-h-[85vh] max-w-xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{editing ? "Edit task" : "New task"}</DialogTitle>
         </DialogHeader>
@@ -219,6 +220,12 @@ export function TaskDialog({
             </Button>
           </DialogFooter>
         </form>
+        {editing && task && (
+          <>
+            <div className="my-2 border-t" />
+            <CommentThread taskId={task.id} projectId={projectId} />
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );
