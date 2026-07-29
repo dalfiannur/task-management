@@ -17,12 +17,15 @@ tower = "0.5"
 tower-http = { version = "0.6", features = ["cors"] }
 connectrpc-axum = "0.2"
 connectrpc-axum-build = "0.2"
-prost = "0.13"
+prost = "0.14" # must match connectrpc-axum's prost (generated code uses ::prost)
 jsonwebtoken = "9"
 dotenvy = "0.15"
-arke = "0.6"
-arke-postgres = "0.6"
+arke = { path = "/home/qyubit/Workspace/personal/rust-ecs" }
+arke-postgres = { path = "/home/qyubit/Workspace/personal/rust-ecs/arke-postgres" }
 rust-s3 = "0.35"
 time = { version = "0.3", features = ["formatting"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+# NOTE: arke (World: Send fix) + arke-postgres 0.11 (async-friendly stage/commit)
+# consumed via local path deps above during co-development. Pin to published
+# versions once released.

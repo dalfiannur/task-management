@@ -45,8 +45,6 @@ dependencies = [
 [[package]]
 name = "arke"
 version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "202d28e7a72b1ec2e4f2e5f7deeab7b54a5959af4a4406cce497a579edeb8336"
 dependencies = [
  "arke-derive",
 ]
@@ -54,25 +52,20 @@ dependencies = [
 [[package]]
 name = "arke-derive"
 version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c695235ae8de1da39299dfc507099ed00a5d50f2e2d382e240bb186a67c7b8aa"
 
 [[package]]
 name = "arke-postgres"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f162c8731814a1d4b3e927722119e49679e2dc29aeb2769110243c6714b584b9"
+version = "0.11.0"
 dependencies = [
  "arke",
  "arke-postgres-derive",
+ "async-trait",
  "sqlx",
 ]
 
 [[package]]
 name = "arke-postgres-derive"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0148041e7cb98955aa2f51297f5a28165e281c8dd1f07bcbe773bb5417de62cf"
+version = "0.5.0"
 
 [[package]]
 name = "async-stream"
@@ -94,6 +87,17 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.119",
+]
+
+[[package]]
+name = "async-trait"
+version = "0.1.91"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ae36dc4177970ef04fde5178d3e2429882def40e57a451f919c098f72baa6cec"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 3.0.3",
 ]
 
 [[package]]
@@ -261,7 +265,7 @@ dependencies = [
  "hyper",
  "pbjson",
  "pbjson-types",
- "prost 0.14.4",
+ "prost",
  "serde",
  "serde_json",
  "serde_qs",
@@ -280,7 +284,7 @@ dependencies = [
  "heck",
  "pbjson-build",
  "proc-macro2",
- "prost 0.14.4",
+ "prost",
  "prost-build",
  "prost-types",
  "quote",
@@ -295,7 +299,7 @@ dependencies = [
  "base64",
  "bytes",
  "http",
- "prost 0.14.4",
+ "prost",
  "serde",
  "serde_json",
  "thiserror",
@@ -1130,7 +1134,7 @@ checksum = "2ed4d5c6ae95e08ac768883c8401cf0e8deb4e6e1d6a4e1fd3d2ec4f0ec63200"
 dependencies = [
  "heck",
  "itertools",
- "prost 0.14.4",
+ "prost",
  "prost-types",
 ]
 
@@ -1144,7 +1148,7 @@ dependencies = [
  "chrono",
  "pbjson",
  "pbjson-build",
- "prost 0.14.4",
+ "prost",
  "prost-build",
  "serde",
 ]
@@ -1245,22 +1249,12 @@ dependencies = [
 
 [[package]]
 name = "prost"
-version = "0.13.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2796faa41db3ec313a31f7624d9286acf277b52de526150b7e69f3debf891ee5"
-dependencies = [
- "bytes",
- "prost-derive 0.13.5",
-]
-
-[[package]]
-name = "prost"
 version = "0.14.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "528ac67416ff8646872a3c02cad9cc4ee5dc9f9540c9b10771855c95cb2e5ae1"
 dependencies = [
  "bytes",
- "prost-derive 0.14.4",
+ "prost-derive",
 ]
 
 [[package]]
@@ -1275,24 +1269,11 @@ dependencies = [
  "multimap",
  "petgraph",
  "prettyplease",
- "prost 0.14.4",
+ "prost",
  "prost-types",
  "regex",
  "syn 2.0.119",
  "tempfile",
-]
-
-[[package]]
-name = "prost-derive"
-version = "0.13.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a56d757972c98b346a9b766e3f02746cde6dd1cd1d1d563472929fdd74bec4d"
-dependencies = [
- "anyhow",
- "itertools",
- "proc-macro2",
- "quote",
- "syn 2.0.119",
 ]
 
 [[package]]
@@ -1314,7 +1295,7 @@ version = "0.14.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f94967dc7688f3054c7fac87473ffae4cc4c3904800e2d9f5b857246d8963b0a"
 dependencies = [
- "prost 0.14.4",
+ "prost",
 ]
 
 [[package]]
@@ -2069,7 +2050,7 @@ dependencies = [
  "connectrpc-axum-build",
  "domain",
  "persistence",
- "prost 0.13.5",
+ "prost",
  "serde",
  "time",
  "tokio",
