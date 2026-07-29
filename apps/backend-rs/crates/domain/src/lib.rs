@@ -6,7 +6,9 @@
 
 use arke_postgres::PgComponent;
 
+pub mod module;
 pub mod project;
+pub mod task;
 pub mod user;
 
 /// Register every persisted component on a fresh `PgStore`. Shared by the server
@@ -27,6 +29,17 @@ pub fn register_all(pg: &mut arke_postgres::PgStore) {
     pg.register::<project::ProjectDates>();
     pg.register::<project::ProjectCoreRef>();
     pg.register::<project::ProjectMembership>();
+    // Modules.
+    pg.register::<module::ModuleName>();
+    pg.register::<module::ModuleDescription>();
+    pg.register::<module::ModuleProjectRef>();
+    pg.register::<module::ModuleOrder>();
+    // Tasks.
+    pg.register::<task::TaskInfo>();
+    pg.register::<task::TaskModuleRef>();
+    pg.register::<task::TaskAssignees>();
+    pg.register::<task::TaskLabels>();
+    pg.register::<task::TaskAudit>();
 }
 
 /// Skeleton entity: a single timestamp, used only to prove Arke↔Postgres round-trips.

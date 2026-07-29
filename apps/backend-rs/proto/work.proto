@@ -1,0 +1,121 @@
+syntax = "proto3";
+package sedjiwa.tasks.work.v1;
+
+// Project → Modules → Tasks. Module CRUD is owner/admin; task CRUD is any member.
+// Project is derived from the module (task → module → project).
+
+service ModuleService {
+  rpc ListModules(ListModulesRequest) returns (ListModulesResponse);
+  rpc CreateModule(CreateModuleRequest) returns (Module);
+  rpc UpdateModule(UpdateModuleRequest) returns (Module);
+  rpc DeleteModule(DeleteModuleRequest) returns (DeleteModuleResponse);
+  rpc ReorderModules(ReorderModulesRequest) returns (ListModulesResponse);
+}
+
+service TaskService {
+  rpc ListTasks(ListTasksRequest) returns (ListTasksResponse);
+  rpc CreateTask(CreateTaskRequest) returns (Task);
+  rpc UpdateTask(UpdateTaskRequest) returns (Task);
+  rpc DeleteTask(DeleteTaskRequest) returns (DeleteTaskResponse);
+  rpc MoveTask(MoveTaskRequest) returns (Task);
+}
+
+message Module {
+  string id = 1;
+  string name = 2;
+  optional string description = 3;
+  int32 order = 4;
+}
+
+message ListModulesRequest { string project_id = 1; }
+message ListModulesResponse { repeated Module modules = 1; }
+message CreateModuleRequest {
+  string project_id = 1;
+  string name = 2;
+  optional string description = 3;
+}
+message UpdateModuleRequest {
+  string id = 1;
+  optional string name = 2;
+  optional string description = 3;
+}
+message DeleteModuleRequest { string id = 1; }
+message DeleteModuleResponse { bool ok = 1; }
+message ReorderModulesRequest {
+  string project_id = 1;
+  repeated string module_ids = 2; // new order
+}
+
+message Task {
+  string id = 1;
+  string module_id = 2;
+  string title = 3;
+  string description = 4;
+  TaskStatus status = 5;
+  TaskPriority priority = 6;
+  optional string start_date = 7;
+  optional string due_date = 8;
+  int32 order = 9;
+  repeated string assignee_ids = 10;
+  repeated string label_ids = 11;
+  string created_at = 12;
+  string updated_at = 13;
+  optional string completed_at = 14;
+  string created_by = 15;
+}
+
+enum TaskStatus {
+  TASK_STATUS_UNSPECIFIED = 0;
+  TODO = 1;
+  IN_PROGRESS = 2;
+  DONE = 3;
+  CANCELLED = 4;
+}
+enum TaskPriority {
+  TASK_PRIORITY_UNSPECIFIED = 0;
+  NONE = 1;
+  LOW = 2;
+  MEDIUM = 3;
+  HIGH = 4;
+  URGENT = 5;
+}
+
+message ListTasksRequest {
+  string project_id = 1;
+  optional string module_id = 2;
+}
+message ListTasksResponse { repeated Task tasks = 1; }
+
+message CreateTaskRequest {
+  string module_id = 1;
+  string title = 2;
+  optional string description = 3;
+  TaskStatus status = 4;
+  TaskPriority priority = 5;
+  optional string start_date = 6;
+  optional string due_date = 7;
+  repeated string assignee_ids = 8;
+  repeated string label_ids = 9;
+}
+// Wrapper so a repeated field can be distinguished from "absent" on update
+// (proto3 can't tell an omitted `repeated` from an empty one).
+message StringList { repeated string values = 1; }
+
+message UpdateTaskRequest {
+  string id = 1;
+  optional string title = 2;
+  optional string description = 3;
+  optional TaskStatus status = 4;
+  optional TaskPriority priority = 5;
+  optional string start_date = 6;
+  optional string due_date = 7;
+  optional StringList assignee_ids = 8; // absent = unchanged; present (incl. empty) = replace
+  optional StringList label_ids = 9;
+}
+message DeleteTaskRequest { string id = 1; }
+message DeleteTaskResponse { bool ok = 1; }
+message MoveTaskRequest {
+  string id = 1;
+  string module_id = 2;
+  int32 order = 3;
+}

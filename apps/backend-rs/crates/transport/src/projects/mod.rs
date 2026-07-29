@@ -2,7 +2,7 @@
 //! See docs/superpowers/specs/2026-07-29-create-project-flow-design.md.
 
 mod project_service;
-mod record;
+pub(crate) mod record;
 
 pub use project_service::project_router;
 

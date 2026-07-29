@@ -17,8 +17,10 @@ include!(concat!(env!("OUT_DIR"), "/generated.rs"));
 
 mod projects;
 mod users;
+mod work;
 pub use projects::project_router;
 pub use users::{auth_router, user_router, JwtConfig};
+pub use work::{module_router, task_router};
 
 use std::sync::Arc;
 
