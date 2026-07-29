@@ -38,6 +38,7 @@ pub fn build_router(cfg: &Config, store: Arc<Store>, media_storage: Arc<dyn Stor
         .merge(transport::task_router(store.clone()))
         .merge(transport::page_router(store.clone()))
         .merge(transport::label_router(store.clone()))
+        .merge(transport::comment_router(store.clone()))
         .merge(transport::media_router(store, media_storage))
         .layer(axum::middleware::from_fn_with_state(secret, auth_layer))
         .layer(cors)

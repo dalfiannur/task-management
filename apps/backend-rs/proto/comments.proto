@@ -1,0 +1,45 @@
+syntax = "proto3";
+package sedjiwa.tasks.comment.v1;
+
+// Flat task comments (markdown + @mentions). Member-gated; project derived from
+// the task. Mentions filtered to project members; mention→notification is a
+// side-effect owned by the Notifications flow.
+
+service CommentService {
+  rpc ListComments(ListCommentsRequest) returns (ListCommentsResponse);
+  rpc CreateComment(CreateCommentRequest) returns (Comment);
+  rpc UpdateComment(UpdateCommentRequest) returns (Comment);
+  rpc DeleteComment(DeleteCommentRequest) returns (DeleteCommentResponse);
+}
+
+message Comment {
+  string id = 1;
+  string task_id = 2;
+  string author_id = 3;
+  string content = 4;
+  repeated string mentioned_user_ids = 5;
+  string created_at = 6;
+  string updated_at = 7;
+}
+
+message ListCommentsRequest {
+  string task_id = 1;
+  uint32 page = 2;      // 1-based; 0/absent → 1
+  uint32 page_size = 3; // default 50
+}
+message ListCommentsResponse {
+  repeated Comment comments = 1;
+  uint32 total = 2;
+}
+message CreateCommentRequest {
+  string task_id = 1;
+  string content = 2;
+  repeated string mentioned_user_ids = 3;
+}
+message UpdateCommentRequest {
+  string id = 1;
+  string content = 2;
+  repeated string mentioned_user_ids = 3;
+}
+message DeleteCommentRequest { string id = 1; }
+message DeleteCommentResponse { bool ok = 1; }
