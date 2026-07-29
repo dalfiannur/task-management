@@ -1,4 +1,9 @@
+use std::sync::Arc;
+
 use auth::{verify_jwt, AuthUser};
+use axum::extract::{Request, State};
+use axum::middleware::Next;
+use axum::response::Response;
 
 /// Pure helper: turn an optional Authorization header into an AuthUser.
 /// `None` header or bad token → None (handlers decide whether that's fatal).
@@ -8,6 +13,20 @@ pub fn user_from_header(header: Option<&str>, secret: &str) -> Option<AuthUser> 
         .strip_prefix("Bearer ")
         .or_else(|| raw.strip_prefix("bearer "))?;
     verify_jwt(token.trim(), secret).ok()
+}
+
+/// Axum middleware: verify the JWT (if present) and insert `AuthUser` into request
+/// extensions. Absent/invalid token → no extension inserted; guarded handlers then
+/// reject with `Unauthenticated`.
+pub async fn auth_layer(State(secret): State<Arc<str>>, mut req: Request, next: Next) -> Response {
+    let header = req
+        .headers()
+        .get(axum::http::header::AUTHORIZATION)
+        .and_then(|v| v.to_str().ok());
+    if let Some(user) = user_from_header(header, &secret) {
+        req.extensions_mut().insert(user);
+    }
+    next.run(req).await
 }
 
 #[cfg(test)]
