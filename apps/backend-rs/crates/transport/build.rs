@@ -6,6 +6,7 @@ fn main() {
             "../../proto/users.proto",
             "../../proto/projects.proto",
             "../../proto/work.proto",
+            "../../proto/pages.proto",
         ],
         &["../../proto"],
     )
@@ -16,4 +17,5 @@ fn main() {
     println!("cargo:rerun-if-changed=../../proto/users.proto");
     println!("cargo:rerun-if-changed=../../proto/projects.proto");
     println!("cargo:rerun-if-changed=../../proto/work.proto");
+    println!("cargo:rerun-if-changed=../../proto/pages.proto");
 }

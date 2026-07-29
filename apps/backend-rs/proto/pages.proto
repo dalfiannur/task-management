@@ -1,0 +1,50 @@
+syntax = "proto3";
+package sedjiwa.tasks.page.v1;
+
+// Per-project markdown wiki. Project-level only (no task/module links).
+// All operations are member-gated (collaborative, like tasks).
+
+service PageService {
+  rpc ListPages(ListPagesRequest) returns (ListPagesResponse);
+  rpc GetPage(GetPageRequest) returns (Page);
+  rpc CreatePage(CreatePageRequest) returns (Page);
+  rpc UpdatePage(UpdatePageRequest) returns (Page);
+  rpc DeletePage(DeletePageRequest) returns (DeletePageResponse);
+  rpc ReorderPages(ReorderPagesRequest) returns (ListPagesResponse);
+}
+
+message Page {
+  string id = 1;
+  string project_id = 2;
+  string title = 3;
+  string icon = 4;
+  string content = 5;
+  int32 order = 6;
+  string created_by = 7;
+  string last_edited_by = 8;
+  string created_at = 9;
+  string updated_at = 10;
+}
+
+message ListPagesRequest { string project_id = 1; }
+message ListPagesResponse { repeated Page pages = 1; }
+message GetPageRequest { string id = 1; }
+
+message CreatePageRequest {
+  string project_id = 1;
+  optional string title = 2;   // default "Untitled"
+  optional string icon = 3;
+  optional string content = 4; // default ""
+}
+message UpdatePageRequest {
+  string id = 1;
+  optional string title = 2;
+  optional string icon = 3;
+  optional string content = 4;
+}
+message DeletePageRequest { string id = 1; }
+message DeletePageResponse { bool ok = 1; }
+message ReorderPagesRequest {
+  string project_id = 1;
+  repeated string page_ids = 2;
+}

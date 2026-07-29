@@ -33,7 +33,8 @@ pub fn build_router(cfg: &Config, store: Arc<Store>) -> Router {
         .merge(transport::user_router(store.clone()))
         .merge(transport::project_router(store.clone()))
         .merge(transport::module_router(store.clone()))
-        .merge(transport::task_router(store))
+        .merge(transport::task_router(store.clone()))
+        .merge(transport::page_router(store))
         .layer(axum::middleware::from_fn_with_state(secret, auth_layer))
         .layer(cors)
 }

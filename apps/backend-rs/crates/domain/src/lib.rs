@@ -7,6 +7,7 @@
 use arke_postgres::PgComponent;
 
 pub mod module;
+pub mod page;
 pub mod project;
 pub mod task;
 pub mod user;
@@ -40,6 +41,9 @@ pub fn register_all(pg: &mut arke_postgres::PgStore) {
     pg.register::<task::TaskAssignees>();
     pg.register::<task::TaskLabels>();
     pg.register::<task::TaskAudit>();
+    // Pages.
+    pg.register::<page::PageInfo>();
+    pg.register::<page::PageAudit>();
 }
 
 /// Skeleton entity: a single timestamp, used only to prove Arke↔Postgres round-trips.
