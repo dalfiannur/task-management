@@ -80,3 +80,24 @@ pub(crate) async fn require_owner_or_admin(
 
 /// Store injected into both work routers (kept here so `Arc` is imported once).
 pub(crate) type StoreExt = Extension<Arc<Store>>;
+
+/// Resolve a task's owning project (task → module → project), or `None` if the
+/// task/module is missing or the id is malformed. Used cross-module (e.g. media
+/// link validation).
+pub(crate) async fn task_project_id(
+    store: &Store,
+    task_id: &str,
+) -> anyhow::Result<Option<String>> {
+    let Ok(tpid) = task_id.parse::<i64>() else {
+        return Ok(None);
+    };
+    let Some(t) = task_record::load_task(store, tpid).await? else {
+        return Ok(None);
+    };
+    let Ok(mpid) = t.module_id.parse::<i64>() else {
+        return Ok(None);
+    };
+    Ok(record::load_module(store, mpid)
+        .await?
+        .map(|m| m.project_id))
+}

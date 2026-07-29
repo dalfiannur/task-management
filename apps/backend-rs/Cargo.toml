@@ -26,6 +26,8 @@ arke = { path = "/home/qyubit/Workspace/personal/rust-ecs" }
 arke-postgres = { path = "/home/qyubit/Workspace/personal/rust-ecs/arke-postgres" }
 sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "postgres"] }
 rust-s3 = "0.35"
+async-trait = "0.1"
+uuid = { version = "1", features = ["v4"] }
 time = { version = "0.3", features = ["formatting"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

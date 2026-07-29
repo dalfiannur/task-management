@@ -16,7 +16,8 @@ async fn main() -> anyhow::Result<()> {
 
     let cfg = Config::from_env()?;
     let store = Arc::new(Store::connect(&cfg.database_url, domain::register_all).await?);
-    let app = router::build_router(&cfg, store);
+    let media_storage: Arc<dyn storage::Storage> = Arc::new(storage::S3Storage::from_env()?);
+    let app = router::build_router(&cfg, store, media_storage);
 
     let listener = tokio::net::TcpListener::bind(("0.0.0.0", cfg.port)).await?;
     tracing::info!(port = cfg.port, "backend-rs listening");

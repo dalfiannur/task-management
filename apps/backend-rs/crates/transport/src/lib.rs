@@ -15,10 +15,12 @@
 
 include!(concat!(env!("OUT_DIR"), "/generated.rs"));
 
+mod media;
 mod pages;
 mod projects;
 mod users;
 mod work;
+pub use media::media_router;
 pub use pages::page_router;
 pub use projects::project_router;
 pub use users::{auth_router, user_router, JwtConfig};

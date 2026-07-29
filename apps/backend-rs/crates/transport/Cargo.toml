@@ -16,10 +16,13 @@ arke = { workspace = true }
 auth = { path = "../auth" }
 persistence = { path = "../persistence" }
 domain = { path = "../domain" }
+storage = { path = "../storage" }
 
 [dev-dependencies]
 tower = { workspace = true }
 serde_json = { workspace = true }
+async-trait = { workspace = true }
+anyhow = { workspace = true }
 
 [build-dependencies]
 connectrpc-axum-build = { workspace = true }

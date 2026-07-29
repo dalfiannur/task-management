@@ -5,12 +5,14 @@ use axum::Router;
 use persistence::Store;
 use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 
+use storage::Storage;
+
 use crate::config::Config;
 use crate::interceptor::auth_layer;
 
-/// Build the app router: HealthService (with the Store injected as an extension),
-/// wrapped with the JWT auth middleware and CORS.
-pub fn build_router(cfg: &Config, store: Arc<Store>) -> Router {
+/// Build the app router: all services (Store injected as an extension; Media also
+/// gets the object Storage), wrapped with the JWT auth middleware and CORS.
+pub fn build_router(cfg: &Config, store: Arc<Store>, media_storage: Arc<dyn Storage>) -> Router {
     let secret: Arc<str> = Arc::from(cfg.jwt_secret.as_str());
     let jwt = Arc::new(transport::JwtConfig {
         secret: cfg.jwt_secret.clone(),
@@ -34,7 +36,8 @@ pub fn build_router(cfg: &Config, store: Arc<Store>) -> Router {
         .merge(transport::project_router(store.clone()))
         .merge(transport::module_router(store.clone()))
         .merge(transport::task_router(store.clone()))
-        .merge(transport::page_router(store))
+        .merge(transport::page_router(store.clone()))
+        .merge(transport::media_router(store, media_storage))
         .layer(axum::middleware::from_fn_with_state(secret, auth_layer))
         .layer(cors)
 }

@@ -1,0 +1,11 @@
+[package]
+name = "storage"
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+anyhow = { workspace = true }
+async-trait = { workspace = true }
+rust-s3 = { workspace = true }
+uuid = { workspace = true }
+tokio = { workspace = true }

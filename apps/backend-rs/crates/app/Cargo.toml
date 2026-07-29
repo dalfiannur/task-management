@@ -18,6 +18,7 @@ auth = { path = "../auth" }
 domain = { path = "../domain" }
 persistence = { path = "../persistence" }
 transport = { path = "../transport" }
+storage = { path = "../storage" }
 
 [dev-dependencies]
 jsonwebtoken = { workspace = true }
