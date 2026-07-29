@@ -1,5 +1,6 @@
 import { createClient, type Interceptor } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-web";
+import type { DescService } from "@bufbuild/protobuf";
 import { HealthService } from "./gen/health_pb";
 
 // Auth interceptor: attaches `Authorization: Bearer <token>` from the auth store.
@@ -22,4 +23,10 @@ export const transport = createConnectTransport({
   interceptors: [authInterceptor],
 });
 
-export const healthClient = createClient(HealthService, transport);
+/// Typed Connect client for any generated service descriptor.
+/// Features call `client(ProjectService)`, `client(TaskService)`, etc.
+export function client<T extends DescService>(service: T) {
+  return createClient(service, transport);
+}
+
+export const healthClient = client(HealthService);
