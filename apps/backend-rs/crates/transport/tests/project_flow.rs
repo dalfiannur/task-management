@@ -13,6 +13,7 @@ use axum::middleware::{from_fn, Next};
 use axum::response::Response;
 use axum::Router;
 use domain::project::ProjectMembership;
+use domain::user::{UserPassword, UserPhone, UserProfile, UserStatusComponent};
 use persistence::Store;
 use serde_json::{json, Value};
 use tower::ServiceExt;
@@ -104,6 +105,61 @@ fn list_ids(body: &Value) -> Vec<String> {
         .iter()
         .map(|p| p["id"].as_str().unwrap().to_string())
         .collect()
+}
+
+/// Create a real Active user directly; return its pid string (for member ops,
+/// which validate the user exists).
+async fn mk_user(store: &Store) -> String {
+    let now = "2026-01-01T00:00:00Z".to_string();
+    let pid = store
+        .create((
+            UserPhone {
+                value: format!("m{}", uniq()),
+                verified: true,
+            },
+            UserPassword {
+                hash: "x".into(),
+                changed_at: now.clone(),
+            },
+            UserProfile {
+                display_name: "M".into(),
+                avatar_url: String::new(),
+                email: String::new(),
+            },
+            UserStatusComponent {
+                status: "active".into(),
+                created_at: now,
+                last_login_at: None,
+            },
+        ))
+        .await
+        .unwrap();
+    pid.to_string()
+}
+
+/// Sorted member user_ids from a ListProjectMembersResponse body.
+fn member_users(body: &Value) -> Vec<String> {
+    let mut v: Vec<String> = body["members"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default()
+        .iter()
+        .map(|m| m["userId"].as_str().unwrap().to_string())
+        .collect();
+    v.sort();
+    v
+}
+
+/// Whether `user_id` is flagged is_owner in the response.
+fn is_owner_flag(body: &Value, user_id: &str) -> bool {
+    body["members"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default()
+        .iter()
+        .find(|m| m["userId"] == user_id)
+        .map(|m| m["isOwner"] == true)
+        .unwrap_or(false)
 }
 
 #[tokio::test]
@@ -298,4 +354,67 @@ async fn authority_status_transfer_delete() {
     let (st, _) = call(&router, "GetProject", Some(&admin_token(&format!("adm{}", uniq()))), json!({ "id": id })).await;
     assert_ne!(st, StatusCode::OK, "deleted project is gone");
     assert!(members(&store, &id).await.is_empty(), "memberships cleared");
+}
+
+#[tokio::test]
+async fn members_list_add_remove_leave() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let a = mk_user(&store).await; // owner
+    let b = mk_user(&store).await;
+    let c = mk_user(&store).await; // outsider
+    let (ta, tb, tc) = (user_token(&a), user_token(&b), user_token(&c));
+    let id = create(&router, &ta, json!({ "name": "Team" })).await;
+
+    // List as owner → [A owner].
+    let (st, body) = call(&router, "ListProjectMembers", Some(&ta), json!({ "projectId": id })).await;
+    assert_eq!(st, StatusCode::OK, "list members: {body}");
+    assert_eq!(body["ownerId"], a);
+    assert_eq!(member_users(&body), vec![a.clone()]);
+    assert!(is_owner_flag(&body, &a), "A is owner");
+
+    // Non-member C denied.
+    let (st, _) = call(&router, "ListProjectMembers", Some(&tc), json!({ "projectId": id })).await;
+    assert_ne!(st, StatusCode::OK, "non-member cannot list");
+
+    // Add B (as owner) → {A,B}; B not owner; idempotent.
+    let (st, body) = call(&router, "AddProjectMember", Some(&ta), json!({ "projectId": id, "userId": b })).await;
+    assert_eq!(st, StatusCode::OK, "add: {body}");
+    let mut want = vec![a.clone(), b.clone()]; want.sort();
+    assert_eq!(member_users(&body), want);
+    assert!(!is_owner_flag(&body, &b), "B is not owner");
+    let (st, body) = call(&router, "AddProjectMember", Some(&ta), json!({ "projectId": id, "userId": b })).await;
+    assert_eq!(st, StatusCode::OK);
+    assert_eq!(member_users(&body).len(), 2, "add is idempotent");
+
+    // Add nonexistent user → not found.
+    let (st, _) = call(&router, "AddProjectMember", Some(&ta), json!({ "projectId": id, "userId": "99999999" })).await;
+    assert_ne!(st, StatusCode::OK, "unknown user rejected");
+
+    // B (member) can list; B (non-owner) cannot add.
+    let (st, _) = call(&router, "ListProjectMembers", Some(&tb), json!({ "projectId": id })).await;
+    assert_eq!(st, StatusCode::OK);
+    let (st, _) = call(&router, "AddProjectMember", Some(&tb), json!({ "projectId": id, "userId": c })).await;
+    assert_ne!(st, StatusCode::OK, "non-owner cannot add");
+
+    // Cannot remove owner; remove B → {A}; remove non-member is no-op success.
+    let (st, _) = call(&router, "RemoveProjectMember", Some(&ta), json!({ "projectId": id, "userId": a })).await;
+    assert_ne!(st, StatusCode::OK, "cannot remove owner");
+    let (st, body) = call(&router, "RemoveProjectMember", Some(&ta), json!({ "projectId": id, "userId": b })).await;
+    assert_eq!(st, StatusCode::OK);
+    assert_eq!(member_users(&body), vec![a.clone()]);
+    let (st, _) = call(&router, "RemoveProjectMember", Some(&ta), json!({ "projectId": id, "userId": b })).await;
+    assert_eq!(st, StatusCode::OK, "removing non-member is a no-op success");
+
+    // Owner cannot leave; a member can; non-member cannot.
+    let (st, _) = call(&router, "LeaveProject", Some(&ta), json!({ "projectId": id })).await;
+    assert_ne!(st, StatusCode::OK, "owner cannot leave");
+    let _ = call(&router, "AddProjectMember", Some(&ta), json!({ "projectId": id, "userId": b })).await;
+    let (st, _) = call(&router, "LeaveProject", Some(&tb), json!({ "projectId": id })).await;
+    assert_eq!(st, StatusCode::OK, "member can leave");
+    assert_eq!(members(&store, &id).await, vec![a.clone()], "only owner remains");
+    let (st, _) = call(&router, "LeaveProject", Some(&tc), json!({ "projectId": id })).await;
+    assert_ne!(st, StatusCode::OK, "non-member cannot leave");
 }

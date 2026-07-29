@@ -12,7 +12,36 @@ service ProjectService {
   rpc SetProjectStatus(SetProjectStatusRequest) returns (Project);
   rpc TransferProjectOwnership(TransferProjectOwnershipRequest) returns (Project);
   rpc DeleteProject(DeleteProjectRequest) returns (DeleteProjectResponse);
+
+  // Members tab.
+  rpc ListProjectMembers(ListProjectMembersRequest) returns (ListProjectMembersResponse);
+  rpc AddProjectMember(AddProjectMemberRequest) returns (ListProjectMembersResponse);
+  rpc RemoveProjectMember(RemoveProjectMemberRequest) returns (ListProjectMembersResponse);
+  rpc LeaveProject(LeaveProjectRequest) returns (LeaveProjectResponse);
 }
+
+message Member {
+  string user_id = 1;
+  bool is_owner = 2; // = (user_id == project.owner_id)
+}
+
+message ListProjectMembersRequest { string project_id = 1; }
+message ListProjectMembersResponse {
+  repeated Member members = 1;
+  string owner_id = 2;
+}
+
+message AddProjectMemberRequest {
+  string project_id = 1;
+  string user_id = 2;
+}
+message RemoveProjectMemberRequest {
+  string project_id = 1;
+  string user_id = 2;
+}
+
+message LeaveProjectRequest { string project_id = 1; } // user = caller
+message LeaveProjectResponse { bool ok = 1; }
 
 message CreateProjectRequest {
   string name = 1;

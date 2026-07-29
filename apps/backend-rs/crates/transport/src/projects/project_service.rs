@@ -14,7 +14,7 @@ use persistence::Store;
 
 use super::record::{
     is_member, load_all_projects, load_project, member_project_ids, membership_pids_for_project,
-    to_proto, ProjectRecord,
+    membership_pids_for_project_user, project_member_ids, to_proto, user_exists, ProjectRecord,
 };
 use super::{internal, parse_pid};
 use crate::sedjiwa::tasks::project::v1 as pb;
@@ -276,6 +276,142 @@ async fn delete_project(
     Ok(ConnectResponse::new(pb::DeleteProjectResponse { ok: true }))
 }
 
+/// Build the fresh member list for a project.
+async fn members_response(
+    store: &Store,
+    owner_id: &str,
+    project_id: &str,
+) -> Result<pb::ListProjectMembersResponse, ConnectError> {
+    let ids = project_member_ids(store, project_id).await.map_err(internal)?;
+    let members = ids
+        .into_iter()
+        .map(|uid| pb::Member {
+            is_owner: uid == owner_id,
+            user_id: uid,
+        })
+        .collect();
+    Ok(pb::ListProjectMembersResponse {
+        members,
+        owner_id: owner_id.to_string(),
+    })
+}
+
+/// Member-or-admin: list a project's members.
+async fn list_project_members(
+    Extension(store): Extension<Arc<Store>>,
+    user: Option<Extension<AuthUser>>,
+    req: ConnectRequest<pb::ListProjectMembersRequest>,
+) -> Result<ConnectResponse<pb::ListProjectMembersResponse>, ConnectError> {
+    let auth = require_auth(user)?;
+    let ConnectRequest(r) = req;
+    let pid = parse_pid(&r.project_id)?;
+    let p = require_project(&store, pid).await?;
+    if !auth.is_admin()
+        && !is_member(&store, &pid.to_string(), &auth.id)
+            .await
+            .map_err(internal)?
+    {
+        return Err(ConnectError::new_permission_denied("not a member"));
+    }
+    Ok(ConnectResponse::new(
+        members_response(&store, &p.owner_id, &pid.to_string()).await?,
+    ))
+}
+
+/// Owner/admin: add a member (idempotent; user must exist).
+async fn add_project_member(
+    Extension(store): Extension<Arc<Store>>,
+    user: Option<Extension<AuthUser>>,
+    req: ConnectRequest<pb::AddProjectMemberRequest>,
+) -> Result<ConnectResponse<pb::ListProjectMembersResponse>, ConnectError> {
+    let auth = require_auth(user)?;
+    let ConnectRequest(r) = req;
+    let pid = parse_pid(&r.project_id)?;
+    let p = require_project(&store, pid).await?;
+    require_owner_or_admin(&auth, &p)?;
+    let uid = r.user_id.trim().to_string();
+    if uid.is_empty() {
+        return Err(ConnectError::new_invalid_argument("user_id is required"));
+    }
+    if !user_exists(&store, &uid).await.map_err(internal)? {
+        return Err(ConnectError::new_not_found("user not found"));
+    }
+    if !is_member(&store, &pid.to_string(), &uid)
+        .await
+        .map_err(internal)?
+    {
+        store
+            .create((ProjectMembership {
+                project_id: pid.to_string(),
+                user_id: uid,
+            },))
+            .await
+            .map_err(internal)?;
+    }
+    Ok(ConnectResponse::new(
+        members_response(&store, &p.owner_id, &pid.to_string()).await?,
+    ))
+}
+
+/// Owner/admin: remove a member. The owner cannot be removed (transfer first);
+/// removing a non-member is a no-op success.
+async fn remove_project_member(
+    Extension(store): Extension<Arc<Store>>,
+    user: Option<Extension<AuthUser>>,
+    req: ConnectRequest<pb::RemoveProjectMemberRequest>,
+) -> Result<ConnectResponse<pb::ListProjectMembersResponse>, ConnectError> {
+    let auth = require_auth(user)?;
+    let ConnectRequest(r) = req;
+    let pid = parse_pid(&r.project_id)?;
+    let p = require_project(&store, pid).await?;
+    require_owner_or_admin(&auth, &p)?;
+    let uid = r.user_id.trim().to_string();
+    if uid == p.owner_id {
+        return Err(ConnectError::new_failed_precondition(
+            "cannot remove the owner; transfer ownership first",
+        ));
+    }
+    for mpid in membership_pids_for_project_user(&store, &pid.to_string(), &uid)
+        .await
+        .map_err(internal)?
+    {
+        store.delete(mpid).await.map_err(internal)?;
+    }
+    Ok(ConnectResponse::new(
+        members_response(&store, &p.owner_id, &pid.to_string()).await?,
+    ))
+}
+
+/// Self-leave. The caller must be a member; the owner cannot leave.
+async fn leave_project(
+    Extension(store): Extension<Arc<Store>>,
+    user: Option<Extension<AuthUser>>,
+    req: ConnectRequest<pb::LeaveProjectRequest>,
+) -> Result<ConnectResponse<pb::LeaveProjectResponse>, ConnectError> {
+    let auth = require_auth(user)?;
+    let ConnectRequest(r) = req;
+    let pid = parse_pid(&r.project_id)?;
+    let p = require_project(&store, pid).await?;
+    if !is_member(&store, &pid.to_string(), &auth.id)
+        .await
+        .map_err(internal)?
+    {
+        return Err(ConnectError::new_failed_precondition("not a member"));
+    }
+    if auth.id == p.owner_id {
+        return Err(ConnectError::new_failed_precondition(
+            "owner cannot leave; transfer ownership first",
+        ));
+    }
+    for mpid in membership_pids_for_project_user(&store, &pid.to_string(), &auth.id)
+        .await
+        .map_err(internal)?
+    {
+        store.delete(mpid).await.map_err(internal)?;
+    }
+    Ok(ConnectResponse::new(pb::LeaveProjectResponse { ok: true }))
+}
+
 /// ProjectService router; injects the Store as a request extension.
 pub fn project_router(store: Arc<Store>) -> axum::Router<()> {
     type S = Extension<Arc<Store>>;
@@ -293,6 +429,16 @@ pub fn project_router(store: Arc<Store>) -> axum::Router<()> {
             ConnectRequest<pb::TransferProjectOwnershipRequest>,
         )>(transfer_project_ownership)
         .delete_project::<_, (S, A, ConnectRequest<pb::DeleteProjectRequest>)>(delete_project)
+        .list_project_members::<_, (S, A, ConnectRequest<pb::ListProjectMembersRequest>)>(
+            list_project_members,
+        )
+        .add_project_member::<_, (S, A, ConnectRequest<pb::AddProjectMemberRequest>)>(
+            add_project_member,
+        )
+        .remove_project_member::<_, (S, A, ConnectRequest<pb::RemoveProjectMemberRequest>)>(
+            remove_project_member,
+        )
+        .leave_project::<_, (S, A, ConnectRequest<pb::LeaveProjectRequest>)>(leave_project)
         .build()
         .layer(Extension(store))
 }

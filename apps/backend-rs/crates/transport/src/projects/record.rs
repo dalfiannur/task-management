@@ -5,6 +5,7 @@ use domain::project::{
     ProjectDates, ProjectDescription, ProjectMembership, ProjectName, ProjectOwnerId,
     ProjectStatus, ProjectStatusComponent,
 };
+use domain::user::UserPhone;
 use persistence::Store;
 
 use crate::sedjiwa::tasks::project::v1 as pb;
@@ -134,4 +135,57 @@ pub(crate) async fn membership_pids_for_project(
                 .collect()
         })
         .await
+}
+
+/// Membership entity `pid`s for a specific `(project_id, user_id)` pair.
+pub(crate) async fn membership_pids_for_project_user(
+    store: &Store,
+    project_id: &str,
+    user_id: &str,
+) -> anyhow::Result<Vec<i64>> {
+    let pj = project_id.to_string();
+    let uid = user_id.to_string();
+    store
+        .query::<ProjectMembership, i64>(None, move |world, pairs| {
+            pairs
+                .iter()
+                .filter(|(_, e)| {
+                    world
+                        .get::<ProjectMembership>(*e)
+                        .map(|m| m.project_id == pj && m.user_id == uid)
+                        .unwrap_or(false)
+                })
+                .map(|(pid, _)| *pid)
+                .collect()
+        })
+        .await
+}
+
+/// Member `user_id`s of `project_id` (sorted, deduped).
+pub(crate) async fn project_member_ids(
+    store: &Store,
+    project_id: &str,
+) -> anyhow::Result<Vec<String>> {
+    let pj = project_id.to_string();
+    let mut v = store
+        .query::<ProjectMembership, String>(None, move |world, pairs| {
+            pairs
+                .iter()
+                .filter_map(|(_, e)| world.get::<ProjectMembership>(*e))
+                .filter(|m| m.project_id == pj)
+                .map(|m| m.user_id.clone())
+                .collect()
+        })
+        .await?;
+    v.sort();
+    v.dedup();
+    Ok(v)
+}
+
+/// True if `user_id` names an existing user (has a `UserPhone`).
+pub(crate) async fn user_exists(store: &Store, user_id: &str) -> anyhow::Result<bool> {
+    let Ok(pid) = user_id.parse::<i64>() else {
+        return Ok(false);
+    };
+    Ok(store.get::<UserPhone>(pid).await?.is_some())
 }
