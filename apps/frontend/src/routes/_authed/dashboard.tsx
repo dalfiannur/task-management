@@ -1,20 +1,28 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { StatCards, UpcomingDeadlines } from "@/features/dashboard";
 import { RecentActivity } from "@/features/activity";
 
-/** Interim dashboard: recent activity feed. The dashboard flow adds stat cards
- *  and my-tasks around this. */
 export const Route = createFileRoute("/_authed/dashboard")({
   component: DashboardPage,
 });
 
 function DashboardPage() {
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-8 p-6">
       <h1 className="text-2xl font-semibold">Dashboard</h1>
-      <section className="max-w-2xl">
-        <h2 className="mb-3 text-lg font-medium">Recent activity</h2>
-        <RecentActivity />
-      </section>
+
+      <StatCards />
+
+      <div className="grid gap-8 lg:grid-cols-2">
+        <section>
+          <h2 className="mb-3 text-lg font-medium">Upcoming deadlines</h2>
+          <UpcomingDeadlines withinDays={7} />
+        </section>
+        <section>
+          <h2 className="mb-3 text-lg font-medium">Recent activity</h2>
+          <RecentActivity />
+        </section>
+      </div>
     </div>
   );
 }

@@ -14,6 +14,7 @@ import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as AuthedDashboardRouteImport } from './routes/_authed/dashboard'
+import { Route as AuthedMyTasksRouteImport } from './routes/_authed/my-tasks'
 import { Route as AuthedProjectsIndexRouteImport } from './routes/_authed/projects/index'
 import { Route as AuthedProjectsProjectIdRouteImport } from './routes/_authed/projects/$projectId'
 import { Route as AuthedProjectsProjectIdIndexRouteImport } from './routes/_authed/projects/$projectId/index'
@@ -45,6 +46,11 @@ const RegisterRoute = RegisterRouteImport.update({
 const AuthedDashboardRoute = AuthedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedMyTasksRoute = AuthedMyTasksRouteImport.update({
+  id: '/my-tasks',
+  path: '/my-tasks',
   getParentRoute: () => AuthedRoute,
 } as any)
 const AuthedProjectsIndexRoute = AuthedProjectsIndexRouteImport.update({
@@ -99,6 +105,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/dashboard': typeof AuthedDashboardRoute
+  '/my-tasks': typeof AuthedMyTasksRoute
   '/projects/$projectId': typeof AuthedProjectsProjectIdRouteWithChildren
   '/projects/': typeof AuthedProjectsIndexRoute
   '/projects/$projectId/all-tasks': typeof AuthedProjectsProjectIdAllTasksRoute
@@ -113,6 +120,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/dashboard': typeof AuthedDashboardRoute
+  '/my-tasks': typeof AuthedMyTasksRoute
   '/projects': typeof AuthedProjectsIndexRoute
   '/projects/$projectId/all-tasks': typeof AuthedProjectsProjectIdAllTasksRoute
   '/projects/$projectId/media': typeof AuthedProjectsProjectIdMediaRoute
@@ -128,6 +136,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/_authed/dashboard': typeof AuthedDashboardRoute
+  '/_authed/my-tasks': typeof AuthedMyTasksRoute
   '/_authed/projects/$projectId': typeof AuthedProjectsProjectIdRouteWithChildren
   '/_authed/projects/': typeof AuthedProjectsIndexRoute
   '/_authed/projects/$projectId/all-tasks': typeof AuthedProjectsProjectIdAllTasksRoute
@@ -144,6 +153,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/dashboard'
+    | '/my-tasks'
     | '/projects/$projectId'
     | '/projects/'
     | '/projects/$projectId/all-tasks'
@@ -158,6 +168,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/dashboard'
+    | '/my-tasks'
     | '/projects'
     | '/projects/$projectId/all-tasks'
     | '/projects/$projectId/media'
@@ -172,6 +183,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/_authed/dashboard'
+    | '/_authed/my-tasks'
     | '/_authed/projects/$projectId'
     | '/_authed/projects/'
     | '/_authed/projects/$projectId/all-tasks'
@@ -224,6 +236,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof AuthedDashboardRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/my-tasks': {
+      id: '/_authed/my-tasks'
+      path: '/my-tasks'
+      fullPath: '/my-tasks'
+      preLoaderRoute: typeof AuthedMyTasksRouteImport
       parentRoute: typeof AuthedRoute
     }
     '/_authed/projects/': {
@@ -311,12 +330,14 @@ const AuthedProjectsProjectIdRouteWithChildren =
 
 interface AuthedRouteChildren {
   AuthedDashboardRoute: typeof AuthedDashboardRoute
+  AuthedMyTasksRoute: typeof AuthedMyTasksRoute
   AuthedProjectsProjectIdRoute: typeof AuthedProjectsProjectIdRouteWithChildren
   AuthedProjectsIndexRoute: typeof AuthedProjectsIndexRoute
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedDashboardRoute: AuthedDashboardRoute,
+  AuthedMyTasksRoute: AuthedMyTasksRoute,
   AuthedProjectsProjectIdRoute: AuthedProjectsProjectIdRouteWithChildren,
   AuthedProjectsIndexRoute: AuthedProjectsIndexRoute,
 }

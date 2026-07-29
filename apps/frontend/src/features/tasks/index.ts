@@ -3,7 +3,14 @@
 export type { Module, Task, TaskStatus, TaskPriority } from "./types";
 export { TASK_STATUSES, TASK_PRIORITIES } from "./types";
 export { TASK_STATUS_CONFIG, TASK_PRIORITY_CONFIG } from "./config";
-export { mapModule, mapTask } from "./api/mappers";
+export {
+  mapModule,
+  mapTask,
+  statusToProto,
+  statusFromProto,
+  priorityToProto,
+  priorityFromProto,
+} from "./api/mappers";
 export {
   useModules,
   useCreateModule,
