@@ -1,6 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { TabPlaceholder } from "@/features/projects";
+import { MediaTab } from "@/features/media";
 
 export const Route = createFileRoute("/_authed/projects/$projectId/media")({
-  component: () => <TabPlaceholder title="Media" />,
+  component: Media,
 });
+
+function Media() {
+  const { projectId } = Route.useParams();
+  return <MediaTab projectId={projectId} />;
+}
