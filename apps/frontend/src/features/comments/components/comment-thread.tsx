@@ -16,6 +16,7 @@ import {
   useUpdateComment,
   useDeleteComment,
 } from "../api/hooks";
+import { RichTextContent } from "@/components/shared/rich-text-content";
 import { CommentComposer } from "./comment-composer";
 
 function relative(iso: string): string {
@@ -143,7 +144,7 @@ export function CommentThread({ taskId, projectId }: { taskId: string; projectId
                       />
                     </div>
                   ) : (
-                    <p className="whitespace-pre-wrap text-sm">{c.content}</p>
+                    <RichTextContent html={c.content} />
                   )}
                 </div>
               </li>
