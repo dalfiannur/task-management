@@ -30,7 +30,7 @@ bun run tsc --noEmit # Type-check only
 ./node_modules/.bin/buf generate   # Regenerate Connect clients into src/lib/gen/ from ../backend-rs/proto
 ```
 
-**Note on verification:** the ESLint config is currently misconfigured (its parser rejects `import`/`export` across all files) — treat **`tsc --noEmit` + `vite build`** as the real gates until it's fixed. `vite build` also (re)generates `src/routeTree.gen.ts` from `src/routes/`.
+**Note on verification:** `tsc --noEmit`, `bun run lint`, and `vite build` all pass on the current tree — use them as the gates. `vite build` also (re)generates `src/routeTree.gen.ts` from `src/routes/`. ESLint uses `@typescript-eslint/parser` (legacy `.eslintrc.cjs`) and ignores generated code (`routeTree.gen.ts`, `src/lib/gen/**`).
 
 ### Backend (`apps/backend/`)
 ```bash
