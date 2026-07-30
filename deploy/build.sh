@@ -22,6 +22,10 @@ cp "$ROOT/apps/backend-rs/target/release/app" \
    "$DEPLOY_DIR/bin/"
 
 echo "==> Building frontend SPA (bun run build)…"
+# VITE_APP_NAME (if set in the environment) is baked into the SPA at build time;
+# it falls back to the default in the app when unset. Override e.g.:
+#   VITE_APP_NAME="Acme Tasks" ./build.sh
+echo "    VITE_APP_NAME=${VITE_APP_NAME:-<default: Sedjiwa · Tasks>}"
 ( cd "$ROOT/apps/frontend" && bun run build )
 
 echo "==> Copying dist -> deploy/web/"
