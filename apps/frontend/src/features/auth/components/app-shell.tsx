@@ -2,6 +2,7 @@ import { Link, Outlet, useNavigate } from "@tanstack/react-router";
 import { useAtomValue } from "jotai";
 import { Button } from "@/components/ui/button";
 import { getInitials } from "@/lib/utils";
+import { APP_NAME } from "@/lib/app-config";
 import { NotificationBell } from "@/features/notifications";
 import { currentUserAtom } from "../atoms/session";
 import { useLogout } from "../api/hooks";
@@ -22,7 +23,7 @@ export function AppShell() {
     <div className="min-h-screen">
       <header className="flex h-14 items-center justify-between border-b px-4">
         <div className="flex items-center gap-6">
-          <span className="font-semibold">Sedjiwa · Tasks</span>
+          <span className="font-semibold">{APP_NAME}</span>
           <nav className="flex items-center gap-1 text-sm">
             <Link
               to="/dashboard"

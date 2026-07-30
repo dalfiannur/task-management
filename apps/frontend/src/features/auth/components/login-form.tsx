@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { APP_NAME } from "@/lib/app-config";
 import { useLogin } from "../api/hooks";
 
 /** Phone + password sign-in. On success navigates to `redirect` (or /dashboard). */
@@ -39,7 +40,7 @@ export function LoginForm({ redirect }: { redirect?: string }) {
       <Card className="w-full max-w-sm">
         <CardHeader>
           <CardTitle>Sign in</CardTitle>
-          <CardDescription>Sedjiwa Portal · Task Management</CardDescription>
+          <CardDescription>{APP_NAME}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="space-y-4">

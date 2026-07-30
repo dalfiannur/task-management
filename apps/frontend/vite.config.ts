@@ -4,8 +4,13 @@ import tailwindcss from "@tailwindcss/vite";
 import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
 import path from "path";
 
+// Keep in sync with DEFAULT_APP_NAME in src/lib/app-config.ts (the <title> is
+// plain HTML and can't import that module).
+const DEFAULT_APP_NAME = "Sedjiwa · Tasks";
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, __dirname, "VITE_");
+  const appName = env.VITE_APP_NAME?.trim() || DEFAULT_APP_NAME;
 
   return {
     plugins: [
@@ -13,6 +18,12 @@ export default defineConfig(({ mode }) => {
       TanStackRouterVite({ target: "react", autoCodeSplitting: true }),
       tailwindcss(),
       react(),
+      // Fill the document <title> from VITE_APP_NAME (with a default).
+      {
+        name: "html-app-name",
+        transformIndexHtml: (html: string) =>
+          html.replace(/__APP_NAME__/g, appName),
+      },
     ],
     base: "/",
     resolve: {
