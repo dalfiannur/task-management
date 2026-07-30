@@ -88,7 +88,7 @@ async fn create_page(
                 project_id: r.project_id.clone(),
                 title,
                 icon: r.icon.unwrap_or_default(),
-                content: r.content.unwrap_or_default(),
+                content: domain::sanitize::clean_html(&r.content.unwrap_or_default()),
                 sort_order: order,
             },
             PageAudit {
@@ -130,7 +130,7 @@ async fn update_page(
         project_id: p.project_id.clone(),
         title: r.title.unwrap_or_else(|| p.title.clone()),
         icon: r.icon.unwrap_or_else(|| p.icon.clone()),
-        content: r.content.unwrap_or_else(|| p.content.clone()),
+        content: domain::sanitize::clean_html(&r.content.unwrap_or_else(|| p.content.clone())),
         sort_order: p.order,
     };
     let audit = PageAudit {

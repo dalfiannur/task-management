@@ -111,17 +111,18 @@ async fn create_comment(
     let ConnectRequest(r) = req;
     let project_id = task_project(&store, &r.task_id).await?;
     require_member(&store, &project_id, &auth).await?;
-    let content = r.content.trim();
-    if !content_ok(content) {
+    let trimmed = r.content.trim();
+    if !content_ok(trimmed) {
         return Err(ConnectError::new_invalid_argument("content is required"));
     }
+    let content = domain::sanitize::clean_html(trimmed);
     let mentions = filter_mentions(&store, &project_id, r.mentioned_user_ids).await?;
     let now = now_iso();
     let pid = store
         .create((CommentInfo {
             task_id: r.task_id.clone(),
             author_id: auth.id.clone(),
-            content: content.to_string(),
+            content,
             mentioned_user_ids: mentions.clone(),
             created_at: now.clone(),
             updated_at: now,
@@ -159,17 +160,18 @@ async fn update_comment(
     let pid = parse_pid(&r.id)?;
     let c = require_comment(&store, pid).await?;
     require_author(&c, &auth)?;
-    let content = r.content.trim();
-    if !content_ok(content) {
+    let trimmed = r.content.trim();
+    if !content_ok(trimmed) {
         return Err(ConnectError::new_invalid_argument("content is required"));
     }
+    let content = domain::sanitize::clean_html(trimmed);
     let project_id = task_project(&store, &c.task_id).await?;
     let mentions = filter_mentions(&store, &project_id, r.mentioned_user_ids).await?;
 
     let info = CommentInfo {
         task_id: c.task_id.clone(),
         author_id: c.author_id.clone(),
-        content: content.to_string(),
+        content,
         mentioned_user_ids: mentions.clone(),
         created_at: c.created_at.clone(),
         updated_at: now_iso(),

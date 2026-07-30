@@ -135,7 +135,7 @@ async fn create_task(
         .create((
             TaskInfo {
                 title: title.to_string(),
-                description: r.description.unwrap_or_default(),
+                description: domain::sanitize::clean_html(&r.description.unwrap_or_default()),
                 status: status.as_str().to_string(),
                 priority: priority.as_str().to_string(),
                 start_date,
@@ -212,7 +212,7 @@ async fn update_task(
         Some(s) => s.trim().to_string(),
         None => t.title.clone(),
     };
-    let description = r.description.unwrap_or_else(|| t.description.clone());
+    let description = domain::sanitize::clean_html(&r.description.unwrap_or_else(|| t.description.clone()));
     let status = match r.status {
         Some(code) => TaskStatus::from_proto(code)
             .ok_or_else(|| ConnectError::new_invalid_argument("invalid status"))?,

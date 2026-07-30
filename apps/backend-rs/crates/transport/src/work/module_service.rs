@@ -79,7 +79,7 @@ async fn create_module(
         .map_err(internal)?;
     if let Some(desc) = r
         .description
-        .map(|d| d.trim().to_string())
+        .map(|d| domain::sanitize::clean_html(d.trim()))
         .filter(|d| !d.is_empty())
     {
         store
@@ -121,7 +121,7 @@ async fn update_module(
         }
     }
     let name = r.name.map(|n| n.trim().to_string());
-    let desc = r.description.map(|d| d.trim().to_string());
+    let desc = r.description.map(|d| domain::sanitize::clean_html(d.trim()));
     store
         .update(pid, move |w, e| {
             if let Some(n) = name {
