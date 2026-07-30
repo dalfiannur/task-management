@@ -30,6 +30,7 @@ dependencies = [
  "anyhow",
  "auth",
  "axum",
+ "connectrpc-axum",
  "domain",
  "dotenvy",
  "jsonwebtoken",

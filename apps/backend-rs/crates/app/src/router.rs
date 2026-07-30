@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use axum::http::header::{AUTHORIZATION, CONTENT_TYPE};
 use axum::{Extension, Router};
+use connectrpc_axum::ConnectLayer;
 use persistence::Store;
 use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 
@@ -51,6 +52,10 @@ pub fn build_router(
         .merge(transport::dashboard_router(store.clone()))
         .merge(transport::mytasks_router(store.clone()))
         .merge(transport::notification_router(store, notifier.clone()))
+        // Innermost: protocol detection + Connect Context (required for
+        // server-streaming, e.g. StreamNotifications; unary otherwise falls
+        // back to header detection). Wraps the handler's response directly.
+        .layer(ConnectLayer::new())
         // Global: mutating handlers extract the Notifier to emit.
         .layer(Extension(notifier))
         .layer(axum::middleware::from_fn_with_state(secret, auth_layer))
