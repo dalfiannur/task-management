@@ -18,7 +18,7 @@ import {
 import type { Page } from "../types";
 import { useUpdatePage, useDeletePage } from "../api/hooks";
 
-/** Editor pane for one wiki page (markdown content). Explicit save. */
+/** Editor pane for one wiki page (rich-text HTML content). Explicit save. */
 export function PageEditor({
   page,
   onDeleted,

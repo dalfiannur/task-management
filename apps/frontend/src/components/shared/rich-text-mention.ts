@@ -12,7 +12,11 @@ export function buildMention(members: MentionItem[]) {
     renderHTML({ node }) {
       return [
         "span",
-        { "data-type": "mention", "data-id": node.attrs.id },
+        {
+          "data-type": "mention",
+          "data-id": node.attrs.id,
+          "data-label": node.attrs.label,
+        },
         `@${node.attrs.label ?? node.attrs.id}`,
       ];
     },

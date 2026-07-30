@@ -1,5 +1,8 @@
 //! HTML sanitization for user-authored rich-text content (Tiptap output).
-//! Allowlist mirrors exactly what the frontend editor can emit.
+//! Allowlist tracks what the frontend editor (StarterKit + mention) can emit:
+//! headings h1-h6, paragraphs, inline marks (bold/italic/strike/underline/code),
+//! code blocks, blockquotes, lists, links, line breaks, horizontal rules, and
+//! mention spans (with their round-trippable `data-*` attributes).
 
 use ammonia::Builder;
 use std::collections::HashSet;
@@ -9,8 +12,8 @@ use std::collections::HashSet;
 /// unsafe URL schemes) is stripped.
 pub fn clean_html(input: &str) -> String {
     let tags: HashSet<&str> = [
-        "h1", "h2", "h3", "p", "strong", "em", "s", "code", "pre", "blockquote",
-        "ul", "ol", "li", "a", "br", "span",
+        "h1", "h2", "h3", "h4", "h5", "h6", "p", "strong", "em", "s", "u", "code",
+        "pre", "blockquote", "ul", "ol", "li", "a", "br", "hr", "span",
     ]
     .into_iter()
     .collect();
@@ -18,7 +21,7 @@ pub fn clean_html(input: &str) -> String {
     Builder::default()
         .tags(tags)
         .add_tag_attributes("a", &["href"])
-        .add_tag_attributes("span", &["data-type", "data-id"])
+        .add_tag_attributes("span", &["data-type", "data-id", "data-label"])
         .clean_content_tags(["script", "style"].into_iter().collect())
         .link_rel(Some("noopener noreferrer nofollow"))
         .clean(input)
@@ -63,6 +66,27 @@ mod tests {
             r#"<p><span data-type="mention" data-id="u1">@Ann</span></p>"#,
         );
         assert!(out.contains(r#"data-type="mention""#));
+        assert!(out.contains(r#"data-id="u1""#));
+    }
+
+    #[test]
+    fn keeps_underline() {
+        let out = clean_html("<p><u>x</u></p>");
+        assert!(out.contains("<u>x</u>"));
+    }
+
+    #[test]
+    fn keeps_horizontal_rule() {
+        let out = clean_html("<p>a</p><hr><p>b</p>");
+        assert!(out.contains("<hr"));
+    }
+
+    #[test]
+    fn keeps_mention_label() {
+        let out = clean_html(
+            r#"<span data-type="mention" data-id="u1" data-label="Ann">@Ann</span>"#,
+        );
+        assert!(out.contains(r#"data-label="Ann""#));
         assert!(out.contains(r#"data-id="u1""#));
     }
 }
