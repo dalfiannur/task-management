@@ -3,7 +3,7 @@ import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/shared/rich-text-editor";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -104,12 +104,13 @@ export function PageEditor({
           </AlertDialogContent>
         </AlertDialog>
       </div>
-      <Textarea
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
-        placeholder="Write in markdown…"
-        className="min-h-[24rem] flex-1 resize-none rounded-none border-0 font-mono text-sm shadow-none focus-visible:ring-0"
-      />
+      <div className="flex-1 overflow-auto p-3">
+        <RichTextEditor
+          value={content}
+          onChange={setContent}
+          placeholder="Write the page…"
+        />
+      </div>
     </div>
   );
 }
