@@ -1,0 +1,140 @@
+# Self-contained local stack for task-management (Rust backend-rs + Vite SPA).
+#
+# Isolated from the wider sedjiwa podman stack: its own postgres, its own rustfs
+# (S3), on a private network. Nothing here touches sedjiwa-net.
+#
+# The backend-rs binary and the SPA are built ON THE HOST and copied into the
+# images (see build.sh) — run build.sh before `podman-compose up`.
+#
+# Host ports:
+#   3011  -> frontend (open http://localhost:3011)
+#   9100  -> rustfs S3 API   (must be reachable at the host LAN IP for presigned
+#            media URLs — see HOST_LAN_IP / S3_ENDPOINT below)
+#   9101  -> rustfs console (127.0.0.1 only)
+#   5433  -> postgres        (127.0.0.1 only, for debugging)
+#   3010  -> backend-rs      (127.0.0.1 only, for debugging)
+
+name: task-management
+
+networks:
+  taskmgmt:
+    driver: bridge
+
+volumes:
+  pgdata:
+  rustfs-data:
+
+services:
+  postgres:
+    image: docker.io/library/postgres:17-alpine
+    container_name: taskmgmt-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: sedjiwa_tasks_rs
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d sedjiwa_tasks_rs"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [taskmgmt]
+
+  rustfs:
+    image: docker.io/rustfs/rustfs:latest
+    container_name: taskmgmt-rustfs
+    environment:
+      RUSTFS_ROOT_USER: minioadmin
+      RUSTFS_ROOT_PASSWORD: minioadmin
+      RUSTFS_VOLUMES: /data
+      RUSTFS_CONSOLE_CORS_ALLOWED_ORIGINS: "*"
+    volumes:
+      - rustfs-data:/data
+    ports:
+      # Published on 0.0.0.0 so the browser can reach presigned URLs at the host
+      # LAN IP (same host:port the backend signs with — see S3_ENDPOINT).
+      - "9100:9000"
+      - "127.0.0.1:9101:9001"
+    networks: [taskmgmt]
+
+  # One-shot: create the tasks-media bucket, then exit.
+  createbucket:
+    image: docker.io/minio/mc:latest
+    container_name: taskmgmt-createbucket
+    depends_on:
+      - rustfs
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set fs http://rustfs:9000 minioadmin minioadmin >/dev/null 2>&1; do
+        echo 'waiting for rustfs...'; sleep 2;
+      done;
+      mc mb --ignore-existing fs/tasks-media;
+      echo 'bucket tasks-media ready';
+      "
+    restart: "no"
+    networks: [taskmgmt]
+
+  backend-rs:
+    build:
+      context: .
+      dockerfile: backend.Dockerfile
+    image: taskmgmt/backend-rs:local
+    container_name: taskmgmt-backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/sedjiwa_tasks_rs
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-99ad3901a407c998aaec41162497c46f592fa03cf8fb6264454e0adc3b5a3714}
+      AUTH_JWT_EXPIRES_IN: "7d"
+      PORT: "3010"
+      CORS_ORIGINS: http://localhost:3011,http://127.0.0.1:3011,http://${HOST_LAN_IP:-192.168.33.111}:3011
+      # Presigned media URLs are absolute, so the backend must sign with a host:port
+      # the BROWSER can also reach. The host LAN IP is reachable both from the
+      # browser and from this container (routes out to the published rustfs port).
+      S3_ENDPOINT: http://${HOST_LAN_IP:-192.168.33.111}:9100
+      S3_BUCKET: tasks-media
+      S3_ACCESS_KEY: minioadmin
+      S3_SECRET_KEY: minioadmin
+      S3_REGION: us-east-1
+      S3_FORCE_PATH_STYLE: "true"
+      RUST_LOG: info
+    ports:
+      - "127.0.0.1:3010:3010"
+    # postgres may still be starting on first boot; retry until it connects.
+    restart: unless-stopped
+    networks: [taskmgmt]
+
+  # One-shot: create the first admin user (idempotent), then exit.
+  seed:
+    image: taskmgmt/backend-rs:local
+    container_name: taskmgmt-seed
+    depends_on:
+      postgres:
+        condition: service_healthy
+      backend-rs:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/sedjiwa_tasks_rs
+      SEED_ADMIN_PHONE: "0800000000"
+      SEED_ADMIN_PASSWORD: "admin12345"
+      SEED_ADMIN_NAME: "Admin"
+    command: ["seed_admin"]
+    restart: "no"
+    networks: [taskmgmt]
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend.Dockerfile
+    image: taskmgmt/frontend:local
+    container_name: taskmgmt-frontend
+    depends_on:
+      - backend-rs
+    ports:
+      - "3011:80"
+    restart: unless-stopped
+    networks: [taskmgmt]

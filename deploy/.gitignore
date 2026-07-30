@@ -1,0 +1,5 @@
+# Build artifacts copied in by build.sh — not source.
+bin/
+web/
+# Local overrides / secrets.
+.env
