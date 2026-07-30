@@ -1,22 +1,21 @@
-import { useState } from "react";
-import { AtSign, Check, Send } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { Send } from "lucide-react";
+import type { Editor } from "@tiptap/react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/shared/rich-text-editor";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
+  buildMention,
+  extractMentionIds,
+} from "@/components/shared/rich-text-mention";
+import type { MentionItem } from "@/components/shared/mention-list";
 import type { AppUser } from "@/features/auth";
 
-/** Comment editor: content + a member mention multi-select (→ notifications).
- *  Inline @-autocomplete is deferred; mentions are chosen explicitly here. */
+/** Comment editor: rich text with inline @-mention autocomplete. Mentions are
+ *  extracted from the doc on submit and sent as `mentionIds` (→ notifications). */
 export function CommentComposer({
   memberIds,
   userMap,
   initialContent = "",
-  initialMentions = [],
   submitLabel = "Comment",
   pending,
   onSubmit,
@@ -25,78 +24,52 @@ export function CommentComposer({
   memberIds: string[];
   userMap: Record<string, AppUser>;
   initialContent?: string;
-  initialMentions?: string[];
   submitLabel?: string;
   pending?: boolean;
   onSubmit: (content: string, mentionIds: string[]) => void;
   onCancel?: () => void;
 }) {
   const [content, setContent] = useState(initialContent);
-  const [mentions, setMentions] = useState<string[]>(initialMentions);
+  const [, setReady] = useState(false);
+  const editorRef = useRef<Editor | null>(null);
 
-  function toggleMention(id: string) {
-    setMentions((m) => (m.includes(id) ? m.filter((x) => x !== id) : [...m, id]));
-  }
+  const members: MentionItem[] = useMemo(
+    () =>
+      memberIds.map((id) => ({
+        id,
+        label: userMap[id]?.displayName ?? id,
+      })),
+    [memberIds, userMap],
+  );
+
+  // Rebuild the mention extension only when the member set changes.
+  const extensions = useMemo(() => [buildMention(members)], [members]);
+
+  const isEmpty = !editorRef.current || editorRef.current.isEmpty;
 
   function submit() {
-    if (!content.trim()) return;
-    onSubmit(content.trim(), mentions);
+    const editor = editorRef.current;
+    if (!editor || editor.isEmpty) return;
+    const html = editor.getHTML();
+    const mentionIds = extractMentionIds(editor);
+    onSubmit(html, mentionIds);
+    editor.commands.clearContent(true);
     setContent("");
-    setMentions([]);
   }
 
   return (
     <div className="space-y-2">
-      <Textarea
+      <RichTextEditor
         value={content}
-        onChange={(e) => setContent(e.target.value)}
-        placeholder="Write a comment… (⌘/Ctrl+Enter to send)"
-        rows={3}
-        onKeyDown={(e) => {
-          if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-            e.preventDefault();
-            submit();
-          }
+        onChange={setContent}
+        placeholder="Write a comment… (type @ to mention)"
+        extensions={extensions}
+        onEditorReady={(e) => {
+          editorRef.current = e;
+          setReady(true);
         }}
       />
       <div className="flex items-center gap-2">
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button type="button" variant="outline" size="sm">
-              <AtSign className="mr-1 h-4 w-4" />
-              {mentions.length ? `${mentions.length} mentioned` : "Mention"}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-56 p-1" align="start">
-            {memberIds.length === 0 ? (
-              <p className="p-2 text-sm text-muted-foreground">No members.</p>
-            ) : (
-              <ul className="max-h-52 space-y-0.5 overflow-y-auto">
-                {memberIds.map((id) => {
-                  const name = userMap[id]?.displayName ?? id;
-                  const on = mentions.includes(id);
-                  return (
-                    <li key={id}>
-                      <button
-                        type="button"
-                        onClick={() => toggleMention(id)}
-                        className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-muted"
-                      >
-                        <span className="flex-1 truncate text-left">{name}</span>
-                        <Check
-                          className={cn(
-                            "h-4 w-4",
-                            on ? "opacity-100" : "opacity-0",
-                          )}
-                        />
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </PopoverContent>
-        </Popover>
         <div className="flex-1" />
         {onCancel && (
           <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
@@ -107,7 +80,7 @@ export function CommentComposer({
           type="button"
           size="sm"
           onClick={submit}
-          disabled={pending || !content.trim()}
+          disabled={pending || isEmpty}
         >
           <Send className="mr-1 h-4 w-4" />
           {submitLabel}

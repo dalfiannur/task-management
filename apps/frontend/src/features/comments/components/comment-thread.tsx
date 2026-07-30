@@ -134,7 +134,6 @@ export function CommentThread({ taskId, projectId }: { taskId: string; projectId
                         memberIds={memberIds}
                         userMap={userMap}
                         initialContent={c.content}
-                        initialMentions={c.mentionedUserIds}
                         submitLabel="Save"
                         pending={update.isPending}
                         onSubmit={(content, mentions) =>
