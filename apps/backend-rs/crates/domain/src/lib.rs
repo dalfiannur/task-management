@@ -14,6 +14,7 @@ pub mod module;
 pub mod notification;
 pub mod page;
 pub mod project;
+pub mod sanitize;
 pub mod task;
 pub mod user;
 
