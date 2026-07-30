@@ -9,7 +9,16 @@ import { EMPTY_SESSION, type Session } from "../types";
 
 const STORAGE_KEY = "sedjiwa.auth";
 
-export const sessionAtom = atomWithStorage<Session>(STORAGE_KEY, EMPTY_SESSION);
+// `getOnInit: true` makes the atom read localStorage synchronously at init, so
+// the route guard / interceptor see the persisted token on the very first read
+// (a full page load or refresh) — without it they'd read EMPTY_SESSION until an
+// effect hydrates, and bounce authenticated users to /login.
+export const sessionAtom = atomWithStorage<Session>(
+  STORAGE_KEY,
+  EMPTY_SESSION,
+  undefined,
+  { getOnInit: true },
+);
 
 export const tokenAtom = atom((get) => get(sessionAtom).token);
 export const currentUserAtom = atom((get) => get(sessionAtom).user);
