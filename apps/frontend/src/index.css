@@ -23,6 +23,10 @@
   --color-surface-sunken: var(--surface-sunken);
   --color-surface-overlay: var(--surface-overlay);
   --color-surface-chrome: var(--surface-chrome);
+  --color-surface-chrome-hover: var(--surface-chrome-hover);
+  --color-surface-chrome-active: var(--surface-chrome-active);
+  --color-text-on-chrome: var(--text-on-chrome);
+  --color-text-on-chrome-muted: var(--text-on-chrome-muted);
   --color-surface-hover: var(--surface-hover);
 
   /* Teks — tiga tier + label di atas fill */

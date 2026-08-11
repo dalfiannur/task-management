@@ -381,34 +381,34 @@ rail".
 | User block menu | Sign out — a rare action that previously held permanent space |
 | Action bar (`h-14`, right-aligned) | Theme toggle · notification bell |
 
-**The sidebar is `--surface-chrome`** — a third surface, added by amending §2 rather than
-by working around it. Reusing `--surface-sunken` was tried first and reached only 1.15:1
-against the canvas, capped by the ~90% floor `--text-muted` imposes on that token (§3.1).
-Still **no divider** — separation comes entirely from the fill.
+**The sidebar is brand-coloured**, using a dedicated **chrome family**. This amends §2
+(third surface) *and* §3.6 (blue reserved for action), both deliberately.
 
-| | light | dark |
+| token | light | dark |
 |---|---|---|
-| `--surface-chrome` | `hsl(217 6% 84%)` | `hsl(217 9% 9%)` |
-| vs canvas | **1.37** | **1.30** |
-| `--text` on it | 9.47 ✅ | 16.88 ✅ |
-| `--text-muted` on it | 4.09 ❌ | 9.95 |
+| `--surface-chrome` | `--brand-900` | `hsl(225 100% 12%)` |
+| `--surface-chrome-hover` | `--brand-800` | `hsl(225 100% 18%)` |
+| `--surface-chrome-active` | `--brand-700` | `hsl(225 100% 24%)` |
+| `--text-on-chrome` | `--brand-50` (14.33) | `--brand-50` (17.23) |
+| `--text-on-chrome-muted` | `--brand-300` (7.50) | `--brand-300` (9.02) |
 
-Dark is deliberately *darker* than the canvas rather than lighter: raising it would collide
-with `--surface-raised` (`--grey-800`) and make the sidebar indistinguishable from a card.
-Its range is narrower than light's because the dark canvas already sits near black.
+Dark cannot reuse `--brand-900`: at 21% lightness it is nearly as light as the `--grey-900`
+canvas (1.11:1) and the rail would disappear. 12% gives 1.33 vs canvas, 1.66 vs a card.
 
-**Two consequences travel with it, both measured:**
+**Every neutral text token is banned inside the sidebar**, and the contrast script enforces
+it: `--text` measures **1.11:1** on chrome, `--text-muted` 2.57, and `--brand-text` **2.32**
+— which is why the active pill cannot use the `--brand-subtle`/`--brand-text` pairing it
+uses everywhere else. It uses `--surface-chrome-active` + `--text-on-chrome` (9.72).
 
-| Element | Must not be | Because | Is |
-|---|---|---|---|
-| Nav label | `--text-muted` | **4.09:1 on chrome — under 4.5** | `--text` (9.47) |
-| Nav / user hover | `--surface-hover` | too close to the chrome fill | `--surface-raised` |
+**The cost, accepted knowingly.** §3.6 said blue is reserved for primary action, active nav,
+focus, progress, links and selection, and warned that sparing use is what keeps "Blue
+Accent" from becoming "blue everything". The sidebar is the largest, most permanent surface
+on screen, so colouring it brand spends that accent on chrome: **the primary button is no
+longer the only blue thing on screen.** This was chosen after seeing all three options
+rendered side by side with a primary button visible in each.
 
-The nav label change has a design consequence worth stating: active vs inactive is no longer
-carried by a grey step. It is carried entirely by the brand pill — fill, colour and weight —
-which is a stronger signal anyway and does not rely on colour alone.
-The sidebar is `sticky top-0 h-screen` while the window scrolls, so it needs no scroll
-container of its own.
+*(Superseded approach, kept for the reasoning: a neutral `--surface-chrome` at
+`hsl(217 6% 84%)` gave 1.37:1 against the canvas and kept the accent intact.)*
 
 **The scroll shadow moves but survives.** It now belongs to the action bar rather than a
 full-width header — still `--shadow-1`, still only at `scrollY > 0`, still standing in for

@@ -93,7 +93,9 @@ const PAIRS = [
   ["--text", "--surface-sunken", TEXT],
   ["--text", "--surface-overlay", TEXT],
   ["--text", "--surface-hover", TEXT],
-  ["--text", "--surface-chrome", TEXT],
+  ["--text-on-chrome", "--surface-chrome", TEXT],
+  ["--text-on-chrome", "--surface-chrome-active", TEXT],
+  ["--text-on-chrome-muted", "--surface-chrome", TEXT],
   ["--text-muted", "--surface", TEXT],
   ["--text-muted", "--surface-raised", TEXT],
   ["--text-muted", "--surface-sunken", TEXT],
@@ -142,9 +144,12 @@ const REPORTED = [["--brand", "--surface-raised"]];
 const FORBIDDEN = [
   ["--text-subtle", "--surface-sunken"],
   ["--text-subtle", "--surface-hover"],
-  // --surface-chrome sengaja gelap supaya sidebar tegas; konsekuensinya hanya
-  // --text penuh yang boleh di atasnya. Label nav memakai --text, bukan muted.
+  // Chrome sekarang berwarna brand. SELURUH tier teks netral terlarang di
+  // atasnya — pakai --text-on-chrome / --text-on-chrome-muted.
+  ["--text", "--surface-chrome"],
   ["--text-muted", "--surface-chrome"],
+  // Pil aktif di tempat lain memakai --brand-text; di atas chrome ia 2.32:1.
+  ["--brand-text", "--surface-chrome"],
 ];
 
 /**
