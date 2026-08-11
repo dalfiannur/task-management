@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 
 const TABS = [
+  { to: "/projects/$projectId/overview", label: "Overview" },
   { to: "/projects/$projectId/all-tasks", label: "Tasks" },
   { to: "/projects/$projectId/timeline", label: "Timeline" },
   { to: "/projects/$projectId/members", label: "Members" },
