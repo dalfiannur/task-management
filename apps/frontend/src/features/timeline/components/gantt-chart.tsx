@@ -121,14 +121,17 @@ export function GanttChart({ projectId }: { projectId: string }) {
           No scheduled tasks yet. Schedule tasks below to see them here.
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border">
+        <div className="overflow-x-auto rounded-xl bg-surface-raised shadow-2">
           <div className="flex">
             {/* Left: names */}
             <div
-              className="shrink-0 border-r"
+              className="shrink-0 border-r border-border-subtle"
               style={{ width: NAME_COL }}
             >
-              <div style={{ height: HEADER_H }} className="border-b" />
+              <div
+                style={{ height: HEADER_H }}
+                className="border-b border-border-subtle"
+              />
               {rows.map((r) => (
                 <div
                   key={r.id}
@@ -136,7 +139,7 @@ export function GanttChart({ projectId }: { projectId: string }) {
                   className={cn(
                     "flex items-center truncate px-3 text-sm",
                     r.kind === "module"
-                      ? "bg-surface-sunken/40 font-medium"
+                      ? "bg-surface-sunken font-medium"
                       : "text-text-muted",
                   )}
                 >
@@ -149,15 +152,17 @@ export function GanttChart({ projectId }: { projectId: string }) {
             {/* Right: grid */}
             <div className="relative" style={{ width: gridWidth }}>
               <div
-                className="relative border-b"
+                className="relative border-b border-border-subtle"
                 style={{ height: HEADER_H }}
               >
                 {ticks.map((t) => (
                   <div
                     key={t.offset}
                     className={cn(
-                      "absolute top-0 flex h-full items-center border-l pl-1 text-xs text-text-muted",
-                      t.major && "border-text/20",
+                      "text-num absolute top-0 flex h-full items-center border-l pl-1 text-xs text-text-muted",
+                      // Batas minor vs mayor: dua tingkat, dua token — bukan
+                      // dua nilai alpha dari --text yang tidak pernah diukur.
+                      t.major ? "border-border" : "border-border-subtle",
                     )}
                     style={{ left: t.offset * pxPerDay }}
                   >
@@ -170,8 +175,8 @@ export function GanttChart({ projectId }: { projectId: string }) {
                   key={r.id}
                   style={{ height: ROW_HEIGHT }}
                   className={cn(
-                    "relative border-b",
-                    r.kind === "module" && "bg-surface-sunken/40",
+                    "relative border-b border-border-subtle",
+                    r.kind === "module" && "bg-surface-sunken",
                   )}
                 >
                   {/* major vertical gridlines */}
@@ -180,7 +185,7 @@ export function GanttChart({ projectId }: { projectId: string }) {
                     .map((t) => (
                       <div
                         key={t.offset}
-                        className="absolute top-0 h-full border-l border-text/10"
+                        className="absolute top-0 h-full border-l border-border"
                         style={{ left: t.offset * pxPerDay }}
                       />
                     ))}
