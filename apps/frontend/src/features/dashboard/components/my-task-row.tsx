@@ -9,7 +9,7 @@ export function MyTaskRow({ item }: { item: MyTaskItem }) {
     <Link
       to="/projects/$projectId/all-tasks"
       params={{ projectId: item.projectId }}
-      className="flex items-center gap-3 rounded-md border-b px-2 py-2 last:border-b-0 hover:bg-surface-sunken/40"
+      className="flex items-center gap-3 border-b border-border-subtle px-4 py-3 transition-colors [transition-duration:var(--duration-fast)] last:border-b-0 hover:bg-surface-hover"
     >
       <span className="min-w-0 flex-1">
         <span className="block truncate text-sm">{task.title}</span>
@@ -19,7 +19,7 @@ export function MyTaskRow({ item }: { item: MyTaskItem }) {
       </span>
       <PriorityLabel priority={task.priority} />
       {task.dueDate && (
-        <span className="text-xs text-text-muted">{task.dueDate}</span>
+        <span className="text-num text-xs text-text-muted">{task.dueDate}</span>
       )}
       <StatusBadge status={task.status} />
     </Link>
