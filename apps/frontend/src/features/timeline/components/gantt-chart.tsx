@@ -163,7 +163,12 @@ export function GanttChart({ projectId }: { projectId: string }) {
                       "text-num absolute top-0 flex h-full items-center border-l pl-1 text-xs text-text-muted",
                       // Batas minor vs mayor: dua tingkat, dua token — bukan
                       // dua nilai alpha dari --text yang tidak pernah diukur.
-                      t.major ? "border-border" : "border-border-subtle",
+                      // Mayor memakai --border-STRONG, bukan --border: di dark
+                      // --border dan --surface-raised dua-duanya grey-800,
+                      // jadi garis landmark justru HILANG persis di tema yang
+                      // paling membutuhkannya. --border-strong 3.86 light /
+                      // 4.57 dark; --border-subtle 1.14 / 1.86.
+                      t.major ? "border-border-strong" : "border-border-subtle",
                     )}
                     style={{ left: t.offset * pxPerDay }}
                   >
@@ -193,7 +198,7 @@ export function GanttChart({ projectId }: { projectId: string }) {
                       key={t.offset}
                       className={cn(
                         "absolute top-0 h-full border-l",
-                        t.major ? "border-border" : "border-border-subtle",
+                        t.major ? "border-border-strong" : "border-border-subtle",
                       )}
                       style={{ left: t.offset * pxPerDay }}
                     />

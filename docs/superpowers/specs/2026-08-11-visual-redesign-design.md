@@ -365,7 +365,7 @@ in the app. Inside that card it keeps a real grid:
 | Container | `--surface-raised`, `--radius-xl`, `--shadow-2`, no border |
 | Row hairlines | `--border-subtle` |
 | Day gridlines | `--border-subtle` |
-| Week (major) gridlines | `--border` — one step heavier, which is what makes boundaries readable |
+| Week (major) gridlines | `--border-strong` — the only token visible against the card in **both** themes (3.86 light / 4.57 dark). `--border` cannot be used: in dark it and `--surface-raised` are both `--grey-800`, so landmark lines vanish exactly where they are most needed |
 | Module rows | `--surface-sunken` band |
 | Date ticks | `.text-num` |
 | Bars | `--radius-full`; done state muted, not recoloured |
