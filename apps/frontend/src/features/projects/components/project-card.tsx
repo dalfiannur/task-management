@@ -26,7 +26,7 @@ export function ProjectCard({
       params={{ projectId: project.id }}
       className="block"
     >
-      <Card className="h-full transition-colors hover:border-brand/50">
+      <Card className="h-full transition-shadow [transition-duration:var(--duration-fast)] [transition-timing-function:var(--ease-out)] hover:shadow-3">
         <CardHeader className="flex-row items-start justify-between gap-2 space-y-0">
           <span className="font-medium leading-tight">{project.name}</span>
           <ProjectStatusBadge status={project.status} />
@@ -46,9 +46,7 @@ export function ProjectCard({
             </Avatar>
             <span>{ownerName}</span>
           </div>
-          {range && (
-            <p className="text-xs text-text-muted">{range}</p>
-          )}
+          {range && <p className="text-num text-xs text-text-muted">{range}</p>}
         </CardContent>
       </Card>
     </Link>
