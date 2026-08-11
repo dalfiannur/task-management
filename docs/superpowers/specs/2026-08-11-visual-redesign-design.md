@@ -241,9 +241,31 @@ the accessibility rules documented in the file.
 
 ### 4.4 Inputs, textarea, select trigger
 
-`--surface-sunken` fill (replacing the dead `--glass-bg`), `--border` hairline,
+`--surface-sunken` fill (replacing the dead `--glass-bg`), `--border-strong` boundary,
 `--radius-lg`, `--shadow-inset`. Sunken controls against raised cards communicate
-"editable" without a heavy outline.
+"editable" without a heavy outline. All three are treated identically — the select
+trigger is a form control like the other two.
+
+**The border is `--border-strong`, not `--border`.** `--border` is a *separator*; a form
+control's edge is a **boundary**, which WCAG 1.4.11 holds to 3:1. Measured:
+
+| Control border vs the card behind it | light | dark |
+|---|---|---|
+| `--border` | 1.39 ❌ | **1.00** ❌ |
+| `--border-strong` | 3.86 ✅ | 4.57 ✅ |
+
+The dark figure for `--border` is not a rounding artefact: `.dark` maps both `--border`
+and `--surface-raised` to `--grey-800`, so a bordered control inside a card has a border
+that is *exactly the same colour as the card*. Every form field in the app is affected.
+`--border-strong` is also the token `tokens.css` already documents for this job — the
+comment on `--grey-500` names it "batas komponen … (border input)".
+
+**`--border-strong` must map to different primitives per theme.** Light needs a darker
+value to hold against white; dark needs a *lighter* one to hold against `--grey-800`.
+Mapping both to `--grey-500` cannot satisfy both: at the 52% required by §3.1 it measures
+2.88 against a dark card. Dark therefore maps to `--grey-400` (4.57). This is the second
+place in the system where a token deliberately inverts between themes, alongside
+`--ring-media` and `--text-on-danger`.
 
 ### 4.5 Tabs → segmented control
 

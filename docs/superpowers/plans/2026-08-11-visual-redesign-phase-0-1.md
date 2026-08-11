@@ -76,8 +76,9 @@ Where a task below says "run it and confirm it fails first", that is a real fail
 | `src/index.css` | `--color-border-subtle` mapping, `.text-num` utility |
 | `src/components/ui/card.module.css` | borderless, `--radius-xl`, `--shadow-2` |
 | `src/components/ui/button.tsx` | shadow only on `default` variant |
-| `src/components/ui/input.module.css` | sunken fill, `--radius-lg`, `--shadow-inset` |
-| `src/components/ui/textarea.module.css` | sunken fill, `--radius-lg`, `--shadow-inset` |
+| `src/components/ui/input.module.css` | sunken fill, `--border-strong`, `--radius-lg`, `--shadow-inset` |
+| `src/components/ui/textarea.module.css` | sunken fill, `--border-strong`, `--radius-lg`, `--shadow-inset` |
+| `src/components/ui/select.module.css` | `.trigger` only — same treatment as the other two controls |
 | `src/features/auth/components/app-shell.tsx` | tinted bar, no border, scroll shadow |
 | `src/routes/_authed/dashboard.tsx` | page heading treatment |
 | `src/features/dashboard/components/stat-cards.tsx` | `.text-label` + `.text-num` |
@@ -773,6 +774,10 @@ const PAIRS = [
   ["--focus", "--surface-raised", UI],
   ["--border-strong", "--surface", UI],
   ["--border-strong", "--surface-sunken", UI],
+  // Sebuah input berlatar --surface-sunken duduk DI DALAM kartu
+  // (--surface-raised). Batasnya harus terbaca terhadap KEDUA sisi, jadi
+  // pasangan ini sama wajibnya dengan pasangan --surface-sunken di atas.
+  ["--border-strong", "--surface-raised", UI],
 ];
 
 /**
@@ -890,6 +895,25 @@ That is the red state — `--border-subtle` does not exist yet. Task 8 creates i
 
 Every other pairing must read `ok`. **If any other pairing fails, stop and report it** — that would mean the existing palette has a contrast defect this plan did not account for, and the values in Task 8 would need revisiting.
 
+Watch one line in particular, because Task 8 is about to move it:
+
+```
+DARK
+  ok    3.09 (min 3)  --border-strong on --surface-raised
+```
+
+At **3.09** it passes by 0.09. That is the border of a form control inside a card, and Task 8 darkens `--grey-500` (which `--border-strong` maps to) from 54% to 52% for unrelated light-mode reasons — which drops this to **2.88** and fails. That is why Task 8 Step 4 remaps dark's `--border-strong` to `--grey-400` in the *same* commit. The two changes are not independent and must not be split.
+
+Two `note` lines are expected and are not failures. In DARK, confirm you see:
+
+```
+  note  2.20  --brand on --surface-raised — recorded, no threshold
+```
+
+This one was found while validating the script and is worth understanding before you touch tokens: a blue primary button on a raised card has almost no boundary against it in dark mode. It is exempt rather than passing — see the comment above `REPORTED` in the script. Do not "fix" it by changing the brand hue.
+
+Every other pairing must read `ok`. **If any other pairing fails, stop and report it** — that would mean the existing palette has a contrast defect this plan did not account for, and the values in Task 8 would need revisiting.
+
 Two `note` lines are expected and are not failures. In DARK, confirm you see:
 
 ```
@@ -1003,7 +1027,7 @@ with:
   --focus:         var(--brand-500);
 ```
 
-- [ ] **Step 4: Add the dark mappings**
+- [ ] **Step 4: Add the dark mappings and fix dark `--border-strong`**
 
 In the `.dark` block, replace:
 
@@ -1019,7 +1043,15 @@ with:
   /* Di dark, pemisah halus justru LEBIH TERANG dari --border: di atas
      --surface-raised (grey-800) sebuah garis yang lebih gelap menghilang. */
   --border-subtle: var(--grey-700);
-  --border-strong: var(--grey-500);
+  /* TIDAK ikut --grey-500 seperti di light. --border-strong adalah batas
+     kontrol form, dan kontrol itu duduk DI DALAM kartu (--surface-raised =
+     grey-800). Pada grey-500 batas itu hanya 2.88:1 di sana — di bawah 3:1.
+     Terang dan gelap menarik ke arah berlawanan di sini: light butuh nilai
+     lebih gelap untuk melawan putih, dark butuh lebih terang untuk melawan
+     grey-800. Itulah sebabnya keduanya TIDAK boleh memetakan ke primitif
+     yang sama.
+     grey-400 di dark: raised 4.57 · sunken 6.69 · surface 5.70 · hover 3.62. */
+  --border-strong: var(--grey-400);
 ```
 
 Leave `--surface-sunken: hsl(217 9% 13%);` in `.dark` unchanged — the dark canvas is already well separated from it.
@@ -1346,13 +1378,18 @@ primary is the obvious target."
 
 ---
 
-### Task 13: Inputs and textarea — sunken fill
+### Task 13: Form controls — sunken fill and a legible border
 
 Sunken controls against raised cards signal "editable" without a heavy outline.
+
+**All three form controls are treated together.** The select trigger is a form control exactly like the other two; leaving it on a raised fill would strand it as the only control that does not match, and it is the one most often rendered inside a dialog.
+
+**Border token:** these controls use **`--border-strong`**, not `--border`. `--border` is a *separator*; a form control's edge is a **boundary** and WCAG 1.4.11 asks 3:1 of it. Measured, `--border` gives 1.39:1 against a white card in light and **1.00:1 in dark** — where `.dark` maps `--border` and `--surface-raised` to the same `--grey-800`, making the border literally invisible. `--border-strong` is also what `tokens.css` already documents for this job: the comment on `--grey-500` calls it *"batas komponen … (border input)"*.
 
 **Files:**
 - Modify: `apps/frontend/src/components/ui/input.module.css` (`.input`)
 - Modify: `apps/frontend/src/components/ui/textarea.module.css` (`.textarea`)
+- Modify: `apps/frontend/src/components/ui/select.module.css` (`.trigger`)
 
 - [ ] **Step 1: Update `.input`**
 
@@ -1368,7 +1405,7 @@ with:
 
 ```css
   border-radius: var(--radius-lg);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   background: var(--surface-sunken);
   box-shadow: var(--shadow-inset);
 ```
@@ -1387,10 +1424,30 @@ with:
 
 ```css
   border-radius: var(--radius-lg);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   background: var(--surface-sunken);
   box-shadow: var(--shadow-inset);
 ```
+
+- [ ] **Step 2b: Update the select `.trigger`**
+
+In the `.trigger` rule of `select.module.css`, replace these three lines:
+
+```css
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--surface-raised);
+```
+
+with:
+
+```css
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-sunken);
+```
+
+Note: no `--shadow-inset` here. `.trigger` already carries `box-shadow: var(--shadow-1)` from Task 6, and a control cannot be both raised and inset. Replace that `var(--shadow-1)` line with `box-shadow: var(--shadow-inset);` so the trigger matches the other two controls.
 
 - [ ] **Step 3: Confirm the focus ring still overrides the inset shadow**
 
@@ -1410,11 +1467,17 @@ Placeholders use `--text-muted`, now sitting on the darkened `--surface-sunken`.
 node scripts/check-contrast.mjs
 ```
 
-Expected: exit 0, and this line under LIGHT:
+Expected: exit 0, and these lines:
 
 ```
+LIGHT
   ok    4.87 (min 4.5)  --text-muted on --surface-sunken
+  ok    3.86 (min 3)  --border-strong on --surface-raised
+DARK
+  ok    4.57 (min 3)  --border-strong on --surface-raised
 ```
+
+The `--border-strong on --surface-raised` pair is what makes these controls legible inside a card. If it reads **2.88** in dark, Task 8 Step 4's `--grey-400` remap was missed.
 
 - [ ] **Step 5: Build**
 
@@ -1427,11 +1490,17 @@ Expected: exit 0.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/components/ui/input.module.css src/components/ui/textarea.module.css
-git commit -m "feat(ui): sunken input and textarea fills
+git add src/components/ui/input.module.css src/components/ui/textarea.module.css src/components/ui/select.module.css
+git commit -m "feat(ui): sunken form controls with a legible border
 
---surface-sunken + --shadow-inset + 12px radius. Placeholder contrast on
-the darkened sunken surface verified at 4.87:1."
+input, textarea and the select trigger together: --surface-sunken fill,
+--shadow-inset, 12px radius. Placeholder contrast verified at 4.87:1.
+
+Borders move from --border to --border-strong. --border is a separator;
+a control edge is a boundary and WCAG 1.4.11 asks 3:1 of it. --border gave
+1.39:1 on a white card and 1.00:1 in dark, where .dark maps --border and
+--surface-raised to the same grey-800 — an invisible border on every field.
+--border-strong is also what tokens.css already documents for this job."
 ```
 
 ---
