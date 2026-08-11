@@ -9,7 +9,7 @@
   overflow-x: hidden;
   overflow-y: auto;
   border-radius: var(--radius-md);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   background: var(--surface-overlay);
   color: var(--text);
   padding: 0.25rem;
@@ -300,7 +300,7 @@
   min-width: 8rem;
   overflow: hidden;
   border-radius: var(--radius-md);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   background: var(--surface-overlay);
   color: var(--text);
   padding: 0.25rem;

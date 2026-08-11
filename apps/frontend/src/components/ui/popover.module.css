@@ -6,7 +6,7 @@
   z-index: 50;
   width: 18rem; /* w-72 */
   border-radius: var(--radius-md);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   background: var(--surface-overlay);
   color: var(--text);
   padding: 0.75rem;
