@@ -235,19 +235,28 @@ language from the start rather than retrofitted.
 Sequenced as a vertical slice first, then replication — chosen so a taste disagreement
 costs one route rather than a completed sweep.
 
-### Phase 0 — Commit baseline, then repair and retoken
+### Phase 0 — Commit baseline, then repair only
 
-Commit the in-flight frontend changes unmodified — the ~65 modified files under
-`apps/frontend/` plus the untracked `components/shared/empty-state.tsx` and
-`theme-toggle.tsx`. They are a coherent half-migration; editing on top of them makes the
-redesign diff unreadable and unrevertable. The unrelated in-flight files
-(`apps/backend-rs/.../seed_user.rs`, `.claude/settings.local.json`) are left alone and
-are not part of this commit.
+Phase 0 is deliberately minimal: it makes the app *correct*, not *redesigned*. No token
+values change here. Its only job is that nothing references a dead variable or a colour
+literal, so Phase 1 starts from a working light-mode app rather than a broken one.
 
-Then: `tokens.css` changes (§3.1–3.4), `@theme inline` mappings in `index.css`,
-`.text-num`, and `defaultTheme: "dark"` → `"light"` in `main.tsx`.
+**0a. Commit the baseline.** The in-flight frontend changes, unmodified — the ~65
+modified files under `apps/frontend/` plus the untracked
+`components/shared/empty-state.tsx` and `theme-toggle.tsx`. They are a coherent
+half-migration; editing on top of them makes the redesign diff unreadable and
+unrevertable. The unrelated in-flight files (`apps/backend-rs/.../seed_user.rs`,
+`.claude/settings.local.json`) are left alone and are not part of this commit.
 
-Then repair all 10 affected modules:
+**0b. Flip the default theme.** `defaultTheme: "dark"` → `"light"` in `main.tsx`. This
+belongs here rather than later: light is the theme the repair has to be verified in, and
+verifying it while the app still boots dark would miss exactly the failures being fixed.
+
+**0c. Repair all 10 affected modules** onto the token layer **as it exists today** —
+`--surface-raised`, `--surface-overlay`, `--surface-sunken`, `--border`, `--shadow-1/2/3`,
+`--radius-md/lg`. Straight substitution of dead references for live ones. The
+`backdrop-filter` declarations are removed here, since they are tied to the dark-glass
+blocks being replaced.
 
 | Module | Dead `--glass-*` | Dark-glass panel | Shadow literal |
 |---|:--:|:--:|:--:|
@@ -262,22 +271,43 @@ Then repair all 10 affected modules:
 | `toggle` | | | ● |
 | `tabs` | | | ● |
 
-**Gate:** app renders coherently in both themes; `grep -lE 'rgba\(|rgb\(|hsl\(|#[0-9a-fA-F]{3,6}|--glass' components/ui/*.module.css`
-returns nothing.
+**Gate:** app renders coherently in light and dark with the *existing* look — no dark
+dropdowns, no background-less cards — and
+`grep -lE 'rgba\(|rgb\(|hsl\(|#[0-9a-fA-F]{3,6}|--glass' components/ui/*.module.css`
+returns nothing. This gate is mechanical, not aesthetic; there is nothing to judge yet.
 
-### Phase 1 — Vertical slice: Dashboard
+### Phase 1 — Retune the tokens on a real screen: Dashboard
 
-App shell (tinted bar, scroll shadow), card, button, badge, stat cards, `my-task-row`,
-`upcoming-deadlines`, `empty-state`. One route, production quality, both themes.
+The token work and the vertical slice are done together, so every token value is judged
+on a rendered screen instead of in the abstract.
 
-**Gate — the taste checkpoint.** Reviewed running at `localhost:3001` before anything
-else moves. Phase 2 does not begin until this is approved.
+**1a. Token retuning** (§3.1–3.5): darken `--surface-sunken`, add `--border-subtle`,
+reassign the radius roles, retune `--shadow-1..5`, add `.text-num`, and update the
+`@theme inline` mappings in `index.css`. Contrast measurement for every added or changed
+token, both themes (§6), happens here.
+
+**1b. Dashboard slice:** app shell (tinted bar, scroll shadow), card, button, badge,
+stat cards, `my-task-row`, `upcoming-deadlines`, `empty-state`. One route, production
+quality, both themes.
+
+**Accepted trade-off.** Retuning shadows and radius roles is global — it changes every
+component in the app, not only the Dashboard. So at the Phase 1 gate the *other* routes
+will be in a deliberately mixed state: new token values, old component styling. That is
+expected and is what Phases 2–3 resolve. Only the Dashboard is judged at this gate.
+
+**Gate — the taste checkpoint.** Reviewed running at `localhost:3001`, both themes.
+Phase 2 does not begin until this is approved. If the tokens need another pass, it costs
+one route, which is the entire reason for sequencing it this way.
 
 ### Phase 2 — Remaining `ui/` primitives
 
 Every other module brought to the patterns locked in Phase 1: dialog, sheet, popover,
 dropdown-menu, select, command, calendar, checkbox, toggle, tooltip, tabs (→ segmented
 control), scroll-area, avatar, breadcrumb, separator, skeleton, sonner, alert-dialog.
+
+Note the overlap with Phase 0: seven of these were already touched there. Phase 0 only
+made them *reference live tokens*; Phase 2 gives them their §4 treatment. `tabs` is the
+clearest case — repaired in Phase 0, rebuilt as a segmented control (§4.5) here.
 
 ### Phase 3 — Feature sweep
 
