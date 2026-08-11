@@ -26,18 +26,18 @@ export function ProjectCard({
       params={{ projectId: project.id }}
       className="block"
     >
-      <Card className="h-full transition-colors hover:border-primary/50">
+      <Card className="h-full transition-colors hover:border-brand/50">
         <CardHeader className="flex-row items-start justify-between gap-2 space-y-0">
           <span className="font-medium leading-tight">{project.name}</span>
           <ProjectStatusBadge status={project.status} />
         </CardHeader>
         <CardContent className="space-y-3">
           {project.description && (
-            <p className="line-clamp-2 text-sm text-muted-foreground">
+            <p className="line-clamp-2 text-sm text-text-muted">
               {project.description}
             </p>
           )}
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2 text-sm text-text-muted">
             <Avatar className="h-6 w-6">
               {owner?.avatarUrl && <AvatarImage src={owner.avatarUrl} />}
               <AvatarFallback className="text-xs">
@@ -47,7 +47,7 @@ export function ProjectCard({
             <span>{ownerName}</span>
           </div>
           {range && (
-            <p className="text-xs text-muted-foreground">{range}</p>
+            <p className="text-xs text-text-muted">{range}</p>
           )}
         </CardContent>
       </Card>

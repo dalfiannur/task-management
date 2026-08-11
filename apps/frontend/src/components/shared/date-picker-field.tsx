@@ -32,8 +32,8 @@ export function DatePickerField({
           variant="ghost"
           type="button"
           className={cn(
-            "inline-flex items-center gap-[0.3125rem] rounded-md px-1.5 h-6 font-mono text-sm leading-4 border-0 bg-transparent hover:bg-muted/50 transition-colors",
-            !value && "text-muted-foreground",
+            "inline-flex items-center gap-[0.3125rem] rounded-md px-1.5 h-6 font-mono text-sm leading-4 border-0 bg-transparent hover:bg-surface-sunken/50 transition-colors",
+            !value && "text-text-muted",
           )}
         >
           <CalendarIcon className="size-3" />
@@ -58,7 +58,7 @@ export function DatePickerField({
               type="button"
               variant="ghost"
               size="sm"
-              className="w-full text-muted-foreground text-sm leading-4 h-6"
+              className="w-full text-text-muted text-sm leading-4 h-6"
               onClick={() => {
                 onChange(undefined);
                 setOpen(false);

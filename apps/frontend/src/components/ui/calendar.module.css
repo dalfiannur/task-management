@@ -1,7 +1,7 @@
 /* Calendar wrapper */
 .calendar {
   --cell-size: 1.875rem;
-  background-color: var(--background);
+  background-color: var(--surface);
   padding: 0.625rem;
 }
 
@@ -73,13 +73,13 @@
 }
 
 .navButton:hover {
-  background-color: var(--accent);
-  color: var(--accent-foreground);
+  background-color: var(--surface-hover);
+  color: var(--text);
 }
 
 .navButton:focus-visible {
-  border-color: var(--ring);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 50%, transparent);
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 50%, transparent);
 }
 
 .navButton[aria-disabled="true"] {
@@ -113,20 +113,20 @@
 /* Dropdown root wrapper */
 .dropdownRoot {
   position: relative;
-  border: 1px solid var(--input);
+  border: 1px solid var(--border);
   box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   border-radius: var(--radius-md);
 }
 
 .dropdownRoot:has(:focus) {
-  border-color: var(--ring);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 50%, transparent);
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 50%, transparent);
 }
 
 /* Dropdown select element */
 .dropdown {
   position: absolute;
-  background-color: var(--popover);
+  background-color: var(--surface-overlay);
   inset: 0;
   opacity: 0;
 }
@@ -155,7 +155,7 @@
 }
 
 .captionLabelDropdown > svg {
-  color: var(--muted-foreground);
+  color: var(--text-muted);
   width: 0.875rem;
   height: 0.875rem;
 }
@@ -173,7 +173,7 @@
 
 /* Individual weekday header */
 .weekday {
-  color: var(--muted-foreground);
+  color: var(--text-muted);
   border-radius: var(--radius-md);
   flex: 1;
   font-weight: 400;
@@ -198,7 +198,7 @@
 .weekNumber {
   font-size: 0.8rem;
   user-select: none;
-  color: var(--muted-foreground);
+  color: var(--text-muted);
 }
 
 /* Day cell (base styles shared by both variants) */
@@ -235,7 +235,7 @@
 .rangeStart {
   border-top-left-radius: var(--radius-md);
   border-bottom-left-radius: var(--radius-md);
-  background-color: var(--accent);
+  background-color: var(--surface-hover);
 }
 
 .rangeMiddle {
@@ -245,13 +245,13 @@
 .rangeEnd {
   border-top-right-radius: var(--radius-md);
   border-bottom-right-radius: var(--radius-md);
-  background-color: var(--accent);
+  background-color: var(--surface-hover);
 }
 
 /* Today */
 .today {
-  background-color: var(--accent);
-  color: var(--accent-foreground);
+  background-color: var(--surface-hover);
+  color: var(--text);
   border-radius: var(--radius-md);
 }
 
@@ -261,16 +261,16 @@
 
 /* Outside days */
 .outside {
-  color: var(--muted-foreground);
+  color: var(--text-muted);
 }
 
 .outside[aria-selected="true"] {
-  color: var(--muted-foreground);
+  color: var(--text-muted);
 }
 
 /* Disabled days */
 .disabled {
-  color: var(--muted-foreground);
+  color: var(--text-muted);
   opacity: 0.5;
 }
 
@@ -319,27 +319,27 @@
 
 /* Selection states */
 .dayButton[data-selected-single="true"] {
-  background-color: var(--primary);
-  color: var(--primary-foreground);
+  background-color: var(--brand);
+  color: var(--text-on-brand);
 }
 
 .dayButton[data-range-middle="true"] {
-  background-color: var(--accent);
-  color: var(--accent-foreground);
+  background-color: var(--surface-hover);
+  color: var(--text);
   border-radius: 0;
 }
 
 .dayButton[data-range-start="true"] {
-  background-color: var(--primary);
-  color: var(--primary-foreground);
+  background-color: var(--brand);
+  color: var(--text-on-brand);
   border-radius: var(--radius-md);
   border-top-left-radius: var(--radius-md);
   border-bottom-left-radius: var(--radius-md);
 }
 
 .dayButton[data-range-end="true"] {
-  background-color: var(--primary);
-  color: var(--primary-foreground);
+  background-color: var(--brand);
+  color: var(--text-on-brand);
   border-radius: var(--radius-md);
   border-top-right-radius: var(--radius-md);
   border-bottom-right-radius: var(--radius-md);
@@ -349,10 +349,10 @@
 [data-focused="true"] .dayButton {
   position: relative;
   z-index: 10;
-  border-color: var(--ring);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 50%, transparent);
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 50%, transparent);
 }
 
 .dayButton:hover {
-  color: var(--accent-foreground);
+  color: var(--text);
 }

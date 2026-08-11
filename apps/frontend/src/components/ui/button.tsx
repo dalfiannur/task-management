@@ -5,32 +5,48 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-full text-sm font-medium shrink-0 cursor-pointer border-none no-underline transition-colors duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  [
+    "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full text-sm font-medium shrink-0",
+    "cursor-pointer border-none no-underline",
+    // Durasi & easing dari token — motion.md §1. Hover adalah perubahan mikro,
+    // jadi --duration-fast.
+    "transition-colors [transition-duration:var(--duration-fast)] [transition-timing-function:var(--ease-out)]",
+    // outline:none DIIZINKAN hanya karena diganti ring yang terlihat
+    // (accessibility.md §3). Offset-nya wajib sewarna permukaan di belakang,
+    // bukan putih bawaan Tailwind — kalau tidak, di dark mode ia menggambar
+    // cincin putih.
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface",
+    "disabled:pointer-events-none disabled:opacity-50",
+    "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  ].join(" "),
   {
     variants: {
       variant: {
-        default:
-          "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90",
+        // Hover memakai --brand-hover / bukan --brand beralpha: pasangan
+        // --text-on-brand di atas --brand-hover sudah diukur (9.64 light /
+        // 6.16 dark), sedangkan hasil komposit alpha tidak pernah diukur.
+        default: "bg-brand text-text-on-brand shadow-1 hover:bg-brand-hover",
         secondary:
-          "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
+          "bg-surface-sunken text-text shadow-1 hover:bg-surface-hover",
         destructive:
-          "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
+          "bg-danger text-text-on-danger shadow-1 hover:bg-danger/90",
         outline:
-          "border border-border bg-background text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground",
-        ghost:
-          "text-foreground hover:bg-accent hover:text-accent-foreground",
-        link:
-          "text-primary underline-offset-4 hover:underline",
+          "border border-border bg-surface-raised text-text shadow-1 hover:bg-surface-hover",
+        ghost: "text-text hover:bg-surface-hover",
+        link: "text-brand-text underline underline-offset-4",
       },
+      // Target sentuh ≥ 44×44 — accessibility.md §4.1, tidak ditawar untuk
+      // kontrol berdiri sendiri. Ukuran padat mempertahankan kotak visualnya
+      // dan memakai `.hit-area` (§4.4) supaya area kliknya tetap 44×44.
       size: {
-        default: "h-8 px-3.5 py-1.5 has-[>svg]:px-2.5",
-        xs: "h-6 gap-1 px-2 text-sm has-[>svg]:px-1.5 [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-7 gap-1.5 px-2.5 has-[>svg]:px-2",
-        lg: "h-9 px-5 has-[>svg]:px-3.5",
-        icon: "size-8",
-        "icon-xs": "size-6 [&_svg:not([class*='size-'])]:size-3",
-        "icon-sm": "size-7",
-        "icon-lg": "size-9",
+        default: "h-11 px-6 has-[>svg]:px-5",
+        lg: "h-12 px-8 has-[>svg]:px-6",
+        sm: "hit-area h-9 gap-1.5 px-4 has-[>svg]:px-3",
+        xs: "hit-area h-8 gap-1 px-3 has-[>svg]:px-2 [&_svg:not([class*='size-'])]:size-3",
+        icon: "size-11",
+        "icon-lg": "size-12",
+        "icon-sm": "hit-area size-9",
+        "icon-xs": "hit-area size-8 [&_svg:not([class*='size-'])]:size-3",
       },
     },
     defaultVariants: {

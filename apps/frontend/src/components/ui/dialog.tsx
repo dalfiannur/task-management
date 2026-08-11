@@ -37,9 +37,9 @@ function DialogOverlay({
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
       className={cn(
-        "fixed inset-0 z-50 bg-black/50 backdrop-blur-sm",
-        "data-[state=open]:[animation:fade-in_150ms_ease-out]",
-        "data-[state=closed]:[animation:fade-out_150ms_ease-in]",
+        "fixed inset-0 z-50 bg-scrim backdrop-blur-sm",
+        "data-[state=open]:overlay-enter",
+        "data-[state=closed]:overlay-exit",
         className,
       )}
       {...props}
@@ -64,12 +64,14 @@ function DialogContent({
           className={cn(
             // Layout
             "relative w-full max-w-[calc(100%-2rem)] sm:max-w-lg",
-            "grid gap-3.5 p-5 text-foreground outline-none",
-            // Solid background + frosted border
-            "bg-[hsl(228_20%_10%_/_0.9)] backdrop-blur-[20px] border border-white/[0.1] shadow-[0_8px_32px_rgba(0,0,0,0.4)] rounded-2xl",
+            "grid gap-4 p-6 text-text outline-none",
+            // Permukaan overlay + elevasi modal (depth.md §3). Sebelumnya
+            // background-nya di-hardcode hsl(228 20% 10% / .9) — dark-only,
+            // sehingga dialog tetap gelap saat tema light aktif.
+            "bg-surface-overlay border border-border shadow-5 rounded-xl",
             // Animation
-            "data-[state=open]:[animation:fade-in_200ms_ease-out,zoom-in_200ms_ease-out]",
-            "data-[state=closed]:[animation:fade-out_150ms_ease-in,zoom-out_150ms_ease-in]",
+            "data-[state=open]:dialog-enter",
+            "data-[state=closed]:dialog-exit",
             className,
           )}
           {...props}
@@ -80,11 +82,11 @@ function DialogContent({
               data-slot="dialog-close"
               className={cn(
                 "absolute top-3.5 right-3.5 rounded-lg p-1 border-none",
-                "text-muted-foreground cursor-pointer",
+                "text-text-muted cursor-pointer",
                 // Interactive standards
                 "transition-all duration-200 active:scale-95",
-                "hover:bg-accent hover:text-foreground",
-                "focus:outline-none focus:ring-2 focus:ring-ring/40",
+                "hover:bg-surface-hover hover:text-text",
+                "focus:outline-none focus:ring-2 focus:ring-focus/40",
                 "disabled:pointer-events-none",
                 "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*=size-])]:size-4",
               )}
@@ -140,7 +142,7 @@ function DialogTitle({
   return (
     <DialogPrimitive.Title
       data-slot="dialog-title"
-      className={cn("text-base leading-none font-bold tracking-tight text-foreground", className)}
+      className={cn("text-base leading-none font-bold tracking-tight text-text", className)}
       {...props}
     />
   )
@@ -153,7 +155,7 @@ function DialogDescription({
   return (
     <DialogPrimitive.Description
       data-slot="dialog-description"
-      className={cn("text-sm leading-5 text-muted-foreground", className)}
+      className={cn("text-sm leading-5 text-text-muted", className)}
       {...props}
     />
   )

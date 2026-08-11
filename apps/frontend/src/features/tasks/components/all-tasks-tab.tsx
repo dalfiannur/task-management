@@ -127,7 +127,7 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
       )}
 
       {modules.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-12 text-center text-muted-foreground">
+        <div className="rounded-lg border border-dashed p-12 text-center text-text-muted">
           {canManage
             ? "No modules yet. Add one to start organizing tasks."
             : "No modules yet."}

@@ -10,7 +10,7 @@
   background: hsl(228 20% 10% / 0.9);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  color: var(--popover-foreground);
+  color: var(--text);
   padding: 0.75rem;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   outline: none;
@@ -71,7 +71,7 @@
    ============================================ */
 
 .description {
-  color: var(--muted-foreground);
+  color: var(--text-muted);
 }
 
 /* ============================================

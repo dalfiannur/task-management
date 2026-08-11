@@ -39,7 +39,7 @@ export function LabelCombobox({
         <PopoverContent className="w-60 p-1" align="start">
           <ul className="max-h-56 space-y-0.5 overflow-y-auto">
             {labels.length === 0 ? (
-              <li className="p-2 text-sm text-muted-foreground">
+              <li className="p-2 text-sm text-text-muted">
                 No labels yet.
               </li>
             ) : (
@@ -50,7 +50,7 @@ export function LabelCombobox({
                     <button
                       type="button"
                       onClick={() => toggle(l.id)}
-                      className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-muted"
+                      className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-surface-sunken"
                     >
                       <span
                         className="h-3 w-3 rounded-full"
@@ -73,7 +73,7 @@ export function LabelCombobox({
             <button
               type="button"
               onClick={() => setManageOpen(true)}
-              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm text-muted-foreground hover:bg-muted"
+              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-text-muted hover:bg-surface-sunken"
             >
               <Settings2 className="h-4 w-4" />
               Manage labels

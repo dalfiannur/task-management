@@ -1,5 +1,5 @@
 .skeleton {
-  background-color: var(--accent);
+  background-color: var(--surface-hover);
   border-radius: var(--radius-md);
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }

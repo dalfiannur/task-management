@@ -16,7 +16,7 @@
 .tabsList {
   border-radius: 0.5rem;
   padding: 3px;
-  color: var(--muted-foreground);
+  color: var(--text-muted);
   display: inline-flex;
   width: fit-content;
   align-items: center;
@@ -36,7 +36,7 @@
 
 /* variant: default */
 .tabsList[data-variant="default"] {
-  background-color: var(--muted);
+  background-color: var(--surface-sunken);
 }
 
 /* variant: line */
@@ -65,14 +65,14 @@
   font-weight: 500;
   white-space: nowrap;
   transition: all 150ms ease;
-  color: var(--muted-foreground);
+  color: var(--text-muted);
   outline: none;
   cursor: pointer;
   background: transparent;
 }
 
 .tabsTrigger:hover {
-  color: var(--foreground);
+  color: var(--text);
 }
 
 .tabsTrigger:disabled {
@@ -93,9 +93,9 @@
 
 /* Focus-visible ring */
 .tabsTrigger:focus-visible {
-  border-color: var(--ring);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 50%, transparent);
-  outline: 1px solid var(--ring);
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 50%, transparent);
+  outline: 1px solid var(--focus);
 }
 
 /* Vertical orientation: full width, start-aligned */
@@ -107,9 +107,9 @@
 /* ---- Active state (data-state=active) ---- */
 
 .tabsTrigger[data-state="active"] {
-  background-color: color-mix(in srgb, var(--input) 30%, transparent);
-  color: var(--foreground);
-  border-color: var(--input);
+  background-color: color-mix(in srgb, var(--border) 30%, transparent);
+  color: var(--text);
+  border-color: var(--border);
 }
 
 /* Default variant: shadow on active */
@@ -133,7 +133,7 @@
 .tabsTrigger::after {
   content: "";
   position: absolute;
-  background-color: var(--foreground);
+  background-color: var(--text);
   opacity: 0;
   transition: opacity 150ms ease;
 }

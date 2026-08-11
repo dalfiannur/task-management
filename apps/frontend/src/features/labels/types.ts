@@ -7,7 +7,14 @@ export interface Label {
   color: string; // #RRGGBB
 }
 
-/** Preset palette offered in the color picker. */
+/** Preset palette offered in the color picker.
+ *
+ *  Satu-satunya warna literal yang sengaja dibiarkan di luar `tokens.css`:
+ *  nilai-nilai ini adalah DATA yang dikirim ke backend dan disimpan per label
+ *  (`Label.color`), bukan warna tema. Memindahkannya jadi CSS variable akan
+ *  memutus round-trip ke API. Warna ini hanya dipakai untuk titik penanda
+ *  (lihat `LabelChip`) — tidak pernah jadi warna teks, justru karena kontras
+ *  warna pilihan user tidak bisa dijamin. */
 export const LABEL_COLORS = [
   "#ef4444",
   "#f97316",

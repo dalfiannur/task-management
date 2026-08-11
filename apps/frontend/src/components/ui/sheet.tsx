@@ -34,9 +34,9 @@ function SheetOverlay({
     <SheetPrimitive.Overlay
       data-slot="sheet-overlay"
       className={cn(
-        "fixed inset-0 z-50 bg-black/50 backdrop-blur-sm",
-        "data-[state=open]:[animation:fade-in_150ms_ease-out]",
-        "data-[state=closed]:[animation:fade-out_150ms_ease-in]",
+        "fixed inset-0 z-50 bg-scrim backdrop-blur-sm",
+        "data-[state=open]:overlay-enter",
+        "data-[state=closed]:overlay-exit",
         className,
       )}
       {...props}
@@ -64,27 +64,27 @@ function SheetContent({
           // Base
           "fixed z-50 flex flex-col gap-3",
           // Solid background
-          "bg-[hsl(228_20%_10%_/_0.9)] backdrop-blur-[20px] shadow-[0_8px_32px_rgba(0,0,0,0.4)]",
+          "bg-surface-overlay shadow-4",
           // Side: right
           "data-[side=right]:inset-y-0 data-[side=right]:right-0 data-[side=right]:h-full data-[side=right]:w-3/4 data-[side=right]:sm:max-w-sm",
-          "data-[side=right]:border-l data-[side=right]:border-white/[0.1]",
-          "data-[side=right]:data-[state=open]:[animation:slide-in-from-right_500ms_ease-in-out]",
-          "data-[side=right]:data-[state=closed]:[animation:slide-out-to-right_300ms_ease-in-out]",
+          "data-[side=right]:border-l data-[side=right]:border-border",
+          "data-[side=right]:data-[state=open]:[animation:slide-in-from-right_320ms_var(--ease-in-out)]",
+          "data-[side=right]:data-[state=closed]:[animation:slide-out-to-right_120ms_var(--ease-out)]",
           // Side: left
           "data-[side=left]:inset-y-0 data-[side=left]:left-0 data-[side=left]:h-full data-[side=left]:w-3/4 data-[side=left]:sm:max-w-sm",
-          "data-[side=left]:border-r data-[side=left]:border-white/[0.1]",
-          "data-[side=left]:data-[state=open]:[animation:slide-in-from-left_500ms_ease-in-out]",
-          "data-[side=left]:data-[state=closed]:[animation:slide-out-to-left_300ms_ease-in-out]",
+          "data-[side=left]:border-r data-[side=left]:border-border",
+          "data-[side=left]:data-[state=open]:[animation:slide-in-from-left_320ms_var(--ease-in-out)]",
+          "data-[side=left]:data-[state=closed]:[animation:slide-out-to-left_120ms_var(--ease-out)]",
           // Side: top
           "data-[side=top]:inset-x-0 data-[side=top]:top-0 data-[side=top]:h-auto",
-          "data-[side=top]:border-b data-[side=top]:border-white/[0.1]",
-          "data-[side=top]:data-[state=open]:[animation:slide-in-from-top_500ms_ease-in-out]",
-          "data-[side=top]:data-[state=closed]:[animation:slide-out-to-top_300ms_ease-in-out]",
+          "data-[side=top]:border-b data-[side=top]:border-border",
+          "data-[side=top]:data-[state=open]:[animation:slide-in-from-top_320ms_var(--ease-in-out)]",
+          "data-[side=top]:data-[state=closed]:[animation:slide-out-to-top_120ms_var(--ease-out)]",
           // Side: bottom
           "data-[side=bottom]:inset-x-0 data-[side=bottom]:bottom-0 data-[side=bottom]:h-auto",
-          "data-[side=bottom]:border-t data-[side=bottom]:border-white/[0.1]",
-          "data-[side=bottom]:data-[state=open]:[animation:slide-in-from-bottom_500ms_ease-in-out]",
-          "data-[side=bottom]:data-[state=closed]:[animation:slide-out-to-bottom_300ms_ease-in-out]",
+          "data-[side=bottom]:border-t data-[side=bottom]:border-border",
+          "data-[side=bottom]:data-[state=open]:[animation:slide-in-from-bottom_320ms_var(--ease-in-out)]",
+          "data-[side=bottom]:data-[state=closed]:[animation:slide-out-to-bottom_120ms_var(--ease-out)]",
           className,
         )}
         {...props}
@@ -94,11 +94,11 @@ function SheetContent({
           <SheetPrimitive.Close
             className={cn(
               "absolute top-3 right-3 rounded-lg p-1 border-none",
-              "text-muted-foreground cursor-pointer",
+              "text-text-muted cursor-pointer",
               // Interactive standards
               "transition-all duration-200 active:scale-95",
-              "hover:bg-accent hover:text-foreground",
-              "focus:outline-none focus:ring-2 focus:ring-ring/40",
+              "hover:bg-surface-hover hover:text-text",
+              "focus:outline-none focus:ring-2 focus:ring-focus/40",
               "disabled:pointer-events-none",
             )}
           >
@@ -138,7 +138,7 @@ function SheetTitle({
   return (
     <SheetPrimitive.Title
       data-slot="sheet-title"
-      className={cn("font-bold tracking-tight text-foreground", className)}
+      className={cn("font-bold tracking-tight text-text", className)}
       {...props}
     />
   )
@@ -151,7 +151,7 @@ function SheetDescription({
   return (
     <SheetPrimitive.Description
       data-slot="sheet-description"
-      className={cn("text-sm leading-5 text-muted-foreground", className)}
+      className={cn("text-sm leading-5 text-text-muted", className)}
       {...props}
     />
   )

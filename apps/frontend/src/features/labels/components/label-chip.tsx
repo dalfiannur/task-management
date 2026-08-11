@@ -1,12 +1,21 @@
 import type { Label } from "../types";
 
-/** Small colored label chip. Uses the label color at low alpha for the bg. */
+/** Small label chip: warna label jadi TITIK penanda, bukan warna teksnya.
+ *
+ *  Sebelumnya chip memakai `color: label.color` di atas background warna yang
+ *  sama beralpha 13%. Warna itu data pilihan user, jadi kontrasnya tidak bisa
+ *  dijamin oleh nilai apa pun — label kuning menghasilkan teks kuning di atas
+ *  permukaan nyaris putih. Nama label sekarang memakai token teks yang sudah
+ *  diukur, dan warnanya tetap terbaca lewat titik di sebelahnya. Titiknya
+ *  aria-hidden karena maknanya sudah dibawa nama label (accessibility §5). */
 export function LabelChip({ label }: { label: Label }) {
   return (
-    <span
-      className="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium"
-      style={{ backgroundColor: `${label.color}22`, color: label.color }}
-    >
+    <span className="inline-flex items-center gap-1.5 rounded-sm bg-surface-sunken px-2 py-0.5 text-xs font-medium text-text">
+      <span
+        aria-hidden="true"
+        className="h-2 w-2 shrink-0 rounded-full"
+        style={{ backgroundColor: label.color }}
+      />
       {label.name}
     </span>
   );
@@ -32,7 +41,7 @@ export function LabelChips({
         <LabelChip key={l.id} label={l} />
       ))}
       {extra > 0 && (
-        <span className="text-xs text-muted-foreground">+{extra}</span>
+        <span className="text-xs text-text-muted">+{extra}</span>
       )}
     </span>
   );

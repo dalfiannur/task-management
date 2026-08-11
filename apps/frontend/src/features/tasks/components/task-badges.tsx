@@ -7,7 +7,7 @@ export function StatusBadge({ status }: { status: TaskStatus }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium",
+        "inline-flex items-center gap-1 rounded-sm px-1.5 py-0.5 text-xs font-medium",
         c.badge,
       )}
     >

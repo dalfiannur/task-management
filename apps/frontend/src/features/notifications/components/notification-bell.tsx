@@ -54,7 +54,7 @@ export function NotificationBell() {
         >
           <Bell className="h-5 w-5" />
           {count > 0 && (
-            <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[0.625rem] font-medium text-white">
+            <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1 text-xs font-semibold text-text-on-danger">
               {count > 99 ? "99+" : count}
             </span>
           )}
@@ -78,9 +78,9 @@ export function NotificationBell() {
         </div>
         <ul className="max-h-96 overflow-y-auto">
           {isLoading ? (
-            <li className="p-4 text-sm text-muted-foreground">Loading…</li>
+            <li className="p-4 text-sm text-text-muted">Loading…</li>
           ) : notifications.length === 0 ? (
-            <li className="p-6 text-center text-sm text-muted-foreground">
+            <li className="p-6 text-center text-sm text-text-muted">
               No notifications.
             </li>
           ) : (
@@ -90,19 +90,19 @@ export function NotificationBell() {
                   type="button"
                   onClick={() => onClick(n)}
                   className={cn(
-                    "flex w-full items-start gap-2 border-b px-3 py-2.5 text-left last:border-b-0 hover:bg-muted/50",
-                    !n.read && "bg-primary/5",
+                    "flex w-full items-start gap-2 border-b px-3 py-2.5 text-left last:border-b-0 hover:bg-surface-sunken/50",
+                    !n.read && "bg-brand/5",
                   )}
                 >
                   <span
                     className={cn(
                       "mt-1.5 h-2 w-2 shrink-0 rounded-full",
-                      n.read ? "bg-transparent" : "bg-primary",
+                      n.read ? "bg-transparent" : "bg-brand",
                     )}
                   />
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm">{n.message}</span>
-                    <span className="block text-xs text-muted-foreground">
+                    <span className="block text-xs text-text-muted">
                       {relative(n.createdAt)}
                     </span>
                   </span>

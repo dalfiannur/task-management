@@ -17,9 +17,9 @@ export function ProjectTabNav({ projectId }: { projectId: string }) {
           key={tab.to}
           to={tab.to}
           params={{ projectId }}
-          className="border-b-2 border-transparent px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          className="border-b-2 border-transparent px-3 py-2 text-sm text-text-muted transition-colors hover:text-text"
           activeProps={{
-            className: "border-primary text-foreground",
+            className: "border-brand text-text",
           }}
         >
           {tab.label}

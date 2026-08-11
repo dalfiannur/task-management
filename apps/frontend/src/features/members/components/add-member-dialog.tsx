@@ -75,7 +75,7 @@ export function AddMemberDialog({
         />
         <ul className="max-h-72 space-y-0.5 overflow-y-auto">
           {candidates.length === 0 ? (
-            <li className="p-3 text-sm text-muted-foreground">
+            <li className="p-3 text-sm text-text-muted">
               No matching users.
             </li>
           ) : (
@@ -85,7 +85,7 @@ export function AddMemberDialog({
                   type="button"
                   disabled={add.isPending}
                   onClick={() => addMember(u.id)}
-                  className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left hover:bg-muted disabled:opacity-50"
+                  className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left hover:bg-surface-sunken disabled:opacity-50"
                 >
                   <Avatar className="h-8 w-8">
                     {u.avatarUrl && <AvatarImage src={u.avatarUrl} />}
@@ -93,7 +93,7 @@ export function AddMemberDialog({
                   </Avatar>
                   <span className="flex-1">
                     <span className="block text-sm">{u.displayName}</span>
-                    <span className="block text-xs text-muted-foreground">
+                    <span className="block text-xs text-text-muted">
                       {u.phone}
                     </span>
                   </span>

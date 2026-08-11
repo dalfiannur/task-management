@@ -77,11 +77,11 @@ export function ProjectDetailHeader({ project }: { project: Project }) {
           <ProjectStatusBadge status={project.status} />
         </div>
         {project.description && (
-          <p className="max-w-2xl text-sm text-muted-foreground">
+          <p className="max-w-2xl text-sm text-text-muted">
             {project.description}
           </p>
         )}
-        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+        <div className="flex items-center gap-3 text-sm text-text-muted">
           <span className="flex items-center gap-2">
             <Avatar className="h-6 w-6">
               {owner?.avatarUrl && <AvatarImage src={owner.avatarUrl} />}

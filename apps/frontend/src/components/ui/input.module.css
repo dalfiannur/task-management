@@ -14,13 +14,13 @@
 
 /* Placeholder */
 .input::placeholder {
-  color: var(--muted-foreground);
+  color: var(--text-muted);
 }
 
 /* Selection */
 .input::selection {
-  background-color: var(--primary);
-  color: var(--primary-foreground);
+  background-color: var(--brand);
+  color: var(--text-on-brand);
 }
 
 /* File input */
@@ -32,13 +32,13 @@
   font-size: 0.875rem;
   line-height: 1.25rem;
   font-weight: 500;
-  color: var(--foreground);
+  color: var(--text);
 }
 
 /* Focus-visible */
 .input:focus-visible {
-  border-color: var(--ring);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 50%, transparent);
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 50%, transparent);
 }
 
 /* Disabled */
@@ -50,7 +50,7 @@
 
 /* Aria-invalid */
 .input[aria-invalid="true"] {
-  border-color: var(--destructive);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--destructive) 20%, transparent);
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 20%, transparent);
 }
 

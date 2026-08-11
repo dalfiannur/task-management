@@ -30,7 +30,7 @@ function ColorSwatches({
           style={{ backgroundColor: c }}
           className={cn(
             "h-6 w-6 rounded-full ring-offset-2 transition-all",
-            value === c && "ring-2 ring-foreground",
+            value === c && "ring-2 ring-text",
           )}
           aria-label={`Color ${c}`}
         />
@@ -75,9 +75,9 @@ function LabelRow({ label }: { label: Label }) {
   }
 
   return (
-    <li className="group flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-muted/50">
+    <li className="group flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-surface-sunken/50">
       <span
-        className="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium"
+        className="inline-flex items-center rounded-sm px-1.5 py-0.5 text-xs font-medium"
         style={{ backgroundColor: `${label.color}22`, color: label.color }}
       >
         {label.name}
@@ -168,7 +168,7 @@ export function ManageLabelsDialog({
 
         <ul className="max-h-72 space-y-0.5 overflow-y-auto">
           {labels.length === 0 ? (
-            <li className="p-3 text-center text-sm text-muted-foreground">
+            <li className="p-3 text-center text-sm text-text-muted">
               No labels yet.
             </li>
           ) : (

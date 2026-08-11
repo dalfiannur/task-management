@@ -19,8 +19,8 @@ function Command({
     <CommandPrimitive
       data-slot="command"
       className={cn(
-        "bg-popover text-foreground",
-        "flex h-full w-full flex-col overflow-hidden rounded-2xl",
+        "bg-surface-overlay text-text",
+        "flex h-full w-full flex-col overflow-hidden rounded-xl",
         className,
       )}
       {...props}
@@ -53,7 +53,7 @@ function CommandDialog({
       >
         <Command className={cn(
           "[&_[data-slot=command-input-wrapper]]:h-12",
-          "[&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium",
+          "[&_[cmdk-group-heading]]:text-text-muted [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium",
           "[&_[cmdk-group]]:px-2",
           "[&_[cmdk-group]:not([hidden])~[cmdk-group]]:pt-0",
           "[&_[cmdk-input-wrapper]_svg]:size-5",
@@ -81,8 +81,8 @@ function CommandInput({
       <CommandPrimitive.Input
         data-slot="command-input"
         className={cn(
-          "flex h-8 w-full rounded-2xl bg-transparent py-2 text-sm leading-5 outline-none border-none text-foreground",
-          "placeholder:text-muted-foreground",
+          "flex h-8 w-full rounded-xl bg-transparent py-2 text-sm leading-5 outline-none border-none text-text",
+          "placeholder:text-text-muted",
           "disabled:cursor-not-allowed disabled:opacity-50",
           className,
         )}
@@ -111,7 +111,7 @@ function CommandEmpty({
   return (
     <CommandPrimitive.Empty
       data-slot="command-empty"
-      className="py-[1.125rem] text-center text-sm leading-5 text-muted-foreground"
+      className="py-[1.125rem] text-center text-sm leading-5 text-text-muted"
       {...props}
     />
   )
@@ -125,8 +125,8 @@ function CommandGroup({
     <CommandPrimitive.Group
       data-slot="command-group"
       className={cn(
-        "text-foreground overflow-hidden p-1",
-        "[&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-sm [&_[cmdk-group-heading]]:leading-4 [&_[cmdk-group-heading]]:font-medium",
+        "text-text overflow-hidden p-1",
+        "[&_[cmdk-group-heading]]:text-text-muted [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-sm [&_[cmdk-group-heading]]:leading-4 [&_[cmdk-group-heading]]:font-medium",
         className,
       )}
       {...props}
@@ -158,10 +158,10 @@ function CommandItem({
         "relative flex cursor-default items-center gap-1.5 rounded-xl px-1.5 py-1 text-sm leading-5 outline-none select-none",
         // Interactive standards
         "transition-all duration-200",
-        "data-[selected=true]:bg-accent",
+        "data-[selected=true]:bg-surface-hover",
         "data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50",
         "[&_svg]:pointer-events-none [&_svg]:shrink-0",
-        "[&_svg:not([class*=text-])]:text-muted-foreground",
+        "[&_svg:not([class*=text-])]:text-text-muted",
         "[&_svg:not([class*=size-])]:size-4",
         className,
       )}
@@ -177,7 +177,7 @@ function CommandShortcut({
   return (
     <span
       data-slot="command-shortcut"
-      className={cn("text-muted-foreground ml-auto text-sm leading-4 tracking-widest", className)}
+      className={cn("text-text-muted ml-auto text-sm leading-4 tracking-widest", className)}
       {...props}
     />
   )

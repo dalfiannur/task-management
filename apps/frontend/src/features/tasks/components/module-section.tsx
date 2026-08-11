@@ -82,7 +82,7 @@ export function ModuleSection({
     <section className="rounded-lg border">
       <header className="flex items-center gap-2 border-b px-3 py-2">
         <h3 className="font-medium">{module.name}</h3>
-        <span className="text-xs text-muted-foreground">{tasks.length}</span>
+        <span className="text-xs text-text-muted">{tasks.length}</span>
         <div className="flex-1" />
         {canManage && (
           <div className="flex items-center gap-0.5">
@@ -162,12 +162,12 @@ export function ModuleSection({
           ))}
         </SortableContext>
         {tasks.length === 0 && (
-          <p className="px-2 py-3 text-sm text-muted-foreground">No tasks yet.</p>
+          <p className="px-2 py-3 text-sm text-text-muted">No tasks yet.</p>
         )}
       </div>
 
       <form onSubmit={addTask} className="flex items-center gap-2 border-t px-3 py-2">
-        <Plus className="h-4 w-4 text-muted-foreground" />
+        <Plus className="h-4 w-4 text-text-muted" />
         <Input
           value={quick}
           onChange={(e) => setQuick(e.target.value)}

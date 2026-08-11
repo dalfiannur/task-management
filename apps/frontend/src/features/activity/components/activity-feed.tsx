@@ -53,7 +53,7 @@ export function ActivityFeed({
     );
   }
   if (activities.length === 0) {
-    return <p className="text-sm text-muted-foreground">{emptyLabel}</p>;
+    return <p className="text-sm text-text-muted">{emptyLabel}</p>;
   }
   return (
     <ul className="space-y-3">
@@ -62,7 +62,7 @@ export function ActivityFeed({
         const actor = userMap[a.actorId]?.displayName;
         return (
           <li key={a.id} className="flex items-start gap-3">
-            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-text-muted">
               <Icon className="h-3.5 w-3.5" />
             </span>
             <div className="min-w-0 flex-1">
@@ -73,13 +73,13 @@ export function ActivityFeed({
               {a.changes.length > 0 && (
                 <ul className="mt-0.5 space-y-0.5">
                   {a.changes.map((c, i) => (
-                    <li key={i} className="text-xs text-muted-foreground">
+                    <li key={i} className="text-xs text-text-muted">
                       {c.field}: {c.from || "—"} → {c.to || "—"}
                     </li>
                   ))}
                 </ul>
               )}
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-text-muted">
                 {relative(a.createdAt)}
               </span>
             </div>

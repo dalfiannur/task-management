@@ -46,7 +46,7 @@ export function PagesTab({ projectId }: { projectId: string }) {
     <div className="flex h-[calc(100vh-14rem)] min-h-[28rem] border-t">
       <aside className="flex w-64 shrink-0 flex-col border-r">
         <div className="flex items-center justify-between p-2">
-          <span className="px-2 text-sm font-medium text-muted-foreground">
+          <span className="px-2 text-sm font-medium text-text-muted">
             Pages
           </span>
           <Button
@@ -62,7 +62,7 @@ export function PagesTab({ projectId }: { projectId: string }) {
         </div>
         <ul className="flex-1 overflow-y-auto px-1">
           {pages.length === 0 ? (
-            <li className="p-3 text-sm text-muted-foreground">No pages yet.</li>
+            <li className="p-3 text-sm text-text-muted">No pages yet.</li>
           ) : (
             pages.map((p) => (
               <li key={p.id}>
@@ -70,8 +70,8 @@ export function PagesTab({ projectId }: { projectId: string }) {
                   type="button"
                   onClick={() => setSelectedId(p.id)}
                   className={cn(
-                    "flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm",
-                    p.id === selectedId ? "bg-muted" : "hover:bg-muted/50",
+                    "flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm",
+                    p.id === selectedId ? "bg-surface-sunken" : "hover:bg-surface-sunken/50",
                   )}
                 >
                   <span className="w-5 text-center">
@@ -95,7 +95,7 @@ export function PagesTab({ projectId }: { projectId: string }) {
             onDeleted={() => setSelectedId(null)}
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-center text-sm text-muted-foreground">
+          <div className="flex h-full items-center justify-center text-center text-sm text-text-muted">
             <div>
               <p>No page selected.</p>
               <Button

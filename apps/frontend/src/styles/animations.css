@@ -91,19 +91,24 @@
   to { height: 0; }
 }
 
-/* Dialog/Sheet overlay and content animations */
+/* Dialog/Sheet overlay and content animations.
+   Durasi dan easing hanya dari token — motion.md §1. Modal masuk pakai
+   --duration-slow; yang KELUAR selalu lebih cepat (--duration-fast), karena
+   user sudah memutuskan untuk menutup. */
 .overlay-enter {
-  animation: fade-in 150ms ease-out;
+  animation: fade-in var(--duration) var(--ease-out);
 }
 
 .overlay-exit {
-  animation: fade-out 150ms ease-in;
+  animation: fade-out var(--duration-fast) var(--ease-out);
 }
 
 .dialog-enter {
-  animation: fade-in 200ms ease-out, zoom-in 200ms ease-out;
+  animation: fade-in var(--duration-slow) var(--ease-out),
+             zoom-in var(--duration-slow) var(--ease-out);
 }
 
 .dialog-exit {
-  animation: fade-out 150ms ease-in, zoom-out 150ms ease-in;
+  animation: fade-out var(--duration-fast) var(--ease-out),
+             zoom-out var(--duration-fast) var(--ease-out);
 }

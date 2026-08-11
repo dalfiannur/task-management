@@ -6,8 +6,8 @@
   z-index: 50;
   width: fit-content;
   border-radius: var(--radius-md);
-  background-color: var(--foreground);
-  color: var(--background);
+  background-color: var(--text);
+  color: var(--surface);
   padding: 0.25rem 0.625rem;
   font-size: 0.875rem;
   line-height: 1rem;
@@ -52,8 +52,8 @@
   z-index: 50;
   width: 0.625rem;
   height: 0.625rem;
-  background-color: var(--foreground);
-  fill: var(--foreground);
+  background-color: var(--text);
+  fill: var(--text);
   transform: translateY(calc(-50% - 2px)) rotate(45deg);
   border-radius: 2px;
 }

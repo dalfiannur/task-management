@@ -11,7 +11,7 @@ export function UpcomingDeadlines({ withinDays = 7 }: { withinDays?: number }) {
   }
   if (items.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground">
+      <p className="text-sm text-text-muted">
         Nothing due in the next {withinDays} days.
       </p>
     );

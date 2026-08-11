@@ -1,6 +1,7 @@
 import { Link, Outlet, useNavigate } from "@tanstack/react-router";
 import { useAtomValue } from "jotai";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { getInitials } from "@/lib/utils";
 import { APP_NAME } from "@/lib/app-config";
 import { NotificationBell } from "@/features/notifications";
@@ -27,32 +28,33 @@ export function AppShell() {
           <nav className="flex items-center gap-1 text-sm">
             <Link
               to="/dashboard"
-              className="rounded px-2 py-1 text-muted-foreground transition-colors hover:text-foreground"
-              activeProps={{ className: "text-foreground" }}
+              className="rounded-sm px-2 py-1 text-text-muted transition-colors hover:text-text"
+              activeProps={{ className: "text-text" }}
             >
               Dashboard
             </Link>
             <Link
               to="/projects"
-              className="rounded px-2 py-1 text-muted-foreground transition-colors hover:text-foreground"
-              activeProps={{ className: "text-foreground" }}
+              className="rounded-sm px-2 py-1 text-text-muted transition-colors hover:text-text"
+              activeProps={{ className: "text-text" }}
             >
               Projects
             </Link>
             <Link
               to="/my-tasks"
-              className="rounded px-2 py-1 text-muted-foreground transition-colors hover:text-foreground"
-              activeProps={{ className: "text-foreground" }}
+              className="rounded-sm px-2 py-1 text-text-muted transition-colors hover:text-text"
+              activeProps={{ className: "text-text" }}
             >
               My tasks
             </Link>
           </nav>
         </div>
         <div className="flex items-center gap-3">
+          <ThemeToggle />
           <NotificationBell />
           {user && (
             <span className="flex items-center gap-2 text-sm">
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-xs">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-surface-sunken text-xs">
                 {getInitials(user.displayName)}
               </span>
               {user.displayName}

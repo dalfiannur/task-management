@@ -39,21 +39,21 @@ export const MentionList = forwardRef<
   }));
   if (items.length === 0) {
     return (
-      <div className="rounded-md border bg-popover p-2 text-sm text-muted-foreground shadow-md">
+      <div className="rounded-md border bg-surface-overlay p-2 text-sm text-text-muted shadow-md">
         No members
       </div>
     );
   }
   return (
-    <div className="max-h-52 w-56 overflow-y-auto rounded-md border bg-popover p-1 shadow-md">
+    <div className="max-h-52 w-56 overflow-y-auto rounded-md border bg-surface-overlay p-1 shadow-md">
       {items.map((item, i) => (
         <button
           key={item.id}
           type="button"
           onClick={() => command(item)}
           className={cn(
-            "flex w-full items-center rounded px-2 py-1.5 text-left text-sm hover:bg-muted",
-            i === selected && "bg-muted",
+            "flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm hover:bg-surface-sunken",
+            i === selected && "bg-surface-sunken",
           )}
         >
           {item.label}

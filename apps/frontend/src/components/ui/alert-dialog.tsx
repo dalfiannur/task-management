@@ -34,9 +34,9 @@ function AlertDialogOverlay({
     <AlertDialogPrimitive.Overlay
       data-slot="alert-dialog-overlay"
       className={cn(
-        "fixed inset-0 z-50 bg-black/50 backdrop-blur-sm",
-        "data-[state=open]:[animation:fade-in_150ms_ease-out]",
-        "data-[state=closed]:[animation:fade-out_150ms_ease-in]",
+        "fixed inset-0 z-50 bg-scrim backdrop-blur-sm",
+        "data-[state=open]:overlay-enter",
+        "data-[state=closed]:overlay-exit",
         className,
       )}
       {...props}
@@ -61,12 +61,12 @@ function AlertDialogContent({
           className={cn(
             // Layout
             "relative w-full max-w-[calc(100%-2rem)] sm:max-w-lg",
-            "grid gap-3.5 p-5 text-foreground outline-none",
+            "grid gap-4 p-6 text-text outline-none",
             // Solid background + frosted border
-            "bg-gray-950 border border-white/[0.12] shadow-2xl shadow-black/80 rounded-2xl",
+            "bg-surface-overlay border border-border shadow-5 rounded-xl",
             // Animation
-            "data-[state=open]:[animation:fade-in_200ms_ease-out,zoom-in_200ms_ease-out]",
-            "data-[state=closed]:[animation:fade-out_150ms_ease-in,zoom-out_150ms_ease-in]",
+            "data-[state=open]:dialog-enter",
+            "data-[state=closed]:dialog-exit",
             // Size variant
             "data-[size=sm]:max-w-xs",
             className,
@@ -126,7 +126,7 @@ function AlertDialogTitle({
   return (
     <AlertDialogPrimitive.Title
       data-slot="alert-dialog-title"
-      className={cn("text-base leading-5 font-bold tracking-tight text-foreground", className)}
+      className={cn("text-base leading-5 font-bold tracking-tight text-text", className)}
       {...props}
     />
   )
@@ -139,7 +139,7 @@ function AlertDialogDescription({
   return (
     <AlertDialogPrimitive.Description
       data-slot="alert-dialog-description"
-      className={cn("text-sm leading-5 text-muted-foreground", className)}
+      className={cn("text-sm leading-5 text-text-muted", className)}
       {...props}
     />
   )
@@ -157,8 +157,8 @@ function AlertDialogMedia({
       data-slot="alert-dialog-media"
       className={cn(
         // Subtle nested surface
-        "bg-accent border border-border",
-        "w-14 h-14 inline-flex items-center justify-center rounded-2xl mb-1.5",
+        "bg-surface-hover border border-border",
+        "w-14 h-14 inline-flex items-center justify-center rounded-xl mb-1.5",
         "[&_svg:not([class*=size-])]:size-8",
         size !== "sm" && "sm:row-span-2",
         className,

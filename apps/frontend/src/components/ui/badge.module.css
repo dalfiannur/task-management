@@ -26,14 +26,14 @@
 
 /* Focus-visible ring */
 .badge:focus-visible {
-  border-color: var(--ring);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 50%, transparent);
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 50%, transparent);
 }
 
 /* Aria-invalid state */
 .badge[aria-invalid="true"] {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--destructive) 40%, transparent);
-  border-color: var(--destructive);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 40%, transparent);
+  border-color: var(--danger);
 }
 
 /* ============================================
@@ -42,48 +42,48 @@
 
 /* variant: default */
 .badge[data-variant="default"] {
-  background-color: var(--primary);
-  color: var(--primary-foreground);
+  background-color: var(--brand);
+  color: var(--text-on-brand);
 }
 
 a.badge[data-variant="default"]:hover {
-  background-color: color-mix(in srgb, var(--primary) 90%, transparent);
+  background-color: color-mix(in srgb, var(--brand) 90%, transparent);
 }
 
 /* variant: secondary */
 .badge[data-variant="secondary"] {
-  background-color: var(--secondary);
-  color: var(--secondary-foreground);
+  background-color: var(--surface-sunken);
+  color: var(--text);
 }
 
 a.badge[data-variant="secondary"]:hover {
-  background-color: color-mix(in srgb, var(--secondary) 90%, transparent);
+  background-color: color-mix(in srgb, var(--surface-sunken) 90%, transparent);
 }
 
 /* variant: destructive */
 .badge[data-variant="destructive"] {
-  background-color: color-mix(in srgb, var(--destructive) 60%, transparent);
+  background-color: color-mix(in srgb, var(--danger) 60%, transparent);
   color: white;
 }
 
 a.badge[data-variant="destructive"]:hover {
-  background-color: color-mix(in srgb, var(--destructive) 90%, transparent);
+  background-color: color-mix(in srgb, var(--danger) 90%, transparent);
 }
 
 .badge[data-variant="destructive"]:focus-visible {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--destructive) 40%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 40%, transparent);
 }
 
 /* variant: outline */
 .badge[data-variant="outline"] {
   background-color: transparent;
   border-color: var(--border);
-  color: var(--foreground);
+  color: var(--text);
 }
 
 a.badge[data-variant="outline"]:hover {
-  background-color: var(--accent);
-  color: var(--accent-foreground);
+  background-color: var(--surface-hover);
+  color: var(--text);
 }
 
 /* variant: ghost */
@@ -92,14 +92,14 @@ a.badge[data-variant="outline"]:hover {
 }
 
 a.badge[data-variant="ghost"]:hover {
-  background-color: var(--accent);
-  color: var(--accent-foreground);
+  background-color: var(--surface-hover);
+  color: var(--text);
 }
 
 /* variant: link */
 .badge[data-variant="link"] {
   background-color: transparent;
-  color: var(--primary);
+  color: var(--brand);
   text-underline-offset: 4px;
 }
 

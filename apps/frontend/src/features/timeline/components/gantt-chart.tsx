@@ -104,10 +104,10 @@ export function GanttChart({ projectId }: { projectId: string }) {
               key={z}
               onClick={() => setZoom(z)}
               className={cn(
-                "rounded px-3 py-1 text-sm capitalize transition-colors",
+                "rounded-sm px-3 py-1 text-sm capitalize transition-colors",
                 zoom === z
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground",
+                  ? "bg-brand text-text-on-brand"
+                  : "text-text-muted hover:text-text",
               )}
             >
               {z}
@@ -117,7 +117,7 @@ export function GanttChart({ projectId }: { projectId: string }) {
       </div>
 
       {rows.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-12 text-center text-muted-foreground">
+        <div className="rounded-lg border border-dashed p-12 text-center text-text-muted">
           No scheduled tasks yet. Schedule tasks below to see them here.
         </div>
       ) : (
@@ -136,8 +136,8 @@ export function GanttChart({ projectId }: { projectId: string }) {
                   className={cn(
                     "flex items-center truncate px-3 text-sm",
                     r.kind === "module"
-                      ? "bg-muted/40 font-medium"
-                      : "text-muted-foreground",
+                      ? "bg-surface-sunken/40 font-medium"
+                      : "text-text-muted",
                   )}
                 >
                   {r.kind === "task" ? "· " : ""}
@@ -156,8 +156,8 @@ export function GanttChart({ projectId }: { projectId: string }) {
                   <div
                     key={t.offset}
                     className={cn(
-                      "absolute top-0 flex h-full items-center border-l pl-1 text-[0.65rem] text-muted-foreground",
-                      t.major && "border-foreground/20",
+                      "absolute top-0 flex h-full items-center border-l pl-1 text-xs text-text-muted",
+                      t.major && "border-text/20",
                     )}
                     style={{ left: t.offset * pxPerDay }}
                   >
@@ -171,7 +171,7 @@ export function GanttChart({ projectId }: { projectId: string }) {
                   style={{ height: ROW_HEIGHT }}
                   className={cn(
                     "relative border-b",
-                    r.kind === "module" && "bg-muted/40",
+                    r.kind === "module" && "bg-surface-sunken/40",
                   )}
                 >
                   {/* major vertical gridlines */}
@@ -180,7 +180,7 @@ export function GanttChart({ projectId }: { projectId: string }) {
                     .map((t) => (
                       <div
                         key={t.offset}
-                        className="absolute top-0 h-full border-l border-foreground/10"
+                        className="absolute top-0 h-full border-l border-text/10"
                         style={{ left: t.offset * pxPerDay }}
                       />
                     ))}

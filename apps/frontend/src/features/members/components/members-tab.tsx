@@ -70,7 +70,7 @@ export function MembersTab({ projectId }: { projectId: string }) {
     <div className="space-y-4 p-6">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-medium">
-          Members <span className="text-muted-foreground">({members.length})</span>
+          Members <span className="text-text-muted">({members.length})</span>
         </h2>
         <div className="flex items-center gap-2">
           {iAmMember && !iAmOwner && (
@@ -106,7 +106,7 @@ export function MembersTab({ projectId }: { projectId: string }) {
                   {m.isOwner && <Badge variant="secondary">Owner</Badge>}
                 </div>
                 {u?.phone && (
-                  <span className="text-xs text-muted-foreground">{u.phone}</span>
+                  <span className="text-xs text-text-muted">{u.phone}</span>
                 )}
               </div>
               {canManage && !m.isOwner && (

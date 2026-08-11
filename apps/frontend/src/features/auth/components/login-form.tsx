@@ -69,7 +69,7 @@ export function LoginForm({ redirect }: { redirect?: string }) {
               {login.isPending ? "Signing in…" : "Sign in"}
             </Button>
           </form>
-          <p className="mt-4 text-center text-sm text-muted-foreground">
+          <p className="mt-4 text-center text-sm text-text-muted">
             No account?{" "}
             <Link to="/register" className="underline">
               Register

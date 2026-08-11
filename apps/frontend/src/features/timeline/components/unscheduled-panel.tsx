@@ -16,13 +16,13 @@ export function UnscheduledPanel({
     <div className="rounded-lg border p-3">
       <h3 className="mb-2 text-sm font-medium">
         Unscheduled{" "}
-        <span className="text-muted-foreground">({tasks.length})</span>
+        <span className="text-text-muted">({tasks.length})</span>
       </h3>
       <ul className="space-y-1">
         {tasks.map((t) => (
           <li
             key={t.id}
-            className="flex items-center justify-between gap-2 rounded px-2 py-1 hover:bg-muted/40"
+            className="flex items-center justify-between gap-2 rounded-sm px-2 py-1 hover:bg-surface-sunken/40"
           >
             <span className="truncate text-sm">{t.title}</span>
             {canEdit && (

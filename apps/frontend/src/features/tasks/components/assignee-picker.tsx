@@ -35,7 +35,7 @@ export function AssigneePicker({
       </PopoverTrigger>
       <PopoverContent className="w-64 p-1" align="start">
         {memberIds.length === 0 ? (
-          <p className="p-2 text-sm text-muted-foreground">No members yet.</p>
+          <p className="p-2 text-sm text-text-muted">No members yet.</p>
         ) : (
           <ul className="max-h-60 space-y-0.5 overflow-y-auto">
             {memberIds.map((id) => {
@@ -47,7 +47,7 @@ export function AssigneePicker({
                   <button
                     type="button"
                     onClick={() => toggle(id)}
-                    className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-muted"
+                    className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-surface-sunken"
                   >
                     <Avatar className="h-6 w-6">
                       {u?.avatarUrl && <AvatarImage src={u.avatarUrl} />}
@@ -92,16 +92,16 @@ export function AssigneeAvatars({
         const u = userMap[id];
         const name = u?.displayName ?? id;
         return (
-          <Avatar key={id} className="h-5 w-5 ring-1 ring-background">
+          <Avatar key={id} className="h-5 w-5 ring-1 ring-surface">
             {u?.avatarUrl && <AvatarImage src={u.avatarUrl} />}
-            <AvatarFallback className="text-[0.5rem]">
+            <AvatarFallback className="text-xs">
               {getInitials(name)}
             </AvatarFallback>
           </Avatar>
         );
       })}
       {extra > 0 && (
-        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-muted text-[0.5rem] ring-1 ring-background">
+        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-sunken text-xs ring-1 ring-surface">
           +{extra}
         </span>
       )}

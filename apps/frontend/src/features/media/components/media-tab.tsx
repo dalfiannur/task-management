@@ -66,7 +66,7 @@ export function MediaTab({ projectId }: { projectId: string }) {
     <div className="space-y-4 p-6">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-medium">
-          Media <span className="text-muted-foreground">({files.length})</span>
+          Media <span className="text-text-muted">({files.length})</span>
         </h2>
         <input
           ref={inputRef}
@@ -92,7 +92,7 @@ export function MediaTab({ projectId }: { projectId: string }) {
           ))}
         </div>
       ) : files.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-12 text-center text-muted-foreground">
+        <div className="rounded-lg border border-dashed p-12 text-center text-text-muted">
           No files yet. Upload to share files with the project.
         </div>
       ) : (
@@ -105,12 +105,12 @@ export function MediaTab({ projectId }: { projectId: string }) {
                 key={f.id}
                 className="group flex items-center gap-3 rounded-lg border p-3"
               >
-                <Icon className="h-8 w-8 shrink-0 text-muted-foreground" />
+                <Icon className="h-8 w-8 shrink-0 text-text-muted" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">
                     {f.originalFileName || f.fileName}
                   </p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-text-muted">
                     {formatBytes(f.size)}
                   </p>
                 </div>
