@@ -50,7 +50,7 @@ export function LabelCombobox({
                     <button
                       type="button"
                       onClick={() => toggle(l.id)}
-                      className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-surface-sunken"
+                      className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors [transition-duration:var(--duration-fast)] hover:bg-surface-hover"
                     >
                       <span
                         className="h-3 w-3 rounded-full"
@@ -69,11 +69,11 @@ export function LabelCombobox({
               })
             )}
           </ul>
-          <div className="border-t pt-1">
+          <div className="border-t border-border-subtle pt-1">
             <button
               type="button"
               onClick={() => setManageOpen(true)}
-              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-text-muted hover:bg-surface-sunken"
+              className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-text-muted transition-colors [transition-duration:var(--duration-fast)] hover:bg-surface-hover"
             >
               <Settings2 className="h-4 w-4" />
               Manage labels

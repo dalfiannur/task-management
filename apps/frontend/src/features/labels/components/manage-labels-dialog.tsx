@@ -59,7 +59,7 @@ function LabelRow({ label }: { label: Label }) {
 
   if (editing) {
     return (
-      <li className="space-y-2 rounded-md border p-2">
+      <li className="space-y-2 rounded-lg bg-surface-sunken p-3">
         <Input value={name} onChange={(e) => setName(e.target.value)} autoFocus />
         <ColorSwatches value={color} onChange={setColor} />
         <div className="flex justify-end gap-2">
@@ -75,7 +75,7 @@ function LabelRow({ label }: { label: Label }) {
   }
 
   return (
-    <li className="group flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-surface-sunken/50">
+    <li className="group flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors [transition-duration:var(--duration-fast)] hover:bg-surface-hover">
       <span
         className="inline-flex items-center rounded-sm px-1.5 py-0.5 text-xs font-medium"
         style={{ backgroundColor: `${label.color}22`, color: label.color }}
@@ -146,7 +146,7 @@ export function ManageLabelsDialog({
           <DialogTitle>Manage labels</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-2 rounded-md border p-2">
+        <div className="space-y-2 rounded-lg bg-surface-sunken p-3">
           <div className="flex gap-2">
             <Input
               value={name}

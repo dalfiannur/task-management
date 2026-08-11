@@ -70,8 +70,11 @@ export function PagesTab({ projectId }: { projectId: string }) {
                   type="button"
                   onClick={() => setSelectedId(p.id)}
                   className={cn(
-                    "flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm",
-                    p.id === selectedId ? "bg-surface-sunken" : "hover:bg-surface-sunken/50",
+                    "flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm",
+                    "transition-colors [transition-duration:var(--duration-fast)]",
+                    p.id === selectedId
+                      ? "bg-surface-sunken font-medium"
+                      : "hover:bg-surface-hover",
                   )}
                 >
                   <span className="w-5 text-center">
