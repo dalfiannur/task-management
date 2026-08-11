@@ -39,6 +39,7 @@
 
   /* Batas & focus */
   --color-border: var(--border);
+  --color-border-subtle: var(--border-subtle);
   --color-border-strong: var(--border-strong);
   --color-focus: var(--focus);
 

@@ -22,9 +22,14 @@
   --grey-200: hsl(217 8% 86%);
   --grey-300: hsl(217 8% 76%);
   --grey-400: hsl(217 8% 66%);
-  /* 54%, bukan 56%: ia adalah --border-strong, batas komponen yang juga duduk
-     di --surface-sunken (border input). Di 56% hanya 2.93:1 di sana. */
-  --grey-500: hsl(217 8% 54%);
+  /* 52%, bukan 54% atau 56%: ia adalah --border-strong, batas komponen yang
+     juga duduk di --surface-sunken (border input). Setiap kali --surface-sunken
+     digelapkan, angka ini harus ikut turun. Pada --surface-sunken 91%:
+     56% → 2.6 · 54% → 2.93 · 52% → 3.14. Nilai 54% yang lama dipilih untuk
+     --surface-sunken 94%; ia gagal pada 91%.
+     52% lolos di KEDUA tema: light 3.61 di atas --surface / 3.14 di atas
+     --surface-sunken, dark 3.59 / 4.21. */
+  --grey-500: hsl(217 8% 52%);
   /* 44%, bukan 46% tangga generik: pada hue 217 ia menopang --text-subtle
      dan di 46% hanya mencapai 4.46:1 vs --surface — gagal ambang 4.5. */
   --grey-600: hsl(217 8% 44%);
@@ -61,9 +66,15 @@
   /* ---------- Lapis 2: semantik (light) ---------- */
   --surface:         var(--grey-50);
   --surface-raised:  hsl(217 0% 100%);
-  /* --text-subtle DILARANG di atas --surface-sunken di light: hanya 4.50:1
-     di light dan 3.62:1 di dark. Hanya tier 1 & 2. */
-  --surface-sunken:  var(--grey-100);
+  /* Sengaja LEBIH GELAP dari --grey-100. Ia kini juga menjadi track segmented
+     control di atas --surface (97%); pada 94% jaraknya hanya 1.07:1 dan track
+     itu hilang. Pada 91% jaraknya 1.15:1.
+     BATAS BAWAH ~90%: --text-muted di atasnya 4.87:1, sisa margin 0.37 dari
+     ambang 4.5. Menggelapkan lebih jauh menjatuhkan placeholder input.
+     --text-subtle DILARANG di atas --surface-sunken: 4.18:1 di light (BUKAN
+     4.50 seperti tercatat sebelumnya — grey-600 di atas grey-100 mengukur
+     4.48, sudah di bawah ambang) dan 3.62:1 di dark. Hanya tier 1 & 2. */
+  --surface-sunken:  hsl(217 5% 91%);
   --surface-overlay: hsl(217 0% 100%);
   /* --text-subtle DILARANG di atas --surface-hover. Tier 1 & 2 saja. */
   --surface-hover:   var(--grey-100);
@@ -81,6 +92,12 @@
   --brand-text:   var(--brand-600);
 
   --border:        var(--grey-200);
+  /* Hairline PEMISAH DI DALAM permukaan raised (baris tabel, sekat seksi).
+     --border (grey-200) terlalu berat di atas --surface-raised dan terbaca
+     sebagai jahitan. Dekoratif: WCAG tidak menetapkan ambang untuk ini, dan
+     memaksa 3:1 membuatnya tidak lagi halus. TIDAK untuk outline input atau
+     batas komponen — itu tetap --border-strong. */
+  --border-subtle: var(--grey-100);
   --border-strong: var(--grey-500);
   --focus:         var(--brand-500);
 
@@ -158,7 +175,18 @@
   --brand-text:   var(--brand-300);
 
   --border:        var(--grey-800);
-  --border-strong: var(--grey-500);
+  /* Di dark, pemisah halus justru LEBIH TERANG dari --border: di atas
+     --surface-raised (grey-800) sebuah garis yang lebih gelap menghilang. */
+  --border-subtle: var(--grey-700);
+  /* TIDAK ikut --grey-500 seperti di light. --border-strong adalah batas
+     kontrol form, dan kontrol itu duduk DI DALAM kartu (--surface-raised =
+     grey-800). Pada grey-500 batas itu hanya 2.88:1 di sana — di bawah 3:1.
+     Terang dan gelap menarik ke arah berlawanan di sini: light butuh nilai
+     lebih gelap untuk melawan putih, dark butuh lebih terang untuk melawan
+     grey-800. Itulah sebabnya keduanya TIDAK boleh memetakan ke primitif
+     yang sama.
+     grey-400 di dark: raised 4.57 · sunken 6.69 · surface 5.70 · hover 3.62. */
+  --border-strong: var(--grey-400);
   /* brand-400 gagal 3:1 di atas --surface-raised. */
   --focus:         var(--brand-300);
 
