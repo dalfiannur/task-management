@@ -116,13 +116,19 @@ does not survive the move to 91%.
 
 | `--border-strong` on | light | dark |
 |---|---|---|
-| `--surface` | 3.61 | 3.59 |
-| `--surface-sunken` | 3.14 | 4.21 |
+| `--surface` | 3.61 | 5.70 |
+| `--surface-sunken` | 3.14 | 6.69 |
 
-This is the only layer-1 primitive this redesign touches. It ripples to both themes
-because `.dark` maps `--border-strong` to the same primitive. The general rule it
-illustrates is worth keeping: **`--surface-sunken` and `--grey-500` are coupled — darken
-one and the other must follow.**
+This is the only layer-1 primitive this redesign touches. The dark figures are high
+because `.dark` does **not** map `--border-strong` to this primitive — it maps to
+`--grey-400`, for the reasons in §4.4. Changing `--grey-500` therefore affects light only.
+
+Two rules worth carrying forward:
+
+- **`--surface-sunken` and `--grey-500` are coupled** — darken one and the other must follow.
+- **Darkening `--grey-500` breaks dark mode unless `.dark` is remapped in the same change.**
+  At 54% dark's control border measured 3.09; at 52% it measures 2.88 and fails. The two
+  edits are one change, not two.
 
 ### 3.2 New token: `--border-subtle`
 

@@ -1061,8 +1061,9 @@ with:
      digelapkan, angka ini harus ikut turun. Pada --surface-sunken 91%:
      56% → 2.6 · 54% → 2.93 · 52% → 3.14. Nilai 54% yang lama dipilih untuk
      --surface-sunken 94%; ia gagal pada 91%.
-     52% lolos di KEDUA tema: light 3.61 di atas --surface / 3.14 di atas
-     --surface-sunken, dark 3.59 / 4.21. */
+     Angka ini HANYA berlaku untuk light: 3.61 di atas --surface, 3.14 di atas
+     --surface-sunken, 3.86 di atas --surface-raised. Di dark --border-strong
+     TIDAK memetakan ke primitif ini sama sekali — lihat .dark. */
   --grey-500: hsl(217 8% 52%);
 ```
 
@@ -1159,8 +1160,8 @@ These exact values were verified while writing this plan. Confirm each one appea
 | LIGHT | `ok    3.61 (min 3)  --border-strong on --surface` |
 | LIGHT | `ok    3.14 (min 3)  --border-strong on --surface-sunken` |
 | LIGHT | `note  4.18  --text-subtle on --surface-sunken — FORBIDDEN by design` |
-| DARK | `ok    3.59 (min 3)  --border-strong on --surface` |
-| DARK | `ok    4.21 (min 3)  --border-strong on --surface-sunken` |
+| DARK | `ok    5.70 (min 3)  --border-strong on --surface` |
+| DARK | `ok    6.69 (min 3)  --border-strong on --surface-sunken` |
 
 Diagnosing a failure:
 
@@ -1189,7 +1190,7 @@ imposes.
 --grey-500 follows it down, 54% -> 52%. The old value was tuned for a 94%
 sunken surface; at 91% it put --border-strong (the input border) at 2.93:1,
 exactly the figure its own comment says 54% existed to avoid. 52% restores
-3.14 in light and holds 4.21 in dark.
+3.14 in light. Dark no longer uses this primitive for --border-strong at all.
 
 --border-subtle is the in-card hairline divider; --border reads as a seam
 on raised surfaces. It inverts in dark, where a subtler line must be

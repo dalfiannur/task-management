@@ -27,8 +27,9 @@
      digelapkan, angka ini harus ikut turun. Pada --surface-sunken 91%:
      56% → 2.6 · 54% → 2.93 · 52% → 3.14. Nilai 54% yang lama dipilih untuk
      --surface-sunken 94%; ia gagal pada 91%.
-     52% lolos di KEDUA tema: light 3.61 di atas --surface / 3.14 di atas
-     --surface-sunken, dark 3.59 / 4.21. */
+     Angka ini HANYA berlaku untuk light: 3.61 di atas --surface, 3.14 di atas
+     --surface-sunken, 3.86 di atas --surface-raised. Di dark --border-strong
+     TIDAK memetakan ke primitif ini sama sekali — lihat .dark. */
   --grey-500: hsl(217 8% 52%);
   /* 44%, bukan 46% tangga generik: pada hue 217 ia menopang --text-subtle
      dan di 46% hanya mencapai 4.46:1 vs --surface — gagal ambang 4.5. */
