@@ -3,7 +3,7 @@
 //! Deferred: activity emit (spec §4) — system not built.
 
 mod page_service;
-mod record;
+pub(crate) mod record;
 
 pub use page_service::page_router;
 

@@ -3,7 +3,7 @@
 //! orphan-Pending GC (§8), size/MIME allow-list (§8.2).
 
 mod media_service;
-mod record;
+pub(crate) mod record;
 
 pub use media_service::media_router;
 

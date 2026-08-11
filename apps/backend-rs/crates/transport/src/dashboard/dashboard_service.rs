@@ -10,6 +10,7 @@ use domain::task::TaskStatus;
 use persistence::Store;
 
 use super::context::{date_plus, today, Context};
+use super::project_overview::get_project_overview;
 use super::{internal, require_auth, StoreExt};
 use crate::sedjiwa::tasks::dashboard::v1 as pb;
 use crate::sedjiwa::tasks::dashboard::v1::dashboard_service_connect::DashboardServiceBuilder;
@@ -124,6 +125,9 @@ pub fn dashboard_router(store: Arc<Store>) -> axum::Router<()> {
         )
         .get_upcoming_deadlines::<_, (StoreExt, A, ConnectRequest<pb::GetUpcomingDeadlinesRequest>)>(
             get_upcoming_deadlines,
+        )
+        .get_project_overview::<_, (StoreExt, A, ConnectRequest<pb::GetProjectOverviewRequest>)>(
+            get_project_overview,
         )
         .build()
         .layer(Extension(store))
