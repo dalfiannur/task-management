@@ -59,16 +59,16 @@ export function ProjectList() {
           Saat layar benar-benar kosong keduanya kontrol mati yang menutupi CTA. */}
       {showControls && (
         <div className="flex flex-wrap items-center gap-3">
-          <div className="inline-flex rounded-md border border-border p-1">
+          <div className="inline-flex gap-1 rounded-full bg-surface-sunken p-[3px]">
             {FILTERS.map((f) => (
               <button
                 key={f.key}
                 onClick={() => selectFilter(f.key)}
                 className={cn(
-                  "rounded-sm px-3 py-1 text-sm",
+                  "rounded-full px-3 py-1 text-sm",
                   "[transition:background-color_var(--duration-fast)_var(--ease-out),color_var(--duration-fast)_var(--ease-out)]",
                   filter === f.key
-                    ? "bg-brand font-medium text-text-on-brand"
+                    ? "bg-surface-raised font-medium text-text shadow-1"
                     : "text-text-muted hover:text-text",
                 )}
               >
