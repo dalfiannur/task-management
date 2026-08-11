@@ -25,7 +25,7 @@
 | `auth/register-form.tsx` | Same. |
 | `auth/app-shell.tsx` | Finished in Phase 1. |
 | `comments/comment-composer.tsx` | Composes the rich-text editor and `Button`. |
-| `pages/page-editor.tsx` | Composes the editor; no own chrome. |
+| ~~`pages/page-editor.tsx`~~ | **This audit entry was wrong.** It has a bare `border-b` toolbar divider, fixed after the gate. |
 | `members/add-member-dialog.tsx` | Composes `Dialog` + `Input` + `Button`. |
 
 ## The patterns being applied

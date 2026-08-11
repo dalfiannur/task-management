@@ -67,7 +67,7 @@ export function PageEditor({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-2 border-b p-3">
+      <div className="flex items-center gap-2 border-b border-border-subtle p-3">
         <Input
           value={icon}
           onChange={(e) => setIcon(e.target.value)}
