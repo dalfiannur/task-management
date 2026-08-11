@@ -65,8 +65,8 @@ export function MediaTab({ projectId }: { projectId: string }) {
   return (
     <div className="space-y-4 p-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-medium">
-          Media <span className="text-text-muted">({files.length})</span>
+        <h2 className="text-label">
+          Media <span className="text-num">({files.length})</span>
         </h2>
         <input
           ref={inputRef}
