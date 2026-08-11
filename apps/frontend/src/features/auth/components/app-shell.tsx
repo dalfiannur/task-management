@@ -46,22 +46,31 @@ export function AppShell() {
           <nav className="flex items-center gap-1 text-sm">
             <Link
               to="/dashboard"
-              className="rounded-full px-3 py-1 text-text-muted transition-colors hover:text-text"
-              activeProps={{ className: "bg-brand-subtle text-brand-text font-semibold" }}
+              className="rounded-full px-3 py-1 transition-colors"
+              activeProps={{
+                className: "bg-brand-subtle text-brand-text font-semibold",
+              }}
+              inactiveProps={{ className: "text-text-muted hover:text-text" }}
             >
               Dashboard
             </Link>
             <Link
               to="/projects"
-              className="rounded-full px-3 py-1 text-text-muted transition-colors hover:text-text"
-              activeProps={{ className: "bg-brand-subtle text-brand-text font-semibold" }}
+              className="rounded-full px-3 py-1 transition-colors"
+              activeProps={{
+                className: "bg-brand-subtle text-brand-text font-semibold",
+              }}
+              inactiveProps={{ className: "text-text-muted hover:text-text" }}
             >
               Projects
             </Link>
             <Link
               to="/my-tasks"
-              className="rounded-full px-3 py-1 text-text-muted transition-colors hover:text-text"
-              activeProps={{ className: "bg-brand-subtle text-brand-text font-semibold" }}
+              className="rounded-full px-3 py-1 transition-colors"
+              activeProps={{
+                className: "bg-brand-subtle text-brand-text font-semibold",
+              }}
+              inactiveProps={{ className: "text-text-muted hover:text-text" }}
             >
               My tasks
             </Link>
