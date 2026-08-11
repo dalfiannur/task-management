@@ -77,9 +77,32 @@ Existing mappings are correct for this direction, with one change.
 lightness. Adequate when its only job was an input fill; inadequate now that it also
 backs the segmented-control track, where it must read as a distinct region on the canvas.
 
-**Change:** darken `--surface-sunken` to approximately `hsl(217 5% 91%)` in light. Exact
-value set by measurement (§6). This also relieves the constraint documented in
-`tokens.css` that bans `--text-subtle` on sunken surfaces in light (currently 4.50:1).
+**Change:** darken `--surface-sunken` to `hsl(217 5% 91%)` in light.
+
+Measured consequences, on a canvas of `grey-50` = `hsl(217 4% 97%)`:
+
+| | at `grey-100` (94%) | at `hsl(217 5% 91%)` |
+|---|---|---|
+| Track vs canvas | 1.07 | **1.15** |
+| `--text` on it | 12.09 | 11.26 ✅ |
+| `--text-muted` on it | 5.23 | **4.87** ✅ |
+| `--text-subtle` on it | 4.48 | **4.18** ❌ |
+
+Two things this measurement corrects:
+
+1. **Darkening makes `--text-subtle` on sunken worse, not better.** An earlier draft of
+   this spec claimed the change would relieve the existing ban on that pairing. It does
+   the opposite — a darker background lowers contrast against dark text. The ban in
+   `tokens.css` **stays and is tightened**: `--text-subtle` is forbidden on
+   `--surface-sunken`, and the new measured value is 4.18, not the 4.50 currently
+   recorded in the file.
+2. **The 4.50 recorded in `tokens.css` today is itself wrong.** `grey-600` on `grey-100`
+   measures 4.48 — already below the 4.5 threshold, not sitting exactly on it. The
+   comment is corrected as part of this work.
+
+`--text-muted` at 4.87 is what makes the sunken input fill in §4.4 viable, since
+placeholder text uses that token. It has ~0.37 of headroom, so `--surface-sunken` must
+not be darkened past ~90% without re-measuring.
 
 The dark-theme mapping is re-measured in the same pass; it is not assumed to carry over.
 
