@@ -1191,14 +1191,31 @@ bun run tsc --noEmit && bun run lint && bun run build
 
 Expected: all three PASS.
 
-- [ ] **Step 3: Manual smoke pass**
+- [ ] **Step 3: Manual smoke pass — NOT RUN**
 
-Run the backend (`cd apps/backend-rs && cargo run`) and the frontend (`cd apps/frontend && bun run dev`), log in, and check each of these:
+> **Status as of 2026-08-12: this step was deliberately skipped and remains
+> outstanding.** Every automated gate is green (backend: 20 tests across 12
+> binaries, zero warnings, clean clippy; frontend: `tsc`, `lint`, `build`), but
+> **no part of this feature has been observed rendering against real data.**
+> The tab could still be broken in ways no type-checker or integration test can
+> see — wrong layout, a mis-wired prop, an unreadable colour.
+>
+> It was skipped because the backend-rs process running on `:3010` was a stale
+> binary (it served `GetDashboardStats` but 404'd on `GetProjectOverview`), and
+> restarting someone else's process plus obtaining login credentials was the
+> user's call, not the implementer's. The user chose to skip rather than block.
+>
+> Run the eight checks below before treating this feature as verified.
+
+Run the backend (`cd apps/backend-rs && cargo run --bin app` — note `--bin app`;
+a bare `cargo run` cannot choose between `app`, `seed_admin`, and `seed_user`)
+and the frontend (`cd apps/frontend && bun run dev`), log in, and check each of
+these:
 
 1. Opening a project from `/projects` lands on `…/overview`, with **Overview** the active first tab.
 2. The four stat cards show numbers matching the Tasks tab, and only **Overdue** is red.
 3. Overall progress and the per-module bars agree with the task lists; a module with no tasks shows `0/0`.
-4. The *About* panel shows the right status, owner, dates, counts, and member faces (owner's avatar leads).
+4. The *About* panel shows the right owner, dates, counts, and member faces (owner's avatar leads) — and does **not** repeat the header's status badge, which was cut during review.
 5. Recent activity lists entries; making a change in another tab and coming back shows it.
 6. A brand-new project with no modules shows the empty state, and its "Go to Tasks" button navigates to the Tasks tab.
 7. Narrow the window below `lg` — the layout collapses to one column with no horizontal scroll.
