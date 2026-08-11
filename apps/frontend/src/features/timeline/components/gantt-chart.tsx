@@ -88,8 +88,8 @@ export function GanttChart({ projectId }: { projectId: string }) {
   if (ml || tl) {
     return (
       <div className="space-y-3 p-6">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-64 w-full" />
+        <Skeleton className="h-8 w-48 rounded-full" />
+        <Skeleton className="h-64 w-full rounded-xl shadow-2" />
       </div>
     );
   }
@@ -118,7 +118,7 @@ export function GanttChart({ projectId }: { projectId: string }) {
       </div>
 
       {rows.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-12 text-center text-text-muted">
+        <div className="rounded-xl bg-surface-raised p-12 text-center text-text-muted shadow-2">
           No scheduled tasks yet. Schedule tasks below to see them here.
         </div>
       ) : (
