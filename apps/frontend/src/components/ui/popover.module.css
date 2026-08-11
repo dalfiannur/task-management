@@ -6,13 +6,11 @@
   z-index: 50;
   width: 18rem; /* w-72 */
   border-radius: var(--radius-md);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: hsl(228 20% 10% / 0.9);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  background: var(--surface-overlay);
   color: var(--text);
   padding: 0.75rem;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-3);
   outline: none;
   transform-origin: var(--radix-popover-content-transform-origin);
 
