@@ -221,7 +221,7 @@ export function TaskDialog({
         </form>
         {editing && task && (
           <>
-            <div className="my-2 border-t" />
+            <div className="my-2 border-t border-border-subtle" />
             <CommentThread taskId={task.id} projectId={projectId} />
           </>
         )}

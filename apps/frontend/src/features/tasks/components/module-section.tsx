@@ -79,10 +79,10 @@ export function ModuleSection({
   }
 
   return (
-    <section className="rounded-lg border">
-      <header className="flex items-center gap-2 border-b px-3 py-2">
+    <section className="overflow-hidden rounded-xl bg-surface-raised shadow-2">
+      <header className="flex items-center gap-2 border-b border-border-subtle px-4 py-2">
         <h3 className="font-medium">{module.name}</h3>
-        <span className="text-xs text-text-muted">{tasks.length}</span>
+        <span className="text-num text-xs text-text-muted">{tasks.length}</span>
         <div className="flex-1" />
         {canManage && (
           <div className="flex items-center gap-0.5">
@@ -146,7 +146,7 @@ export function ModuleSection({
         )}
       </header>
 
-      <div ref={setNodeRef} className="min-h-[0.5rem] px-2 py-1">
+      <div ref={setNodeRef} className="min-h-[0.5rem]">
         <SortableContext
           items={tasks.map((t) => t.id)}
           strategy={verticalListSortingStrategy}
@@ -162,11 +162,14 @@ export function ModuleSection({
           ))}
         </SortableContext>
         {tasks.length === 0 && (
-          <p className="px-2 py-3 text-sm text-text-muted">No tasks yet.</p>
+          <p className="px-4 py-3 text-sm text-text-muted">No tasks yet.</p>
         )}
       </div>
 
-      <form onSubmit={addTask} className="flex items-center gap-2 border-t px-3 py-2">
+      <form
+        onSubmit={addTask}
+        className="flex items-center gap-2 border-t border-border-subtle px-4 py-2"
+      >
         <Plus className="h-4 w-4 text-text-muted" />
         <Input
           value={quick}
