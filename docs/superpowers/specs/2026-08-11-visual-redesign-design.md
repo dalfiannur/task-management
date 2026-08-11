@@ -218,10 +218,35 @@ One accent used sparingly is what separates "Blue Accent" from "blue everything"
 `select.module.css` · `popover.module.css` · `dropdown-menu.module.css` (both blocks).
 
 The hardcoded dark-glass blocks are replaced entirely with: `--surface-overlay` fill,
-`--border` hairline, `--radius-lg`, `--shadow-3`, no blur.
+**`--border-strong`** edge, `--radius-lg`, `--shadow-3`, no blur.
 
 `backdrop-filter` is removed. It is the signature of the language being left, and it
-costs a compositing layer per open menu.
+costs a compositing layer per open menu. Verified during implementation that this drops
+no needed stacking context: Radix's popper wrapper already supplies both a stacking
+context and a containing block via `transform` + `zIndex`.
+
+**The edge is `--border-strong`, not `--border`** — same reasoning as §4.4. `.dark` maps
+`--border` and `--surface-overlay` both to `--grey-800`, so `--border` renders a panel
+edge in exactly the panel's own colour (1.39 light / **1.00 dark**). `--border-strong`
+gives 3.60 / 3.09. This matters more than it looks: in dark the panel's only other
+separation is `--shadow-3`, whose offset is downward, so a panel opening upward
+(`data-side="top"`) would have no top edge at all.
+
+**Two known defects inside these panels, deferred to Phase 2** — recorded here with
+measurements so they are not rediscovered:
+
+1. **Menu item highlight is weak in light.** `.item:focus` fills with `--surface-hover`
+   (`--grey-100`), which on a now-white panel measures **1.14:1** (dark 1.26:1). This is
+   a *mouse-hover* weakness, not a keyboard-accessibility failure — Radix sets
+   `tabindex="-1"` on items, which matches the global `:where([tabindex]):focus-visible`
+   outline rule in `index.css`, so keyboard navigation still draws a 2px focus ring.
+   Phase 2 should give the highlight real separation (`--brand-subtle` fill, or
+   `--surface-sunken` plus a left accent bar).
+2. **Dialog elevation contradicts §3.4.** The table below assigns `--shadow-4` to
+   dialog and sheet. `sheet.tsx` complies; `dialog.tsx` and `alert-dialog.tsx` use
+   `--shadow-5`. Ordering is still coherent today, so nothing looks wrong — but the
+   divergence must be reconciled when the shadow scale is retuned, or the retuned scale
+   inherits the inconsistency.
 
 ### 4.2 Card
 

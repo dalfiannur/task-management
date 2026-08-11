@@ -524,10 +524,12 @@ with:
 - [ ] **Step 5: Verify no dark-glass block survives**
 
 ```bash
-grep -rn 'backdrop-filter\|hsl(228\|rgba(255, 255, 255\|rgba(0, 0, 0' src/components/ui/
+grep -rn 'backdrop-filter\|hsl(228\|rgba(255, 255, 255\|rgba(0, 0, 0' src/components/ui/*.module.css
 ```
 
 Expected: no output, exit code 1.
+
+Scope this to `*.module.css`. Unscoped, it also matches a prose comment in `dialog.tsx` that quotes the old `hsl(228 20% 10% / .9)` value while explaining that dialog was already migrated away from it. That is documentation, not a style — do not "fix" it.
 
 - [ ] **Step 6: Build**
 
@@ -550,6 +552,69 @@ panel in light mode. Now --surface-overlay + --border + --shadow-3.
 
 backdrop-filter is dropped rather than ported: it is the signature of the
 language being retired and costs a compositing layer per open menu."
+```
+
+---
+
+### Task 5b: Floating panel borders → `--border-strong`
+
+*Added during execution, from the Task 5 code-quality review.*
+
+Task 5 gave the four floating panels `border: 1px solid var(--border)`, per spec §4.1. That is wrong for the same reason it was wrong for form controls (spec §4.4): `.dark` maps `--border` **and** `--surface-overlay` both to `--grey-800`, so in dark mode the panel border renders in exactly the panel's own colour. Measured `--border` vs `--surface-overlay`: **1.39 light, 1.00 dark**.
+
+A border that renders nothing is worse than no border — it looks like a styled edge in code while contributing zero separation on screen, and in dark the panel's only remaining separation is `--shadow-3`, whose offset is downward, leaving a `data-side="top"` panel with no top edge at all.
+
+`--border-strong` measures **3.60 light / 3.09 dark** against `--surface-overlay` (and 4.57 dark after Task 8's `--grey-400` remap).
+
+**Files:**
+- Modify: `apps/frontend/src/components/ui/select.module.css` (`.content`)
+- Modify: `apps/frontend/src/components/ui/popover.module.css` (`.content`)
+- Modify: `apps/frontend/src/components/ui/dropdown-menu.module.css` (`.content` AND `.subContent`)
+
+- [ ] **Step 1: Change the border token in all four blocks**
+
+In each of the four blocks, replace:
+
+```css
+  border: 1px solid var(--border);
+```
+
+with:
+
+```css
+  border: 1px solid var(--border-strong);
+```
+
+This is the same four blocks Task 5 touched. `dropdown-menu.module.css` has **two**. Change nothing else.
+
+- [ ] **Step 2: Confirm exactly four lines changed**
+
+```bash
+git diff --stat
+```
+
+Expected: 3 files changed, 4 insertions(+), 4 deletions(-).
+
+- [ ] **Step 3: Build**
+
+```bash
+bunx vite build --logLevel error
+```
+
+Expected: exit 0.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add src/components/ui/select.module.css src/components/ui/popover.module.css src/components/ui/dropdown-menu.module.css
+git commit -m "fix(ui): floating panel borders use --border-strong
+
+.dark maps --border and --surface-overlay both to --grey-800, so the panel
+border Task 5 added rendered in exactly the panel's own colour (1.00:1).
+--border-strong measures 3.60 light / 3.09 dark.
+
+Same defect class as the form-control borders in spec 4.4; 4.1 said
+--border and was wrong in the same way."
 ```
 
 ---
@@ -1133,6 +1198,68 @@ lighter than --border, not darker.
 Corrects two wrong figures in the file: --text-subtle on --surface-sunken
 measures 4.48 at grey-100 (not 4.50, i.e. already failing) and 4.18 at the
 new value. The ban stays and tightens."
+```
+
+---
+
+### Task 8b: Adopt `--border-subtle` for in-panel separators
+
+*Added during execution, from the Task 5 code-quality review.*
+
+`dropdown-menu` and `select` draw their separators with `background-color: var(--border)`. Against the old hardcoded dark panel those read fine; against `--surface-overlay` they measure **1.39 light / 1.00 dark** — in dark, a 1px hairline in exactly the colour of the panel it divides. This is a real regression introduced by Task 5, and until now no task owned it.
+
+`--border-subtle` exists as of Task 8 and is the token for exactly this job — a divider *inside* a raised surface (spec §4.2). In dark it maps to `--grey-700`, giving 1.86:1 against the panel: faint, which is correct for a decorative separator, but actually present.
+
+**Files:**
+- Modify: `apps/frontend/src/components/ui/dropdown-menu.module.css` (`.separator`)
+- Modify: `apps/frontend/src/components/ui/select.module.css` (`.separator`)
+
+- [ ] **Step 1: Update the dropdown separator**
+
+In `dropdown-menu.module.css`, in the `.separator` rule, replace:
+
+```css
+  background-color: var(--border);
+```
+
+with:
+
+```css
+  background-color: var(--border-subtle);
+```
+
+- [ ] **Step 2: Update the select separator**
+
+In `select.module.css`, in the `.separator` rule, replace:
+
+```css
+  background-color: var(--border);
+```
+
+with:
+
+```css
+  background-color: var(--border-subtle);
+```
+
+- [ ] **Step 3: Confirm scope and build**
+
+```bash
+git diff --stat && bunx vite build --logLevel error
+```
+
+Expected: 2 files changed, 2 insertions(+), 2 deletions(-); build exits 0.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add src/components/ui/dropdown-menu.module.css src/components/ui/select.module.css
+git commit -m "fix(ui): in-panel separators use --border-subtle
+
+Separators drawn with --border measured 1.00:1 against --surface-overlay
+in dark — a hairline the exact colour of the panel it divides. Regression
+from detaching the panels from hardcoded dark glass. --border-subtle is
+the token for a divider inside a raised surface."
 ```
 
 ---
