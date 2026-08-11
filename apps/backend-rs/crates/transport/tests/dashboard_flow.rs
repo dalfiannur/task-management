@@ -24,6 +24,7 @@ const TASK: &str = "/sedjiwa.tasks.work.v1.TaskService";
 const COMMENT: &str = "/sedjiwa.tasks.comment.v1.CommentService";
 const DASH: &str = "/sedjiwa.tasks.dashboard.v1.DashboardService";
 const MY: &str = "/sedjiwa.tasks.dashboard.v1.MyTasksService";
+const PAGE: &str = "/sedjiwa.tasks.page.v1.PageService";
 
 fn uniq() -> String {
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -57,6 +58,7 @@ async fn setup() -> Option<(Router, Arc<Store>)> {
         .merge(transport::comment_router(store.clone()))
         .merge(transport::dashboard_router(store.clone()))
         .merge(transport::mytasks_router(store.clone()))
+        .merge(transport::page_router(store.clone()))
         .layer(from_fn(auth_mw));
     Some((router, store))
 }
@@ -179,6 +181,12 @@ async fn project_overview_counts_and_gating() {
         eprintln!("skip: DATABASE_URL not set");
         return;
     };
+    // `early` is created first so its entity id sorts ahead of `owner`'s.
+    // project_member_ids returns ids sorted ascending, so without the
+    // owner-first rule actively reordering, `early` would lead the list —
+    // that's what makes the "owner first" assertion below discriminating.
+    // Keep this creation order; do not "tidy" it.
+    let early = mk_user(&store).await;
     let owner = mk_user(&store).await;
     let outsider = mk_user(&store).await;
     let (to, tx) = (token(&owner), token(&outsider));
@@ -188,6 +196,7 @@ async fn project_overview_counts_and_gating() {
         .as_str()
         .unwrap()
         .to_string();
+    ok(&router, &format!("{PROJECT}/AddProjectMember"), &to, json!({ "projectId": p, "userId": early })).await;
     let m1 = ok(&router, &format!("{MODULE}/CreateModule"), &to, json!({ "projectId": p, "name": "M1" }))
         .await["id"]
         .as_str()
@@ -199,6 +208,7 @@ async fn project_overview_counts_and_gating() {
         .as_str()
         .unwrap()
         .to_string();
+    ok(&router, &format!("{PAGE}/CreatePage"), &to, json!({ "projectId": p, "title": "Notes" })).await;
 
     // A: overdue (due yesterday, todo). B: due yesterday but DONE → not overdue.
     // C: in progress. D: cancelled → counted nowhere.
@@ -213,7 +223,9 @@ async fn project_overview_counts_and_gating() {
     assert_eq!(num(&ov, "doneTasks"), 1);
     assert_eq!(num(&ov, "overdueTasks"), 1, "A only — B is past due but done");
     assert_eq!(num(&ov, "moduleCount"), 2);
-    assert_eq!(num(&ov, "pageCount"), 0);
+    assert_eq!(num(&ov, "pageCount"), 1);
+    // mediaCount is only exercised in its empty case: "ready" media needs
+    // S3-backed storage that this suite has no fixture for.
     assert_eq!(num(&ov, "mediaCount"), 0);
 
     let per = ov["perModule"].as_array().unwrap();
@@ -225,9 +237,11 @@ async fn project_overview_counts_and_gating() {
     assert_eq!(num(&per[1], "total"), 0);
     assert_eq!(num(&per[1], "done"), 0);
 
-    // Owner leads the member list.
+    // Owner leads the member list even though `early`'s id sorts first.
     let members = ov["memberIds"].as_array().unwrap();
+    assert_eq!(members.len(), 2, "{ov}");
     assert_eq!(members[0], owner, "owner first: {ov}");
+    assert_eq!(members[1], early, "{ov}");
 
     // Gating: a non-member is denied; an unknown project is not found.
     let (st, _) = call(&router, &format!("{DASH}/GetProjectOverview"), Some(&tx), json!({ "projectId": p })).await;
