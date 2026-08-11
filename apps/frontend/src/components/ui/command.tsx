@@ -158,7 +158,10 @@ function CommandItem({
         "relative flex cursor-default items-center gap-1.5 rounded-xl px-1.5 py-1 text-sm leading-5 outline-none select-none",
         // Interactive standards
         "transition-all duration-200",
-        "data-[selected=true]:bg-surface-hover",
+        // Sejajar dengan .item:focus di dropdown-menu/select — lihat catatan
+        // di sana soal ring global yang kalah spesifisitas.
+        "data-[selected=true]:bg-brand-subtle data-[selected=true]:text-brand-text",
+        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus focus-visible:-outline-offset-2",
         "data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50",
         "[&_svg]:pointer-events-none [&_svg]:shrink-0",
         "[&_svg:not([class*=text-])]:text-text-muted",

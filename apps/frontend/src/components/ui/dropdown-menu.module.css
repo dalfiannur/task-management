@@ -64,9 +64,25 @@
   cursor: default;
 }
 
+/* Ring fokus WAJIB dinyatakan ULANG di sini. Aturan global di index.css
+   memakai :where(...) yang berspesifisitas NOL, jadi `outline: none` pada
+   .item (spesifisitas 0,1,0) mengalahkannya — item menu memang cocok dengan
+   :focus-visible saat navigasi papan ketik, tapi tidak ada ring yang tergambar.
+   Isian --surface-hover sendirian hanya 1.14:1 di atas panel, jadi tanpa ring
+   ini pengguna papan ketik tidak bisa melihat item mana yang terpilih.
+   outline-offset negatif menjaga ring tetap di DALAM item supaya tidak
+   terpotong tepi panel. */
 .item:focus {
-  background-color: var(--surface-hover);
-  color: var(--text);
+  background-color: var(--brand-subtle);
+  color: var(--brand-text);
+}
+
+/* Ring HANYA untuk papan ketik. Radix memindahkan fokus DOM saat hover
+   mouse juga, jadi menaruh ring di :focus akan menggambar cincin setiap
+   kali kursor lewat. Isian brand di atas menangani kedua moda. */
+.item:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
 }
 
 .item[data-disabled] {
@@ -126,8 +142,16 @@
 }
 
 .checkboxItem:focus {
-  background-color: var(--surface-hover);
-  color: var(--text);
+  background-color: var(--brand-subtle);
+  color: var(--brand-text);
+}
+
+/* Ring HANYA untuk papan ketik. Radix memindahkan fokus DOM saat hover
+   mouse juga, jadi menaruh ring di :focus akan menggambar cincin setiap
+   kali kursor lewat. Isian brand di atas menangani kedua moda. */
+.checkboxItem:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
 }
 
 .checkboxItem[data-disabled] {
@@ -164,8 +188,16 @@
 }
 
 .radioItem:focus {
-  background-color: var(--surface-hover);
-  color: var(--text);
+  background-color: var(--brand-subtle);
+  color: var(--brand-text);
+}
+
+/* Ring HANYA untuk papan ketik. Radix memindahkan fokus DOM saat hover
+   mouse juga, jadi menaruh ring di :focus akan menggambar cincin setiap
+   kali kursor lewat. Isian brand di atas menangani kedua moda. */
+.radioItem:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
 }
 
 .radioItem[data-disabled] {
@@ -253,8 +285,16 @@
 }
 
 .subTrigger:focus {
-  background-color: var(--surface-hover);
-  color: var(--text);
+  background-color: var(--brand-subtle);
+  color: var(--brand-text);
+}
+
+/* Ring HANYA untuk papan ketik. Radix memindahkan fokus DOM saat hover
+   mouse juga, jadi menaruh ring di :focus akan menggambar cincin setiap
+   kali kursor lewat. Isian brand di atas menangani kedua moda. */
+.subTrigger:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
 }
 
 .subTrigger[data-state="open"] {
