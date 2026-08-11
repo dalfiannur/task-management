@@ -57,7 +57,7 @@ That one feature component is included deliberately. Spec §4.5 makes the segmen
 | `ui/calendar.module.css` | control radius → `lg` | 1 |
 | `ui/sonner.tsx` | radius → `lg`, border → `--border-strong` | 1 |
 | `ui/dialog.tsx`, `ui/alert-dialog.tsx` | `shadow-5` → `shadow-4` | 2 |
-| `ui/checkbox.module.css` | form-control treatment | 3 |
+| `ui/checkbox.module.css` | form-control treatment; checked state keeps `--border-strong` | 3 |
 | `ui/separator.module.css`, `ui/command.tsx` | dividers → `--border-subtle` | 4 |
 | `ui/sheet.tsx` | overlay borders → `--border-strong` | 2 |
 | `ui/scroll-area.module.css`, `ui/avatar.module.css` | thumb + rings → correct surface | 5 |
@@ -224,7 +224,7 @@ They are not adjacent in the file — each sits inside its own side-specific blo
 grep -rn "shadow-5" src/
 ```
 
-Expected: no output from `src/components/` or `src/features/`. `--shadow-5` remains defined in `tokens.css` as the top of the scale; that is correct and it simply has no current consumer.
+Expected: hits only in `src/styles/tokens.css` (the light and dark definitions) and `src/index.css` (the `@theme` mapping). **No hits under `src/components/` or `src/features/`.** `--shadow-5` staying defined with no consumer is correct — it is the top of the scale.
 
 - [ ] **Step 4: Gates**
 
@@ -254,19 +254,26 @@ surfaces: .dark maps --border and --surface-overlay both to grey-800."
 
 `checkbox.module.css` carries the **same defect Phase 1 fixed on inputs**: `border: 1px solid var(--border)` on a control that sits inside a card, which in dark renders the border in the card's exact colour (1.00:1). It also uses `box-shadow: var(--shadow-1)` — a raised shadow on a control that should read as sunken — and a `color-mix` fill instead of `--surface-sunken`.
 
+**Resolved during planning — the checked state keeps `--border-strong`.** A checked checkbox is a `--brand` fill on a card, and that fill measures **6.61 light / 2.20 dark**. In dark the fill alone is not a discernible boundary, and a checkbox has no label inside it to fall back on. The fix is *not* to change `--brand` — that token is the primary button fill and altering it would repaint every primary action in the app. Instead the **border** carries the boundary and the fill carries the state:
+
+| What identifies the control | light | dark |
+|---|---|---|
+| `--brand` fill vs card | 6.61 | **2.20** ❌ |
+| `--border-strong` border vs card | 3.86 | **4.57** ✅ |
+
+So the checked rule simply stops overriding `border-color`, inheriting `--border-strong` from the base rule. `--brand` on `--surface-raised` therefore stays a *reported* pairing in the contrast script, not an asserted one — the control is identified by a legible boundary, just not by its fill.
+
 **Files:**
-- Modify: `src/components/ui/checkbox.module.css` (`.checkbox`)
-- Modify: `apps/frontend/scripts/check-contrast.mjs`
+- Modify: `src/components/ui/checkbox.module.css`
 
-- [ ] **Step 1: Apply the control treatment**
+- [ ] **Step 1: Apply the control treatment to the base rule**
 
-Replace the `.checkbox` rule's first block:
+Replace, in the `.checkbox` rule:
 
 ```css
   border-radius: 4px;
   border: 1px solid var(--border);
   box-shadow: var(--shadow-1);
-  transition: box-shadow 150ms ease;
 ```
 
 with:
@@ -275,10 +282,9 @@ with:
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-strong);
   box-shadow: var(--shadow-inset);
-  transition: box-shadow 150ms ease;
 ```
 
-Then replace:
+Then replace, still in `.checkbox`:
 
 ```css
   background-color: color-mix(in srgb, var(--border) 30%, transparent);
@@ -290,67 +296,44 @@ with:
   background-color: var(--surface-sunken);
 ```
 
-The literal `4px` becomes `var(--radius-sm)` — same value, but the scale should be referenced rather than restated. Spec §3.3 keeps checkboxes at `--radius-sm`.
+The literal `4px` becomes `var(--radius-sm)` — same value, but the scale should be referenced rather than restated.
 
-Leave the `[data-state="checked"]` rule (`--brand` fill, `--text-on-brand`, `--brand` border) exactly as it is, and leave both the focus-visible and `aria-invalid` rules untouched.
+- [ ] **Step 2: Let the checked state inherit the border**
 
-- [ ] **Step 2: Assert the checked state's contrast**
+In the `.checkbox[data-state="checked"]` rule, **delete** this line entirely:
 
-The checked checkbox is a `--brand` fill sitting on `--surface-raised`. That pairing is currently only *reported* by the contrast script, not asserted, because a filled button is identified by its label. **A checkbox has no label inside it** — the fill and its tick are the entire control, so its boundary genuinely does need to be discernible.
-
-In `scripts/check-contrast.mjs`, find:
-
-```js
-const REPORTED = [["--brand", "--surface-raised"]];
+```css
+  border-color: var(--brand);
 ```
 
-and replace with:
+Keep `background-color: var(--brand);` and `color: var(--text-on-brand);` exactly as they are.
 
-```js
-const REPORTED = [];
-```
+This is the whole point of the task: with `border-color` no longer overridden, the checked control keeps its `--border-strong` boundary (4.57:1 in dark) while the brand fill communicates state. Overriding it to `--brand` would leave the control's only edge at 2.20:1 in dark.
 
-Then in the `PAIRS` array, immediately after the line:
+Leave the `:focus-visible` and `[aria-invalid]` rules untouched.
 
-```js
-  ["--border-strong", "--surface-raised", UI],
-```
+- [ ] **Step 3: Verify the checked tick is still legible**
 
-add:
-
-```js
-  // Checkbox tercentang adalah fill --brand di atas kartu, TANPA label di
-  // dalamnya — tidak ada teks yang mengidentifikasinya, jadi pengecualian
-  // 1.4.11 untuk kontrol berlabel tidak berlaku. Batasnya harus terbaca.
-  ["--brand", "--surface-raised", UI],
-```
-
-- [ ] **Step 3: Run the contrast script — expect it to FAIL**
+The tick is `--text-on-brand` on `--brand`, which the contrast script already asserts at 6.17 light / 4.72 dark. Confirm the script still passes:
 
 ```bash
 node scripts/check-contrast.mjs
 ```
 
-Expected: **exit 1**, with this line under DARK:
+Expected: **exit 0**, `All measured pairings pass.` No new pairings are added by this task.
 
-```
-  FAIL  2.20 (min 3)  --brand on --surface-raised
-```
-
-This is a real finding, not a mistake in the plan: in dark, `--brand` is `--brand-500` and `--surface-raised` is `--grey-800`, giving 2.20:1. A checked checkbox on a dark card has almost no edge.
-
-**STOP HERE and report.** Do not change `--brand`, do not weaken the assertion, and do not proceed to Step 4 until the controller has resolved it. The likely fix is a `--brand` remap in `.dark` or a ring on the checked state, but that is a token-level decision and is not yours to make unilaterally.
-
-- [ ] **Step 4: (after the controller resolves Step 3) Gates and commit**
+- [ ] **Step 4: Gates**
 
 ```bash
-node scripts/check-contrast.mjs && bun run tsc --noEmit && bun run lint && bunx vite build --logLevel error
+bunx vite build --logLevel error
 ```
 
-Expected: all exit 0.
+Expected: exit 0.
+
+- [ ] **Step 5: Commit**
 
 ```bash
-git add src/components/ui/checkbox.module.css scripts/check-contrast.mjs
+git add src/components/ui/checkbox.module.css
 git commit -m "fix(ui): checkbox gets the form-control treatment
 
 Same --border defect the inputs had: in dark, --border and
@@ -358,9 +341,10 @@ Same --border defect the inputs had: in dark, --border and
 invisible border. Now --border-strong, --surface-sunken fill and
 --shadow-inset, matching input/textarea/select.
 
-Promotes --brand on --surface-raised from reported to asserted. The 1.4.11
-exemption covers filled controls identified by their label; a checkbox has
-no label inside it, so its boundary must be discernible on its own."
+The checked state stops overriding border-color. A --brand fill on a card
+measures 2.20:1 in dark, and a checkbox has no label inside it to identify
+it — so the border carries the boundary and the fill carries the state.
+Changing --brand instead would have repainted every primary button."
 ```
 
 ---
