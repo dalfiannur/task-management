@@ -6,6 +6,7 @@ import {
   useQuery,
   createConnectQueryKey,
 } from "@connectrpc/connect-query";
+import { useMemo } from "react";
 import { ProjectService } from "@/lib/gen/projects_pb";
 import { queryClient } from "@/lib/query";
 import type { ProjectList, ProjectStatus } from "../types";
@@ -53,17 +54,23 @@ export function useProject(id: string) {
   return { ...result, project: result.data ? mapProject(result.data) : null };
 }
 
-/** Member roster of a project (read). Used by assignee pickers + the members tab. */
+/** Member roster of a project (read). Used by assignee pickers + the members tab.
+ *  `members`/`memberIds` are memoized on the query data: callers derive editor
+ *  extensions and other memo deps from them, and a fresh array each render would
+ *  churn those (tiptap's mention extension is only read when the editor is
+ *  created, so the churn is silent). */
 export function useProjectMembers(projectId: string) {
   const result = useQuery(
     ProjectService.method.listProjectMembers,
     { projectId },
     { enabled: !!projectId },
   );
+  const members = useMemo(() => result.data?.members ?? [], [result.data]);
+  const memberIds = useMemo(() => members.map((m) => m.userId), [members]);
   return {
     ...result,
-    members: result.data?.members ?? [],
-    memberIds: result.data?.members.map((m) => m.userId) ?? [],
+    members,
+    memberIds,
     ownerId: result.data?.ownerId ?? "",
   };
 }
