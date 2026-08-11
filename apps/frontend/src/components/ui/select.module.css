@@ -258,7 +258,7 @@
    ============================================ */
 
 .separator {
-  background-color: var(--border);
+  background-color: var(--border-subtle);
   pointer-events: none;
   margin: 0.25rem -0.25rem;
   height: 1px;
