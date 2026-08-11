@@ -77,7 +77,7 @@ function LabelRow({ label }: { label: Label }) {
   return (
     <li className="group flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors [transition-duration:var(--duration-fast)] hover:bg-surface-hover">
       <span
-        className="inline-flex items-center rounded-sm px-1.5 py-0.5 text-xs font-medium"
+        className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
         style={{ backgroundColor: `${label.color}22`, color: label.color }}
       >
         {label.name}
