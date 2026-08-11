@@ -14,7 +14,7 @@
    TabsList
    ============================================ */
 .tabsList {
-  border-radius: 0.5rem;
+  border-radius: var(--radius-full);
   padding: 3px;
   color: var(--text-muted);
   display: inline-flex;
@@ -57,8 +57,8 @@
   align-items: center;
   justify-content: center;
   gap: 0.25rem;
-  border-radius: var(--radius-md);
-  border: 1px solid transparent;
+  border-radius: var(--radius-full);
+  border: none;
   padding: 0.125rem 0.375rem;
   font-size: 0.875rem;
   line-height: 1.25rem;
@@ -106,10 +106,12 @@
 
 /* ---- Active state (data-state=active) ---- */
 
+/* Pil putih terangkat di dalam track tenggelam — inilah yang membuat
+   segmented control menambatkan dirinya sendiri, tanpa perlu garis atau
+   pita di belakangnya. */
 .tabsTrigger[data-state="active"] {
-  background-color: color-mix(in srgb, var(--border) 30%, transparent);
+  background-color: var(--surface-raised);
   color: var(--text);
-  border-color: var(--border);
 }
 
 /* Default variant: shadow on active */
