@@ -55,5 +55,5 @@
   position: relative;
   flex: 1;
   border-radius: 9999px;
-  background-color: var(--border);
+  background-color: var(--border-strong);
 }
