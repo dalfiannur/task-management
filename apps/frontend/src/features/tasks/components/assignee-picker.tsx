@@ -92,7 +92,7 @@ export function AssigneeAvatars({
         const u = userMap[id];
         const name = u?.displayName ?? id;
         return (
-          <Avatar key={id} className="h-5 w-5 ring-1 ring-surface">
+          <Avatar key={id} className="h-5 w-5 ring-1 ring-surface-raised">
             {u?.avatarUrl && <AvatarImage src={u.avatarUrl} />}
             <AvatarFallback className="text-xs">
               {getInitials(name)}
