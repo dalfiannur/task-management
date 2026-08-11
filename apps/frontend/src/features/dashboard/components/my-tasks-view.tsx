@@ -70,16 +70,16 @@ export function MyTasksView() {
       <h1 className="mb-6 text-2xl font-semibold">My tasks</h1>
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex rounded-md border border-border p-1">
+        <div className="inline-flex gap-1 rounded-full bg-surface-sunken p-[3px]">
           {VIEWS.map((v) => (
             <button
               key={v.key}
               onClick={() => setView(v.key)}
               className={cn(
-                "rounded-sm px-3 py-1 text-sm",
+                "rounded-full px-3 py-1 text-sm",
                 "[transition:background-color_var(--duration-fast)_var(--ease-out),color_var(--duration-fast)_var(--ease-out)]",
                 view === v.key
-                  ? "bg-brand font-medium text-text-on-brand"
+                  ? "bg-surface-raised font-medium text-text shadow-1"
                   : "text-text-muted hover:text-text",
               )}
             >
@@ -129,8 +129,10 @@ export function MyTasksView() {
         )
       ) : (
         <>
-          <p className="mb-3 text-sm text-text-muted">{total} task(s)</p>
-          <div className="overflow-hidden rounded-lg border border-border">
+          <p className="mb-3 text-sm text-text-muted">
+            <span className="text-num">{total}</span> task(s)
+          </p>
+          <div className="overflow-hidden rounded-xl bg-surface-raised shadow-2">
             {items.map((it) => (
               <MyTaskRow key={it.task.id} item={it} />
             ))}
