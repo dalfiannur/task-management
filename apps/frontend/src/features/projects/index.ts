@@ -2,7 +2,12 @@
 
 export type { Project, ProjectStatus } from "./types";
 export { PROJECT_STATUSES, STATUS_LABEL } from "./types";
-export { mapProject, statusFromProto, statusToProto } from "./api/mappers";
+export {
+  mapProject,
+  statusFromProto,
+  statusToProto,
+  formatProjectDateRange,
+} from "./api/mappers";
 export {
   useProjects,
   useProject,

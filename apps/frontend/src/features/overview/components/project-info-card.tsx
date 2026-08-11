@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getInitials } from "@/lib/utils";
-import { ProjectStatusBadge } from "@/features/projects";
+import { ProjectStatusBadge, formatProjectDateRange } from "@/features/projects";
 import type { Project } from "@/features/projects";
 import { useUserMap } from "@/features/users";
 import type { ProjectOverview } from "../types";
@@ -48,14 +48,11 @@ export function ProjectInfoCard({
   const faces = overview.memberIds.slice(0, MAX_FACES);
   const rest = overview.memberIds.length - faces.length;
 
-  const range =
-    project.startDate || project.endDate
-      ? `${project.startDate ?? "…"} → ${project.endDate ?? "…"}`
-      : "No dates set";
+  const range = formatProjectDateRange(project) ?? "No dates set";
 
   return (
     <div className="rounded-xl bg-surface-raised p-4 shadow-2">
-      <h3 className="text-label mb-2">About</h3>
+      <h2 className="text-label mb-3">About</h2>
       {/* Sekat pakai border-subtle, bukan border: di dalam permukaan raised
           `--border` terbaca sebagai jahitan (lihat catatan di members-tab). */}
       <div className="divide-y divide-border-subtle">
@@ -97,19 +94,21 @@ export function ProjectInfoCard({
               return (
                 <Avatar
                   key={id}
-                  className="-ml-2 h-7 w-7 ring-2 ring-surface-raised first:ml-0"
+                  className="-ml-2 h-6 w-6 ring-2 ring-surface-raised first:ml-0"
                   title={name}
                 >
-                  {u?.avatarUrl && <AvatarImage src={u.avatarUrl} />}
-                  <AvatarFallback className="text-xs">
+                  {u?.avatarUrl && <AvatarImage src={u.avatarUrl} alt="" />}
+                  <AvatarFallback className="text-xs" aria-hidden="true">
                     {getInitials(name)}
                   </AvatarFallback>
+                  <span className="sr-only">{name}</span>
                 </Avatar>
               );
             })}
             {rest > 0 && (
               <span className="text-num ml-2 text-xs text-text-muted">
                 +{rest}
+                <span className="sr-only"> more members</span>
               </span>
             )}
           </span>

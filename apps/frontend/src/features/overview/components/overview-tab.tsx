@@ -16,8 +16,9 @@ export function OverviewTab({ projectId }: { projectId: string }) {
 
   if (isLoading) {
     return (
-      /* Skeleton mengikuti bentuk akhirnya — satu baris empat kartu lalu dua
-         kolom — supaya tidak ada lompatan layout saat data masuk. */
+      /* Skeleton mengikuti bentuk akhirnya — satu baris empat kartu, dua
+         kolom, lalu blok activity — supaya tidak ada lompatan layout saat
+         data masuk. */
       <div className="space-y-4 p-6">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -27,6 +28,10 @@ export function OverviewTab({ projectId }: { projectId: string }) {
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
           <Skeleton className="h-56 w-full rounded-xl shadow-2" />
           <Skeleton className="h-56 w-full rounded-xl shadow-2" />
+        </div>
+        <div className="space-y-3">
+          <Skeleton className="h-4 w-32 rounded-xl shadow-2" />
+          <Skeleton className="h-48 w-full rounded-xl shadow-2" />
         </div>
       </div>
     );
@@ -84,7 +89,7 @@ export function OverviewTab({ projectId }: { projectId: string }) {
           membiarkannya ikut melar membuat barisnya renggang tak keruan. */}
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="rounded-xl bg-surface-raised p-4 shadow-2">
-          <h3 className="text-label mb-3">Progress</h3>
+          <h2 className="text-label mb-3">Progress</h2>
           <div className="flex items-center gap-3">
             <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface-sunken">
               <div
@@ -107,7 +112,7 @@ export function OverviewTab({ projectId }: { projectId: string }) {
           menaruh heading polos di kanvas lalu komponennya langsung di
           bawahnya (lihat routes/_authed/dashboard.tsx). */}
       <section>
-        <h3 className="text-label mb-3">Recent activity</h3>
+        <h2 className="text-label mb-3">Recent activity</h2>
         <ProjectActivity projectId={projectId} pageSize={10} />
       </section>
     </div>

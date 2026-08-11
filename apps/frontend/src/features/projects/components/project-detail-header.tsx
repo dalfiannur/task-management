@@ -28,7 +28,7 @@ import { useUserMap } from "@/features/users";
 import type { Project, ProjectStatus } from "../types";
 import { PROJECT_STATUSES, STATUS_LABEL } from "../types";
 import { useSetProjectStatus, useDeleteProject } from "../api/hooks";
-import { statusToProto } from "../api/mappers";
+import { formatProjectDateRange, statusToProto } from "../api/mappers";
 import { ProjectStatusBadge } from "./project-status-badge";
 import { TransferOwnershipDialog } from "./transfer-ownership-dialog";
 
@@ -44,10 +44,7 @@ export function ProjectDetailHeader({ project }: { project: Project }) {
   const canManage = isAdmin || project.ownerId === me?.id;
   const owner = ownerMap[project.ownerId];
   const ownerName = owner?.displayName ?? "Owner";
-  const range =
-    project.startDate || project.endDate
-      ? `${project.startDate ?? "…"} → ${project.endDate ?? "…"}`
-      : null;
+  const range = formatProjectDateRange(project);
 
   function changeStatus(status: ProjectStatus) {
     setStatus.mutate(
