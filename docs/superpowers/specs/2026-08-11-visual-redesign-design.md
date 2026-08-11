@@ -1,0 +1,321 @@
+# Visual Redesign — Modern SaaS · Light · Industrial · Soft Card · Blue Accent
+
+**Date:** 2026-08-11
+**Scope:** `apps/frontend` — design tokens, `components/ui/` primitives, feature-component styling
+**Not in scope:** navigation structure, information architecture, page composition, backend
+
+---
+
+## 1. Why
+
+The frontend is mid-migration between two visual languages and is currently broken in
+light mode. A prior pass rewrote `styles/tokens.css` into a blue-217 semantic token
+system and converted ~20 CSS modules to it, but the older glassmorphism layer was never
+fully removed. Three distinct failures survive in the tree:
+
+1. **Dead token references** — 4 files: `card`, `input`, `select`, `textarea`. They
+   reference `--glass-bg`, `--glass-border`, `--glass-blur`, `--glass-shadow`. None of
+   these are defined anywhere. Cards render with no background.
+2. **Hardcoded dark glass on floating surfaces** — 3 files, 4 blocks:
+   `select.module.css`, `popover.module.css`, and `dropdown-menu.module.css` (two
+   separate blocks) hardcode `background: hsl(228 20% 10% / 0.9)` with
+   `rgba(255,255,255,0.1)` borders and `backdrop-filter: blur(20px)`, ignoring both the
+   token layer and the active theme. Every select dropdown, popover, and dropdown menu
+   renders as a dark translucent panel in light mode.
+3. **Hardcoded shadow literals** — 5 files: `calendar`, `select`, `checkbox`, `toggle`,
+   `tabs` each carry a literal `box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05)` instead of
+   `--shadow-1`, so they will not follow the retuned shadow scale or the dark theme.
+
+The three sets overlap. The union — the exact repair set — is **10 of the ~23 `ui/`
+modules**, enumerated in Phase 0 (§5).
+
+Repairing this is not cleanup performed alongside the redesign; for floating surfaces it
+*is* the redesign.
+
+## 2. Design direction
+
+Selected through visual comparison in the brainstorming companion.
+
+**Soft-dominant base**, with three industrial signals layered on:
+
+| Decision | Value | How it was chosen |
+|---|---|---|
+| Card treatment | Soft-dominant — 16px radius, borderless, diffuse shadow, roomy rows | Picked over industrial-dominant and hybrid |
+| Industrial signals kept | Mono tabular numerals · uppercase micro-labels · hairline structure | Multi-select from six candidates |
+| Industrial signals rejected | Squared chips · denser rows · visible task IDs | Not selected |
+| Page chrome | Tinted top bar, no border, cards do all the work | Picked over white bar and white header band |
+| Theme | Light is default and the design target; dark stays first-class and maintained | Explicit choice |
+| Accent | Blue, hue 217, already established in the token layer | From the brief |
+
+### The governing rule
+
+> **White means content. Tint means chrome. There is no third surface.**
+
+Every downstream question ("should this be a card?", "does this need a border?") resolves
+against this line. It is the direct consequence of the tinted-bar choice: with no rule
+separating chrome from canvas, the *only* white in the application is a card, and that
+consistency is what makes the absence of borders legible rather than accidental.
+
+### Two consequences the chrome choice creates
+
+Both are solved in this design rather than left open:
+
+1. **The five project-detail tabs lose their anchoring band.** On a tinted canvas with
+   no border they float unanchored. They become a segmented control — a pill group in a
+   `--surface-sunken` track — which is self-anchoring and needs no rule.
+2. **Nothing separates the top bar from content on scroll.** The bar is tint-on-tint at
+   rest and gains `--shadow-1` only once the page is scrolled. The shadow replaces the
+   border that was given up.
+
+## 3. Token layer
+
+### 3.1 Surfaces
+
+Existing mappings are correct for this direction, with one change.
+
+`--surface-sunken` is `grey-100` (94% L) on a `grey-50` canvas (97% L) — three points of
+lightness. Adequate when its only job was an input fill; inadequate now that it also
+backs the segmented-control track, where it must read as a distinct region on the canvas.
+
+**Change:** darken `--surface-sunken` to approximately `hsl(217 5% 91%)` in light. Exact
+value set by measurement (§6). This also relieves the constraint documented in
+`tokens.css` that bans `--text-subtle` on sunken surfaces in light (currently 4.50:1).
+
+The dark-theme mapping is re-measured in the same pass; it is not assumed to carry over.
+
+### 3.2 New token: `--border-subtle`
+
+The token layer has `--border` (`grey-200`, input outlines) and `--border-strong`
+(`grey-500`). Hairline dividers *inside* white cards need a third, lighter value —
+`--border` at `grey-200` reads as a seam against `--surface-raised`.
+
+```
+--border-subtle: var(--grey-100);   /* light */
+```
+
+Dark mapping set by measurement. This token carries industrial signal #3 (hairline
+structure) and is used for row dividers and in-card section rules only. It is never used
+for input outlines or component boundaries.
+
+### 3.3 Radius roles
+
+The scale is unchanged (`4 / 8 / 12 / 16 / full`). Role assignments move softer:
+
+| Element | Current | New |
+|---|---|---|
+| Cards, panels | `--radius-lg` (12) | `--radius-xl` (16) |
+| Buttons, chips, badges | 8 | `--radius-full` |
+| Inputs, selects, menus, popovers | 8 | `--radius-lg` (12) |
+| Checkbox, small controls | `--radius-sm` (4) | unchanged |
+
+Pills for buttons and chips follow from the soft-dominant choice and from squared chips
+being explicitly rejected.
+
+### 3.4 Shadows
+
+`--shadow-1..5` are currently tight-radius Tailwind-style shadows. Soft Card requires
+diffuse shadows with negative spread. Reference shape for the card role:
+
+```
+0 1px 3px hsl(217 40% 12% / .06), 0 8px 24px -8px hsl(217 40% 12% / .14)
+```
+
+The whole scale is retuned to this character. Hue and the dark-theme overrides follow the
+existing conventions in `tokens.css`.
+
+**Elevation roles:**
+
+| Role | Token |
+|---|---|
+| Card at rest | `--shadow-2` |
+| Interactive card, hover | `--shadow-3` |
+| Top bar, scrolled only | `--shadow-1` |
+| Dropdown · select · popover | `--shadow-3` |
+| Dialog · sheet | `--shadow-4` |
+| Toast | `--shadow-3` |
+| Sunken controls (inputs, wells) | `--shadow-inset` (defined, currently unused) |
+
+### 3.5 Typography
+
+Typefaces are unchanged: `Google Sans` and `Google Sans Mono`, imported from Google
+Fonts in `tokens.css`. Both were verified to resolve and return real `@font-face` rules.
+
+**Addition — `.text-num` utility** in `index.css`, alongside the existing `.text-label`:
+
+```css
+.text-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+```
+
+Applied to every stat, count, date, and duration. This is industrial signal #1; the mono
+family is already in the token layer, so the signal costs one utility class.
+
+`.text-label` already exists and already matches industrial signal #2 (12px / 600 /
+uppercase / `.08em` / `--text-subtle`). It changes from occasional to systematic: every
+stat label, column header, and field label uses it.
+
+### 3.6 Accent discipline
+
+Blue is reserved for:
+
+- primary button fill
+- active navigation item
+- focus ring
+- progress fill
+- links
+- selected state
+
+Blue is **not** used for card headers, icons at rest, section dividers, or decoration.
+One accent used sparingly is what separates "Blue Accent" from "blue everything".
+
+## 4. Component treatments
+
+### 4.1 Floating surfaces — full replacement
+
+`select.module.css` · `popover.module.css` · `dropdown-menu.module.css` (both blocks).
+
+The hardcoded dark-glass blocks are replaced entirely with: `--surface-overlay` fill,
+`--border` hairline, `--radius-lg`, `--shadow-3`, no blur.
+
+`backdrop-filter` is removed. It is the signature of the language being left, and it
+costs a compositing layer per open menu.
+
+### 4.2 Card
+
+Border removed entirely. `--surface-raised` fill, `--radius-xl`, `--shadow-2`.
+Interactive cards (project cards) lift to `--shadow-3` on hover over `--duration-fast`
+with `--ease-out`. Internal section dividers use `--border-subtle`, never `--border`.
+
+### 4.3 Button
+
+Already `rounded-full`, so pills require no change. One change: `shadow-1` currently
+appears on `default`, `secondary`, `destructive`, and `outline`. It is kept only on
+`default` (primary) and removed from the rest — when every button is lifted, none of them
+are, and the primary action stops being the obvious target.
+
+Sizes, hit-area handling, and focus-ring treatment are unchanged; they already satisfy
+the accessibility rules documented in the file.
+
+### 4.4 Inputs, textarea, select trigger
+
+`--surface-sunken` fill (replacing the dead `--glass-bg`), `--border` hairline,
+`--radius-lg`, `--shadow-inset`. Sunken controls against raised cards communicate
+"editable" without a heavy outline.
+
+### 4.5 Tabs → segmented control
+
+Pill group in a `--surface-sunken` track at `--radius-full`. The active tab is a
+`--surface-raised` pill carrying `--shadow-1`. Self-anchoring, so it needs neither border
+nor band — this is what makes the tinted-bar chrome viable for the five-tab project
+detail route.
+
+### 4.6 Badge and label chip
+
+Pill (`--radius-full`), `*-subtle` background with the matching `*-text` foreground.
+
+### 4.7 Table
+
+Header row uses `.text-label`. Every numeric and date cell uses `.text-num`. Row
+separators use `--border-subtle`. This is where industrial signals #1–3 concentrate most
+heavily and where the industrial read matters most.
+
+### 4.8 Top bar
+
+`--surface` (tint) fill, no border at rest. Gains `--shadow-1` on scroll.
+
+### 4.9 Skeleton and empty states
+
+`components/shared/empty-state.tsx` is new and untracked; it is designed into the
+language from the start rather than retrofitted.
+
+## 5. Phasing
+
+Sequenced as a vertical slice first, then replication — chosen so a taste disagreement
+costs one route rather than a completed sweep.
+
+### Phase 0 — Commit baseline, then repair and retoken
+
+Commit the in-flight frontend changes unmodified — the ~65 modified files under
+`apps/frontend/` plus the untracked `components/shared/empty-state.tsx` and
+`theme-toggle.tsx`. They are a coherent half-migration; editing on top of them makes the
+redesign diff unreadable and unrevertable. The unrelated in-flight files
+(`apps/backend-rs/.../seed_user.rs`, `.claude/settings.local.json`) are left alone and
+are not part of this commit.
+
+Then: `tokens.css` changes (§3.1–3.4), `@theme inline` mappings in `index.css`,
+`.text-num`, and `defaultTheme: "dark"` → `"light"` in `main.tsx`.
+
+Then repair all 10 affected modules:
+
+| Module | Dead `--glass-*` | Dark-glass panel | Shadow literal |
+|---|:--:|:--:|:--:|
+| `card` | ● | | |
+| `input` | ● | | |
+| `textarea` | ● | | |
+| `select` | ● | ● | ● |
+| `popover` | | ● | |
+| `dropdown-menu` | | ● (×2) | |
+| `calendar` | | | ● |
+| `checkbox` | | | ● |
+| `toggle` | | | ● |
+| `tabs` | | | ● |
+
+**Gate:** app renders coherently in both themes; `grep -lE 'rgba\(|rgb\(|hsl\(|#[0-9a-fA-F]{3,6}|--glass' components/ui/*.module.css`
+returns nothing.
+
+### Phase 1 — Vertical slice: Dashboard
+
+App shell (tinted bar, scroll shadow), card, button, badge, stat cards, `my-task-row`,
+`upcoming-deadlines`, `empty-state`. One route, production quality, both themes.
+
+**Gate — the taste checkpoint.** Reviewed running at `localhost:3001` before anything
+else moves. Phase 2 does not begin until this is approved.
+
+### Phase 2 — Remaining `ui/` primitives
+
+Every other module brought to the patterns locked in Phase 1: dialog, sheet, popover,
+dropdown-menu, select, command, calendar, checkbox, toggle, tooltip, tabs (→ segmented
+control), scroll-area, avatar, breadcrumb, separator, skeleton, sonner, alert-dialog.
+
+### Phase 3 — Feature sweep
+
+Route by route against the locked reference: projects → tasks → timeline → members →
+media → pages → comments/activity/labels/notifications → auth forms.
+
+Timeline carries the most risk. A Gantt chart is inherently dense and industrial and will
+fight the soft language hardest; it may need locally tighter treatment, decided when
+reached rather than pre-specified here.
+
+### Phase 4 — Consistency pass
+
+Full walk of every route in both themes, checking for drift from the Phase 1 reference.
+
+## 6. Verification
+
+**Per phase boundary:** `bun run tsc --noEmit`, `bun run lint`, `vite build`.
+
+**Contrast:** every semantic token that is added or changed is measured against every
+surface it can appear on, in both light and dark, to the 4.5:1 body / 3:1 non-text
+thresholds already applied in `tokens.css`. The reasoning is recorded in the file's
+comments, matching the existing convention. No value is estimated.
+
+**Glass residue:** no `--glass-` reference and no color literal outside `var(--…)`
+remains in `components/ui/*.module.css`.
+
+**Visual:** reviewed in the running app at each phase gate, in both themes.
+
+Implementation runs under the project's `ui-design` skill, which enforces this token
+layer and Refactoring UI principles.
+
+## 7. Known risk
+
+The soft-dominant base explicitly trades density away, in an application whose primary
+activity is scanning long task lists. Phase 1 is the first point where that trade is
+visible at real data volume.
+
+If the dashboard reads airy but thin, the cheapest correction is tightening list-row
+padding from 13px toward 9px while leaving card radius, shadows, and page margins
+untouched — this recovers scanning density without abandoning the soft direction. That
+decision is made at the Phase 1 gate, on the real screen, not in advance.
