@@ -1,53 +1,8 @@
 import { Link } from "@tanstack/react-router";
 import { CheckCircle2, Clock, ListTodo, AlertTriangle } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
+import { StatCard } from "@/components/shared/stat-card";
 import { useDashboardStats } from "../api/hooks";
-
-/** Hanya "Overdue" yang menuntut tindakan, jadi hanya ia yang diberi warna
- *  penuh. Sebelumnya keempat kartu punya ikon berwarna sendiri — kalau semua
- *  menonjol, tidak ada yang menonjol (aturan 4). Sisanya diredupkan. */
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  alert = false,
-}: {
-  icon: LucideIcon;
-  label: string;
-  value: number;
-  alert?: boolean;
-}) {
-  return (
-    <Card>
-      <CardContent className="flex items-center gap-3 p-4">
-        <span
-          className={cn(
-            "flex h-11 w-11 shrink-0 items-center justify-center rounded-full",
-            alert
-              ? "bg-danger-subtle text-danger"
-              : "bg-surface-sunken text-text-muted",
-          )}
-        >
-          <Icon className="h-4 w-4" aria-hidden="true" />
-        </span>
-        <div>
-          <div
-            className={cn(
-              "text-num text-2xl font-semibold",
-              alert ? "text-danger" : "text-text",
-            )}
-          >
-            {value}
-          </div>
-          <div className="text-label">{label}</div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
 
 export function StatCards() {
   const { stats, isLoading } = useDashboardStats();
