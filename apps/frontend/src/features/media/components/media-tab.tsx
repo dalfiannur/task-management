@@ -88,11 +88,11 @@ export function MediaTab({ projectId }: { projectId: string }) {
       {isLoading ? (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-16 w-full rounded-lg" />
+            <Skeleton key={i} className="h-16 w-full rounded-xl shadow-2" />
           ))}
         </div>
       ) : files.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-12 text-center text-text-muted">
+        <div className="rounded-xl bg-surface-raised p-12 text-center text-text-muted shadow-2">
           No files yet. Upload to share files with the project.
         </div>
       ) : (
@@ -103,14 +103,14 @@ export function MediaTab({ projectId }: { projectId: string }) {
             return (
               <li
                 key={f.id}
-                className="group flex items-center gap-3 rounded-lg border p-3"
+                className="group flex items-center gap-3 rounded-xl bg-surface-raised p-3 shadow-2"
               >
                 <Icon className="h-8 w-8 shrink-0 text-text-muted" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">
                     {f.originalFileName || f.fileName}
                   </p>
-                  <p className="text-xs text-text-muted">
+                  <p className="text-num text-xs text-text-muted">
                     {formatBytes(f.size)}
                   </p>
                 </div>
