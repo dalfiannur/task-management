@@ -42,9 +42,9 @@ export function PagesTab({ projectId }: { projectId: string }) {
     );
   }
 
+  // Tanpa garis atas: segmented control di atasnya menambatkan dirinya
+  // sendiri, dan aturan chrome desain ini melarang rule antar-region.
   return (
-    {/* Tanpa garis atas: segmented control di atasnya menambatkan dirinya
-        sendiri, dan aturan chrome desain ini melarang rule antar-region. */}
     <div className="flex h-[calc(100vh-14rem)] min-h-[28rem]">
       <aside className="flex w-64 shrink-0 flex-col border-r border-border-subtle">
         <div className="flex items-center justify-between p-2">
