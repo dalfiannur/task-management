@@ -47,7 +47,7 @@ export function AssigneePicker({
                   <button
                     type="button"
                     onClick={() => toggle(id)}
-                    className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-surface-sunken"
+                    className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors [transition-duration:var(--duration-fast)] hover:bg-surface-hover"
                   >
                     <Avatar className="h-6 w-6">
                       {u?.avatarUrl && <AvatarImage src={u.avatarUrl} />}
@@ -101,7 +101,7 @@ export function AssigneeAvatars({
         );
       })}
       {extra > 0 && (
-        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-sunken text-xs ring-1 ring-surface">
+        <span className="text-num flex h-5 w-5 items-center justify-center rounded-full bg-surface-sunken text-xs ring-1 ring-surface-raised">
           +{extra}
         </span>
       )}
