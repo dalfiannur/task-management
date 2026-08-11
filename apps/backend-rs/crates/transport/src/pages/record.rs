@@ -83,3 +83,22 @@ pub(crate) async fn pages_for_project(
     v.sort_by_key(|p| (p.order, p.pid));
     Ok(v)
 }
+
+/// How many pages a project has — counted without materialising page bodies.
+pub(crate) async fn page_count_for_project(
+    store: &Store,
+    project_id: &str,
+) -> anyhow::Result<u32> {
+    let pj = project_id.to_string();
+    let hits = store
+        .query::<PageInfo, ()>(None, move |world, pairs| {
+            pairs
+                .iter()
+                .filter_map(|(_, e)| world.get::<PageInfo>(*e))
+                .filter(|p| p.project_id == pj)
+                .map(|_| ())
+                .collect()
+        })
+        .await?;
+    Ok(hits.len() as u32)
+}

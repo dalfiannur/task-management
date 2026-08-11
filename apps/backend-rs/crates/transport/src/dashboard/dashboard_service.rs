@@ -9,7 +9,7 @@ use connectrpc_axum::{ConnectError, ConnectRequest, ConnectResponse};
 use domain::task::TaskStatus;
 use persistence::Store;
 
-use super::context::{date_plus, today, Context};
+use super::context::{date_plus, today, Context, Tally};
 use super::project_overview::get_project_overview;
 use super::{internal, require_auth, StoreExt};
 use crate::sedjiwa::tasks::dashboard::v1 as pb;
@@ -26,10 +26,7 @@ async fn get_dashboard_stats(
     let ctx = Context::load(&store, &auth).await.map_err(internal)?;
     let today = today();
 
-    let mut total = 0u32;
-    let mut in_progress = 0u32;
-    let mut done = 0u32;
-    let mut overdue = 0u32;
+    let mut tally = Tally::default();
     // per-project (done, total), seeded with every scoped project (so empty ones show 0/0).
     let mut per: HashMap<String, (u32, u32)> = ctx
         .scoped_projects()
@@ -38,19 +35,8 @@ async fn get_dashboard_stats(
         .collect();
 
     for t in ctx.scoped_tasks() {
-        if t.status == TaskStatus::Cancelled {
-            continue; // total counts non-cancelled tasks
-        }
-        total += 1;
-        match t.status {
-            TaskStatus::InProgress => in_progress += 1,
-            TaskStatus::Done => done += 1,
-            _ => {}
-        }
-        if let Some(due) = &t.due_date {
-            if due.as_str() < today.as_str() && t.status != TaskStatus::Done {
-                overdue += 1;
-            }
+        if !tally.add(t, &today) {
+            continue; // cancelled counts nowhere
         }
         if let Some(pj) = ctx.module_to_project.get(&t.module_id) {
             let e = per.entry(pj.clone()).or_insert((0, 0));
@@ -73,10 +59,10 @@ async fn get_dashboard_stats(
     per_project.sort_by(|a, b| a.project_name.cmp(&b.project_name).then(a.project_id.cmp(&b.project_id)));
 
     Ok(ConnectResponse::new(pb::DashboardStats {
-        total_tasks: total,
-        in_progress_tasks: in_progress,
-        done_tasks: done,
-        overdue_tasks: overdue,
+        total_tasks: tally.total,
+        in_progress_tasks: tally.in_progress,
+        done_tasks: tally.done,
+        overdue_tasks: tally.overdue,
         per_project,
     }))
 }

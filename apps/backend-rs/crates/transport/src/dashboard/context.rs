@@ -3,6 +3,7 @@
 use std::collections::{HashMap, HashSet};
 
 use auth::AuthUser;
+use domain::task::TaskStatus;
 use persistence::Store;
 
 use crate::projects::record::{load_all_projects, member_project_ids};
@@ -90,6 +91,38 @@ impl Context {
             module_name: self.module_names.get(&t.module_id).cloned().unwrap_or_default(),
             project_id,
         }
+    }
+}
+
+/// The four headline task counts, under the one rule set both the dashboard and
+/// the project Overview tab must agree on.
+#[derive(Default)]
+pub(crate) struct Tally {
+    pub total: u32,
+    pub in_progress: u32,
+    pub done: u32,
+    pub overdue: u32,
+}
+
+impl Tally {
+    /// Count `t`. Returns `false` for cancelled tasks, which count nowhere —
+    /// callers must skip them in their per-group totals too.
+    pub fn add(&mut self, t: &TaskRecord, today: &str) -> bool {
+        if t.status == TaskStatus::Cancelled {
+            return false;
+        }
+        self.total += 1;
+        match t.status {
+            TaskStatus::InProgress => self.in_progress += 1,
+            TaskStatus::Done => self.done += 1,
+            _ => {}
+        }
+        if let Some(due) = &t.due_date {
+            if due.as_str() < today && t.status != TaskStatus::Done {
+                self.overdue += 1;
+            }
+        }
+        true
     }
 }
 

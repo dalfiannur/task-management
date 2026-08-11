@@ -3,9 +3,10 @@
 //! Deferred: activity emit (spec §4) — system not built.
 
 mod page_service;
-pub(crate) mod record;
+mod record;
 
 pub use page_service::page_router;
+pub(crate) use record::page_count_for_project;
 
 use std::sync::Arc;
 

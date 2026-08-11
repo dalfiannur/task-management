@@ -3,9 +3,10 @@
 //! orphan-Pending GC (§8), size/MIME allow-list (§8.2).
 
 mod media_service;
-pub(crate) mod record;
+mod record;
 
 pub use media_service::media_router;
+pub(crate) use record::ready_media_count_for_project;
 
 use std::sync::Arc;
 

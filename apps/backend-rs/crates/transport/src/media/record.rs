@@ -82,6 +82,28 @@ pub(crate) async fn ready_media_for_project(
     Ok(v)
 }
 
+/// How many *ready* files a project has — same filter as `ready_media_for_project`,
+/// counted without materialising the records.
+pub(crate) async fn ready_media_count_for_project(
+    store: &Store,
+    project_id: &str,
+) -> anyhow::Result<u32> {
+    let pj = project_id.to_string();
+    let hits = store
+        .query::<MediaFileInfo, ()>(None, move |world, pairs| {
+            pairs
+                .iter()
+                .filter_map(|(_, e)| world.get::<MediaFileInfo>(*e))
+                .filter(|m| {
+                    m.project_id == pj && MediaStatus::parse(&m.status) == Some(MediaStatus::Ready)
+                })
+                .map(|_| ())
+                .collect()
+        })
+        .await?;
+    Ok(hits.len() as u32)
+}
+
 // ── Task↔media links ─────────────────────────────────────────────────────────
 
 pub(crate) async fn link_exists(
