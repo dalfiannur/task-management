@@ -2,7 +2,10 @@
 
 **Date:** 2026-08-11
 **Scope:** `apps/frontend` — design tokens, `components/ui/` primitives, feature-component styling
-**Not in scope:** navigation structure, information architecture, page composition, backend
+**Not in scope:** information architecture, page composition, backend
+
+**Amended after the redesign shipped:** navigation structure *was* changed — the top-bar
+nav became a sidebar. See §4.11.
 
 ---
 
@@ -347,6 +350,36 @@ heavily and where the industrial read matters most.
 ### 4.8 Top bar
 
 `--surface` (tint) fill, no border at rest. Gains `--shadow-1` on scroll.
+
+### 4.11 Shell — sidebar navigation
+
+Added after the redesign completed, at the user's request. The original spec put navigation
+out of scope; this supersedes that line.
+
+The top bar carried six things: brand, three nav links, theme toggle, notification bell,
+user identity, and a Sign out button. Moving nav to a sidebar is the easy half — the
+decision was where the other four go. Three layouts were compared; **full sidebar with a
+thin action bar** was chosen over "everything in the sidebar, no top bar" and "56px icon
+rail".
+
+| Region | Contents |
+|---|---|
+| Sidebar (`w-56`) | Brand · nav (vertical pills, icon + label) · spacer · user block pinned bottom |
+| User block menu | Sign out — a rare action that previously held permanent space |
+| Action bar (`h-14`, right-aligned) | Theme toggle · notification bell |
+
+**Chrome rule holds:** the sidebar is `--surface`, the same tint as the canvas, with **no
+divider**. What separates regions is the white card carrying content, exactly as §2 states.
+The sidebar is `sticky top-0 h-screen` while the window scrolls, so it needs no scroll
+container of its own.
+
+**The scroll shadow moves but survives.** It now belongs to the action bar rather than a
+full-width header — still `--shadow-1`, still only at `scrollY > 0`, still standing in for
+the border the design refuses to draw.
+
+**Why not the icon rail:** three destinations. Icon-only nav trades legibility for width
+that is not yet needed, and "Dashboard" versus "My tasks" is exactly the pair that resists
+a distinguishable icon. Worth revisiting past five or six destinations.
 
 ### 4.10 Timeline (Gantt) — soft container, industrial interior
 
