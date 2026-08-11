@@ -68,18 +68,39 @@ export function PageEditor({
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center gap-2 border-b border-border-subtle p-3">
-        <Input
-          value={icon}
-          onChange={(e) => setIcon(e.target.value)}
-          placeholder="📄"
-          className="w-14 text-center"
-          maxLength={2}
-        />
+        {/* Lebar ditentukan PEMBUNGKUS, bukan utility di Input-nya.
+            `Input` mengambil lebarnya dari CSS Module (`.input { width: 100% }`),
+            dan utility Tailwind seperti `w-14` TIDAK bisa mengalahkannya:
+            keduanya kelas tunggal berspesifisitas sama (0,1,0), jadi pemenangnya
+            ditentukan urutan sumber CSS — dan urutan itu milik Tailwind, bukan
+            kita. Pola yang sama sudah menggigit sekali di `project-tab-nav.tsx`.
+
+            Terukur sebelum diperbaiki: field ikon 1174px (bukan 56px) dan field
+            judul tergencet jadi 22px. `flex-1` di field judul tidak ikut gagal
+            karena ia bukan properti `width`.
+
+            Membungkus bekerja SAMA dengan kontrak modul itu alih-alih melawannya:
+            modul menjanjikan "selebar induk", jadi induknya yang diberi ukuran.
+            shrink-0 supaya flex tidak menggencetnya balik. */}
+        <span className="w-14 shrink-0">
+          <Input
+            value={icon}
+            onChange={(e) => setIcon(e.target.value)}
+            placeholder="📄"
+            className="text-center"
+            maxLength={2}
+            aria-label="Page icon"
+          />
+        </span>
+        {/* min-w-0: tanpa ini basis flex sebuah input tidak boleh menciut di
+            bawah lebar intrinsiknya, dan judul panjang mendorong baris melebar
+            alih-alih ter-truncate. */}
         <Input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Untitled"
-          className="flex-1 border-0 text-lg font-medium shadow-none focus-visible:ring-0"
+          aria-label="Page title"
+          className="min-w-0 flex-1 border-0 text-lg font-medium shadow-none focus-visible:ring-0"
         />
         <Button size="sm" onClick={save} disabled={!dirty || update.isPending}>
           {update.isPending ? "Saving…" : "Save"}
