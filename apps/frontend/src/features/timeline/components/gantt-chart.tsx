@@ -180,16 +180,24 @@ export function GanttChart({ projectId }: { projectId: string }) {
                     r.kind === "module" && "bg-surface-sunken",
                   )}
                 >
-                  {/* major vertical gridlines */}
-                  {ticks
-                    .filter((t) => t.major)
-                    .map((t) => (
-                      <div
-                        key={t.offset}
-                        className="absolute top-0 h-full border-l border-border"
-                        style={{ left: t.offset * pxPerDay }}
-                      />
-                    ))}
+                  {/* Gridline vertikal — SEMUA tick, bukan hanya yang mayor.
+                      Sebelumnya baris hanya menggambar tick mayor, dan pada
+                      zoom `day` mayor berarti "tanggal 1", jadi tampilan
+                      sebulan hanya punya SATU garis. Membaca tanggal dari
+                      posisi bar mustahil tanpa ini — dan itu justru alasan
+                      grid ini dipertahankan (spec §4.10).
+                      Dua bobot, dua token: hari halus, batas mayor sedikit
+                      lebih berat supaya terbaca sebagai landmark. */}
+                  {ticks.map((t) => (
+                    <div
+                      key={t.offset}
+                      className={cn(
+                        "absolute top-0 h-full border-l",
+                        t.major ? "border-border" : "border-border-subtle",
+                      )}
+                      style={{ left: t.offset * pxPerDay }}
+                    />
+                  ))}
                   {r.kind === "task" && r.task && r.span && (
                     <GanttBar
                       task={r.task}
