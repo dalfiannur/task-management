@@ -61,7 +61,7 @@ export function NotificationBell() {
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0" align="end">
-        <div className="flex items-center justify-between border-b px-3 py-2">
+        <div className="flex items-center justify-between border-b border-border-subtle px-3 py-2">
           <span className="text-sm font-medium">Notifications</span>
           {count > 0 && (
             <Button
@@ -90,7 +90,7 @@ export function NotificationBell() {
                   type="button"
                   onClick={() => onClick(n)}
                   className={cn(
-                    "flex w-full items-start gap-2 border-b px-3 py-2.5 text-left last:border-b-0 hover:bg-surface-sunken/50",
+                    "flex w-full items-start gap-2 border-b border-border-subtle px-3 py-2.5 text-left transition-colors [transition-duration:var(--duration-fast)] last:border-b-0 hover:bg-surface-hover",
                     !n.read && "bg-brand/5",
                   )}
                 >
