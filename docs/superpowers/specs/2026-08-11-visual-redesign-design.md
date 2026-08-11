@@ -348,6 +348,40 @@ heavily and where the industrial read matters most.
 
 `--surface` (tint) fill, no border at rest. Gains `--shadow-1` on scroll.
 
+### 4.10 Timeline (Gantt) — soft container, industrial interior
+
+Deferred by §5 and §7, decided during Phase 3b.
+
+A Gantt is a coordinate grid: reading a date off a bar *requires* vertical rules. Removing
+them for consistency trades the chart's function for its looks. Three treatments were
+compared — fully soft with no gridlines, a utilitarian tool surface that opts out of the
+design language, and a hybrid. **The hybrid was chosen.**
+
+The chart sits in the same borderless 16px card with `--shadow-2` as every other surface
+in the app. Inside that card it keeps a real grid:
+
+| Element | Treatment |
+|---|---|
+| Container | `--surface-raised`, `--radius-xl`, `--shadow-2`, no border |
+| Row hairlines | `--border-subtle` |
+| Day gridlines | `--border-subtle` |
+| Week (major) gridlines | `--border` — one step heavier, which is what makes boundaries readable |
+| Module rows | `--surface-sunken` band |
+| Date ticks | `.text-num` |
+| Bars | `--radius-full`; done state muted, not recoloured |
+
+This is the hybrid passed over in the original direction-setting. That was a judgement about
+the whole application; here the grid carries meaning rather than decoration, and the choice
+changes no outer surface — only the chart's interior.
+
+**Four defects fixed alongside**, all instances of patterns removed elsewhere: gridlines were
+`border-text/10` and `border-text/20` and module rows `surface-sunken/40` — unmeasured alpha
+composites of `--text` and `--surface-sunken`; the zoom control was a third hand-rolled
+segmented control; and the empty state was a dashed box.
+
+**The risk this treatment carries**, to be judged at the Phase 3b gate: an industrial grid
+inside a soft shell may read as a foreign object embedded in the app rather than part of it.
+
 ### 4.9 Skeleton and empty states
 
 `components/shared/empty-state.tsx` is new and untracked; it is designed into the
