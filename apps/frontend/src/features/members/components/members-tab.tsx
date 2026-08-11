@@ -59,9 +59,12 @@ export function MembersTab({ projectId }: { projectId: string }) {
 
   if (isLoading) {
     return (
-      <div className="space-y-2 p-6">
-        <Skeleton className="h-12 w-full rounded-xl" />
-        <Skeleton className="h-12 w-full rounded-xl" />
+      // Bentuk skeleton mengikuti bentuk akhirnya: satu heading pendek lalu
+      // SATU kartu, bukan dua blok terpisah seperti sebelumnya — dua blok
+      // menjanjikan dua kartu, dan yang datang cuma satu.
+      <div className="space-y-4 p-6">
+        <Skeleton className="h-5 w-24" />
+        <Skeleton className="h-32 w-full rounded-xl shadow-2" />
       </div>
     );
   }
@@ -90,12 +93,35 @@ export function MembersTab({ projectId }: { projectId: string }) {
         </div>
       </div>
 
-      <ul className="divide-y rounded-lg border">
+      {/* Kartu raised, bukan `rounded-lg border` seperti sebelumnya. Bentuk ini
+          sudah punya preseden di app: `my-tasks-view` dan `upcoming-deadlines`
+          memakai pembungkus yang sama persis, dengan heading tetap di kanvas di
+          atasnya — jadi Members ikut, bukan bikin bahasa ketiga.
+
+          Border luarnya dilepas, bukan dipertahankan bersama kartu: aturan 7
+          meminta beda `--surface` dan shadow dicoba lebih dulu sebelum border,
+          dan setelah keduanya ada, border itu hanya menggandakan tepi yang
+          sudah ditandai.
+
+          Sekat antar-baris turun dari `divide-y` (yang memakai `--border`) ke
+          `--border-subtle` — tokens.css mendefinisikan `--border` terlalu berat
+          untuk dipakai DI DALAM permukaan raised; di sana ia terbaca sebagai
+          jahitan. Sama dengan yang dipakai `my-task-row`.
+
+          overflow-hidden tidak mengubah apa pun hari ini — baris member
+          transparan dan tidak punya state hover. Ia dipasang untuk alasan yang
+          sama seperti di `my-tasks-view`: begitu sebuah baris mendapat latar
+          sendiri, sudut baris pertama dan terakhir akan menonjol keluar dari
+          radius kartu, dan itu jenis regresi yang tidak terlihat di review. */}
+      <ul className="overflow-hidden rounded-xl bg-surface-raised shadow-2">
         {sorted.map((m) => {
           const u = userMap[m.userId];
           const name = u?.displayName ?? m.userId;
           return (
-            <li key={m.userId} className="flex items-center gap-3 px-4 py-3">
+            <li
+              key={m.userId}
+              className="flex items-center gap-3 border-b border-border-subtle px-4 py-3 last:border-b-0"
+            >
               <Avatar className="h-9 w-9">
                 {u?.avatarUrl && <AvatarImage src={u.avatarUrl} />}
                 <AvatarFallback>{getInitials(name)}</AvatarFallback>
