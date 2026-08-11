@@ -25,13 +25,15 @@ const buttonVariants = cva(
         // Hover memakai --brand-hover / bukan --brand beralpha: pasangan
         // --text-on-brand di atas --brand-hover sudah diukur (9.64 light /
         // 6.16 dark), sedangkan hasil komposit alpha tidak pernah diukur.
+        // Hanya `default` yang terangkat. Kalau semua tombol punya bayangan,
+        // tidak ada yang menonjol dan aksi utama kehilangan targetnya
+        // (aturan 4).
         default: "bg-brand text-text-on-brand shadow-1 hover:bg-brand-hover",
-        secondary:
-          "bg-surface-sunken text-text shadow-1 hover:bg-surface-hover",
+        secondary: "bg-surface-sunken text-text hover:bg-surface-hover",
         destructive:
-          "bg-danger text-text-on-danger shadow-1 hover:bg-danger/90",
+          "bg-danger text-text-on-danger hover:bg-danger/90",
         outline:
-          "border border-border bg-surface-raised text-text shadow-1 hover:bg-surface-hover",
+          "border border-border bg-surface-raised text-text hover:bg-surface-hover",
         ghost: "text-text hover:bg-surface-hover",
         link: "text-brand-text underline underline-offset-4",
       },
