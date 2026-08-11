@@ -103,7 +103,7 @@ export function GanttBar({
         height: 22,
       }}
       className={cn(
-        "absolute flex items-center rounded-sm px-2 text-xs",
+        "absolute flex items-center rounded-full px-2.5 text-xs",
         canEdit ? "cursor-grab active:cursor-grabbing" : "cursor-default",
         // Task selesai adalah riwayat, bukan sinyal — ia diredupkan, bukan
         // diberi warna kedua yang ikut bersaing (aturan 4). Maknanya tetap
@@ -118,14 +118,14 @@ export function GanttBar({
       {canEdit && (
         <span
           onPointerDown={down("resize-left")}
-          className="absolute left-0 top-0 h-full w-1.5 cursor-ew-resize rounded-l-sm bg-current opacity-30"
+          className="absolute left-0 top-0 h-full w-1.5 cursor-ew-resize rounded-l-full bg-current opacity-30"
         />
       )}
       <span className="truncate">{task.title}</span>
       {canEdit && (
         <span
           onPointerDown={down("resize-right")}
-          className="absolute right-0 top-0 h-full w-1.5 cursor-ew-resize rounded-r-sm bg-current opacity-30"
+          className="absolute right-0 top-0 h-full w-1.5 cursor-ew-resize rounded-r-full bg-current opacity-30"
         />
       )}
       <span className="sr-only">{TASK_STATUS_CONFIG[task.status].label}</span>
