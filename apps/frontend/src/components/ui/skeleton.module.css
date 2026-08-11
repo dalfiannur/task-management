@@ -1,6 +1,20 @@
+/* SENGAJA tanpa border-radius. Skeleton meniru bentuk elemen yang digantikannya,
+   jadi radius adalah hal yang WAJIB bisa ditimpa per tempat pakai — dan dari
+   sini ia tidak bisa. Kelas CSS Module tidak berlapis, sedangkan utility
+   Tailwind hidup di dalam @layer, dan style tak-berlapis selalu menang atas
+   yang berlapis berapa pun urutan sumbernya. Terukur saat aturan itu masih di
+   sini: modul saja 8px · rounded-xl saja 16px · KEDUANYA 8px. Semua
+   `rounded-xl`/`rounded-full` pada <Skeleton> di app ini mati tanpa suara.
+
+   Default-nya sekarang utility `rounded-md` di skeleton.tsx, di mana
+   tailwind-merge bisa mengadunya dengan className pemanggil dan yang terakhir
+   menang. Nilainya identik (--radius-md → --radius → 8px), jadi tempat pakai
+   yang tidak menyebut radius tidak berubah sama sekali.
+
+   Pola yang sama sudah menggigit dua kali: `w-14` di page-editor.tsx dan
+   activeProps di project-tab-nav.tsx. */
 .skeleton {
   background-color: var(--surface-hover);
-  border-radius: var(--radius-md);
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
