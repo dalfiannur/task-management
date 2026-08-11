@@ -106,6 +106,24 @@ not be darkened past ~90% without re-measuring.
 
 The dark-theme mapping is re-measured in the same pass; it is not assumed to carry over.
 
+**This forces one layer-1 change.** `--border-strong` is the input border, and inputs sit
+on `--surface-sunken`. Darkening that surface drops the pairing from 3.14 to **2.93** —
+below the 3:1 threshold. The existing comment on `--grey-500` records that 54% was
+chosen precisely to avoid 2.93 on this pairing, tuned against a 94% sunken surface; it
+does not survive the move to 91%.
+
+`--grey-500` therefore goes 54% → **52%**, restoring 3.14:
+
+| `--border-strong` on | light | dark |
+|---|---|---|
+| `--surface` | 3.61 | 3.59 |
+| `--surface-sunken` | 3.14 | 4.21 |
+
+This is the only layer-1 primitive this redesign touches. It ripples to both themes
+because `.dark` maps `--border-strong` to the same primitive. The general rule it
+illustrates is worth keeping: **`--surface-sunken` and `--grey-500` are coupled — darken
+one and the other must follow.**
+
 ### 3.2 New token: `--border-subtle`
 
 The token layer has `--border` (`grey-200`, input outlines) and `--border-strong`
