@@ -97,16 +97,17 @@ export function GanttChart({ projectId }: { projectId: string }) {
   return (
     <div className="space-y-4 p-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-medium">Timeline</h2>
-        <div className="inline-flex rounded-md border p-0.5">
+        <h2 className="text-label">Timeline</h2>
+        <div className="inline-flex gap-1 rounded-full bg-surface-sunken p-[3px]">
           {ZOOMS.map((z) => (
             <button
               key={z}
               onClick={() => setZoom(z)}
               className={cn(
-                "rounded-sm px-3 py-1 text-sm capitalize transition-colors",
+                "rounded-full px-3 py-1 text-sm capitalize transition-colors",
+                "[transition-duration:var(--duration-fast)]",
                 zoom === z
-                  ? "bg-brand text-text-on-brand"
+                  ? "bg-surface-raised font-medium text-text shadow-1"
                   : "text-text-muted hover:text-text",
               )}
             >
