@@ -166,10 +166,11 @@ Wrapped in the card container used by the Members / Pages tabs, `p-6`:
 │ [Total 42] [In progress 8] [Done 30] [Overdue 3]         │
 ├────────────────────────────────┬─────────────────────────┤
 │ Progress  ▓▓▓▓▓▓▓░░░ 71%       │ About                   │
-│ Per module                     │ Status · Owner          │
-│  Auth     ▓▓▓▓▓░ 8/10          │ 1 Jul → 30 Sep          │
-│  Billing  ▓▓░░░░ 2/9           │ 6 modules · 4 pages ·   │
-│                                │ 12 media                │
+│ Per module                     │ Owner   ◍ Dikry         │
+│  Auth     ▓▓▓▓▓░ 8/10          │ Dates   1 Jul → 30 Sep  │
+│  Billing  ▓▓░░░░ 2/9           │ Contents 6 modules ·    │
+│                                │          4 pages · 12   │
+│                                │          media          │
 │                                │ Members ◍◍◍◍ +3         │
 ├────────────────────────────────┴─────────────────────────┤
 │ Recent activity  → <ProjectActivity pageSize={10}/>      │
@@ -182,9 +183,17 @@ Overall progress = `done_tasks / total_tasks`, shown as a percentage plus a bar.
 
 The *About* panel is not a repeat of the detail header: the header answers "what
 project is this" (name, description, owner, dates), About answers "how much is in
-it" (status, counts, member faces). Status / owner / dates come from `useProject`
-(warm cache from the shell); the counts and `member_ids` come from the overview
-RPC; names and avatars resolve through `useUserMap`.
+it" (counts, member faces). Owner and dates come from `useProject` (warm cache
+from the shell); the counts and `member_ids` come from the overview RPC; names
+and avatars resolve through `useUserMap`.
+
+**No Status row.** An earlier draft of this design put the project status badge
+in this panel. It was cut during review: the header renders the same
+`ProjectStatusBadge` a few hundred pixels above, and on the landing viewport both
+are visible at once — the same badge twice at equal weight, which is exactly the
+"if everything is prominent, nothing is" failure. Owner and dates survive the
+same objection because they are visually far quieter and still earn their place
+once the header has scrolled away.
 
 ### Routing
 
