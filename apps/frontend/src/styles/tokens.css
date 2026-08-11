@@ -80,6 +80,14 @@
      4.48, sudah di bawah ambang) dan 3.62:1 di dark. Hanya tier 1 & 2. */
   --surface-sunken:  hsl(217 5% 91%);
   --surface-overlay: hsl(217 0% 100%);
+  /* PERMUKAAN KETIGA — dan itu disengaja. Aturan §2 semula melarangnya karena
+     chrome dulu hanya top bar setipis 56px yang duduk di kanvas. Sidebar adalah
+     wilayah chrome besar dan permanen; memberinya nilai sendiri membuat "chrome
+     vs konten" terbaca sekali lihat, bukan ditebak dari isinya.
+     84%, bukan lebih gelap: --text di atasnya 9.47:1 dan pil aktif tetap
+     terbaca. --text-muted DILARANG di sini (4.09:1) — label nav memakai
+     --text penuh. Ikon non-teks boleh (4.09 > ambang 3:1). */
+  --surface-chrome:  hsl(217 6% 84%);
   /* --text-subtle DILARANG di atas --surface-hover. Tier 1 & 2 saja. */
   --surface-hover:   var(--grey-100);
 
@@ -166,6 +174,11 @@
   --surface-raised:  var(--grey-800);
   --surface-sunken:  hsl(217 9% 13%);
   --surface-overlay: var(--grey-800);
+  /* Di dark ia LEBIH GELAP dari kanvas, bukan lebih terang: menaikkannya akan
+     menabrak --surface-raised (grey-800) dan sidebar jadi tak terbedakan dari
+     kartu. 1.30:1 vs kanvas — lebih sempit dari light karena kanvas dark sudah
+     dekat hitam, jadi ruang di bawahnya tinggal sedikit. */
+  --surface-chrome:  hsl(217 9% 9%);
   /* --text-subtle DILARANG di atas --surface-hover: hanya 3.62:1. */
   --surface-hover:   hsl(217 9% 30%);
 

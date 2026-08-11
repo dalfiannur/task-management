@@ -22,6 +22,7 @@
   --color-surface-raised: var(--surface-raised);
   --color-surface-sunken: var(--surface-sunken);
   --color-surface-overlay: var(--surface-overlay);
+  --color-surface-chrome: var(--surface-chrome);
   --color-surface-hover: var(--surface-hover);
 
   /* Teks — tiga tier + label di atas fill */

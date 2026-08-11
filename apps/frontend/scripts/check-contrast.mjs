@@ -93,6 +93,7 @@ const PAIRS = [
   ["--text", "--surface-sunken", TEXT],
   ["--text", "--surface-overlay", TEXT],
   ["--text", "--surface-hover", TEXT],
+  ["--text", "--surface-chrome", TEXT],
   ["--text-muted", "--surface", TEXT],
   ["--text-muted", "--surface-raised", TEXT],
   ["--text-muted", "--surface-sunken", TEXT],
@@ -141,6 +142,9 @@ const REPORTED = [["--brand", "--surface-raised"]];
 const FORBIDDEN = [
   ["--text-subtle", "--surface-sunken"],
   ["--text-subtle", "--surface-hover"],
+  // --surface-chrome sengaja gelap supaya sidebar tegas; konsekuensinya hanya
+  // --text penuh yang boleh di atasnya. Label nav memakai --text, bukan muted.
+  ["--text-muted", "--surface-chrome"],
 ];
 
 /**

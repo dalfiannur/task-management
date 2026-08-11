@@ -30,17 +30,17 @@ const NAV: { to: string; label: string; icon: LucideIcon }[] = [
 
 /** Authed shell: sidebar navigation + a thin action bar over the outlet.
  *
- *  Sidebar memakai --surface-sunken, BUKAN permukaan baru: aturan §2 melarang
- *  permukaan ketiga, dan putih sudah berarti konten. Sunken adalah token yang
- *  sudah ada — chrome duduk di wilayah tenggelam, konten mengambang di atasnya
- *  dengan kartu putih. Tetap tanpa garis pemisah.
+ *  Sidebar memakai --surface-chrome — permukaan KETIGA, dan itu keputusan
+ *  sadar. §2 semula melarangnya; lihat §2/§4.11 di spec untuk alasan aturan itu
+ *  dilonggarkan. Tetap tanpa garis pemisah: yang memisahkan adalah fill-nya.
  *
  *  Tiga konsekuensi yang HARUS ikut, semuanya terukur:
- *   · hover nav TIDAK boleh --surface-hover — di atas sunken ia 1.07:1, praktis
- *     tak terlihat. Ia naik ke --surface-raised (1.23 light / 1.46 dark).
- *   · chip avatar tidak boleh --surface-sunken — sunken di atas sunken = 1.00:1.
- *   · chevron tidak boleh --text-subtle — pasangan itu DILARANG di atas
- *     --surface-sunken (4.18:1 di light, lihat tokens.css).
+ *   · label nav TIDAK boleh --text-muted — di atas --surface-chrome ia 4.09:1,
+ *     di bawah ambang 4.5. Label memakai --text penuh; pembeda aktif/nonaktif
+ *     dibawa pil brand, bukan tingkat abu.
+ *   · hover nav TIDAK boleh --surface-hover — ia lebih terang tapi terlalu
+ *     dekat; ia naik ke --surface-raised (1.62 light / 1.62 dark).
+ *   · chip avatar tidak boleh --surface-sunken — terlalu dekat ke chrome.
  *
  *  Sidebar sticky setinggi layar sementara window yang menggulir, jadi ia tidak
  *  butuh scroll container sendiri. */
@@ -67,7 +67,7 @@ export function AppShell() {
 
   return (
     <div className="flex min-h-screen bg-surface">
-      <aside className="sticky top-0 flex h-screen w-56 shrink-0 flex-col bg-surface-sunken">
+      <aside className="sticky top-0 flex h-screen w-56 shrink-0 flex-col bg-surface-chrome">
         <span className="flex h-14 items-center px-5 font-semibold">
           {APP_NAME}
         </span>
@@ -85,7 +85,7 @@ export function AppShell() {
                 className: "bg-brand-subtle text-brand-text font-semibold",
               }}
               inactiveProps={{
-                className: "text-text-muted hover:bg-surface-raised hover:text-text",
+                className: "text-text hover:bg-surface-raised",
               }}
             >
               <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />

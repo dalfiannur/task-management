@@ -52,10 +52,23 @@ Selected through visual comparison in the brainstorming companion.
 
 ### The governing rule
 
-> **White means content. Tint means chrome. There is no third surface.**
+> **White means content. Tint means chrome.**
+>
+> ~~There is no third surface.~~ — **amended, see below.**
 
 Every downstream question ("should this be a card?", "does this need a border?") resolves
-against this line. It is the direct consequence of the tinted-bar choice: with no rule
+against this line.
+
+**Amendment (after the sidebar landed).** The "no third surface" clause was written when
+chrome meant a 56px top bar sitting on the canvas — at that size, giving it its own value
+would have been noise. A sidebar is a large, permanent region, and the clause stopped
+paying for itself: it forced chrome and canvas to share a tint, which made "where does
+chrome end" a thing you inferred from content rather than saw.
+
+Chrome now has **`--surface-chrome`**, a third layer-2 surface used only by the shell. The
+rule becomes: **white is content, `--surface-chrome` is chrome, and the canvas is the
+tinted ground between them.** Everything else in §2 is unchanged — still no dividers, still
+cards doing the separating inside the content area. It is the direct consequence of the tinted-bar choice: with no rule
 separating chrome from canvas, the *only* white in the application is a card, and that
 consistency is what makes the absence of borders legible rather than accidental.
 
@@ -368,22 +381,32 @@ rail".
 | User block menu | Sign out — a rare action that previously held permanent space |
 | Action bar (`h-14`, right-aligned) | Theme toggle · notification bell |
 
-**Chrome rule holds — the sidebar is `--surface-sunken`, not a new surface.** §2 forbids a
-third surface and white already means content, so a distinct sidebar background has exactly
-one legal answer: the existing sunken token. Chrome sits in a sunken region; content floats
-above it on white cards. Still **no divider** — separation comes from the fill.
+**The sidebar is `--surface-chrome`** — a third surface, added by amending §2 rather than
+by working around it. Reusing `--surface-sunken` was tried first and reached only 1.15:1
+against the canvas, capped by the ~90% floor `--text-muted` imposes on that token (§3.1).
+Still **no divider** — separation comes entirely from the fill.
 
-Separation is deliberately modest: **1.15 light / 1.17 dark**. That is near the ceiling the
-system allows. Darkening `--surface-sunken` further would breach the ~90% floor that
-`--text-muted` imposes on it (§3.1), and any other value would be the third surface §2 bans.
+| | light | dark |
+|---|---|---|
+| `--surface-chrome` | `hsl(217 6% 84%)` | `hsl(217 9% 9%)` |
+| vs canvas | **1.37** | **1.30** |
+| `--text` on it | 9.47 ✅ | 16.88 ✅ |
+| `--text-muted` on it | 4.09 ❌ | 9.95 |
 
-**Three consequences travel with it, all measured:**
+Dark is deliberately *darker* than the canvas rather than lighter: raising it would collide
+with `--surface-raised` (`--grey-800`) and make the sidebar indistinguishable from a card.
+Its range is narrower than light's because the dark canvas already sits near black.
+
+**Two consequences travel with it, both measured:**
 
 | Element | Must not be | Because | Is |
 |---|---|---|---|
-| Nav hover | `--surface-hover` | 1.07:1 on sunken — invisible | `--surface-raised` (1.23 / 1.46) |
-| Avatar chip | `--surface-sunken` | sunken on sunken = 1.00:1 | `--surface-raised` |
-| Chevron | `--text-subtle` | banned pairing on sunken (4.18 light) | `--text-muted` (4.87) |
+| Nav label | `--text-muted` | **4.09:1 on chrome — under 4.5** | `--text` (9.47) |
+| Nav / user hover | `--surface-hover` | too close to the chrome fill | `--surface-raised` |
+
+The nav label change has a design consequence worth stating: active vs inactive is no longer
+carried by a grey step. It is carried entirely by the brand pill — fill, colour and weight —
+which is a stronger signal anyway and does not rely on colour alone.
 The sidebar is `sticky top-0 h-screen` while the window scrolls, so it needs no scroll
 container of its own.
 
