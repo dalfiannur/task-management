@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getInitials } from "@/lib/utils";
-import { ProjectStatusBadge, formatProjectDateRange } from "@/features/projects";
+import { formatProjectDateRange } from "@/features/projects";
 import type { Project } from "@/features/projects";
 import { useUserMap } from "@/features/users";
 import type { ProjectOverview } from "../types";
@@ -26,14 +26,18 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
 
 /** Panel "About".
  *
- *  Ini BUKAN pengulangan header detail project. Header menjawab "project apa
- *  ini" (nama, deskripsi, owner, rentang tanggal); panel ini menjawab "isinya
- *  seberapa banyak" — status, jumlah module/page/media, dan wajah anggotanya.
- *  Owner dan tanggal tetap muncul karena di dalam kartu ini keduanya adalah
- *  atribut yang sedang dibandingkan, bukan judul halaman.
+ *  Header detail project menjawab "project apa ini"; panel ini menjawab "isinya
+ *  seberapa banyak" — jumlah module/page/media dan wajah anggotanya.
  *
- *  Status/owner/tanggal datang dari `project` (cache-nya sudah panas dari
- *  shell); angka dan `memberIds` datang dari RPC overview. */
+ *  Baris Status sengaja TIDAK ada di sini. Header sudah merender
+ *  `ProjectStatusBadge` beberapa ratus piksel di atas, dan pada viewport
+ *  pendaratan keduanya terlihat sekaligus — badge yang sama muncul dua kali
+ *  dengan bobot sama, persis kegagalan "kalau semua menonjol, tidak ada yang
+ *  menonjol". Owner dan tanggal tetap tinggal: keduanya jauh lebih tenang
+ *  secara visual dan masih berguna ketika header sudah ter-scroll ke atas.
+ *
+ *  Owner/tanggal datang dari `project` (cache-nya sudah panas dari shell);
+ *  angka dan `memberIds` datang dari RPC overview. */
 export function ProjectInfoCard({
   project,
   overview,
@@ -56,10 +60,6 @@ export function ProjectInfoCard({
       {/* Sekat pakai border-subtle, bukan border: di dalam permukaan raised
           `--border` terbaca sebagai jahitan (lihat catatan di members-tab). */}
       <div className="divide-y divide-border-subtle">
-        <Row label="Status">
-          <ProjectStatusBadge status={project.status} />
-        </Row>
-
         <Row label="Owner">
           <span className="flex items-center justify-end gap-2">
             <Avatar className="h-6 w-6">
