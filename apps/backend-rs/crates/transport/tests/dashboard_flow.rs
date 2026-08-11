@@ -172,3 +172,77 @@ async fn dashboard_and_my_tasks_scoped() {
     let done_assigned = ok(&router, &format!("{MY}/ListAssignedToMe"), &tm, json!({ "status": "DONE" })).await;
     assert_eq!(num(&done_assigned, "total"), 0);
 }
+
+#[tokio::test]
+async fn project_overview_counts_and_gating() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let owner = mk_user(&store).await;
+    let outsider = mk_user(&store).await;
+    let (to, tx) = (token(&owner), token(&outsider));
+
+    let p = ok(&router, &format!("{PROJECT}/CreateProject"), &to, json!({ "name": format!("OV-{}", uniq()) }))
+        .await["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let m1 = ok(&router, &format!("{MODULE}/CreateModule"), &to, json!({ "projectId": p, "name": "M1" }))
+        .await["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    // M2 stays empty → it must still appear in perModule as 0/0.
+    let m2 = ok(&router, &format!("{MODULE}/CreateModule"), &to, json!({ "projectId": p, "name": "M2" }))
+        .await["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    // A: overdue (due yesterday, todo). B: due yesterday but DONE → not overdue.
+    // C: in progress. D: cancelled → counted nowhere.
+    create_task(&router, &to, &m1, json!({ "title": "A", "dueDate": date_offset(-1) })).await;
+    create_task(&router, &to, &m1, json!({ "title": "B", "status": "DONE", "dueDate": date_offset(-1) })).await;
+    create_task(&router, &to, &m1, json!({ "title": "C", "status": "IN_PROGRESS" })).await;
+    create_task(&router, &to, &m1, json!({ "title": "D", "status": "CANCELLED" })).await;
+
+    let ov = ok(&router, &format!("{DASH}/GetProjectOverview"), &to, json!({ "projectId": p })).await;
+    assert_eq!(num(&ov, "totalTasks"), 3, "A,B,C — cancelled D excluded: {ov}");
+    assert_eq!(num(&ov, "inProgressTasks"), 1);
+    assert_eq!(num(&ov, "doneTasks"), 1);
+    assert_eq!(num(&ov, "overdueTasks"), 1, "A only — B is past due but done");
+    assert_eq!(num(&ov, "moduleCount"), 2);
+    assert_eq!(num(&ov, "pageCount"), 0);
+    assert_eq!(num(&ov, "mediaCount"), 0);
+
+    let per = ov["perModule"].as_array().unwrap();
+    assert_eq!(per.len(), 2, "empty modules still listed: {ov}");
+    assert_eq!(per[0]["moduleId"], m1);
+    assert_eq!(num(&per[0], "total"), 3);
+    assert_eq!(num(&per[0], "done"), 1);
+    assert_eq!(per[1]["moduleId"], m2);
+    assert_eq!(num(&per[1], "total"), 0);
+    assert_eq!(num(&per[1], "done"), 0);
+
+    // Owner leads the member list.
+    let members = ov["memberIds"].as_array().unwrap();
+    assert_eq!(members[0], owner, "owner first: {ov}");
+
+    // Gating: a non-member is denied; an unknown project is not found.
+    let (st, _) = call(&router, &format!("{DASH}/GetProjectOverview"), Some(&tx), json!({ "projectId": p })).await;
+    assert_eq!(st, StatusCode::FORBIDDEN, "non-member must be denied");
+    let (st, _) = call(&router, &format!("{DASH}/GetProjectOverview"), Some(&to), json!({ "projectId": "999999999" })).await;
+    assert_eq!(st, StatusCode::NOT_FOUND, "unknown project id");
+
+    // Empty project → all zeros.
+    let empty = ok(&router, &format!("{PROJECT}/CreateProject"), &to, json!({ "name": format!("OV-empty-{}", uniq()) }))
+        .await["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let z = ok(&router, &format!("{DASH}/GetProjectOverview"), &to, json!({ "projectId": empty })).await;
+    assert_eq!(num(&z, "totalTasks"), 0);
+    assert_eq!(num(&z, "moduleCount"), 0);
+    assert!(z["perModule"].as_array().map(|a| a.is_empty()).unwrap_or(true), "{z}");
+}
