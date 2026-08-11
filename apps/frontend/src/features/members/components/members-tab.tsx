@@ -60,8 +60,8 @@ export function MembersTab({ projectId }: { projectId: string }) {
   if (isLoading) {
     return (
       <div className="space-y-2 p-6">
-        <Skeleton className="h-12 w-full" />
-        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-12 w-full rounded-xl" />
+        <Skeleton className="h-12 w-full rounded-xl" />
       </div>
     );
   }
@@ -69,8 +69,8 @@ export function MembersTab({ projectId }: { projectId: string }) {
   return (
     <div className="space-y-4 p-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-medium">
-          Members <span className="text-text-muted">({members.length})</span>
+        <h2 className="text-label">
+          Members <span className="text-num">({members.length})</span>
         </h2>
         <div className="flex items-center gap-2">
           {iAmMember && !iAmOwner && (

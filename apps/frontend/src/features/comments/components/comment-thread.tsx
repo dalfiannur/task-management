@@ -73,7 +73,7 @@ export function CommentThread({ taskId, projectId }: { taskId: string; projectId
       <h4 className="text-sm font-medium">
         Comments{" "}
         {comments.length > 0 && (
-          <span className="text-text-muted">({comments.length})</span>
+          <span className="text-num text-text-muted">({comments.length})</span>
         )}
       </h4>
 
