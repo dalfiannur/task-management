@@ -30,10 +30,20 @@ const NAV: { to: string; label: string; icon: LucideIcon }[] = [
 
 /** Authed shell: sidebar navigation + a thin action bar over the outlet.
  *
- *  Sidebar dan kanvas sama-sama --surface tanpa garis pemisah — aturan chrome
- *  desain ini (spec §2): yang memisahkan wilayah adalah kartu putih yang
- *  membawa konten, bukan rule. Sidebar sticky setinggi layar sementara window
- *  yang menggulir, jadi ia tidak butuh scroll container sendiri. */
+ *  Sidebar memakai --surface-sunken, BUKAN permukaan baru: aturan §2 melarang
+ *  permukaan ketiga, dan putih sudah berarti konten. Sunken adalah token yang
+ *  sudah ada — chrome duduk di wilayah tenggelam, konten mengambang di atasnya
+ *  dengan kartu putih. Tetap tanpa garis pemisah.
+ *
+ *  Tiga konsekuensi yang HARUS ikut, semuanya terukur:
+ *   · hover nav TIDAK boleh --surface-hover — di atas sunken ia 1.07:1, praktis
+ *     tak terlihat. Ia naik ke --surface-raised (1.23 light / 1.46 dark).
+ *   · chip avatar tidak boleh --surface-sunken — sunken di atas sunken = 1.00:1.
+ *   · chevron tidak boleh --text-subtle — pasangan itu DILARANG di atas
+ *     --surface-sunken (4.18:1 di light, lihat tokens.css).
+ *
+ *  Sidebar sticky setinggi layar sementara window yang menggulir, jadi ia tidak
+ *  butuh scroll container sendiri. */
 export function AppShell() {
   const user = useAtomValue(currentUserAtom);
   const logout = useLogout();
@@ -57,7 +67,7 @@ export function AppShell() {
 
   return (
     <div className="flex min-h-screen bg-surface">
-      <aside className="sticky top-0 flex h-screen w-56 shrink-0 flex-col bg-surface">
+      <aside className="sticky top-0 flex h-screen w-56 shrink-0 flex-col bg-surface-sunken">
         <span className="flex h-14 items-center px-5 font-semibold">
           {APP_NAME}
         </span>
@@ -75,7 +85,7 @@ export function AppShell() {
                 className: "bg-brand-subtle text-brand-text font-semibold",
               }}
               inactiveProps={{
-                className: "text-text-muted hover:bg-surface-hover hover:text-text",
+                className: "text-text-muted hover:bg-surface-raised hover:text-text",
               }}
             >
               <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
@@ -92,16 +102,16 @@ export function AppShell() {
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  className="flex w-full items-center gap-2.5 rounded-full px-3 py-2 text-left text-sm transition-colors [transition-duration:var(--duration-fast)] hover:bg-surface-hover"
+                  className="flex w-full items-center gap-2.5 rounded-full px-3 py-2 text-left text-sm transition-colors [transition-duration:var(--duration-fast)] hover:bg-surface-raised"
                 >
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-xs">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-raised text-xs">
                     {getInitials(user.displayName)}
                   </span>
                   <span className="min-w-0 flex-1 truncate">
                     {user.displayName}
                   </span>
                   <ChevronsUpDown
-                    className="h-3.5 w-3.5 shrink-0 text-text-subtle"
+                    className="h-3.5 w-3.5 shrink-0 text-text-muted"
                     aria-hidden="true"
                   />
                 </button>

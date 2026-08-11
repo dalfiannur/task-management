@@ -368,8 +368,22 @@ rail".
 | User block menu | Sign out — a rare action that previously held permanent space |
 | Action bar (`h-14`, right-aligned) | Theme toggle · notification bell |
 
-**Chrome rule holds:** the sidebar is `--surface`, the same tint as the canvas, with **no
-divider**. What separates regions is the white card carrying content, exactly as §2 states.
+**Chrome rule holds — the sidebar is `--surface-sunken`, not a new surface.** §2 forbids a
+third surface and white already means content, so a distinct sidebar background has exactly
+one legal answer: the existing sunken token. Chrome sits in a sunken region; content floats
+above it on white cards. Still **no divider** — separation comes from the fill.
+
+Separation is deliberately modest: **1.15 light / 1.17 dark**. That is near the ceiling the
+system allows. Darkening `--surface-sunken` further would breach the ~90% floor that
+`--text-muted` imposes on it (§3.1), and any other value would be the third surface §2 bans.
+
+**Three consequences travel with it, all measured:**
+
+| Element | Must not be | Because | Is |
+|---|---|---|---|
+| Nav hover | `--surface-hover` | 1.07:1 on sunken — invisible | `--surface-raised` (1.23 / 1.46) |
+| Avatar chip | `--surface-sunken` | sunken on sunken = 1.00:1 | `--surface-raised` |
+| Chevron | `--text-subtle` | banned pairing on sunken (4.18 light) | `--text-muted` (4.87) |
 The sidebar is `sticky top-0 h-screen` while the window scrolls, so it needs no scroll
 container of its own.
 
