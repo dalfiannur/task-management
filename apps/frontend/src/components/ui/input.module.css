@@ -2,9 +2,10 @@
   height: 2rem;
   width: 100%;
   min-width: 0;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border);
-  background: var(--surface-raised);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-sunken);
+  box-shadow: var(--shadow-inset);
   padding: 0.25rem 0.625rem;
   font-size: 0.875rem;
   line-height: 1.25rem;
