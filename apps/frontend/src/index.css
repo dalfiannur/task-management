@@ -154,6 +154,14 @@
     color: var(--text-subtle);
   }
 
+  /* Angka dan tanggal memakai mono bertabular supaya digit sejajar dalam
+     kolom saat dibaca menurun. Dipakai di setiap statistik, hitungan,
+     tanggal dan durasi. */
+  .text-num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
   /* Tiptap editor placeholder */
   .tiptap p.is-editor-empty:first-child::before {
     color: var(--text-subtle);
