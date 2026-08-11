@@ -125,15 +125,18 @@
   --radius-xl:   16px;
   --radius-full: 9999px;
 
-  --shadow-1: 0 1px 2px 0 hsl(217 40% 12% / .06),
-              0 1px 3px 0 hsl(217 40% 12% / .10);
-  --shadow-2: 0 2px 4px -1px hsl(217 40% 12% / .06),
-              0 4px 6px -1px hsl(217 40% 12% / .10);
-  --shadow-3: 0 4px 6px -2px hsl(217 40% 12% / .05),
-              0 10px 15px -3px hsl(217 40% 12% / .10);
-  --shadow-4: 0 10px 10px -5px hsl(217 40% 12% / .04),
-              0 20px 25px -5px hsl(217 40% 12% / .10);
-  --shadow-5: 0 25px 50px -12px hsl(217 40% 12% / .25);
+  /* Diffuse + negative spread. Kunci tampilan Soft Card: bayangan lebar dan
+     lembut, bukan bayangan ketat ala Tailwind. Dua lapis per token — satu
+     hairline rapat untuk mendudukkan tepi, satu lebar untuk mengangkat. */
+  --shadow-1: 0 1px 2px 0 hsl(217 40% 12% / .05),
+              0 1px 3px 0 hsl(217 40% 12% / .08);
+  --shadow-2: 0 1px 3px 0 hsl(217 40% 12% / .06),
+              0 8px 24px -8px hsl(217 40% 12% / .14);
+  --shadow-3: 0 2px 6px -1px hsl(217 40% 12% / .06),
+              0 16px 32px -12px hsl(217 40% 12% / .18);
+  --shadow-4: 0 4px 10px -2px hsl(217 40% 12% / .06),
+              0 28px 48px -16px hsl(217 40% 12% / .22);
+  --shadow-5: 0 32px 64px -16px hsl(217 40% 12% / .28);
   /* Tepi atas untuk kontrol tenggelam: input, well, track slider. */
   --shadow-inset: inset 0 1px 2px hsl(217 40% 12% / .06);
   /* Hairline yang memisahkan foto user dari permukaan di belakangnya.
@@ -200,11 +203,11 @@
   /* MEMBALIK: di dark --danger adalah warna terang, jadi labelnya gelap. */
   --text-on-danger: var(--grey-900);
 
-  --shadow-1: 0 1px 2px 0 hsl(0 0% 0% / .30), 0 1px 3px 0 hsl(0 0% 0% / .40);
-  --shadow-2: 0 2px 4px -1px hsl(0 0% 0% / .30), 0 4px 6px -1px hsl(0 0% 0% / .40);
-  --shadow-3: 0 4px 6px -2px hsl(0 0% 0% / .30), 0 10px 15px -3px hsl(0 0% 0% / .40);
-  --shadow-4: 0 10px 10px -5px hsl(0 0% 0% / .30), 0 20px 25px -5px hsl(0 0% 0% / .45);
-  --shadow-5: 0 25px 50px -12px hsl(0 0% 0% / .60);
+  --shadow-1: 0 1px 2px 0 hsl(0 0% 0% / .30), 0 1px 3px 0 hsl(0 0% 0% / .36);
+  --shadow-2: 0 1px 3px 0 hsl(0 0% 0% / .32), 0 8px 24px -8px hsl(0 0% 0% / .48);
+  --shadow-3: 0 2px 6px -1px hsl(0 0% 0% / .32), 0 16px 32px -12px hsl(0 0% 0% / .55);
+  --shadow-4: 0 4px 10px -2px hsl(0 0% 0% / .34), 0 28px 48px -16px hsl(0 0% 0% / .60);
+  --shadow-5: 0 32px 64px -16px hsl(0 0% 0% / .70);
   --shadow-inset: inset 0 1px 2px hsl(0 0% 0% / .30);
   /* MEMBALIK jadi putih di dark: ring hitam di atas permukaan gelap justru
      melarutkan tepi foto ke dalam --surface, kebalikan dari tugasnya. */
