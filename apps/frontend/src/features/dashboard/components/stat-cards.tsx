@@ -36,13 +36,13 @@ function StatCard({
         <div>
           <div
             className={cn(
-              "text-2xl font-semibold",
+              "text-num text-2xl font-semibold",
               alert ? "text-danger" : "text-text",
             )}
           >
             {value}
           </div>
-          <div className="text-xs text-text-muted">{label}</div>
+          <div className="text-label">{label}</div>
         </div>
       </CardContent>
     </Card>
@@ -56,7 +56,7 @@ export function StatCards() {
     return (
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-20 w-full rounded-xl" />
+          <Skeleton key={i} className="h-20 w-full rounded-xl shadow-2" />
         ))}
       </div>
     );
@@ -93,13 +93,13 @@ export function StatCards() {
                   <Link
                     to="/projects/$projectId/all-tasks"
                     params={{ projectId: p.projectId }}
-                    className="block rounded-md border p-3 hover:bg-surface-sunken/40"
+                    className="block rounded-xl bg-surface-raised p-3 shadow-1 transition-shadow [transition-duration:var(--duration-fast)] hover:shadow-2"
                   >
                     <div className="flex items-center justify-between text-sm">
                       <span className="truncate font-medium">
                         {p.projectName}
                       </span>
-                      <span className="text-text-muted">
+                      <span className="text-num text-text-muted">
                         {p.done}/{p.total}
                       </span>
                     </div>
