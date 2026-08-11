@@ -115,7 +115,7 @@
   position: relative;
   border: 1px solid var(--border);
   box-shadow: var(--shadow-1);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
 }
 
 .dropdownRoot:has(:focus) {

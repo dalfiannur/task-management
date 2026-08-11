@@ -31,8 +31,11 @@ const Toaster = ({ ...props }: ToasterProps) => {
         {
           "--normal-bg": "var(--surface-overlay)",
           "--normal-text": "var(--text)",
-          "--normal-border": "var(--border)",
-          "--border-radius": "var(--radius)",
+          // Toast adalah permukaan mengambang seperti menu dan popover:
+          // batasnya --border-strong, bukan --border. Di dark, --border dan
+          // --surface-overlay dua-duanya grey-800 — batas yang tak terlihat.
+          "--normal-border": "var(--border-strong)",
+          "--border-radius": "var(--radius-lg)",
         } as React.CSSProperties
       }
       {...props}

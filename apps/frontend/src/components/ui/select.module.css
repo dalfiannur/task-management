@@ -100,7 +100,7 @@
   max-height: var(--radix-select-content-available-height);
   overflow-x: hidden;
   overflow-y: auto;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   border: 1px solid var(--border-strong);
   background: var(--surface-overlay);
   color: var(--text);
