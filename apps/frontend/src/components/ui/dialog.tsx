@@ -68,7 +68,7 @@ function DialogContent({
             // Permukaan overlay + elevasi modal (depth.md §3). Sebelumnya
             // background-nya di-hardcode hsl(228 20% 10% / .9) — dark-only,
             // sehingga dialog tetap gelap saat tema light aktif.
-            "bg-surface-overlay border border-border shadow-5 rounded-xl",
+            "bg-surface-overlay border border-border-strong shadow-4 rounded-xl",
             // Animation
             "data-[state=open]:dialog-enter",
             "data-[state=closed]:dialog-exit",

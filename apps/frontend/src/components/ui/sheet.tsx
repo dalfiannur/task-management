@@ -67,22 +67,22 @@ function SheetContent({
           "bg-surface-overlay shadow-4",
           // Side: right
           "data-[side=right]:inset-y-0 data-[side=right]:right-0 data-[side=right]:h-full data-[side=right]:w-3/4 data-[side=right]:sm:max-w-sm",
-          "data-[side=right]:border-l data-[side=right]:border-border",
+          "data-[side=right]:border-l data-[side=right]:border-border-strong",
           "data-[side=right]:data-[state=open]:[animation:slide-in-from-right_320ms_var(--ease-in-out)]",
           "data-[side=right]:data-[state=closed]:[animation:slide-out-to-right_120ms_var(--ease-out)]",
           // Side: left
           "data-[side=left]:inset-y-0 data-[side=left]:left-0 data-[side=left]:h-full data-[side=left]:w-3/4 data-[side=left]:sm:max-w-sm",
-          "data-[side=left]:border-r data-[side=left]:border-border",
+          "data-[side=left]:border-r data-[side=left]:border-border-strong",
           "data-[side=left]:data-[state=open]:[animation:slide-in-from-left_320ms_var(--ease-in-out)]",
           "data-[side=left]:data-[state=closed]:[animation:slide-out-to-left_120ms_var(--ease-out)]",
           // Side: top
           "data-[side=top]:inset-x-0 data-[side=top]:top-0 data-[side=top]:h-auto",
-          "data-[side=top]:border-b data-[side=top]:border-border",
+          "data-[side=top]:border-b data-[side=top]:border-border-strong",
           "data-[side=top]:data-[state=open]:[animation:slide-in-from-top_320ms_var(--ease-in-out)]",
           "data-[side=top]:data-[state=closed]:[animation:slide-out-to-top_120ms_var(--ease-out)]",
           // Side: bottom
           "data-[side=bottom]:inset-x-0 data-[side=bottom]:bottom-0 data-[side=bottom]:h-auto",
-          "data-[side=bottom]:border-t data-[side=bottom]:border-border",
+          "data-[side=bottom]:border-t data-[side=bottom]:border-border-strong",
           "data-[side=bottom]:data-[state=open]:[animation:slide-in-from-bottom_320ms_var(--ease-in-out)]",
           "data-[side=bottom]:data-[state=closed]:[animation:slide-out-to-bottom_120ms_var(--ease-out)]",
           className,

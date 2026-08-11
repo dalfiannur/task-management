@@ -63,7 +63,7 @@ function AlertDialogContent({
             "relative w-full max-w-[calc(100%-2rem)] sm:max-w-lg",
             "grid gap-4 p-6 text-text outline-none",
             // Solid background + frosted border
-            "bg-surface-overlay border border-border shadow-5 rounded-xl",
+            "bg-surface-overlay border border-border-strong shadow-4 rounded-xl",
             // Animation
             "data-[state=open]:dialog-enter",
             "data-[state=closed]:dialog-exit",
