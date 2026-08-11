@@ -70,7 +70,7 @@ export function ProjectDetailHeader({ project }: { project: Project }) {
   }
 
   return (
-    <div className="flex flex-wrap items-start justify-between gap-4 border-b px-6 py-4">
+    <div className="flex flex-wrap items-start justify-between gap-4 px-6 py-4">
       <div className="space-y-2">
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-semibold">{project.name}</h1>
@@ -91,7 +91,7 @@ export function ProjectDetailHeader({ project }: { project: Project }) {
             </Avatar>
             {ownerName}
           </span>
-          {range && <span>· {range}</span>}
+          {range && <span className="text-num">· {range}</span>}
         </div>
       </div>
 
