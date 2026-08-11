@@ -12,7 +12,10 @@
    lolos untuk :root DAN .dark — 24 pasangan, tidak ada yang ditaksir.
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&family=Google+Sans+Mono:wght@400;500;600&display=swap');
+/* Font dimuat lewat <link> di index.html, BUKAN @import di sini. Dev server
+   Vite menyuntikkan CSS lewat JS dan membuang @import bersarang, sehingga di
+   dev seluruh aplikasi diam-diam memakai font fallback sistem sementara build
+   produksi baik-baik saja — setiap review visual di dev jadi menyesatkan. */
 
 :root {
   /* ---------- Lapis 1: primitif ---------- */

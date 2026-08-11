@@ -4,6 +4,17 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Fonts load here, not via @import in tokens.css. Vite's dev server
+         injects CSS through JS, which drops a nested @import — so in dev the
+         whole app silently rendered in fallback system fonts while the
+         production build was fine. A <link> works identically in both, and
+         starts the fetch earlier than a CSS round-trip would. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&family=Google+Sans+Mono:wght@400;500;600&display=swap"
+    />
     <title>__APP_NAME__</title>
   </head>
   <body>
