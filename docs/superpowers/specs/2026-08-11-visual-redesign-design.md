@@ -305,6 +305,35 @@ Pill group in a `--surface-sunken` track at `--radius-full`. The active tab is a
 nor band — this is what makes the tinted-bar chrome viable for the five-tab project
 detail route.
 
+**Fix the active-state bug while rebuilding this, not just the styling.** The project tab
+nav's active state does not render *at all* today, and restyling it without understanding
+why would preserve the bug.
+
+TanStack Router concatenates `className` and `activeProps.className` onto one element. It
+does not replace one with the other. When both set the same property with equal-specificity
+utilities, **CSS source order decides**, and Tailwind's order is not the author's order.
+Measured in the built bundle:
+
+| Base class | byte | Active class | byte | Winner |
+|---|---|---|---|---|
+| `text-text-muted` | 26855 | `text-text` | 26826 | base — active text stays grey |
+| `border-transparent` | 23513 | `border-brand` | 23143 | base — active underline never paints |
+
+Both active declarations lose. The correct pattern, used in the app shell, is to put the
+inactive styling in **`inactiveProps`** rather than the base `className` — the router
+applies `activeProps` and `inactiveProps` mutually exclusively, so the two never coexist
+and source order becomes irrelevant:
+
+```tsx
+className="rounded-full px-3 py-1 transition-colors"
+activeProps={{ className: "bg-brand-subtle text-brand-text font-semibold" }}
+inactiveProps={{ className: "text-text-muted hover:text-text" }}
+```
+
+Any `<Link>` that sets a colour in both `className` and `activeProps` has this bug. As of
+this writing the only two consumers are the app shell (fixed) and the project tab nav
+(outstanding).
+
 ### 4.6 Badge and label chip
 
 Pill (`--radius-full`), `*-subtle` background with the matching `*-text` foreground.
