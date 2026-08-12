@@ -164,9 +164,12 @@ textarea {
   resize: vertical;
 }
 
-/* Tier 2, bukan grey hasil color-mix yang tidak pernah diukur. Placeholder
-   duduk di --surface-sunken; --text-subtle DILARANG di sana. Placeholder
-   tetap bukan pengganti <label> — accessibility.md §6. */
+/* Tier 2, bukan grey hasil color-mix yang tidak pernah diukur. Placeholder kini
+   duduk di --surface-raised (fill kontrol form pindah ke sana bersama
+   --border-field) dan terukur 5.97:1 di light. Tetap tier 2, BUKAN turun ke
+   --text-subtle: satu token placeholder dipakai di kedua tema, dan tier 3 tidak
+   punya margin untuk itu. Placeholder tetap bukan pengganti <label> —
+   accessibility.md §6. */
 input::placeholder,
 textarea::placeholder {
   opacity: 1;

@@ -117,6 +117,42 @@
      batas komponen — itu tetap --border-strong. */
   --border-subtle: var(--grey-100);
   --border-strong: var(--grey-500);
+  /* Batas KONTROL FORM (input, textarea, select trigger, checkbox), dipisah dari
+     --border-strong yang kini hanya melayani batas overlay/panel (dialog, sheet,
+     popover, dropdown, sonner).
+     Kenapa dipisah: kontrol form dulu menumpuk tiga penanda batas sekaligus —
+     fill --surface-sunken + --shadow-inset + garis grey-500 yang duduk hanya
+     0.15 di atas lantai 3:1 (3.15 di atas sunken). Itu melanggar aturan 7
+     (coba beda surface / shadow / spacing SEBELUM menambah border, bukan
+     ketiganya sekaligus) dan terbaca terlalu tegas di light.
+     Perbaikannya struktural, bukan mengencerkan warna: fill kontrol naik ke
+     --surface-raised dan --shadow-inset dilepas, sehingga garisnya boleh lebih
+     terang dan TETAP lolos ambang.
+     56% adalah lantai praktisnya di light — ia harus lolos 3:1 di KEDUA sisi
+     garis, dan sisi luar yang paling ketat adalah --surface (97%):
+     56% → 3.12 vs --surface · 3.35 vs --surface-raised.
+     57% → 3.04 vs --surface (sisa margin 0.04, terlalu tipis).
+     58% → 2.93 vs --surface, GAGAL.
+     Nilai ini mengandaikan fill kontrol adalah --surface-field, yang di light
+     berarti --surface-raised. Mengembalikan fill ke --surface-sunken
+     menjatuhkannya ke 2.73 — kalau fill diubah, angka ini WAJIB dihitung ulang.
+     Di dark tidak ada keluhan dan angkanya lapang, jadi ia menumpang
+     --border-strong di sana — lihat .dark. */
+  --border-field:  hsl(217 8% 56%);
+  /* Fill kontrol form. Sengaja BUKAN nilai yang sama di kedua tema.
+     Di light ia --surface-raised: itu bagian yang menebus garis 56% (lihat
+     --border-field) dan yang benar-benar menurunkan bobot visualnya.
+     Di dark ia tetap --surface-sunken seperti sebelumnya — di sana kontrol
+     duduk di atas card --surface-raised (grey-800), dan menyamakan fill-nya
+     membuat input kehilangan seluruh afordansi field: yang tersisa hanya
+     outline mengambang di atas card. Kontrasnya lolos, afordansinya tidak.
+     Light dan dark menarik ke arah berlawanan di sini, persis seperti
+     --border-strong — lihat catatannya di .dark. */
+  --surface-field: var(--surface-raised);
+  /* Menyusul --surface-field: sumur yang tenggelam butuh tepi atas, permukaan
+     rata tidak. Di light --shadow-inset justru salah satu dari tiga cue yang
+     membuat input terasa berat, jadi ia dimatikan di sana. */
+  --shadow-field:  none;
   --focus:         var(--brand-500);
 
   /* Token status memetakan ke shade -700, bukan -500: -500 gagal 4.5:1
@@ -217,6 +253,14 @@
      yang sama.
      grey-400 di dark: raised 4.57 · sunken 6.69 · surface 5.70 · hover 3.62. */
   --border-strong: var(--grey-400);
+  /* Di dark kontrol form TIDAK dipisahkan: grey-400 sudah lapang di atas setiap
+     permukaan yang ditempati kontrol (raised 4.57 · sunken 6.69 · surface 5.70),
+     jadi tidak ada yang perlu ditebus seperti di light. */
+  --border-field:  var(--border-strong);
+  /* Dark dikembalikan persis ke perilaku lama — sumur tenggelam + tepi atas.
+     Perubahan bobot input adalah perbaikan khusus light. */
+  --surface-field: var(--surface-sunken);
+  --shadow-field:  var(--shadow-inset);
   /* brand-400 gagal 3:1 di atas --surface-raised. */
   --focus:         var(--brand-300);
 

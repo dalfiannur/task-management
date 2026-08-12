@@ -58,8 +58,14 @@ function LabelRow({ label }: { label: Label }) {
   }
 
   if (editing) {
+    // Hairline, BUKAN fill --surface-sunken. Well ini dulu aman karena input di
+    // dalamnya sama-sama sunken; sejak kontrol form pindah ke --surface-field
+    // ia merugikan di KEDUA tema. Light: --border-field (56%) hanya lolos 3:1
+    // terhadap tetangga luar setinggi --surface (3.12) atau --surface-raised
+    // (3.35) — di atas sunken ia jatuh ke 2.73. Dark: fill input tetap sunken,
+    // jadi well sunken membuatnya melebur ke latar sendiri.
     return (
-      <li className="space-y-2 rounded-lg bg-surface-sunken p-3">
+      <li className="space-y-2 rounded-lg border border-border-subtle p-3">
         <Input value={name} onChange={(e) => setName(e.target.value)} autoFocus />
         <ColorSwatches value={color} onChange={setColor} />
         <div className="flex justify-end gap-2">
@@ -146,7 +152,8 @@ export function ManageLabelsDialog({
           <DialogTitle>Manage labels</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-2 rounded-lg bg-surface-sunken p-3">
+        {/* Hairline, bukan fill sunken — alasan sama seperti di LabelRow. */}
+        <div className="space-y-2 rounded-lg border border-border-subtle p-3">
           <div className="flex gap-2">
             <Input
               value={name}

@@ -3,11 +3,11 @@
   height: 1rem;
   flex-shrink: 0;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-strong);
-  box-shadow: var(--shadow-inset);
+  border: 1px solid var(--border-field);
+  box-shadow: var(--shadow-field);
   transition: box-shadow 150ms ease;
   outline: none;
-  background-color: var(--surface-sunken);
+  background-color: var(--surface-field);
 }
 
 /* Checked state */
