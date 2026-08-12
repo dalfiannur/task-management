@@ -1191,21 +1191,34 @@ bun run tsc --noEmit && bun run lint && bun run build
 
 Expected: all three PASS.
 
-- [ ] **Step 3: Manual smoke pass — NOT RUN**
+- [x] **Step 3: Manual smoke pass — RUN 2026-08-12, found two real bugs**
 
-> **Status as of 2026-08-12: this step was deliberately skipped and remains
-> outstanding.** Every automated gate is green (backend: 20 tests across 12
-> binaries, zero warnings, clean clippy; frontend: `tsc`, `lint`, `build`), but
-> **no part of this feature has been observed rendering against real data.**
-> The tab could still be broken in ways no type-checker or integration test can
-> see — wrong layout, a mis-wired prop, an unreadable colour.
+> Checks 1–4 and 6–8 were observed in a browser against the running stack.
+> Check 5 was only half done: the activity feed was seen listing entries, but
+> "make a change in another tab and come back" was not exercised.
 >
-> It was skipped because the backend-rs process running on `:3010` was a stale
-> binary (it served `GetDashboardStats` but 404'd on `GetProjectOverview`), and
-> restarting someone else's process plus obtaining login credentials was the
-> user's call, not the implementer's. The user chose to skip rather than block.
+> **The pass earned its keep — it caught two things every automated gate
+> missed, both of them regressions this feature introduced:**
 >
-> Run the eight checks below before treating this feature as verified.
+> 1. **The default-tab redirect was unreachable.** Opening a project from
+>    `/projects` still landed on Tasks. Every entry point linked straight to
+>    `…/all-tasks`, so `index.tsx`'s redirect — the thing that *defines* the
+>    default tab — was never executed by anything. Task 10's check asked
+>    whether any code assumed `/projects/$id` meant the task list; the answer
+>    was no, and that was reported as "breaks nothing". The question that
+>    mattered was whether anything reached `/projects/$id` at all. Nothing did.
+>    Fixed in `ade88e2` by pointing "open this project" navigations at the bare
+>    route, so the default lives in one place instead of at each call site.
+>
+> 2. **The tab bar overflowed and dragged the whole page sideways.** A sixth
+>    tab took the segmented control to ~463px; below roughly 730px of content
+>    width the page scrolled horizontally. Five tabs fit, so this could only
+>    appear once Overview existed. Fixed in `94f032d` with the Timeline grid's
+>    existing `scrollbar-slim overflow-x-auto` idiom.
+>
+> Both were invisible to `tsc`, ESLint, and 20 backend integration tests. Type
+> systems verify that a link's target exists; they cannot tell you nobody
+> follows it. Neither bug would have been found without running the app.
 
 Run the backend (`cd apps/backend-rs && cargo run --bin app` — note `--bin app`;
 a bare `cargo run` cannot choose between `app`, `seed_admin`, and `seed_user`)
