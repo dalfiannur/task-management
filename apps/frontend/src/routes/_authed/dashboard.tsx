@@ -8,18 +8,18 @@ export const Route = createFileRoute("/_authed/dashboard")({
 
 function DashboardPage() {
   return (
-    <div className="space-y-8 p-6">
+    <div className="mx-auto max-w-7xl space-y-8 p-6">
       <h1 className="text-2xl font-semibold">Dashboard</h1>
 
       <StatCards />
 
       <div className="grid gap-8 lg:grid-cols-2">
         <section>
-          <h2 className="mb-3 text-lg font-medium">Upcoming deadlines</h2>
+          <h2 className="text-label mb-3">Upcoming deadlines</h2>
           <UpcomingDeadlines withinDays={7} />
         </section>
         <section>
-          <h2 className="mb-3 text-lg font-medium">Recent activity</h2>
+          <h2 className="text-label mb-3">Recent activity</h2>
           <RecentActivity />
         </section>
       </div>

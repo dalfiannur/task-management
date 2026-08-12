@@ -105,8 +105,8 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
   if (modulesLoading || tasksLoading) {
     return (
       <div className="space-y-3 p-6">
-        <Skeleton className="h-24 w-full rounded-lg" />
-        <Skeleton className="h-24 w-full rounded-lg" />
+        <Skeleton className="h-24 w-full rounded-xl shadow-2" />
+        <Skeleton className="h-24 w-full rounded-xl shadow-2" />
       </div>
     );
   }
@@ -127,7 +127,7 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
       )}
 
       {modules.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-12 text-center text-muted-foreground">
+        <div className="rounded-xl bg-surface-raised p-12 text-center text-text-muted shadow-2">
           {canManage
             ? "No modules yet. Add one to start organizing tasks."
             : "No modules yet."}

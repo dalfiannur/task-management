@@ -73,12 +73,12 @@ export function CommentThread({ taskId, projectId }: { taskId: string; projectId
       <h4 className="text-sm font-medium">
         Comments{" "}
         {comments.length > 0 && (
-          <span className="text-muted-foreground">({comments.length})</span>
+          <span className="text-num text-text-muted">({comments.length})</span>
         )}
       </h4>
 
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <p className="text-sm text-text-muted">Loading…</p>
       ) : (
         <ul className="space-y-4">
           {comments.map((c) => {
@@ -96,11 +96,11 @@ export function CommentThread({ taskId, projectId }: { taskId: string; projectId
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium">{name}</span>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-text-muted">
                       {relative(c.createdAt)}
                     </span>
                     {c.updatedAt !== c.createdAt && (
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-text-muted">
                         (edited)
                       </span>
                     )}

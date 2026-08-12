@@ -45,24 +45,40 @@ export function ActivityFeed({
 }) {
   if (isLoading) {
     return (
-      <div className="space-y-3">
+      <div className="overflow-hidden rounded-xl bg-surface-raised shadow-2">
         {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={i} className="h-10 w-full" />
+          <div
+            key={i}
+            className="border-b border-border-subtle px-4 py-3 last:border-b-0"
+          >
+            <Skeleton className="h-10 w-full" />
+          </div>
         ))}
       </div>
     );
   }
   if (activities.length === 0) {
-    return <p className="text-sm text-muted-foreground">{emptyLabel}</p>;
+    return (
+      <p className="rounded-xl bg-surface-raised p-6 text-center text-sm text-text-muted shadow-2">
+        {emptyLabel}
+      </p>
+    );
   }
   return (
-    <ul className="space-y-3">
+    /* Panel yang berdiri sendiri, sama seperti UpcomingDeadlines: kartu putih
+       di atas kanvas bertint. Baris kehilangan radius sendiri — sudut membulat
+       di dalam sudut membulat menghasilkan kurva ganda; container yang
+       memotong. */
+    <ul className="overflow-hidden rounded-xl bg-surface-raised shadow-2">
       {activities.map((a) => {
         const Icon = ENTITY_ICON[a.entity];
         const actor = userMap[a.actorId]?.displayName;
         return (
-          <li key={a.id} className="flex items-start gap-3">
-            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+          <li
+            key={a.id}
+            className="flex items-start gap-3 border-b border-border-subtle px-4 py-3 last:border-b-0"
+          >
+            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-text-muted">
               <Icon className="h-3.5 w-3.5" />
             </span>
             <div className="min-w-0 flex-1">
@@ -73,13 +89,13 @@ export function ActivityFeed({
               {a.changes.length > 0 && (
                 <ul className="mt-0.5 space-y-0.5">
                   {a.changes.map((c, i) => (
-                    <li key={i} className="text-xs text-muted-foreground">
+                    <li key={i} className="text-xs text-text-muted">
                       {c.field}: {c.from || "—"} → {c.to || "—"}
                     </li>
                   ))}
                 </ul>
               )}
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-text-muted">
                 {relative(a.createdAt)}
               </span>
             </div>

@@ -190,11 +190,11 @@ export function TaskDialog({
           </div>
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Start</span>
+              <span className="text-sm text-text-muted">Start</span>
               <DatePickerField value={startDate} onChange={setStartDate} />
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Due</span>
+              <span className="text-sm text-text-muted">Due</span>
               <DatePickerField
                 value={dueDate}
                 onChange={setDueDate}
@@ -221,7 +221,7 @@ export function TaskDialog({
         </form>
         {editing && task && (
           <>
-            <div className="my-2 border-t" />
+            <div className="my-2 border-t border-border-subtle" />
             <CommentThread taskId={task.id} projectId={projectId} />
           </>
         )}

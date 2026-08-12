@@ -6,6 +6,7 @@ mod media_service;
 mod record;
 
 pub use media_service::media_router;
+pub(crate) use record::ready_media_count_for_project;
 
 use std::sync::Arc;
 

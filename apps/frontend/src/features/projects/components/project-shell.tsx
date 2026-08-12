@@ -21,7 +21,7 @@ export function ProjectShell({ projectId }: { projectId: string }) {
   if (isError || !project) {
     return (
       <div className="p-12 text-center">
-        <p className="text-destructive">
+        <p className="text-danger">
           {error?.message ?? "You don’t have access to this project."}
         </p>
       </div>

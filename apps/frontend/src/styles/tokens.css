@@ -1,67 +1,294 @@
-@import url('https://fonts.googleapis.com/css2?family=Google+Sans:wght@300;400;500;600;700&family=Google+Sans+Mono:wght@400;500;600&display=swap');
+/* ============================================================
+   Design tokens — Sedjiwa Portal Task Management
+   Dihasilkan dari skill `ui-design`.
+   Lapis 1 (primitif) TIDAK BOLEH dipakai langsung di komponen.
+   Komponen hanya memakai lapis 2 (semantik).
+
+   Input resep: BRAND_HUE 217 (biru) · BASE_SAT 91% · GREY_HUE 217
+   (personality technical → grey ikut hue brand) · GREY_SAT 8% (UI padat
+   data) · RADIUS 8px (netral: SaaS/tools/dashboard).
+
+   Seluruh daftar kanonik `references/accessibility.md` §2 sudah diukur dan
+   lolos untuk :root DAN .dark — 24 pasangan, tidak ada yang ditaksir.
+   ============================================================ */
+
+/* Font dimuat lewat <link> di index.html, BUKAN @import di sini. Dev server
+   Vite menyuntikkan CSS lewat JS dan membuang @import bersarang, sehingga di
+   dev seluruh aplikasi diam-diam memakai font fallback sistem sementara build
+   produksi baik-baik saja — setiap review visual di dev jadi menyesatkan. */
 
 :root {
-  /* Colors - Dark glassmorphism */
-  --background: hsl(228 20% 7%);
-  --foreground: hsl(220 14% 90%);
-  --card: hsl(228 20% 10%);
-  --card-foreground: hsl(220 14% 90%);
-  --popover: hsl(228 20% 10%);
-  --popover-foreground: hsl(220 14% 90%);
-  --primary: hsl(217 91% 60%);
-  --primary-foreground: hsl(0 0% 98%);
-  --secondary: hsl(228 15% 15%);
-  --secondary-foreground: hsl(220 14% 82%);
-  --muted: hsl(228 12% 14%);
-  --muted-foreground: hsl(220 9% 56%);
-  --accent: hsl(228 15% 13%);
-  --accent-foreground: hsl(220 14% 90%);
-  --destructive: hsl(0 84% 60%);
-  --destructive-foreground: hsl(0 0% 98%);
-  --border: hsl(228 10% 18%);
-  --input: hsl(228 10% 18%);
-  --ring: hsl(217 91% 60%);
-  --chart-1: hsl(217 91% 60%);
-  --chart-2: hsl(160 59% 38%);
-  --chart-3: hsl(38 92% 50%);
-  --chart-4: hsl(258 90% 66%);
-  --chart-5: hsl(0 84% 60%);
+  /* ---------- Lapis 1: primitif ---------- */
+  /* Grey — saturation 8%, terikat ke hue brand. Grey netral dilarang. */
+  --grey-50:  hsl(217 4% 97%);
+  --grey-100: hsl(217 4% 94%);
+  --grey-200: hsl(217 8% 86%);
+  --grey-300: hsl(217 8% 76%);
+  --grey-400: hsl(217 8% 66%);
+  /* 52%, bukan 54% atau 56%: ia adalah --border-strong, batas komponen yang
+     juga duduk di --surface-sunken (border input). Setiap kali --surface-sunken
+     digelapkan, angka ini harus ikut turun. Pada --surface-sunken 91%:
+     56% → 2.6 · 54% → 2.93 · 52% → 3.14. Nilai 54% yang lama dipilih untuk
+     --surface-sunken 94%; ia gagal pada 91%.
+     Angka ini HANYA berlaku untuk light: 3.61 di atas --surface, 3.14 di atas
+     --surface-sunken, 3.86 di atas --surface-raised. Di dark --border-strong
+     TIDAK memetakan ke primitif ini sama sekali — lihat .dark. */
+  --grey-500: hsl(217 8% 52%);
+  /* 44%, bukan 46% tangga generik: pada hue 217 ia menopang --text-subtle
+     dan di 46% hanya mencapai 4.46:1 vs --surface — gagal ambang 4.5. */
+  --grey-600: hsl(217 8% 44%);
+  --grey-700: hsl(217 9% 40%);
+  --grey-800: hsl(217 9% 24%);
+  --grey-900: hsl(217 9% 18%);
 
-  /* Radius — unchanged */
-  --radius: 0.375rem;
-  --radius-sm: calc(var(--radius) - 2px);
-  --radius-md: calc(var(--radius) - 1px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  /* Brand — separuh bawah tangga (400–900) digeser turun dari tangga generik.
+     Biru 217 jauh lebih terang secara luminansi daripada indigo di contoh
+     resep: pada 500=56% label --text-on-brand di atas --brand dark hanya
+     mencapai 3.87:1. Jarak antar langkah dijaga supaya --brand (500) dan
+     --brand-hover (600) tetap terbaca berbeda saat hover di dark. */
+  --brand-50:  hsl(209 41% 97%);
+  --brand-100: hsl(209 50% 94%);
+  --brand-200: hsl(209 64% 86%);
+  --brand-300: hsl(217 77% 76%);
+  --brand-400: hsl(217 86% 62%);
+  --brand-500: hsl(217 91% 50%);
+  --brand-600: hsl(217 96% 42%);
+  --brand-700: hsl(225 100% 35%);
+  --brand-800: hsl(225 100% 28%);
+  --brand-900: hsl(225 100% 21%);
 
-  /* Typography — unchanged */
+  --danger-100:  hsl(0 90% 94%);
+  --danger-500:  hsl(0 72% 51%);
+  --danger-700:  hsl(0 74% 38%);
+  --warning-100: hsl(38 95% 92%);
+  --warning-500: hsl(38 92% 50%);
+  --warning-700: hsl(32 85% 34%);
+  --success-100: hsl(150 60% 92%);
+  --success-500: hsl(150 62% 40%);
+  --success-700: hsl(152 66% 28%);
+
+  /* ---------- Lapis 2: semantik (light) ---------- */
+  --surface:         var(--grey-50);
+  --surface-raised:  hsl(217 0% 100%);
+  /* Sengaja LEBIH GELAP dari --grey-100. Ia kini juga menjadi track segmented
+     control di atas --surface (97%); pada 94% jaraknya hanya 1.07:1 dan track
+     itu hilang. Pada 91% jaraknya 1.15:1.
+     BATAS BAWAH ~90%: --text-muted di atasnya 4.87:1, sisa margin 0.37 dari
+     ambang 4.5. Menggelapkan lebih jauh menjatuhkan placeholder input.
+     --text-subtle DILARANG di atas --surface-sunken: 4.18:1 di light (BUKAN
+     4.50 seperti tercatat sebelumnya — grey-600 di atas grey-100 mengukur
+     4.48, sudah di bawah ambang) dan 3.62:1 di dark. Hanya tier 1 & 2. */
+  --surface-sunken:  hsl(217 5% 91%);
+  --surface-overlay: hsl(217 0% 100%);
+  /* ---- Keluarga CHROME: sidebar dan isinya ----
+     Permukaan ketiga, disengaja (§2 diamandemen), dan sejak sidebar memakai
+     warna brand ia butuh keluarga sendiri — persis seperti --brand punya
+     --text-on-brand. Teks netral TIDAK BOLEH dipakai di atasnya sama sekali.
+
+     Konsekuensi yang harus diterima: aksen biru kini terpakai di chrome, jadi
+     tombol primer tidak lagi satu-satunya biru di layar (§3.6 dilonggarkan). */
+  --surface-chrome:        var(--brand-900);
+  --surface-chrome-hover:  var(--brand-800);
+  /* Pil nav aktif. TIDAK bisa memakai --brand-subtle/--brand-text seperti di
+     tempat lain: --brand-text di atas brand-900 hanya 2.32:1. */
+  --surface-chrome-active: var(--brand-700);
+  --text-on-chrome:        var(--brand-50);
+  --text-on-chrome-muted:  var(--brand-300);
+  /* --text-subtle DILARANG di atas --surface-hover. Tier 1 & 2 saja. */
+  --surface-hover:   var(--grey-100);
+
+  --text:          var(--grey-900);
+  --text-muted:    var(--grey-700);
+  --text-subtle:   var(--grey-600);
+  --text-on-brand: var(--brand-50);
+
+  --brand:        var(--brand-600);
+  --brand-hover:  var(--brand-700);
+  --brand-subtle: var(--brand-100);
+  /* --brand sebagai TEKS gagal di dark (2.01:1). Pakai --brand-text untuk
+     teks berwarna brand; --brand hanya untuk fill. */
+  --brand-text:   var(--brand-600);
+
+  --border:        var(--grey-200);
+  /* Hairline PEMISAH DI DALAM permukaan raised (baris tabel, sekat seksi).
+     --border (grey-200) terlalu berat di atas --surface-raised dan terbaca
+     sebagai jahitan. Dekoratif: WCAG tidak menetapkan ambang untuk ini, dan
+     memaksa 3:1 membuatnya tidak lagi halus. TIDAK untuk outline input atau
+     batas komponen — itu tetap --border-strong. */
+  --border-subtle: var(--grey-100);
+  --border-strong: var(--grey-500);
+  /* Batas KONTROL FORM (input, textarea, select trigger, checkbox), dipisah dari
+     --border-strong yang kini hanya melayani batas overlay/panel (dialog, sheet,
+     popover, dropdown, sonner).
+     Kenapa dipisah: kontrol form dulu menumpuk tiga penanda batas sekaligus —
+     fill --surface-sunken + --shadow-inset + garis grey-500 yang duduk hanya
+     0.15 di atas lantai 3:1 (3.15 di atas sunken). Itu melanggar aturan 7
+     (coba beda surface / shadow / spacing SEBELUM menambah border, bukan
+     ketiganya sekaligus) dan terbaca terlalu tegas di light.
+     Perbaikannya struktural, bukan mengencerkan warna: fill kontrol naik ke
+     --surface-raised dan --shadow-inset dilepas, sehingga garisnya boleh lebih
+     terang dan TETAP lolos ambang.
+     56% adalah lantai praktisnya di light — ia harus lolos 3:1 di KEDUA sisi
+     garis, dan sisi luar yang paling ketat adalah --surface (97%):
+     56% → 3.12 vs --surface · 3.35 vs --surface-raised.
+     57% → 3.04 vs --surface (sisa margin 0.04, terlalu tipis).
+     58% → 2.93 vs --surface, GAGAL.
+     Nilai ini mengandaikan fill kontrol adalah --surface-field, yang di light
+     berarti --surface-raised. Mengembalikan fill ke --surface-sunken
+     menjatuhkannya ke 2.73 — kalau fill diubah, angka ini WAJIB dihitung ulang.
+     Di dark tidak ada keluhan dan angkanya lapang, jadi ia menumpang
+     --border-strong di sana — lihat .dark. */
+  --border-field:  hsl(217 8% 56%);
+  /* Fill kontrol form. Sengaja BUKAN nilai yang sama di kedua tema.
+     Di light ia --surface-raised: itu bagian yang menebus garis 56% (lihat
+     --border-field) dan yang benar-benar menurunkan bobot visualnya.
+     Di dark ia tetap --surface-sunken seperti sebelumnya — di sana kontrol
+     duduk di atas card --surface-raised (grey-800), dan menyamakan fill-nya
+     membuat input kehilangan seluruh afordansi field: yang tersisa hanya
+     outline mengambang di atas card. Kontrasnya lolos, afordansinya tidak.
+     Light dan dark menarik ke arah berlawanan di sini, persis seperti
+     --border-strong — lihat catatannya di .dark. */
+  --surface-field: var(--surface-raised);
+  /* Menyusul --surface-field: sumur yang tenggelam butuh tepi atas, permukaan
+     rata tidak. Di light --shadow-inset justru salah satu dari tiga cue yang
+     membuat input terasa berat, jadi ia dimatikan di sana. */
+  --shadow-field:  none;
+  --focus:         var(--brand-500);
+
+  /* Token status memetakan ke shade -700, bukan -500: -500 gagal 4.5:1
+     terhadap --surface terang (danger 4.47 · success 2.93 · warning 1.99). */
+  --danger:         var(--danger-700);
+  --danger-subtle:  var(--danger-100);
+  --warning:        var(--warning-700);
+  --warning-subtle: var(--warning-100);
+  --success:        var(--success-700);
+  --success-subtle: var(--success-100);
+  /* Tambahan project: --danger juga dipakai sebagai FILL tombol destructive,
+     jadi label di atasnya butuh token sendiri yang ikut diukur (6.04 light /
+     5.78 dark). Ia MEMBALIK antar tema — lihat .dark. */
+  --text-on-danger: var(--danger-100);
+
+  /* ---------- Skala non-warna ---------- */
   --font-sans: 'Google Sans', system-ui, sans-serif;
   --font-mono: 'Google Sans Mono', ui-monospace, monospace;
 
-  /* Spacing scale — unchanged */
-  --space-1: 2px;
-  --space-2: 4px;
-  --space-3: 6px;
-  --space-4: 8px;
-  --space-5: 10px;
-  --space-6: 12px;
-  --space-8: 16px;
-  --space-10: 20px;
-  --space-12: 24px;
+  --radius-sm:   4px;
+  --radius:      8px;
+  --radius-lg:   12px;
+  --radius-xl:   16px;
+  --radius-full: 9999px;
 
-  /* Sidebar */
-  --sidebar: hsl(235 25% 13%);
-  --sidebar-foreground: hsl(220 9% 56%);
-  --sidebar-primary: hsl(217 91% 60%);
-  --sidebar-primary-foreground: hsl(0 0% 98%);
-  --sidebar-accent: hsl(235 20% 17%);
-  --sidebar-accent-foreground: hsl(220 14% 90%);
-  --sidebar-border: hsl(235 15% 18%);
-  --sidebar-ring: hsl(217 91% 60%);
+  /* Diffuse + negative spread. Kunci tampilan Soft Card: bayangan lebar dan
+     lembut, bukan bayangan ketat ala Tailwind. Dua lapis per token — satu
+     hairline rapat untuk mendudukkan tepi, satu lebar untuk mengangkat. */
+  --shadow-1: 0 1px 2px 0 hsl(217 40% 12% / .05),
+              0 1px 3px 0 hsl(217 40% 12% / .08);
+  --shadow-2: 0 1px 3px 0 hsl(217 40% 12% / .06),
+              0 8px 24px -8px hsl(217 40% 12% / .14);
+  --shadow-3: 0 2px 6px -1px hsl(217 40% 12% / .06),
+              0 16px 32px -12px hsl(217 40% 12% / .18);
+  --shadow-4: 0 4px 10px -2px hsl(217 40% 12% / .06),
+              0 28px 48px -16px hsl(217 40% 12% / .22);
+  --shadow-5: 0 32px 64px -16px hsl(217 40% 12% / .28);
+  /* Tepi atas untuk kontrol tenggelam: input, well, track slider. */
+  --shadow-inset: inset 0 1px 2px hsl(217 40% 12% / .06);
+  /* Hairline yang memisahkan foto user dari permukaan di belakangnya.
+     MEMBALIK antar tema — lihat .dark. */
+  --ring-media:   inset 0 0 0 1px hsl(0 0% 0% / .10);
 
-  /* Glass effects */
-  --glass-bg: rgba(255, 255, 255, 0.04);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
-  --glass-blur: 12px;
+  /* Scrim foto. Sengaja hitam netral, bukan ber-hue seperti --shadow-*:
+     hitam ber-hue menyeret color cast ke setiap foto. Sengaja sama di kedua
+     tema — foto tidak ikut berubah saat tema berubah. */
+  --scrim:        hsl(0 0% 0% / .45);
+  --scrim-strong: hsl(0 0% 0% / .75);
+
+  --duration-fast: 120ms;
+  --duration:      200ms;
+  --duration-slow: 320ms;
+  --ease-out:      cubic-bezier(.16, 1, .3, 1);
+  --ease-in-out:   cubic-bezier(.65, 0, .35, 1);
+}
+
+/* ---------- Lapis 2: semantik (dark) ----------
+   HANYA memetakan ulang lapis 2. Lapis 1 tidak disentuh. */
+.dark {
+  --surface:         var(--grey-900);
+  --surface-raised:  var(--grey-800);
+  --surface-sunken:  hsl(217 9% 13%);
+  --surface-overlay: var(--grey-800);
+  /* Chrome di dark TIDAK boleh brand-900: pada 21% ia hampir seterang kanvas
+     grey-900 (18%) — hanya 1.11:1, praktis tak terpisah. Turun ke 12%, yang
+     memberi 1.33 vs kanvas dan 1.66 vs kartu. Hover/active ikut naik satu
+     tingkat masing-masing supaya jaraknya tetap terbaca. */
+  --surface-chrome:        hsl(225 100% 12%);
+  --surface-chrome-hover:  hsl(225 100% 18%);
+  --surface-chrome-active: hsl(225 100% 24%);
+  --text-on-chrome:        var(--brand-50);
+  --text-on-chrome-muted:  var(--brand-300);
+  /* --text-subtle DILARANG di atas --surface-hover: hanya 3.62:1. */
+  --surface-hover:   hsl(217 9% 30%);
+
+  --text:          var(--grey-50);
+  --text-muted:    var(--grey-300);
+  --text-subtle:   var(--grey-400);
+  --text-on-brand: var(--brand-50);
+
+  /* --brand-hover memakai shade LEBIH GELAP di dark, berlawanan dengan
+     "makin tinggi makin terang": kontras label menang atas konvensi elevasi. */
+  --brand:        var(--brand-500);
+  --brand-hover:  var(--brand-600);
+  --brand-subtle: var(--brand-900);
+  --brand-text:   var(--brand-300);
+
+  --border:        var(--grey-800);
+  /* Di dark, pemisah halus justru LEBIH TERANG dari --border: di atas
+     --surface-raised (grey-800) sebuah garis yang lebih gelap menghilang. */
+  --border-subtle: var(--grey-700);
+  /* TIDAK ikut --grey-500 seperti di light. --border-strong adalah batas
+     kontrol form, dan kontrol itu duduk DI DALAM kartu (--surface-raised =
+     grey-800). Pada grey-500 batas itu hanya 2.88:1 di sana — di bawah 3:1.
+     Terang dan gelap menarik ke arah berlawanan di sini: light butuh nilai
+     lebih gelap untuk melawan putih, dark butuh lebih terang untuk melawan
+     grey-800. Itulah sebabnya keduanya TIDAK boleh memetakan ke primitif
+     yang sama.
+     grey-400 di dark: raised 4.57 · sunken 6.69 · surface 5.70 · hover 3.62. */
+  --border-strong: var(--grey-400);
+  /* Di dark kontrol form TIDAK dipisahkan: grey-400 sudah lapang di atas setiap
+     permukaan yang ditempati kontrol (raised 4.57 · sunken 6.69 · surface 5.70),
+     jadi tidak ada yang perlu ditebus seperti di light. */
+  --border-field:  var(--border-strong);
+  /* Dark dikembalikan persis ke perilaku lama — sumur tenggelam + tepi atas.
+     Perubahan bobot input adalah perbaikan khusus light. */
+  --surface-field: var(--surface-sunken);
+  --shadow-field:  var(--shadow-inset);
+  /* brand-400 gagal 3:1 di atas --surface-raised. */
+  --focus:         var(--brand-300);
+
+  --danger:         hsl(0 70% 74%);
+  --danger-subtle:  hsl(0 60% 20%);
+  --warning:        hsl(38 92% 60%);
+  --warning-subtle: hsl(32 70% 18%);
+  --success:        hsl(150 55% 52%);
+  --success-subtle: hsl(152 50% 16%);
+  /* MEMBALIK: di dark --danger adalah warna terang, jadi labelnya gelap. */
+  --text-on-danger: var(--grey-900);
+
+  --shadow-1: 0 1px 2px 0 hsl(0 0% 0% / .30), 0 1px 3px 0 hsl(0 0% 0% / .36);
+  --shadow-2: 0 1px 3px 0 hsl(0 0% 0% / .32), 0 8px 24px -8px hsl(0 0% 0% / .48);
+  --shadow-3: 0 2px 6px -1px hsl(0 0% 0% / .32), 0 16px 32px -12px hsl(0 0% 0% / .55);
+  --shadow-4: 0 4px 10px -2px hsl(0 0% 0% / .34), 0 28px 48px -16px hsl(0 0% 0% / .60);
+  --shadow-5: 0 32px 64px -16px hsl(0 0% 0% / .70);
+  --shadow-inset: inset 0 1px 2px hsl(0 0% 0% / .30);
+  /* MEMBALIK jadi putih di dark: ring hitam di atas permukaan gelap justru
+     melarutkan tepi foto ke dalam --surface, kebalikan dari tugasnya. */
+  --ring-media:   inset 0 0 0 1px hsl(0 0% 100% / .12);
+  /* --scrim & --scrim-strong sengaja TIDAK di-override di sini. */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
 }

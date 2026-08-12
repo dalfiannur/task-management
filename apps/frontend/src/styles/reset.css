@@ -5,12 +5,15 @@
   border-width: 0;
   border-style: solid;
   border-color: var(--border);
-  outline-color: color-mix(in srgb, var(--ring) 50%, transparent);
+  outline-color: var(--focus);
 }
 
 html {
-  line-height: 1.45;
-  font-size: 14px;
+  /* 16px root sengaja TIDAK di-override. Sebelumnya `font-size: 14px` di sini
+     menyusutkan seluruh skala spacing rem Tailwind jadi 3.5px per langkah,
+     sehingga skala terkunci (aturan 5) tidak pernah benar-benar berlaku —
+     dan ia juga menimpa preferensi ukuran font milik user. */
+  line-height: 1.5;
   -webkit-text-size-adjust: 100%;
   tab-size: 4;
   font-family: var(--font-sans);
@@ -22,8 +25,8 @@ html {
 body {
   margin: 0;
   line-height: inherit;
-  background-color: var(--background);
-  color: var(--foreground);
+  background-color: var(--surface);
+  color: var(--text);
 }
 
 hr {
@@ -161,10 +164,16 @@ textarea {
   resize: vertical;
 }
 
+/* Tier 2, bukan grey hasil color-mix yang tidak pernah diukur. Placeholder kini
+   duduk di --surface-raised (fill kontrol form pindah ke sana bersama
+   --border-field) dan terukur 5.97:1 di light. Tetap tier 2, BUKAN turun ke
+   --text-subtle: satu token placeholder dipakai di kedua tema, dan tier 3 tidak
+   punya margin untuk itu. Placeholder tetap bukan pengganti <label> —
+   accessibility.md §6. */
 input::placeholder,
 textarea::placeholder {
   opacity: 1;
-  color: color-mix(in srgb, var(--foreground) 40%, transparent);
+  color: var(--text-muted);
 }
 
 button, [role="button"] {

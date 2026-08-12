@@ -19,13 +19,13 @@
 }
 
 .toggle:hover {
-  background-color: var(--muted);
-  color: var(--muted-foreground);
+  background-color: var(--surface-sunken);
+  color: var(--text-muted);
 }
 
 .toggle[data-state="on"] {
-  background-color: var(--accent);
-  color: var(--accent-foreground);
+  background-color: var(--surface-hover);
+  color: var(--text);
 }
 
 .toggle:disabled {
@@ -46,14 +46,14 @@
 
 /* Focus-visible ring */
 .toggle:focus-visible {
-  border-color: var(--ring);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 50%, transparent);
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 50%, transparent);
 }
 
 /* Aria-invalid state */
 .toggle[aria-invalid="true"] {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--destructive) 40%, transparent);
-  border-color: var(--destructive);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 40%, transparent);
+  border-color: var(--danger);
 }
 
 /* ============================================
@@ -67,14 +67,14 @@
 
 /* variant: outline */
 .toggle[data-variant="outline"] {
-  border: 1px solid var(--input);
+  border: 1px solid var(--border);
   background-color: transparent;
-  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  box-shadow: var(--shadow-1);
 }
 
 .toggle[data-variant="outline"]:hover {
-  background-color: var(--accent);
-  color: var(--accent-foreground);
+  background-color: var(--surface-hover);
+  color: var(--text);
 }
 
 /* ============================================

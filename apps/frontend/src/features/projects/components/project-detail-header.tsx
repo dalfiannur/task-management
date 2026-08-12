@@ -28,7 +28,7 @@ import { useUserMap } from "@/features/users";
 import type { Project, ProjectStatus } from "../types";
 import { PROJECT_STATUSES, STATUS_LABEL } from "../types";
 import { useSetProjectStatus, useDeleteProject } from "../api/hooks";
-import { statusToProto } from "../api/mappers";
+import { formatProjectDateRange, statusToProto } from "../api/mappers";
 import { ProjectStatusBadge } from "./project-status-badge";
 import { TransferOwnershipDialog } from "./transfer-ownership-dialog";
 
@@ -44,10 +44,7 @@ export function ProjectDetailHeader({ project }: { project: Project }) {
   const canManage = isAdmin || project.ownerId === me?.id;
   const owner = ownerMap[project.ownerId];
   const ownerName = owner?.displayName ?? "Owner";
-  const range =
-    project.startDate || project.endDate
-      ? `${project.startDate ?? "…"} → ${project.endDate ?? "…"}`
-      : null;
+  const range = formatProjectDateRange(project);
 
   function changeStatus(status: ProjectStatus) {
     setStatus.mutate(
@@ -70,18 +67,18 @@ export function ProjectDetailHeader({ project }: { project: Project }) {
   }
 
   return (
-    <div className="flex flex-wrap items-start justify-between gap-4 border-b px-6 py-4">
+    <div className="flex flex-wrap items-start justify-between gap-4 px-6 py-4">
       <div className="space-y-2">
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-semibold">{project.name}</h1>
           <ProjectStatusBadge status={project.status} />
         </div>
         {project.description && (
-          <p className="max-w-2xl text-sm text-muted-foreground">
+          <p className="max-w-2xl text-sm text-text-muted">
             {project.description}
           </p>
         )}
-        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+        <div className="flex items-center gap-3 text-sm text-text-muted">
           <span className="flex items-center gap-2">
             <Avatar className="h-6 w-6">
               {owner?.avatarUrl && <AvatarImage src={owner.avatarUrl} />}
@@ -91,7 +88,7 @@ export function ProjectDetailHeader({ project }: { project: Project }) {
             </Avatar>
             {ownerName}
           </span>
-          {range && <span>· {range}</span>}
+          {range && <span className="text-num">· {range}</span>}
         </div>
       </div>
 

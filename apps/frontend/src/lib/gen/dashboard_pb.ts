@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file dashboard.proto.
  */
 export const file_dashboard: GenFile = /*@__PURE__*/
-  fileDesc("Cg9kYXNoYm9hcmQucHJvdG8SGnNlZGppd2EudGFza3MuZGFzaGJvYXJkLnYxInIKBk15VGFzaxIpCgR0YXNrGAEgASgLMhsuc2Vkaml3YS50YXNrcy53b3JrLnYxLlRhc2sSEgoKcHJvamVjdF9pZBgCIAEoCRIUCgxwcm9qZWN0X25hbWUYAyABKAkSEwoLbW9kdWxlX25hbWUYBCABKAkiGgoYR2V0RGFzaGJvYXJkU3RhdHNSZXF1ZXN0IlgKD1Byb2plY3RQcm9ncmVzcxISCgpwcm9qZWN0X2lkGAEgASgJEhQKDHByb2plY3RfbmFtZRgCIAEoCRIMCgRkb25lGAMgASgNEg0KBXRvdGFsGAQgASgNIq0BCg5EYXNoYm9hcmRTdGF0cxITCgt0b3RhbF90YXNrcxgBIAEoDRIZChFpbl9wcm9ncmVzc190YXNrcxgCIAEoDRISCgpkb25lX3Rhc2tzGAMgASgNEhUKDW92ZXJkdWVfdGFza3MYBCABKA0SQAoLcGVyX3Byb2plY3QYBSADKAsyKy5zZWRqaXdhLnRhc2tzLmRhc2hib2FyZC52MS5Qcm9qZWN0UHJvZ3Jlc3MiMgobR2V0VXBjb21pbmdEZWFkbGluZXNSZXF1ZXN0EhMKC3dpdGhpbl9kYXlzGAEgASgNIkUKEFRhc2tMaXN0UmVzcG9uc2USMQoFaXRlbXMYASADKAsyIi5zZWRqaXdhLnRhc2tzLmRhc2hib2FyZC52MS5NeVRhc2sivQEKDk15VGFza3NSZXF1ZXN0EjYKBnN0YXR1cxgBIAEoDjIhLnNlZGppd2EudGFza3Mud29yay52MS5UYXNrU3RhdHVzSACIAQESOgoIcHJpb3JpdHkYAiABKA4yIy5zZWRqaXdhLnRhc2tzLndvcmsudjEuVGFza1ByaW9yaXR5SAGIAQESDAoEcGFnZRgDIAEoDRIRCglwYWdlX3NpemUYBCABKA1CCQoHX3N0YXR1c0ILCglfcHJpb3JpdHkiUwoPTXlUYXNrc1Jlc3BvbnNlEjEKBWl0ZW1zGAEgAygLMiIuc2Vkaml3YS50YXNrcy5kYXNoYm9hcmQudjEuTXlUYXNrEg0KBXRvdGFsGAIgASgNMogCChBEYXNoYm9hcmRTZXJ2aWNlEnUKEUdldERhc2hib2FyZFN0YXRzEjQuc2Vkaml3YS50YXNrcy5kYXNoYm9hcmQudjEuR2V0RGFzaGJvYXJkU3RhdHNSZXF1ZXN0Giouc2Vkaml3YS50YXNrcy5kYXNoYm9hcmQudjEuRGFzaGJvYXJkU3RhdHMSfQoUR2V0VXBjb21pbmdEZWFkbGluZXMSNy5zZWRqaXdhLnRhc2tzLmRhc2hib2FyZC52MS5HZXRVcGNvbWluZ0RlYWRsaW5lc1JlcXVlc3QaLC5zZWRqaXdhLnRhc2tzLmRhc2hib2FyZC52MS5UYXNrTGlzdFJlc3BvbnNlMtUCCg5NeVRhc2tzU2VydmljZRJrChBMaXN0QXNzaWduZWRUb01lEiouc2Vkaml3YS50YXNrcy5kYXNoYm9hcmQudjEuTXlUYXNrc1JlcXVlc3QaKy5zZWRqaXdhLnRhc2tzLmRhc2hib2FyZC52MS5NeVRhc2tzUmVzcG9uc2USagoPTGlzdENyZWF0ZWRCeU1lEiouc2Vkaml3YS50YXNrcy5kYXNoYm9hcmQudjEuTXlUYXNrc1JlcXVlc3QaKy5zZWRqaXdhLnRhc2tzLmRhc2hib2FyZC52MS5NeVRhc2tzUmVzcG9uc2USagoPTGlzdEludm9sdmluZ01lEiouc2Vkaml3YS50YXNrcy5kYXNoYm9hcmQudjEuTXlUYXNrc1JlcXVlc3QaKy5zZWRqaXdhLnRhc2tzLmRhc2hib2FyZC52MS5NeVRhc2tzUmVzcG9uc2ViBnByb3RvMw", [file_work]);
+  fileDesc("Cg9kYXNoYm9hcmQucHJvdG8SGnNlZGppd2EudGFza3MuZGFzaGJvYXJkLnYxInIKBk15VGFzaxIpCgR0YXNrGAEgASgLMhsuc2Vkaml3YS50YXNrcy53b3JrLnYxLlRhc2sSEgoKcHJvamVjdF9pZBgCIAEoCRIUCgxwcm9qZWN0X25hbWUYAyABKAkSEwoLbW9kdWxlX25hbWUYBCABKAkiGgoYR2V0RGFzaGJvYXJkU3RhdHNSZXF1ZXN0IlgKD1Byb2plY3RQcm9ncmVzcxISCgpwcm9qZWN0X2lkGAEgASgJEhQKDHByb2plY3RfbmFtZRgCIAEoCRIMCgRkb25lGAMgASgNEg0KBXRvdGFsGAQgASgNIq0BCg5EYXNoYm9hcmRTdGF0cxITCgt0b3RhbF90YXNrcxgBIAEoDRIZChFpbl9wcm9ncmVzc190YXNrcxgCIAEoDRISCgpkb25lX3Rhc2tzGAMgASgNEhUKDW92ZXJkdWVfdGFza3MYBCABKA0SQAoLcGVyX3Byb2plY3QYBSADKAsyKy5zZWRqaXdhLnRhc2tzLmRhc2hib2FyZC52MS5Qcm9qZWN0UHJvZ3Jlc3MiMgobR2V0VXBjb21pbmdEZWFkbGluZXNSZXF1ZXN0EhMKC3dpdGhpbl9kYXlzGAEgASgNIkUKEFRhc2tMaXN0UmVzcG9uc2USMQoFaXRlbXMYASADKAsyIi5zZWRqaXdhLnRhc2tzLmRhc2hib2FyZC52MS5NeVRhc2sivQEKDk15VGFza3NSZXF1ZXN0EjYKBnN0YXR1cxgBIAEoDjIhLnNlZGppd2EudGFza3Mud29yay52MS5UYXNrU3RhdHVzSACIAQESOgoIcHJpb3JpdHkYAiABKA4yIy5zZWRqaXdhLnRhc2tzLndvcmsudjEuVGFza1ByaW9yaXR5SAGIAQESDAoEcGFnZRgDIAEoDRIRCglwYWdlX3NpemUYBCABKA1CCQoHX3N0YXR1c0ILCglfcHJpb3JpdHkiUwoPTXlUYXNrc1Jlc3BvbnNlEjEKBWl0ZW1zGAEgAygLMiIuc2Vkaml3YS50YXNrcy5kYXNoYm9hcmQudjEuTXlUYXNrEg0KBXRvdGFsGAIgASgNIi8KGUdldFByb2plY3RPdmVydmlld1JlcXVlc3QSEgoKcHJvamVjdF9pZBgBIAEoCSJVCg5Nb2R1bGVQcm9ncmVzcxIRCgltb2R1bGVfaWQYASABKAkSEwoLbW9kdWxlX25hbWUYAiABKAkSDAoEZG9uZRgDIAEoDRINCgV0b3RhbBgEIAEoDSL/AQoPUHJvamVjdE92ZXJ2aWV3EhMKC3RvdGFsX3Rhc2tzGAEgASgNEhkKEWluX3Byb2dyZXNzX3Rhc2tzGAIgASgNEhIKCmRvbmVfdGFza3MYAyABKA0SFQoNb3ZlcmR1ZV90YXNrcxgEIAEoDRI+CgpwZXJfbW9kdWxlGAUgAygLMiouc2Vkaml3YS50YXNrcy5kYXNoYm9hcmQudjEuTW9kdWxlUHJvZ3Jlc3MSEgoKbWVtYmVyX2lkcxgGIAMoCRIUCgxtb2R1bGVfY291bnQYByABKA0SEgoKcGFnZV9jb3VudBgIIAEoDRITCgttZWRpYV9jb3VudBgJIAEoDTKCAwoQRGFzaGJvYXJkU2VydmljZRJ1ChFHZXREYXNoYm9hcmRTdGF0cxI0LnNlZGppd2EudGFza3MuZGFzaGJvYXJkLnYxLkdldERhc2hib2FyZFN0YXRzUmVxdWVzdBoqLnNlZGppd2EudGFza3MuZGFzaGJvYXJkLnYxLkRhc2hib2FyZFN0YXRzEn0KFEdldFVwY29taW5nRGVhZGxpbmVzEjcuc2Vkaml3YS50YXNrcy5kYXNoYm9hcmQudjEuR2V0VXBjb21pbmdEZWFkbGluZXNSZXF1ZXN0Giwuc2Vkaml3YS50YXNrcy5kYXNoYm9hcmQudjEuVGFza0xpc3RSZXNwb25zZRJ4ChJHZXRQcm9qZWN0T3ZlcnZpZXcSNS5zZWRqaXdhLnRhc2tzLmRhc2hib2FyZC52MS5HZXRQcm9qZWN0T3ZlcnZpZXdSZXF1ZXN0Gisuc2Vkaml3YS50YXNrcy5kYXNoYm9hcmQudjEuUHJvamVjdE92ZXJ2aWV3MtUCCg5NeVRhc2tzU2VydmljZRJrChBMaXN0QXNzaWduZWRUb01lEiouc2Vkaml3YS50YXNrcy5kYXNoYm9hcmQudjEuTXlUYXNrc1JlcXVlc3QaKy5zZWRqaXdhLnRhc2tzLmRhc2hib2FyZC52MS5NeVRhc2tzUmVzcG9uc2USagoPTGlzdENyZWF0ZWRCeU1lEiouc2Vkaml3YS50YXNrcy5kYXNoYm9hcmQudjEuTXlUYXNrc1JlcXVlc3QaKy5zZWRqaXdhLnRhc2tzLmRhc2hib2FyZC52MS5NeVRhc2tzUmVzcG9uc2USagoPTGlzdEludm9sdmluZ01lEiouc2Vkaml3YS50YXNrcy5kYXNoYm9hcmQudjEuTXlUYXNrc1JlcXVlc3QaKy5zZWRqaXdhLnRhc2tzLmRhc2hib2FyZC52MS5NeVRhc2tzUmVzcG9uc2ViBnByb3RvMw", [file_work]);
 
 /**
  * A task enriched with project/module context for cross-project lists.
@@ -219,6 +219,122 @@ export const MyTasksResponseSchema: GenMessage<MyTasksResponse> = /*@__PURE__*/
   messageDesc(file_dashboard, 7);
 
 /**
+ * @generated from message sedjiwa.tasks.dashboard.v1.GetProjectOverviewRequest
+ */
+export type GetProjectOverviewRequest = Message<"sedjiwa.tasks.dashboard.v1.GetProjectOverviewRequest"> & {
+  /**
+   * @generated from field: string project_id = 1;
+   */
+  projectId: string;
+};
+
+/**
+ * Describes the message sedjiwa.tasks.dashboard.v1.GetProjectOverviewRequest.
+ * Use `create(GetProjectOverviewRequestSchema)` to create a new message.
+ */
+export const GetProjectOverviewRequestSchema: GenMessage<GetProjectOverviewRequest> = /*@__PURE__*/
+  messageDesc(file_dashboard, 8);
+
+/**
+ * @generated from message sedjiwa.tasks.dashboard.v1.ModuleProgress
+ */
+export type ModuleProgress = Message<"sedjiwa.tasks.dashboard.v1.ModuleProgress"> & {
+  /**
+   * @generated from field: string module_id = 1;
+   */
+  moduleId: string;
+
+  /**
+   * @generated from field: string module_name = 2;
+   */
+  moduleName: string;
+
+  /**
+   * @generated from field: uint32 done = 3;
+   */
+  done: number;
+
+  /**
+   * @generated from field: uint32 total = 4;
+   */
+  total: number;
+};
+
+/**
+ * Describes the message sedjiwa.tasks.dashboard.v1.ModuleProgress.
+ * Use `create(ModuleProgressSchema)` to create a new message.
+ */
+export const ModuleProgressSchema: GenMessage<ModuleProgress> = /*@__PURE__*/
+  messageDesc(file_dashboard, 9);
+
+/**
+ * @generated from message sedjiwa.tasks.dashboard.v1.ProjectOverview
+ */
+export type ProjectOverview = Message<"sedjiwa.tasks.dashboard.v1.ProjectOverview"> & {
+  /**
+   * non-cancelled, same rule as DashboardStats
+   *
+   * @generated from field: uint32 total_tasks = 1;
+   */
+  totalTasks: number;
+
+  /**
+   * @generated from field: uint32 in_progress_tasks = 2;
+   */
+  inProgressTasks: number;
+
+  /**
+   * @generated from field: uint32 done_tasks = 3;
+   */
+  doneTasks: number;
+
+  /**
+   * due_date < today (UTC) && status != done
+   *
+   * @generated from field: uint32 overdue_tasks = 4;
+   */
+  overdueTasks: number;
+
+  /**
+   * module order; empty modules included
+   *
+   * @generated from field: repeated sedjiwa.tasks.dashboard.v1.ModuleProgress per_module = 5;
+   */
+  perModule: ModuleProgress[];
+
+  /**
+   * owner first, then the rest
+   *
+   * @generated from field: repeated string member_ids = 6;
+   */
+  memberIds: string[];
+
+  /**
+   * @generated from field: uint32 module_count = 7;
+   */
+  moduleCount: number;
+
+  /**
+   * @generated from field: uint32 page_count = 8;
+   */
+  pageCount: number;
+
+  /**
+   * ready media only
+   *
+   * @generated from field: uint32 media_count = 9;
+   */
+  mediaCount: number;
+};
+
+/**
+ * Describes the message sedjiwa.tasks.dashboard.v1.ProjectOverview.
+ * Use `create(ProjectOverviewSchema)` to create a new message.
+ */
+export const ProjectOverviewSchema: GenMessage<ProjectOverview> = /*@__PURE__*/
+  messageDesc(file_dashboard, 10);
+
+/**
  * @generated from service sedjiwa.tasks.dashboard.v1.DashboardService
  */
 export const DashboardService: GenService<{
@@ -237,6 +353,17 @@ export const DashboardService: GenService<{
     methodKind: "unary";
     input: typeof GetUpcomingDeadlinesRequestSchema;
     output: typeof TaskListResponseSchema;
+  },
+  /**
+   * Single-project aggregation for the project Overview tab. Member-gated like
+   * ProjectService.GetProject; counting rules match GetDashboardStats exactly.
+   *
+   * @generated from rpc sedjiwa.tasks.dashboard.v1.DashboardService.GetProjectOverview
+   */
+  getProjectOverview: {
+    methodKind: "unary";
+    input: typeof GetProjectOverviewRequestSchema;
+    output: typeof ProjectOverviewSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_dashboard, 0);

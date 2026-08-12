@@ -84,7 +84,7 @@ export function RegisterForm() {
               {register.isPending ? "Registering…" : "Register"}
             </Button>
           </form>
-          <p className="mt-4 text-center text-sm text-muted-foreground">
+          <p className="mt-4 text-center text-sm text-text-muted">
             Already have an account?{" "}
             <Link to="/login" className="underline">
               Sign in

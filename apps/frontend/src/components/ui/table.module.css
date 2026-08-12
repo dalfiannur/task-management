@@ -22,7 +22,7 @@
    ============================================ */
 
 .header tr {
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 /* ============================================
@@ -38,8 +38,8 @@
    ============================================ */
 
 .footer {
-  background-color: color-mix(in srgb, var(--muted) 50%, transparent);
-  border-top: 1px solid var(--border);
+  background-color: color-mix(in srgb, var(--surface-sunken) 50%, transparent);
+  border-top: 1px solid var(--border-subtle);
   font-weight: 500;
 }
 
@@ -52,29 +52,35 @@
    ============================================ */
 
 .row {
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-subtle);
   transition: background-color 150ms ease;
 }
 
 .row:hover {
-  background-color: color-mix(in srgb, var(--muted) 50%, transparent);
+  background-color: color-mix(in srgb, var(--surface-sunken) 50%, transparent);
 }
 
 .row[data-state="selected"] {
-  background-color: var(--muted);
+  background-color: var(--surface-sunken);
 }
 
 /* ============================================
    Table Head
    ============================================ */
 
+/* Perlakuan micro-label. Sengaja MENGGANDAKAN .text-label alih-alih
+   memakainya: .text-label adalah utility untuk JSX, sedangkan header tabel
+   ditata dari modul ini. Jangan @apply. */
 .head {
-  color: var(--foreground);
+  color: var(--text-subtle);
   height: 2.5rem;
   padding: 0.5rem 0.75rem;
   text-align: left;
   vertical-align: middle;
-  font-weight: 500;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   white-space: nowrap;
 }
 
@@ -109,7 +115,7 @@
    ============================================ */
 
 .caption {
-  color: var(--muted-foreground);
+  color: var(--text-muted);
   margin-top: 0.75rem;
   font-size: 0.875rem;
   line-height: 1.25rem;

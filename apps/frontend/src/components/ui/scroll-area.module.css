@@ -19,7 +19,7 @@
 }
 
 .viewport:focus-visible {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 50%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--focus) 50%, transparent);
   outline: 1px solid transparent;
 }
 
@@ -55,5 +55,5 @@
   position: relative;
   flex: 1;
   border-radius: 9999px;
-  background-color: var(--border);
+  background-color: var(--border-strong);
 }

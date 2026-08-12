@@ -9,6 +9,9 @@ import "work.proto";
 service DashboardService {
   rpc GetDashboardStats(GetDashboardStatsRequest) returns (DashboardStats);
   rpc GetUpcomingDeadlines(GetUpcomingDeadlinesRequest) returns (TaskListResponse);
+  // Single-project aggregation for the project Overview tab. Member-gated like
+  // ProjectService.GetProject; counting rules match GetDashboardStats exactly.
+  rpc GetProjectOverview(GetProjectOverviewRequest) returns (ProjectOverview);
 }
 
 service MyTasksService {
@@ -52,4 +55,25 @@ message MyTasksRequest {
 message MyTasksResponse {
   repeated MyTask items = 1;
   uint32 total = 2;
+}
+
+message GetProjectOverviewRequest { string project_id = 1; }
+
+message ModuleProgress {
+  string module_id = 1;
+  string module_name = 2;
+  uint32 done = 3;
+  uint32 total = 4;
+}
+
+message ProjectOverview {
+  uint32 total_tasks = 1;       // non-cancelled, same rule as DashboardStats
+  uint32 in_progress_tasks = 2;
+  uint32 done_tasks = 3;
+  uint32 overdue_tasks = 4;     // due_date < today (UTC) && status != done
+  repeated ModuleProgress per_module = 5;  // module order; empty modules included
+  repeated string member_ids = 6;          // owner first, then the rest
+  uint32 module_count = 7;
+  uint32 page_count = 8;
+  uint32 media_count = 9;       // ready media only
 }

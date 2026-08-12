@@ -54,13 +54,14 @@ export function TaskRow({
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(
-        "group flex items-center gap-2 rounded-md border-b px-2 py-2 last:border-b-0 hover:bg-muted/40",
+        "group flex items-center gap-2 border-b border-border-subtle px-4 py-3 last:border-b-0",
+        "transition-colors [transition-duration:var(--duration-fast)] hover:bg-surface-hover",
         isDragging && "opacity-50",
       )}
     >
       <button
         type="button"
-        className="cursor-grab text-muted-foreground/40 hover:text-muted-foreground"
+        className="cursor-grab text-text-muted/40 hover:text-text-muted"
         {...attributes}
         {...listeners}
         aria-label="Drag task"
@@ -80,7 +81,7 @@ export function TaskRow({
         <span
           className={cn(
             "flex-1 truncate text-sm",
-            done && "text-muted-foreground line-through",
+            done && "text-text-muted line-through",
           )}
         >
           {task.title}
@@ -88,7 +89,9 @@ export function TaskRow({
         <LabelChips ids={task.labelIds} labelMap={labelMap} max={2} />
         <PriorityLabel priority={task.priority} />
         {task.dueDate && (
-          <span className="text-xs text-muted-foreground">{task.dueDate}</span>
+          <span className="text-num text-xs text-text-muted">
+            {task.dueDate}
+          </span>
         )}
         <AssigneeAvatars ids={task.assigneeIds} userMap={userMap} />
         <StatusBadge status={task.status} />

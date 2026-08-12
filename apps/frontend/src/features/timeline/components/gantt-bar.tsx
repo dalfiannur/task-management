@@ -103,24 +103,32 @@ export function GanttBar({
         height: 22,
       }}
       className={cn(
-        "absolute flex items-center rounded px-2 text-xs text-white",
+        // z-20 milik urutan lapis yang didefinisikan di gantt-chart.tsx: di
+        // ATAS fade tepi kanan, di BAWAH kolom nama yang sticky. Tanpa angka
+        // eksplisit bar jatuh ke z-auto dan fade yang ber-z-index menang.
+        "absolute z-20 flex items-center rounded-full px-2.5 text-xs",
         canEdit ? "cursor-grab active:cursor-grabbing" : "cursor-default",
-        done ? "bg-green-600/80" : "bg-primary/80",
-        drag && "ring-2 ring-primary",
+        // Task selesai adalah riwayat, bukan sinyal — ia diredupkan, bukan
+        // diberi warna kedua yang ikut bersaing (aturan 4). Maknanya tetap
+        // dibawa label sr-only di bawah, bukan warna saja (accessibility §5).
+        done
+          ? "bg-surface-hover text-text-muted"
+          : "bg-brand text-text-on-brand",
+        drag && "ring-2 ring-focus",
       )}
       title={task.title}
     >
       {canEdit && (
         <span
           onPointerDown={down("resize-left")}
-          className="absolute left-0 top-0 h-full w-1.5 cursor-ew-resize rounded-l bg-black/20"
+          className="absolute left-0 top-0 h-full w-1.5 cursor-ew-resize rounded-l-full bg-current opacity-30"
         />
       )}
       <span className="truncate">{task.title}</span>
       {canEdit && (
         <span
           onPointerDown={down("resize-right")}
-          className="absolute right-0 top-0 h-full w-1.5 cursor-ew-resize rounded-r bg-black/20"
+          className="absolute right-0 top-0 h-full w-1.5 cursor-ew-resize rounded-r-full bg-current opacity-30"
         />
       )}
       <span className="sr-only">{TASK_STATUS_CONFIG[task.status].label}</span>

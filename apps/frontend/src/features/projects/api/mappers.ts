@@ -40,3 +40,11 @@ export function mapProject(p: PbProject): Project {
     endDate: p.endDate,
   };
 }
+
+/** "start → end" for a project's date range, or `null` when neither is set.
+ *  Callers own their own empty-state fallback (a dash, "No dates set", …) —
+ *  this only formats the range when there is one. */
+export function formatProjectDateRange(project: Project): string | null {
+  if (!project.startDate && !project.endDate) return null;
+  return `${project.startDate ?? "…"} → ${project.endDate ?? "…"}`;
+}

@@ -3,14 +3,12 @@
   flex-direction: column;
   gap: 1rem;
   border-radius: var(--radius-xl);
-  border: 1px solid var(--glass-border);
+  border: none;
   padding-top: 1rem;
   padding-bottom: 1rem;
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
-  color: var(--card-foreground);
-  box-shadow: var(--glass-shadow);
+  background: var(--surface-raised);
+  color: var(--text);
+  box-shadow: var(--shadow-2);
 }
 
 .header {
@@ -31,6 +29,7 @@
 
 .card:where(.borderB) > .header {
   padding-bottom: 1rem;
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .title {
@@ -39,7 +38,7 @@
 }
 
 .description {
-  color: var(--muted-foreground);
+  color: var(--text-muted);
   font-size: 0.875rem;
   line-height: 1.25rem;
 }
@@ -65,4 +64,5 @@
 
 .card:where(.borderT) > .footer {
   padding-top: 1rem;
+  border-top: 1px solid var(--border-subtle);
 }

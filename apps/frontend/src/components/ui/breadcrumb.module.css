@@ -3,7 +3,7 @@
    ============================================ */
 
 .list {
-  color: var(--muted-foreground);
+  color: var(--text-muted);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -38,7 +38,7 @@
 }
 
 .link:hover {
-  color: var(--foreground);
+  color: var(--text);
 }
 
 /* ============================================
@@ -46,7 +46,7 @@
    ============================================ */
 
 .page {
-  color: var(--foreground);
+  color: var(--text);
   font-weight: 400;
 }
 

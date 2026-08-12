@@ -30,7 +30,7 @@ function ColorSwatches({
           style={{ backgroundColor: c }}
           className={cn(
             "h-6 w-6 rounded-full ring-offset-2 transition-all",
-            value === c && "ring-2 ring-foreground",
+            value === c && "ring-2 ring-text",
           )}
           aria-label={`Color ${c}`}
         />
@@ -58,8 +58,14 @@ function LabelRow({ label }: { label: Label }) {
   }
 
   if (editing) {
+    // Hairline, BUKAN fill --surface-sunken. Well ini dulu aman karena input di
+    // dalamnya sama-sama sunken; sejak kontrol form pindah ke --surface-field
+    // ia merugikan di KEDUA tema. Light: --border-field (56%) hanya lolos 3:1
+    // terhadap tetangga luar setinggi --surface (3.12) atau --surface-raised
+    // (3.35) — di atas sunken ia jatuh ke 2.73. Dark: fill input tetap sunken,
+    // jadi well sunken membuatnya melebur ke latar sendiri.
     return (
-      <li className="space-y-2 rounded-md border p-2">
+      <li className="space-y-2 rounded-lg border border-border-subtle p-3">
         <Input value={name} onChange={(e) => setName(e.target.value)} autoFocus />
         <ColorSwatches value={color} onChange={setColor} />
         <div className="flex justify-end gap-2">
@@ -75,9 +81,9 @@ function LabelRow({ label }: { label: Label }) {
   }
 
   return (
-    <li className="group flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-muted/50">
+    <li className="group flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors [transition-duration:var(--duration-fast)] hover:bg-surface-hover">
       <span
-        className="inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium"
+        className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
         style={{ backgroundColor: `${label.color}22`, color: label.color }}
       >
         {label.name}
@@ -146,7 +152,8 @@ export function ManageLabelsDialog({
           <DialogTitle>Manage labels</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-2 rounded-md border p-2">
+        {/* Hairline, bukan fill sunken — alasan sama seperti di LabelRow. */}
+        <div className="space-y-2 rounded-lg border border-border-subtle p-3">
           <div className="flex gap-2">
             <Input
               value={name}
@@ -168,7 +175,7 @@ export function ManageLabelsDialog({
 
         <ul className="max-h-72 space-y-0.5 overflow-y-auto">
           {labels.length === 0 ? (
-            <li className="p-3 text-center text-sm text-muted-foreground">
+            <li className="p-3 text-center text-sm text-text-muted">
               No labels yet.
             </li>
           ) : (

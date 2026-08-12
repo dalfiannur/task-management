@@ -1,4 +1,11 @@
-import { useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -71,6 +78,36 @@ export function GanttChart({ projectId }: { projectId: string }) {
     return { rows: rowList, unscheduled: unsched };
   }, [modules, tasks]);
 
+  // Dua tepi scroll horizontal, dilacak supaya sinyalnya hanya muncul saat ada
+  // yang benar-benar tersembunyi: `start` menguatkan pemisah kolom nama yang
+  // sedang menimpa grid, `end` menyalakan fade di tepi kanan. Menyalakan
+  // keduanya permanen sama saja dengan tidak menyalakan apa pun (aturan 4).
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [edge, setEdge] = useState({ start: false, end: false });
+
+  const measure = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const start = el.scrollLeft > 0;
+    // -1px: scrollWidth/clientWidth dibulatkan berbeda pada zoom non-100%,
+    // jadi perbandingan persis tidak pernah true di ujung kanan.
+    const end = el.scrollLeft < el.scrollWidth - el.clientWidth - 1;
+    setEdge((p) => (p.start === start && p.end === end ? p : { start, end }));
+  }, []);
+
+  // Isi berubah: lebar grid ikut zoom, jumlah baris ikut task yang dijadwalkan.
+  useLayoutEffect(measure, [measure, gridWidth, rows.length]);
+
+  // Container berubah: bukan hanya resize window — sidebar yang menciut juga
+  // mengubah clientWidth tanpa satu pun event resize.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [measure, rows.length]);
+
   function reschedule(taskId: string, patch: ReschedulePatch) {
     update.mutate(
       { id: taskId, ...patch },
@@ -88,8 +125,8 @@ export function GanttChart({ projectId }: { projectId: string }) {
   if (ml || tl) {
     return (
       <div className="space-y-3 p-6">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-64 w-full" />
+        <Skeleton className="h-8 w-48 rounded-full" />
+        <Skeleton className="h-64 w-full rounded-xl shadow-2" />
       </div>
     );
   }
@@ -97,17 +134,18 @@ export function GanttChart({ projectId }: { projectId: string }) {
   return (
     <div className="space-y-4 p-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-medium">Timeline</h2>
-        <div className="inline-flex rounded-md border p-0.5">
+        <h2 className="text-label">Timeline</h2>
+        <div className="inline-flex gap-1 rounded-full bg-surface-sunken p-[3px]">
           {ZOOMS.map((z) => (
             <button
               key={z}
               onClick={() => setZoom(z)}
               className={cn(
-                "rounded px-3 py-1 text-sm capitalize transition-colors",
+                "rounded-full px-3 py-1 text-sm capitalize transition-colors",
+                "[transition-duration:var(--duration-fast)]",
                 zoom === z
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground",
+                  ? "bg-surface-raised font-medium text-text shadow-1"
+                  : "text-text-muted hover:text-text",
               )}
             >
               {z}
@@ -117,87 +155,158 @@ export function GanttChart({ projectId }: { projectId: string }) {
       </div>
 
       {rows.length === 0 ? (
-        <div className="rounded-lg border border-dashed p-12 text-center text-muted-foreground">
+        <div className="rounded-xl bg-surface-raised p-12 text-center text-text-muted shadow-2">
           No scheduled tasks yet. Schedule tasks below to see them here.
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border">
-          <div className="flex">
-            {/* Left: names */}
-            <div
-              className="shrink-0 border-r"
-              style={{ width: NAME_COL }}
-            >
-              <div style={{ height: HEADER_H }} className="border-b" />
-              {rows.map((r) => (
-                <div
-                  key={r.id}
-                  style={{ height: ROW_HEIGHT }}
-                  className={cn(
-                    "flex items-center truncate px-3 text-sm",
-                    r.kind === "module"
-                      ? "bg-muted/40 font-medium"
-                      : "text-muted-foreground",
-                  )}
-                >
-                  {r.kind === "task" ? "· " : ""}
-                  {r.name}
-                </div>
-              ))}
-            </div>
+        <div className="relative">
+          <div
+            ref={scrollRef}
+            onScroll={measure}
+            className="scrollbar-slim overflow-x-auto rounded-xl bg-surface-raised shadow-2"
+          >
+            {/* w-max: tanpa ini flex item menyusut ke lebar viewport dan latar
+                baris modul berhenti di tengah grid — hanya tick absolut yang
+                ikut men-scroll. */}
+            <div className="flex w-max">
+              {/* Left: names — sticky supaya nama baris tidak ikut hilang saat
+                  grid di-scroll ke kanan; tanpa ini bar melayang tanpa label
+                  dan grid berhenti bisa dibaca persis saat mulai dipakai.
 
-            {/* Right: grid */}
-            <div className="relative" style={{ width: gridWidth }}>
+                  URUTAN LAPIS grid ini, dipakai bersama gantt-bar.tsx:
+                    z-auto  gridline, latar baris, label tanggal
+                    z-10    fade tepi kanan  — meredam grid, bukan bar
+                    z-20    GanttBar         — tetap pekat sampai tepi kartu
+                    z-30    kolom nama       — menang atas semuanya
+                  Angka eksplisit wajib: `overflow-x` TIDAK membuat stacking
+                  context, jadi ketiganya beradu di context yang sama dan
+                  urutan DOM saja tidak cukup — elemen ber-z-index selalu
+                  menang atas elemen z-auto berapa pun posisinya di DOM. */}
               <div
-                className="relative border-b"
-                style={{ height: HEADER_H }}
+                className={cn(
+                  "sticky left-0 z-30 shrink-0 bg-surface-raised border-r",
+                  "transition-colors [transition-duration:var(--duration)]",
+                  // Dua bobot, dua token — kosakata yang sama dengan gridline
+                  // di bawah. Saat kolom ini benar-benar menimpa grid, ia naik
+                  // dari pemisah halus jadi landmark; occlusion sendirian tidak
+                  // terbaca karena dua sisi memakai --surface-raised yang sama
+                  // (depth.md §5).
+                  edge.start ? "border-border-strong" : "border-border-subtle",
+                )}
+                style={{ width: NAME_COL }}
               >
-                {ticks.map((t) => (
+                <div
+                  style={{ height: HEADER_H }}
+                  className="border-b border-border-subtle"
+                />
+                {rows.map((r) => (
                   <div
-                    key={t.offset}
+                    key={r.id}
+                    style={{ height: ROW_HEIGHT }}
                     className={cn(
-                      "absolute top-0 flex h-full items-center border-l pl-1 text-[0.65rem] text-muted-foreground",
-                      t.major && "border-foreground/20",
+                      "flex items-center truncate px-3 text-sm",
+                      r.kind === "module"
+                        ? "bg-surface-sunken font-medium"
+                        : "text-text-muted",
                     )}
-                    style={{ left: t.offset * pxPerDay }}
                   >
-                    {t.label}
+                    {r.kind === "task" ? "· " : ""}
+                    {r.name}
                   </div>
                 ))}
               </div>
-              {rows.map((r) => (
+
+              {/* Right: grid */}
+              <div className="relative shrink-0" style={{ width: gridWidth }}>
                 <div
-                  key={r.id}
-                  style={{ height: ROW_HEIGHT }}
-                  className={cn(
-                    "relative border-b",
-                    r.kind === "module" && "bg-muted/40",
-                  )}
+                  className="relative border-b border-border-subtle"
+                  style={{ height: HEADER_H }}
                 >
-                  {/* major vertical gridlines */}
-                  {ticks
-                    .filter((t) => t.major)
-                    .map((t) => (
+                  {ticks.map((t) => (
+                    <div
+                      key={t.offset}
+                      className={cn(
+                        "text-num absolute top-0 flex h-full items-center border-l pl-1 text-xs text-text-muted",
+                      // Batas minor vs mayor: dua tingkat, dua token — bukan
+                      // dua nilai alpha dari --text yang tidak pernah diukur.
+                      // Mayor memakai --border-STRONG, bukan --border: di dark
+                      // --border dan --surface-raised dua-duanya grey-800,
+                      // jadi garis landmark justru HILANG persis di tema yang
+                        // paling membutuhkannya. --border-strong 3.86 light /
+                        // 4.57 dark; --border-subtle 1.14 / 1.86.
+                        t.major
+                          ? "border-border-strong"
+                          : "border-border-subtle",
+                      )}
+                      style={{ left: t.offset * pxPerDay }}
+                    >
+                      {t.label}
+                    </div>
+                  ))}
+                </div>
+                {rows.map((r) => (
+                  <div
+                    key={r.id}
+                    style={{ height: ROW_HEIGHT }}
+                    className={cn(
+                      "relative border-b border-border-subtle",
+                      r.kind === "module" && "bg-surface-sunken",
+                    )}
+                  >
+                    {/* Gridline vertikal — SEMUA tick, bukan hanya yang mayor.
+                        Sebelumnya baris hanya menggambar tick mayor, dan pada
+                        zoom `day` mayor berarti "tanggal 1", jadi tampilan
+                        sebulan hanya punya SATU garis. Membaca tanggal dari
+                        posisi bar mustahil tanpa ini — dan itu justru alasan
+                        grid ini dipertahankan (spec §4.10).
+                        Dua bobot, dua token: hari halus, batas mayor sedikit
+                        lebih berat supaya terbaca sebagai landmark. */}
+                    {ticks.map((t) => (
                       <div
                         key={t.offset}
-                        className="absolute top-0 h-full border-l border-foreground/10"
+                        className={cn(
+                          "absolute top-0 h-full border-l",
+                          t.major
+                            ? "border-border-strong"
+                            : "border-border-subtle",
+                        )}
                         style={{ left: t.offset * pxPerDay }}
                       />
                     ))}
-                  {r.kind === "task" && r.task && r.span && (
-                    <GanttBar
-                      task={r.task}
-                      span={r.span}
-                      {...barGeometry(r.span, range.start, pxPerDay)}
-                      pxPerDay={pxPerDay}
-                      canEdit={canEdit}
-                      onReschedule={reschedule}
-                    />
-                  )}
-                </div>
-              ))}
+                    {r.kind === "task" && r.task && r.span && (
+                      <GanttBar
+                        task={r.task}
+                        span={r.span}
+                        {...barGeometry(r.span, range.start, pxPerDay)}
+                        pxPerDay={pxPerDay}
+                        canEdit={canEdit}
+                        onReschedule={reschedule}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
+
+          {/* Fade tepi kanan: satu-satunya penanda bahwa grid masih berlanjut.
+              Tanpa ini scroll horizontal hanya ketahuan kalau kebetulan dicoba,
+              karena scrollbar slim nyaris tak terlihat saat diam. Menghilang
+              saat sudah mentok kanan — penanda yang selalu menyala berhenti
+              jadi penanda.
+              z-10: DI BAWAH bar (lihat urutan lapis di atas). Yang diredam
+              adalah grid; bar yang masih berlanjut tetap pekat dan terpotong
+              tegas di tepi kartu, karena bar-lah datanya — memudarkannya
+              membuat task terbaca seolah selesai lebih awal. */}
+          <div
+            aria-hidden
+            className={cn(
+              "pointer-events-none absolute inset-y-0 right-0 z-10 w-12 rounded-r-xl",
+              "bg-linear-to-l from-surface-raised to-transparent",
+              "transition-opacity [transition-duration:var(--duration)]",
+              edge.end ? "opacity-100" : "opacity-0",
+            )}
+          />
         </div>
       )}
 

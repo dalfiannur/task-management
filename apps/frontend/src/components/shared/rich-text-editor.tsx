@@ -45,7 +45,7 @@ function ToolbarButton({
       aria-label={label}
       aria-pressed={active}
       onClick={onClick}
-      className={cn("h-8 w-8", active && "bg-muted text-foreground")}
+      className={cn("h-8 w-8", active && "bg-surface-sunken text-text")}
     >
       {children}
     </Button>

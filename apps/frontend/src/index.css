@@ -4,53 +4,197 @@
 @import "./styles/tokens.css" layer(base);
 @import "./styles/reset.css" layer(base);
 @import "./styles/animations.css" layer(base);
-@import "./styles/status-colors.css" layer(base);
 
+/* Class-based dark mode (driven by next-themes on <html>) */
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================
+   Lapis semantik → utilitas Tailwind.
+   `inline` supaya nilai var yang dirujuk ikut berubah saat .dark aktif,
+   dan supaya Tailwind tidak menerbitkan ulang variabel yang sudah
+   didefinisikan tokens.css.
+   Hanya lapis 2 yang diekspos — --grey-* dan --brand-* bernomor sengaja
+   TIDAK dipetakan supaya primitif tidak bisa dipakai dari komponen.
+   ============================================ */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
+  /* Permukaan */
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-surface-overlay: var(--surface-overlay);
+  --color-surface-chrome: var(--surface-chrome);
+  --color-surface-chrome-hover: var(--surface-chrome-hover);
+  --color-surface-chrome-active: var(--surface-chrome-active);
+  --color-text-on-chrome: var(--text-on-chrome);
+  --color-text-on-chrome-muted: var(--text-on-chrome-muted);
+  --color-surface-hover: var(--surface-hover);
+  /* Fill kontrol form — raised di light, sunken di dark. Lihat tokens.css. */
+  --color-surface-field: var(--surface-field);
+
+  /* Teks — tiga tier + label di atas fill */
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-text-subtle: var(--text-subtle);
+  --color-text-on-brand: var(--text-on-brand);
+  --color-text-on-danger: var(--text-on-danger);
+
+  /* Brand */
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-subtle: var(--brand-subtle);
+  --color-brand-text: var(--brand-text);
+
+  /* Batas & focus */
   --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
+  --color-border-subtle: var(--border-subtle);
+  --color-border-strong: var(--border-strong);
+  --color-border-field: var(--border-field);
+  --color-focus: var(--focus);
+
+  /* Scrim — naungan di belakang modal/drawer. Sengaja sama di kedua tema. */
+  --color-scrim: var(--scrim);
+  --color-scrim-strong: var(--scrim-strong);
+
+  /* Status */
+  --color-danger: var(--danger);
+  --color-danger-subtle: var(--danger-subtle);
+  --color-warning: var(--warning);
+  --color-warning-subtle: var(--warning-subtle);
+  --color-success: var(--success);
+  --color-success-subtle: var(--success-subtle);
+
+  /* Radius — satu base 8px, sisanya diturunkan */
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --radius-full: var(--radius-full);
+
+  /* Elevasi — satu token per peran (depth.md §3) */
+  --shadow-1: var(--shadow-1);
+  --shadow-2: var(--shadow-2);
+  --shadow-3: var(--shadow-3);
+  --shadow-4: var(--shadow-4);
+  --shadow-5: var(--shadow-5);
+  --shadow-inset: var(--shadow-inset);
+  --shadow-field: var(--shadow-field);
+
+  /* Skala spacing terkunci (aturan 5). Basis px, bukan rem: dengan basis rem
+     seluruh skala ikut bergeser kalau root font-size berubah, dan skala yang
+     bisa bergeser bukan skala. p-1→4 p-2→8 p-3→12 p-4→16 p-6→24 p-8→32
+     p-12→48 p-16→64 p-24→96 p-32→128 p-48→192 p-64→256. */
+  --spacing: 4px;
+
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
-  --radius-sm: calc(var(--radius) - 2px);
-  --radius-md: calc(var(--radius) - 1px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+
+  --ease-out: var(--ease-out);
+  --ease-in-out: var(--ease-in-out);
+
+  /* ---------- Skala tipografi terkunci (aturan 6) ----------
+     12 14 16 18 20 24 30 36 48 60 72, line-height berbanding terbalik
+     dengan ukuran: 12–14 → 1.6 · 16–20 → 1.5 · 24–30 → 1.35 ·
+     36–48 → 1.2 · 60–72 → 1.1. Letter-spacing -0.02em untuk ≥ 36px.
+     Ukuran di luar daftar ini sengaja tidak ada — text-[13px] gagal build,
+     bukan lolos diam-diam. */
+  --text-xs: 12px;
+  --text-xs--line-height: 1.6;
+  --text-sm: 14px;
+  --text-sm--line-height: 1.6;
+  --text-base: 16px;
+  --text-base--line-height: 1.5;
+  --text-lg: 18px;
+  --text-lg--line-height: 1.5;
+  --text-xl: 20px;
+  --text-xl--line-height: 1.5;
+  --text-2xl: 24px;
+  --text-2xl--line-height: 1.35;
+  --text-3xl: 30px;
+  --text-3xl--line-height: 1.35;
+  --text-4xl: 36px;
+  --text-4xl--line-height: 1.2;
+  --text-4xl--letter-spacing: -0.02em;
+  --text-5xl: 48px;
+  --text-5xl--line-height: 1.2;
+  --text-5xl--letter-spacing: -0.02em;
+  --text-6xl: 60px;
+  --text-6xl--line-height: 1.1;
+  --text-6xl--letter-spacing: -0.02em;
+  --text-7xl: 72px;
+  --text-7xl--line-height: 1.1;
+  --text-7xl--letter-spacing: -0.02em;
 }
 
-/* Tiptap editor placeholder */
 @layer base {
+  /* Focus ring wajib — accessibility.md §3. Selalu :focus-visible supaya
+     klik mouse tidak memunculkan ring. */
+  :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+
+  /* Hit area 44×44 tanpa mengubah ukuran visual — accessibility.md §4.4.
+     Untuk kontrol padat (icon button di toolbar, tombol sm) yang kotaknya
+     sengaja lebih kecil dari 44px. Kotak visualnya tetap; yang membesar
+     hanya area yang menerima klik. */
+  .hit-area {
+    position: relative;
+  }
+
+  .hit-area::before {
+    content: "";
+    position: absolute;
+    inset: 50% auto auto 50%;
+    translate: -50% -50%;
+    inline-size: 44px;
+    block-size: 44px;
+  }
+
+  /* Tier 3 dibedakan lewat TREATMENT, bukan lightness — accessibility.md §2.
+     Ketiga tier terkompresi ke ~18/40/44% lightness oleh ambang 4.5:1, jadi
+     jarak warnanya sendiri terlalu tipis untuk dibaca sebagai hierarki. */
+  .text-label {
+    font-size: var(--text-xs);
+    line-height: 1.6;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-subtle);
+  }
+
+  /* Angka dan tanggal memakai mono bertabular supaya digit sejajar dalam
+     kolom saat dibaca menurun. Dipakai di setiap statistik, hitungan,
+     tanggal dan durasi. */
+  .text-num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Scrollbar native yang diredam ke bahasa token — untuk container yang
+     men-scroll DI DALAM kartu (grid Timeline), di mana scrollbar OS setebal
+     15px terbaca sebagai elemen asing yang menempel di tepi kartu.
+     Bukan overlay-scrollbar ala Radix: di grid yang lebarnya bisa 3x viewport,
+     scrollbar yang baru muncul saat hover menyembunyikan satu-satunya petunjuk
+     seberapa jauh isinya membentang. Ia diredam, bukan dihilangkan (aturan 4).
+     Thumb memakai --border-strong, sama dengan thumb ScrollArea, supaya kedua
+     jenis scrollbar di app ini tidak berwarna berbeda.
+
+     SENGAJA tanpa blok ::-webkit-scrollbar pendampingnya: sejak Chrome 121
+     pseudo-element webkit DIMATIKAN untuk elemen yang punya scrollbar-width
+     atau scrollbar-color non-auto, jadi keduanya tidak pernah aktif bersamaan
+     — dan Firefox tidak pernah mendukung yang webkit. Ditulis dua-duanya hanya
+     menghasilkan aturan mati yang terbaca seolah mengatur tebal dan hover.
+     Harganya: thumb tidak punya state hover, dan tebalnya "thin" menurut
+     platform, bukan angka yang kita pilih. */
+  .scrollbar-slim {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+  }
+
+  /* Tiptap editor placeholder */
   .tiptap p.is-editor-empty:first-child::before {
-    color: var(--muted-foreground);
+    color: var(--text-subtle);
     content: attr(data-placeholder);
     float: left;
     height: 0;
@@ -66,59 +210,69 @@
 @layer base {
   .prose {
     max-width: none;
-    font-size: 0.875rem;
-    line-height: 1.5;
+    font-size: var(--text-sm);
+    line-height: 1.6;
+    color: var(--text);
   }
 
-  .prose h1 {
-    font-size: 1.5rem;
-    line-height: 2rem;
-    font-weight: 700;
-    margin-top: 1rem;
-    margin-bottom: 0.5rem;
-  }
-
-  .prose h2 {
-    font-size: 1.25rem;
-    line-height: 1.75rem;
-    font-weight: 600;
-    margin-top: 0.875rem;
-    margin-bottom: 0.375rem;
-  }
-
-  .prose h3 {
-    font-size: 1.125rem;
-    line-height: 1.5rem;
-    font-weight: 600;
-    margin-top: 0.75rem;
-    margin-bottom: 0.25rem;
-  }
-
+  /* Prosa dibatasi 20–35ch (aturan 6). Hanya paragraf — tabel, gambar, dan
+     blok kode di dalam prosa tetap boleh selebar containernya. */
   .prose p {
+    max-width: 70ch;
     margin-top: 0;
-    margin-bottom: 0.5rem;
+    margin-bottom: 8px;
   }
 
   .prose p:last-child {
     margin-bottom: 0;
   }
 
+  /* Ruang di ATAS heading > ruang di bawahnya (aturan 7): heading milik
+     bagian yang mengikutinya, bukan yang mendahuluinya. */
+  .prose h1 {
+    font-size: var(--text-2xl);
+    line-height: 1.35;
+    font-weight: 700;
+    margin-top: 24px;
+    margin-bottom: 8px;
+  }
+
+  .prose h2 {
+    font-size: var(--text-xl);
+    line-height: 1.5;
+    font-weight: 600;
+    margin-top: 24px;
+    margin-bottom: 8px;
+  }
+
+  .prose h3 {
+    font-size: var(--text-lg);
+    line-height: 1.5;
+    font-weight: 600;
+    margin-top: 16px;
+    margin-bottom: 4px;
+  }
+
+  .prose :is(h1, h2, h3):first-child {
+    margin-top: 0;
+  }
+
   .prose ul {
     list-style: disc;
-    padding-left: 1.25rem;
+    padding-left: 24px;
     margin-top: 0;
-    margin-bottom: 0.5rem;
+    margin-bottom: 8px;
   }
 
   .prose ol {
     list-style: decimal;
-    padding-left: 1.25rem;
+    padding-left: 24px;
     margin-top: 0;
-    margin-bottom: 0.5rem;
+    margin-bottom: 8px;
   }
 
   .prose li {
-    margin-bottom: 0.125rem;
+    margin-bottom: 4px;
   }
 
   .prose li p {
@@ -126,20 +280,21 @@
   }
 
   .prose blockquote {
-    border-left: 3px solid var(--border);
-    padding-left: 0.75rem;
+    border-left: 4px solid var(--border-strong);
+    padding-left: 12px;
     margin-top: 0;
-    margin-bottom: 0.5rem;
+    margin-bottom: 8px;
     font-style: italic;
-    color: var(--muted-foreground);
+    color: var(--text-muted);
   }
 
   .prose pre {
-    background-color: var(--muted);
-    border-radius: var(--radius-md);
-    padding: 0.5rem 0.75rem;
+    background-color: var(--surface-sunken);
+    box-shadow: var(--shadow-inset);
+    border-radius: var(--radius);
+    padding: 8px 12px;
     margin-top: 0;
-    margin-bottom: 0.5rem;
+    margin-bottom: 8px;
     overflow-x: auto;
   }
 
@@ -150,28 +305,32 @@
   }
 
   .prose code {
-    background-color: var(--muted);
+    font-family: var(--font-mono);
+    background-color: var(--surface-sunken);
     border-radius: var(--radius-sm);
-    padding: 0.125rem 0.25rem;
-    font-size: 0.875rem;
+    padding: 0 4px;
+    font-size: var(--text-sm);
   }
 
   .prose hr {
     border: none;
     border-top: 1px solid var(--border);
-    margin: 0.75rem 0;
+    margin: 24px 0;
   }
 
+  /* Link tidak boleh dibedakan warna saja — accessibility.md §4.2/§5. */
   .prose a {
-    color: var(--primary);
+    color: var(--brand-text);
     text-decoration: underline;
+    text-underline-offset: 2px;
     cursor: pointer;
   }
 
   .prose mark {
-    background-color: hsl(50 90% 60% / 0.3);
-    border-radius: 2px;
-    padding: 0.0625rem 0.125rem;
+    background-color: var(--warning-subtle);
+    color: var(--warning);
+    border-radius: var(--radius-sm);
+    padding: 0 4px;
   }
 
   /* Task list inside prose */
@@ -183,67 +342,10 @@
   .prose ul[data-type="taskList"] li {
     display: flex;
     align-items: flex-start;
-    gap: 0.5rem;
-  }
-
-  .prose ul[data-type="taskList"] li label {
-    margin-top: 0.125rem;
+    gap: 8px;
   }
 
   .prose ul[data-type="taskList"] li > div {
     flex: 1;
-  }
-
-  /* Scrollbar styling */
-  .custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-
-  .custom-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: color-mix(in srgb, var(--foreground) 20%, transparent);
-    border-radius: 3px;
-  }
-
-  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: color-mix(in srgb, var(--foreground) 30%, transparent);
-  }
-}
-
-/* ============================================
-   Glass effect utilities
-   ============================================ */
-
-@layer base {
-  .glass-card {
-    background: var(--glass-bg);
-    backdrop-filter: blur(var(--glass-blur));
-    -webkit-backdrop-filter: blur(var(--glass-blur));
-    border: 1px solid var(--glass-border);
-    box-shadow: var(--glass-shadow);
-  }
-
-  .glass-sidebar {
-    background: var(--sidebar);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border-right: 1px solid var(--glass-border);
-  }
-
-  .glass-input {
-    background: var(--glass-bg);
-    border: 1px solid var(--glass-border);
-  }
-
-  .glass-popover {
-    background: hsl(228 20% 10% / 0.9);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   }
 }
