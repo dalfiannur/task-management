@@ -98,7 +98,10 @@ impl Store {
     where
         T: PgComponent,
     {
-        let pg = self.fresh();
+        // `mut`: query_pids now loads through the batched `materialize` path, which
+        // fills the pid<->Entity bridge as it goes and so needs &mut. The PgStore is
+        // per-op (see `fresh`), so nothing is shared across requests.
+        let mut pg = self.fresh();
         let mut world = World::new();
         let pairs = pg.query_pids::<T>(&mut world, predicate).await?;
         Ok(map(&world, &pairs))
