@@ -103,7 +103,10 @@ export function GanttBar({
         height: 22,
       }}
       className={cn(
-        "absolute flex items-center rounded-full px-2.5 text-xs",
+        // z-20 milik urutan lapis yang didefinisikan di gantt-chart.tsx: di
+        // ATAS fade tepi kanan, di BAWAH kolom nama yang sticky. Tanpa angka
+        // eksplisit bar jatuh ke z-auto dan fade yang ber-z-index menang.
+        "absolute z-20 flex items-center rounded-full px-2.5 text-xs",
         canEdit ? "cursor-grab active:cursor-grabbing" : "cursor-default",
         // Task selesai adalah riwayat, bukan sinyal — ia diredupkan, bukan
         // diberi warna kedua yang ikut bersaing (aturan 4). Maknanya tetap

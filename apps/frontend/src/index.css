@@ -171,6 +171,27 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* Scrollbar native yang diredam ke bahasa token — untuk container yang
+     men-scroll DI DALAM kartu (grid Timeline), di mana scrollbar OS setebal
+     15px terbaca sebagai elemen asing yang menempel di tepi kartu.
+     Bukan overlay-scrollbar ala Radix: di grid yang lebarnya bisa 3x viewport,
+     scrollbar yang baru muncul saat hover menyembunyikan satu-satunya petunjuk
+     seberapa jauh isinya membentang. Ia diredam, bukan dihilangkan (aturan 4).
+     Thumb memakai --border-strong, sama dengan thumb ScrollArea, supaya kedua
+     jenis scrollbar di app ini tidak berwarna berbeda.
+
+     SENGAJA tanpa blok ::-webkit-scrollbar pendampingnya: sejak Chrome 121
+     pseudo-element webkit DIMATIKAN untuk elemen yang punya scrollbar-width
+     atau scrollbar-color non-auto, jadi keduanya tidak pernah aktif bersamaan
+     — dan Firefox tidak pernah mendukung yang webkit. Ditulis dua-duanya hanya
+     menghasilkan aturan mati yang terbaca seolah mengatur tebal dan hover.
+     Harganya: thumb tidak punya state hover, dan tebalnya "thin" menurut
+     platform, bukan angka yang kita pilih. */
+  .scrollbar-slim {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+  }
+
   /* Tiptap editor placeholder */
   .tiptap p.is-editor-empty:first-child::before {
     color: var(--text-subtle);
