@@ -10,7 +10,7 @@ use connectrpc_axum::{ConnectError, ConnectRequest, ConnectResponse};
 use domain::activity::EntityType;
 use persistence::Store;
 
-use super::record::{activity_for_entity, activity_for_project, activity_recent, to_proto, ActivityRecord};
+use super::record::{activity_for_entity, activity_for_project, activity_recent_page, to_proto, ActivityRecord};
 use super::{internal, require_auth, require_member, StoreExt};
 use crate::projects::record::member_project_ids;
 use crate::sedjiwa::tasks::activity::v1 as pb;
@@ -86,8 +86,16 @@ async fn list_recent_activity(
             .collect();
         Some(ids)
     };
-    let all = activity_recent(&store, projects).await.map_err(internal)?;
-    Ok(ConnectResponse::new(paged(all, r.page, r.page_size)))
+    // Already one page: `activity_recent_page` selects it in SQL and reports the
+    // unpaged total separately, so running `paged` over it again would slice a
+    // page out of a page and report the page's own length as the total.
+    let (activities, total) = activity_recent_page(&store, projects, r.page, r.page_size)
+        .await
+        .map_err(internal)?;
+    Ok(ConnectResponse::new(pb::ListActivityResponse {
+        activities: activities.iter().map(to_proto).collect(),
+        total,
+    }))
 }
 
 /// ActivityService router; injects the Store as a request extension.

@@ -12,6 +12,11 @@ use std::sync::Arc;
 use anyhow::Result;
 use arke::{Bundle, Component, Entity, World};
 use arke_postgres::{PgComponent, PgStore};
+
+/// Re-exported so callers can name a component's table when they build a
+/// `predicate` that references it (a paging subquery, say) without taking a
+/// direct dependency on arke-postgres — this crate is the seam that owns it.
+pub use arke_postgres::PgComponent as PgTable;
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 
@@ -97,6 +102,24 @@ impl Store {
         let mut world = World::new();
         let pairs = pg.query_pids::<T>(&mut world, predicate).await?;
         Ok(map(&world, &pairs))
+    }
+
+    /// Count rows of `T` matching `predicate` (same trusted-SQL rules as
+    /// [`Store::query`]).
+    ///
+    /// Companion to `query` for callers that select a page in SQL but still owe
+    /// the caller an unpaged total. Without it the only way to learn the total is
+    /// to hydrate every matching row and take `.len()` — and hydrating one row
+    /// costs an existence query plus one query per registered component type, so
+    /// that total is by far the most expensive number in the response.
+    pub async fn count<T>(&self, predicate: Option<&str>) -> Result<u32>
+    where
+        T: PgComponent,
+    {
+        let where_c = predicate.map(|p| format!(" WHERE {p}")).unwrap_or_default();
+        let sql = format!("SELECT count(*) FROM {}{}", T::TABLE, where_c);
+        let n: i64 = sqlx::query_scalar(&sql).fetch_one(&self.pool).await?;
+        Ok(n.max(0) as u32)
     }
 }
 
