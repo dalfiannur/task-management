@@ -21,8 +21,14 @@ export function ProjectCard({
   const range = dateRange(project.startDate, project.endDate);
   const ownerName = owner?.displayName ?? "Owner";
   return (
+    /* Menaut ke rute telanjang, BUKAN ke tab tertentu. Kartu ini berarti
+       "buka project ini", dan tab mana yang menyambut adalah keputusan tunggal
+       yang tinggal di `routes/_authed/projects/$projectId/index.tsx`. Sebelumnya
+       kartu ini menaut langsung ke `/all-tasks`, sehingga redirect default di
+       index tidak pernah terpakai — mengubah tab default jadi tidak berefek
+       apa-apa dari pintu masuk utama. */
     <Link
-      to="/projects/$projectId/all-tasks"
+      to="/projects/$projectId"
       params={{ projectId: project.id }}
       className="block"
     >

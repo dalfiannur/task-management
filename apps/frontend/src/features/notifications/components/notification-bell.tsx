@@ -36,8 +36,11 @@ export function NotificationBell() {
   function onClick(n: Notification) {
     if (!n.read) markRead.mutate({ ids: [n.id] });
     if (n.projectId) {
+      // Notifikasi hanya membawa projectId, bukan taskId — jadi ini "buka
+      // project ini", bukan "buka task ini". Rute telanjang, biar tab default
+      // ditentukan di satu tempat (index.tsx), bukan diulang di sini.
       navigate({
-        to: "/projects/$projectId/all-tasks",
+        to: "/projects/$projectId",
         params: { projectId: n.projectId },
       });
     }
