@@ -35,10 +35,17 @@ export function NotificationBell() {
 
   function onClick(n: Notification) {
     if (!n.read) markRead.mutate({ ids: [n.id] });
-    if (n.projectId) {
-      // Notifikasi hanya membawa projectId, bukan taskId — jadi ini "buka
-      // project ini", bukan "buka task ini". Rute telanjang, biar tab default
-      // ditentukan di satu tempat (index.tsx), bukan diulang di sini.
+    if (!n.projectId) return;
+    if (n.taskId) {
+      navigate({
+        to: "/projects/$projectId/all-tasks",
+        params: { projectId: n.projectId },
+        search: { task: n.taskId, comment: n.commentId },
+      });
+    } else {
+      // No task on this notification (e.g. member-added) — land on the
+      // project itself. Rute telanjang, biar tab default ditentukan di satu
+      // tempat (index.tsx), bukan diulang di sini.
       navigate({
         to: "/projects/$projectId",
         params: { projectId: n.projectId },
