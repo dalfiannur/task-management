@@ -39,6 +39,26 @@ pub struct TaskLabels {
     pub label_ids: Vec<String>,
 }
 
+/// A subtask's parent task (`pid` string). Absent = top-level task.
+///
+/// Exactly one level is allowed: a task carrying this component may not itself
+/// be a parent. That rule lives in the handler, and it is what makes cycles
+/// structurally impossible rather than merely unlikely.
+#[derive(PgComponent, Debug, Clone)]
+pub struct TaskParent {
+    #[pg(index)]
+    pub parent_id: String,
+}
+
+/// Finish-to-start dependencies (JSONB): tasks that should finish before this
+/// one starts. Stored one-directional — the reverse index ("what do I block")
+/// is built in the frontend from the project's already-loaded task list, so
+/// there is nothing to keep in sync here.
+#[derive(PgComponent, Debug, Clone)]
+pub struct TaskBlockedBy {
+    pub task_ids: Vec<String>,
+}
+
 /// Audit trail.
 #[derive(PgComponent, Debug, Clone)]
 pub struct TaskAudit {

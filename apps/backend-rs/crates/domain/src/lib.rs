@@ -47,6 +47,8 @@ pub fn register_all(pg: &mut arke_postgres::PgStore) {
     pg.register::<task::TaskAssignees>();
     pg.register::<task::TaskLabels>();
     pg.register::<task::TaskAudit>();
+    pg.register::<task::TaskParent>();
+    pg.register::<task::TaskBlockedBy>();
     // Pages.
     pg.register::<page::PageInfo>();
     pg.register::<page::PageAudit>();
