@@ -23,6 +23,7 @@ mod media;
 mod notifications;
 mod pages;
 mod projects;
+mod search;
 mod users;
 mod work;
 pub use activity::activity_router;
