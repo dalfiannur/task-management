@@ -13,6 +13,9 @@ use anyhow::Result;
 use arke::{Bundle, Component, Entity, World};
 use arke_postgres::{PgComponent, PgStore};
 
+pub mod search;
+pub use search::{SearchDoc, SearchRow};
+
 /// Re-exported so callers can name a component's table when they build a
 /// `predicate` that references it (a paging subquery, say) without taking a
 /// direct dependency on arke-postgres — this crate is the seam that owns it.
@@ -39,6 +42,7 @@ impl Store {
         let mut pg = PgStore::from_pool(pool.clone());
         register(&mut pg);
         pg.migrate().await?;
+        search::migrate(&pool).await?;
         Ok(Self {
             pool,
             register: Arc::new(register),
