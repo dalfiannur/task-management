@@ -446,15 +446,24 @@ async fn move_task(
         .await
         .map_err(internal)?;
     let t = require_task(&store, pid).await?;
-    let moved_project = super::task_project_id(&store, &pid.to_string())
+    // `unwrap_or_default()` here would turn a `None` (module deleted out from
+    // under this move — a narrow race) into `Some("")`. An empty string is
+    // not `NULL`, so it would fail the `project_id IS NULL OR project_id =
+    // ANY($3)` membership filter for every non-admin: the document would
+    // become permanently invisible to normal users while still sitting in
+    // the index, until someone runs `reindex`. Skipping the call on `None`
+    // just leaves the document stale — the honest outcome, since the index
+    // is already allowed to lag and `reindex` repairs it.
+    if let Some(moved_project) = super::task_project_id(&store, &pid.to_string())
         .await
         .map_err(internal)?
-        .unwrap_or_default();
-    index(
-        &store,
-        task_doc(&pid.to_string(), &moved_project, &t.title, &t.description, t.assignee_ids.clone()),
-    )
-    .await;
+    {
+        index(
+            &store,
+            task_doc(&pid.to_string(), &moved_project, &t.title, &t.description, t.assignee_ids.clone()),
+        )
+        .await;
+    }
     Ok(ConnectResponse::new(to_proto(&t)))
 }
 
