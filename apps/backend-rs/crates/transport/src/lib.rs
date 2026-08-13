@@ -34,6 +34,7 @@ pub use notifications::{notification_router, Notifier};
 pub use media::media_router;
 pub use pages::page_router;
 pub use projects::project_router;
+pub use search::search_router;
 pub use users::{auth_router, user_router, JwtConfig};
 pub use work::{module_router, task_router};
 

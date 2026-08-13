@@ -3,7 +3,7 @@
 //! Deferred: mention→notification emit (Notifications flow not built — no-op).
 
 mod comment_service;
-mod record;
+pub(crate) mod record;
 
 pub use comment_service::comment_router;
 

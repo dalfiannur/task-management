@@ -1,0 +1,39 @@
+syntax = "proto3";
+package sedjiwa.tasks.search.v1;
+
+// Global full-text search over the caller's visible workspace. One RPC, backed
+// by a denormalized index table; ranking, permissions, and snippets are all
+// resolved in SQL. See docs/superpowers/specs/2026-08-12-search-and-task-permalink-design.md.
+
+service SearchService {
+  rpc Search(SearchRequest) returns (SearchResponse);
+}
+
+enum SearchKind {
+  SEARCH_KIND_UNSPECIFIED = 0;
+  TASK = 1;
+  PAGE = 2;
+  COMMENT = 3;
+  PROJECT = 4;
+  USER = 5;
+}
+
+message SearchRequest {
+  string q = 1;
+  repeated SearchKind kinds = 2;    // empty = all kinds
+  repeated string assignee_ids = 3; // person-chip refinement (tasks only)
+  uint32 limit = 4;                 // 0 → 20, capped at 50
+}
+
+message SearchResult {
+  SearchKind kind = 1;
+  string id = 2;
+  string title = 3;
+  string snippet = 4;               // ts_headline output; may contain <b> marks
+  optional string project_id = 5;
+  optional string project_name = 6;
+  optional string task_id = 7;      // comment results: the parent task
+  float score = 8;
+}
+
+message SearchResponse { repeated SearchResult results = 1; }
