@@ -89,5 +89,7 @@ export function mapTask(t: PbTask): Task {
     updatedAt: t.updatedAt,
     completedAt: t.completedAt,
     createdBy: t.createdBy,
+    parentId: t.parentId,
+    blockedByIds: t.blockedByIds,
   };
 }

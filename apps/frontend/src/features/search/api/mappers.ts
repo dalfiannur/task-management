@@ -30,6 +30,7 @@ export function mapSearchHit(r: PbSearchResult): SearchHit {
     projectId: r.projectId,
     projectName: r.projectName,
     taskId: r.taskId,
+    parentId: r.parentId,
     score: r.score,
   };
 }

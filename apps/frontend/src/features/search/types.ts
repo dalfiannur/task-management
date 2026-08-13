@@ -12,5 +12,7 @@ export interface SearchHit {
   projectName?: string;
   /** Comment hits only: the task the comment belongs to. */
   taskId?: string;
+  /** Task hits that are subtasks: the parent's id, for context in the row. */
+  parentId?: string;
   score: number;
 }

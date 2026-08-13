@@ -26,6 +26,10 @@ export interface Task {
   updatedAt: string;
   completedAt?: string;
   createdBy: string;
+  /** Set when this task is a subtask. One level only — a subtask has none. */
+  parentId?: string;
+  /** Tasks that should finish before this one starts (finish-to-start). */
+  blockedByIds: string[];
 }
 
 export const TASK_STATUSES: TaskStatus[] = [
