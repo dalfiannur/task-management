@@ -78,6 +78,22 @@ async fn next_order_in_module(store: &Store, module_id: &str) -> Result<i32, Con
     Ok(existing.iter().map(|t| t.order).max().map(|m| m + 1).unwrap_or(0))
 }
 
+/// Single task by id — the read a deep-linked dialog needs when no list has
+/// been loaded. Member-gated through the task's module → project.
+async fn get_task(
+    Extension(store): StoreExt,
+    user: Option<Extension<AuthUser>>,
+    req: ConnectRequest<pb::GetTaskRequest>,
+) -> Result<ConnectResponse<pb::Task>, ConnectError> {
+    let auth = require_auth(user)?;
+    let ConnectRequest(r) = req;
+    let pid = parse_pid(&r.id)?;
+    let t = require_task(&store, pid).await?;
+    let (_, project_id) = module_project(&store, &t.module_id).await?;
+    require_member(&store, &project_id, &auth).await?;
+    Ok(ConnectResponse::new(to_proto(&t)))
+}
+
 async fn list_tasks(
     Extension(store): StoreExt,
     user: Option<Extension<AuthUser>>,
@@ -472,6 +488,7 @@ pub fn task_router(store: Arc<Store>) -> axum::Router<()> {
     type A = Option<Extension<AuthUser>>;
     type N = Option<Extension<Arc<Notifier>>>;
     TaskServiceBuilder::<()>::new()
+        .get_task::<_, (StoreExt, A, ConnectRequest<pb::GetTaskRequest>)>(get_task)
         .list_tasks::<_, (StoreExt, A, ConnectRequest<pb::ListTasksRequest>)>(list_tasks)
         .create_task::<_, (StoreExt, N, A, ConnectRequest<pb::CreateTaskRequest>)>(create_task)
         .update_task::<_, (StoreExt, N, A, ConnectRequest<pb::UpdateTaskRequest>)>(update_task)

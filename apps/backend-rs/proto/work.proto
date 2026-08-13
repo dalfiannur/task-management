@@ -13,6 +13,7 @@ service ModuleService {
 }
 
 service TaskService {
+  rpc GetTask(GetTaskRequest) returns (Task);
   rpc ListTasks(ListTasksRequest) returns (ListTasksResponse);
   rpc CreateTask(CreateTaskRequest) returns (Task);
   rpc UpdateTask(UpdateTaskRequest) returns (Task);
@@ -80,6 +81,7 @@ enum TaskPriority {
   URGENT = 5;
 }
 
+message GetTaskRequest { string id = 1; }
 message ListTasksRequest {
   string project_id = 1;
   optional string module_id = 2;

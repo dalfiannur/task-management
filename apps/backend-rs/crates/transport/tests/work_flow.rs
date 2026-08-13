@@ -275,3 +275,30 @@ async fn timeline_reschedule_via_update_task() {
     let un = ok(&router, &format!("{TASK}/UpdateTask"), &tm, json!({ "id": tid, "startDate": "", "dueDate": "" })).await;
     assert!(un["startDate"].is_null() && un["dueDate"].is_null(), "cleared → unscheduled");
 }
+
+#[tokio::test]
+async fn get_task_is_member_gated() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let owner = mk_user(&store).await;
+    let outsider = mk_user(&store).await;
+    let pid = project_with(&router, &owner, &[]).await;
+    let to = token(&owner);
+    let m = ok(&router, &format!("{MODULE}/CreateModule"), &to, json!({ "projectId": pid, "name": "M" }))
+        .await["id"].as_str().unwrap().to_string();
+    let task = ok(&router, &format!("{TASK}/CreateTask"), &to, json!({ "moduleId": m, "title": "Deep" }))
+        .await["id"].as_str().unwrap().to_string();
+
+    let got = ok(&router, &format!("{TASK}/GetTask"), &to, json!({ "id": task })).await;
+    assert_eq!(got["id"], task);
+    assert_eq!(got["title"], "Deep");
+    assert_eq!(got["moduleId"], m, "the dialog needs the module to render");
+
+    let (st, _) = call(&router, &format!("{TASK}/GetTask"), Some(&token(&outsider)), json!({ "id": task })).await;
+    assert_ne!(st, StatusCode::OK, "non-member denied");
+
+    let (st, _) = call(&router, &format!("{TASK}/GetTask"), Some(&to), json!({ "id": "999999999" })).await;
+    assert_ne!(st, StatusCode::OK, "unknown id is not found");
+}
