@@ -184,6 +184,11 @@ export function SearchOverlay() {
                   key={`${hit.kind}:${hit.id}`}
                   value={`${hit.kind}:${hit.id}`}
                   onSelect={() => onSelect(hit)}
+                  // `group` so the muted sub-lines below can react to this
+                  // item's own `data-selected` via group-data-* (see Snippet
+                  // and the project-name span) instead of staying grey once
+                  // the row's background turns brand-subtle.
+                  className="group"
                 >
                   <g.icon />
                   <div className="min-w-0 flex-1">
@@ -194,7 +199,7 @@ export function SearchOverlay() {
                       <Snippet html={hit.snippet} />
                     )}
                     {hit.kind !== "project" && hit.projectName && (
-                      <span className="block truncate text-xs text-text-subtle">
+                      <span className="block truncate text-xs text-text-subtle group-data-[selected=true]:text-brand-text">
                         {hit.projectName}
                       </span>
                     )}
