@@ -12,8 +12,27 @@ use std::collections::HashSet;
 /// unsafe URL schemes) is stripped.
 pub fn clean_html(input: &str) -> String {
     let tags: HashSet<&str> = [
-        "h1", "h2", "h3", "h4", "h5", "h6", "p", "strong", "em", "s", "u", "code",
-        "pre", "blockquote", "ul", "ol", "li", "a", "br", "hr", "span",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "p",
+        "strong",
+        "em",
+        "s",
+        "u",
+        "code",
+        "pre",
+        "blockquote",
+        "ul",
+        "ol",
+        "li",
+        "a",
+        "br",
+        "hr",
+        "span",
     ]
     .into_iter()
     .collect();
@@ -26,6 +45,37 @@ pub fn clean_html(input: &str) -> String {
         .link_rel(Some("noopener noreferrer nofollow"))
         .clean(input)
         .to_string()
+}
+
+/// Project rich-text HTML down to the words inside it, for full-text indexing.
+///
+/// Block tags become spaces first, so `<p>a</p><p>b</p>` indexes as two tokens
+/// rather than one. `ammonia` with an empty tag allowlist then removes every
+/// remaining tag while keeping its text, and drops `script`/`style` content
+/// entirely.
+pub fn plain_text(input: &str) -> String {
+    let spaced = input
+        .replace("</p>", "</p> ")
+        .replace("<br>", " ")
+        .replace("<br/>", " ")
+        .replace("<br />", " ")
+        .replace("</li>", "</li> ")
+        .replace("</h1>", "</h1> ")
+        .replace("</h2>", "</h2> ")
+        .replace("</h3>", "</h3> ")
+        .replace("</h4>", "</h4> ")
+        .replace("</h5>", "</h5> ")
+        .replace("</h6>", "</h6> ")
+        .replace("</blockquote>", "</blockquote> ")
+        .replace("</pre>", "</pre> ");
+    let stripped = Builder::default()
+        .tags(HashSet::new())
+        .clean_content_tags(["script", "style"].into_iter().collect())
+        .clean(&spaced)
+        .to_string();
+    // Ammonia escapes bare text entities; collapse whitespace so the tsvector
+    // and any snippet stay tidy.
+    stripped.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
 #[cfg(test)]
@@ -62,9 +112,7 @@ mod tests {
 
     #[test]
     fn keeps_mention_span() {
-        let out = clean_html(
-            r#"<p><span data-type="mention" data-id="u1">@Ann</span></p>"#,
-        );
+        let out = clean_html(r#"<p><span data-type="mention" data-id="u1">@Ann</span></p>"#);
         assert!(out.contains(r#"data-type="mention""#));
         assert!(out.contains(r#"data-id="u1""#));
     }
@@ -83,10 +131,35 @@ mod tests {
 
     #[test]
     fn keeps_mention_label() {
-        let out = clean_html(
-            r#"<span data-type="mention" data-id="u1" data-label="Ann">@Ann</span>"#,
-        );
+        let out =
+            clean_html(r#"<span data-type="mention" data-id="u1" data-label="Ann">@Ann</span>"#);
         assert!(out.contains(r#"data-label="Ann""#));
         assert!(out.contains(r#"data-id="u1""#));
+    }
+
+    #[test]
+    fn plain_text_strips_tags_and_keeps_words() {
+        let out =
+            plain_text("<p>Perbaiki <strong>reset</strong> password</p><ul><li>satu</li></ul>");
+        assert!(!out.contains('<'), "no markup left: {out}");
+        assert!(out.contains("Perbaiki"));
+        assert!(out.contains("reset"));
+        assert!(out.contains("satu"));
+    }
+
+    #[test]
+    fn plain_text_separates_adjacent_blocks() {
+        // Without separation these would index as one nonsense token.
+        let out = plain_text("<p>alpha</p><p>beta</p>");
+        assert!(
+            out.contains("alpha beta") || out.contains("alpha\nbeta"),
+            "got: {out}"
+        );
+    }
+
+    #[test]
+    fn plain_text_drops_script_content() {
+        let out = plain_text("<p>hi</p><script>alert(1)</script>");
+        assert!(!out.contains("alert"));
     }
 }
