@@ -101,3 +101,51 @@ pub(crate) fn user_doc(id: &str, display_name: &str, phone: &str) -> SearchDoc {
         assignee_ids: vec![],
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // These check that each builder actually routes its free-text field
+    // through `domain::sanitize::plain_text` before it reaches `SearchDoc`.
+    //
+    // That's deliberately *not* checked in `search_flow.rs`'s DB-backed
+    // integration tests: verified by hand against the real Postgres
+    // instance, `to_tsvector`/`ts_headline` recognize `<tag>` sequences and
+    // `&entity;` sequences as their own non-lexeme token types ("tag" and
+    // "entity" respectively) and discard both before dictionary lookup —
+    // regardless of whether `plain_text` ran first. So `<p>x</p>` vs. `x`,
+    // or `Tom &amp; Jerry` vs. `Tom & Jerry`, index and highlight
+    // identically; no query or snippet assertion against the live index can
+    // tell a projected body from a raw one for this system's tag/entity
+    // set. These builders are pure functions, though, so the projection
+    // itself — no `<` survives, and the `&amp;` entity is decoded to a bare
+    // `&` rather than reaching Postgres as the raw token `amp` — is exactly
+    // testable without a database.
+    const RAW: &str = "<p>Tom &amp; Jerry</p>";
+    const PROJECTED: &str = "Tom & Jerry";
+
+    #[test]
+    fn task_doc_projects_through_plain_text() {
+        let d = task_doc("1", "p1", "title", RAW, vec![]);
+        assert_eq!(d.body, PROJECTED);
+    }
+
+    #[test]
+    fn page_doc_projects_through_plain_text() {
+        let d = page_doc("1", "p1", "title", RAW);
+        assert_eq!(d.body, PROJECTED);
+    }
+
+    #[test]
+    fn comment_doc_projects_through_plain_text() {
+        let d = comment_doc("1", "p1", RAW);
+        assert_eq!(d.body, PROJECTED);
+    }
+
+    #[test]
+    fn project_doc_projects_through_plain_text() {
+        let d = project_doc("1", "name", RAW);
+        assert_eq!(d.body, PROJECTED);
+    }
+}

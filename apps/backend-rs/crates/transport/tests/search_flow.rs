@@ -349,6 +349,21 @@ async fn comment_is_indexed_and_carries_its_task() {
         .unwrap()
         .to_string();
 
+    // NOTE on what this test does *not* check: it's tempting to also assert
+    // the snippet/search behavior proves `comment_doc` ran its body through
+    // `domain::sanitize::plain_text` rather than indexing raw HTML. That
+    // can't be done soundly at this level — verified by hand against the
+    // real DB: Postgres's default text-search parser recognizes `<tag>`
+    // sequences ("tag" token type) *and* `&entity;` sequences ("entity"
+    // token type) and discards both before dictionary lookup, with no
+    // lexemes emitted either way. So `<p>x</p>` and `x`, or `Tom &amp;
+    // Jerry` and `Tom & Jerry`, tokenize identically — neither the tsvector
+    // nor the `ts_headline` snippet can tell a sanitized body from a raw
+    // one for this system's tag/entity set. That call-site behavior (does
+    // `comment_doc` actually project through `plain_text`?) is covered
+    // instead by a DB-free unit test on the builder itself: see
+    // `search::indexer::tests::comment_doc_projects_through_plain_text` in
+    // `crates/transport/src/search/indexer.rs`.
     let t = term();
     let cid = ok(
         &router,
@@ -368,17 +383,6 @@ async fn comment_is_indexed_and_carries_its_task() {
     assert_eq!(hits[0]["kind"], "COMMENT");
     assert_eq!(hits[0]["id"], cid);
     assert_eq!(hits[0]["taskId"], task, "comment result carries its parent task");
-    // The stored body must be the `plain_text` projection, not raw HTML: the
-    // source `<p>` wrapper must not survive into the index. `ts_headline`
-    // itself is expected to add its own `<b>` highlight marks around the
-    // matched term (see search.proto's `snippet` field comment and the
-    // design doc) — those are not a sign of unsanitized markup, so this
-    // checks for the specific source tag rather than for any `<` at all.
-    let snippet = hits[0]["snippet"].as_str().unwrap();
-    assert!(
-        !snippet.contains("<p>") && !snippet.contains("</p>"),
-        "snippet is the plain_text projection, not raw markup: {snippet:?}"
-    );
 
     assert!(
         find(&router, &token(&outsider), &t).await.is_empty(),
