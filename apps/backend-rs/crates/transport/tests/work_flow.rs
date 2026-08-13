@@ -427,3 +427,34 @@ async fn dependency_rules_are_enforced() {
         "dangling dependency removed on delete"
     );
 }
+
+#[tokio::test]
+async fn deleting_a_parent_strips_its_subtasks_from_other_tasks_dependencies() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let owner = mk_user(&store).await;
+    let pid = project_with(&router, &owner, &[]).await;
+    let to = token(&owner);
+    let m = ok(&router, &format!("{MODULE}/CreateModule"), &to, json!({ "projectId": pid, "name": "M" })).await["id"].as_str().unwrap().to_string();
+
+    let parent = ok(&router, &format!("{TASK}/CreateTask"), &to, json!({ "moduleId": m, "title": "Parent" })).await["id"].as_str().unwrap().to_string();
+    let sub = ok(&router, &format!("{TASK}/CreateTask"), &to, json!({ "moduleId": m, "title": "Sub", "parentId": parent })).await["id"].as_str().unwrap().to_string();
+    let x = ok(&router, &format!("{TASK}/CreateTask"), &to, json!({ "moduleId": m, "title": "X" })).await["id"].as_str().unwrap().to_string();
+
+    // X is blocked by the subtask, not the parent.
+    let updated = ok(&router, &format!("{TASK}/UpdateTask"), &to, json!({
+        "id": x, "blockedByIds": { "values": [sub] }
+    })).await;
+    assert_eq!(updated["blockedByIds"], json!([sub]));
+
+    // Deleting the parent cascades to the subtask, which must also be
+    // stripped from every dependency list — not just the parent's own id.
+    ok(&router, &format!("{TASK}/DeleteTask"), &to, json!({ "id": parent })).await;
+    let x_after = ok(&router, &format!("{TASK}/GetTask"), &to, json!({ "id": x })).await;
+    assert!(
+        x_after["blockedByIds"].as_array().map(|a| a.is_empty()).unwrap_or(true),
+        "dangling dependency on a cascade-deleted subtask removed too"
+    );
+}

@@ -448,10 +448,13 @@ async fn delete_task(
     let t = require_task(&store, pid).await?;
     let (_mpid, project_id) = module_project(&store, &t.module_id).await?;
     require_member(&store, &project_id, &auth).await?;
-    // Cascade to subtasks first, so each leaves the search index too.
+    // Cascade to subtasks first, so each leaves the search index too. Their
+    // ids join the parent's below so the dependency strip covers all of them.
+    let mut gone_ids: Vec<String> = vec![pid.to_string()];
     for spid in subtask_pids(&store, &pid.to_string()).await.map_err(internal)? {
         store.delete(spid).await.map_err(internal)?;
         super::deindex_task_and_comments(&store, &spid.to_string()).await;
+        gone_ids.push(spid.to_string());
     }
     store.delete(pid).await.map_err(internal)?;
     record(
@@ -466,9 +469,11 @@ async fn delete_task(
     )
     .await;
     super::deindex_task_and_comments(&store, &pid.to_string()).await;
-    // Drop this id from every task that listed it as a blocker, or those lists
-    // accumulate ids that resolve to nothing and cannot be rendered.
-    strip_dependency(&store, &project_id, &pid.to_string())
+    // Drop these ids from every task that listed one as a blocker, or those
+    // lists accumulate ids that resolve to nothing and cannot be rendered.
+    // One pass over the project covers the parent and every cascaded
+    // subtask, rather than re-scanning once per child.
+    strip_dependency(&store, &project_id, &gone_ids)
         .await
         .map_err(internal)?;
     Ok(ConnectResponse::new(pb::DeleteTaskResponse { ok: true }))
