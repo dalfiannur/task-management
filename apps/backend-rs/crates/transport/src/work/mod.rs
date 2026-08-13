@@ -108,7 +108,6 @@ pub(crate) async fn task_project_id(
 /// parent's module and the caller needs it. Rejects: a missing parent, a parent
 /// in another project, a parent that is itself a subtask (the one-level rule),
 /// and a task parenting itself.
-#[allow(dead_code)]
 pub(crate) async fn validate_parent(
     store: &Store,
     project_id: &str,
@@ -148,7 +147,6 @@ pub(crate) async fn validate_parent(
 /// Deliberately does NOT look for cycles: dependencies only warn, and conflicts
 /// are computed per edge, so nothing ever walks the chain. See the spec's
 /// "Consequence: no cycle detection is needed".
-#[allow(dead_code)]
 pub(crate) async fn validate_blocked_by(
     store: &Store,
     project_id: &str,
@@ -180,7 +178,6 @@ pub(crate) async fn validate_blocked_by(
 }
 
 /// Subtask `pid`s of a parent (for cascade delete and module moves).
-#[allow(dead_code)]
 pub(crate) async fn subtask_pids(store: &Store, parent_id: &str) -> anyhow::Result<Vec<i64>> {
     let p = parent_id.to_string();
     store
@@ -205,7 +202,6 @@ pub(crate) async fn subtask_pids(store: &Store, parent_id: &str) -> anyhow::Resu
 /// resolve to nothing: the frontend skips them when building conflicts, so they
 /// are invisible rather than broken — which is exactly why they would otherwise
 /// never get cleaned up.
-#[allow(dead_code)]
 pub(crate) async fn strip_dependency(
     store: &Store,
     project_id: &str,

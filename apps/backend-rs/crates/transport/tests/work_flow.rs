@@ -302,3 +302,128 @@ async fn get_task_is_member_gated() {
     let (st, _) = call(&router, &format!("{TASK}/GetTask"), Some(&to), json!({ "id": "999999999" })).await;
     assert_ne!(st, StatusCode::OK, "unknown id is not found");
 }
+
+#[tokio::test]
+async fn subtask_rules_are_enforced() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let owner = mk_user(&store).await;
+    let pid = project_with(&router, &owner, &[]).await;
+    let to = token(&owner);
+    let m1 = ok(&router, &format!("{MODULE}/CreateModule"), &to, json!({ "projectId": pid, "name": "M1" })).await["id"].as_str().unwrap().to_string();
+    let m2 = ok(&router, &format!("{MODULE}/CreateModule"), &to, json!({ "projectId": pid, "name": "M2" })).await["id"].as_str().unwrap().to_string();
+
+    let parent = ok(&router, &format!("{TASK}/CreateTask"), &to, json!({ "moduleId": m1, "title": "Parent" })).await["id"].as_str().unwrap().to_string();
+
+    // A subtask takes its parent's module even when the request names another.
+    let sub = ok(&router, &format!("{TASK}/CreateTask"), &to, json!({
+        "moduleId": m2, "title": "Sub", "parentId": parent
+    })).await;
+    assert_eq!(sub["parentId"], parent);
+    assert_eq!(sub["moduleId"], m1, "subtask follows its parent's module, not the request");
+    let sub_id = sub["id"].as_str().unwrap().to_string();
+
+    // One level: a subtask cannot be a parent, on create...
+    let (st, _) = call(&router, &format!("{TASK}/CreateTask"), Some(&to), json!({
+        "moduleId": m1, "title": "Grandchild", "parentId": sub_id
+    })).await;
+    assert_ne!(st, StatusCode::OK, "a subtask cannot have subtasks");
+
+    // ...and on update.
+    let other = ok(&router, &format!("{TASK}/CreateTask"), &to, json!({ "moduleId": m1, "title": "Other" })).await["id"].as_str().unwrap().to_string();
+    let (st, _) = call(&router, &format!("{TASK}/UpdateTask"), Some(&to), json!({
+        "id": other, "parentIdSet": { "values": [sub_id] }
+    })).await;
+    assert_ne!(st, StatusCode::OK, "cannot re-parent under a subtask");
+
+    // A task cannot parent itself.
+    let (st, _) = call(&router, &format!("{TASK}/UpdateTask"), Some(&to), json!({
+        "id": other, "parentIdSet": { "values": [other] }
+    })).await;
+    assert_ne!(st, StatusCode::OK, "self-parenting rejected");
+
+    // Re-parent: absent leaves alone, empty detaches, one element sets.
+    let unchanged = ok(&router, &format!("{TASK}/UpdateTask"), &to, json!({ "id": sub_id, "title": "Sub renamed" })).await;
+    assert_eq!(unchanged["parentId"], parent, "absent parentIdSet leaves the parent alone");
+
+    let detached = ok(&router, &format!("{TASK}/UpdateTask"), &to, json!({
+        "id": sub_id, "parentIdSet": { "values": [] }
+    })).await;
+    assert!(detached["parentId"].is_null(), "empty list detaches to top level");
+
+    let reattached = ok(&router, &format!("{TASK}/UpdateTask"), &to, json!({
+        "id": sub_id, "parentIdSet": { "values": [parent] }
+    })).await;
+    assert_eq!(reattached["parentId"], parent, "one element sets the parent");
+
+    // Moving the parent moves its subtasks.
+    ok(&router, &format!("{TASK}/MoveTask"), &to, json!({ "id": parent, "moduleId": m2, "order": 0 })).await;
+    let moved_sub = ok(&router, &format!("{TASK}/GetTask"), &to, json!({ "id": sub_id })).await;
+    assert_eq!(moved_sub["moduleId"], m2, "subtask followed its parent to the new module");
+
+    // Deleting the parent deletes its subtasks.
+    ok(&router, &format!("{TASK}/DeleteTask"), &to, json!({ "id": parent })).await;
+    let (st, _) = call(&router, &format!("{TASK}/GetTask"), Some(&to), json!({ "id": sub_id })).await;
+    assert_ne!(st, StatusCode::OK, "subtask deleted with its parent");
+}
+
+#[tokio::test]
+async fn dependency_rules_are_enforced() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let owner = mk_user(&store).await;
+    let p1 = project_with(&router, &owner, &[]).await;
+    let p2 = project_with(&router, &owner, &[]).await;
+    let to = token(&owner);
+    let m1 = ok(&router, &format!("{MODULE}/CreateModule"), &to, json!({ "projectId": p1, "name": "M" })).await["id"].as_str().unwrap().to_string();
+    let m2 = ok(&router, &format!("{MODULE}/CreateModule"), &to, json!({ "projectId": p2, "name": "M" })).await["id"].as_str().unwrap().to_string();
+
+    let a = ok(&router, &format!("{TASK}/CreateTask"), &to, json!({ "moduleId": m1, "title": "A" })).await["id"].as_str().unwrap().to_string();
+    let b = ok(&router, &format!("{TASK}/CreateTask"), &to, json!({ "moduleId": m1, "title": "B" })).await["id"].as_str().unwrap().to_string();
+    let foreign = ok(&router, &format!("{TASK}/CreateTask"), &to, json!({ "moduleId": m2, "title": "Foreign" })).await["id"].as_str().unwrap().to_string();
+
+    // Set and read back.
+    let updated = ok(&router, &format!("{TASK}/UpdateTask"), &to, json!({
+        "id": b, "blockedByIds": { "values": [a] }
+    })).await;
+    assert_eq!(updated["blockedByIds"], json!([a]));
+
+    // Absent leaves it alone; empty clears it.
+    let untouched = ok(&router, &format!("{TASK}/UpdateTask"), &to, json!({ "id": b, "title": "B2" })).await;
+    assert_eq!(untouched["blockedByIds"], json!([a]), "absent wrapper leaves dependencies alone");
+    let cleared = ok(&router, &format!("{TASK}/UpdateTask"), &to, json!({
+        "id": b, "blockedByIds": { "values": [] }
+    })).await;
+    assert!(
+        cleared["blockedByIds"].as_array().map(|a| a.is_empty()).unwrap_or(true),
+        "empty wrapper clears"
+    );
+
+    // Self-dependency and cross-project are rejected.
+    let (st, _) = call(&router, &format!("{TASK}/UpdateTask"), Some(&to), json!({
+        "id": b, "blockedByIds": { "values": [b] }
+    })).await;
+    assert_ne!(st, StatusCode::OK, "self-dependency rejected");
+    let (st, _) = call(&router, &format!("{TASK}/UpdateTask"), Some(&to), json!({
+        "id": b, "blockedByIds": { "values": [foreign] }
+    })).await;
+    assert_ne!(st, StatusCode::OK, "cross-project dependency rejected");
+
+    // A cycle is ACCEPTED. Nothing walks the graph, so it cannot hang; the user
+    // sees both arrows and both conflict marks and judges for themselves.
+    ok(&router, &format!("{TASK}/UpdateTask"), &to, json!({ "id": b, "blockedByIds": { "values": [a] } })).await;
+    let a_now = ok(&router, &format!("{TASK}/UpdateTask"), &to, json!({ "id": a, "blockedByIds": { "values": [b] } })).await;
+    assert_eq!(a_now["blockedByIds"], json!([b]), "a cycle is allowed by design");
+
+    // Deleting a task strips it from other tasks' dependencies.
+    ok(&router, &format!("{TASK}/DeleteTask"), &to, json!({ "id": a })).await;
+    let b_after = ok(&router, &format!("{TASK}/GetTask"), &to, json!({ "id": b })).await;
+    assert!(
+        b_after["blockedByIds"].as_array().map(|a| a.is_empty()).unwrap_or(true),
+        "dangling dependency removed on delete"
+    );
+}

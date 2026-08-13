@@ -9,14 +9,17 @@ use auth::AuthUser;
 use axum::Extension;
 use connectrpc_axum::{ConnectError, ConnectRequest, ConnectResponse};
 use domain::task::{
-    dates_ok, title_ok, TaskAssignees, TaskAudit, TaskInfo, TaskLabels, TaskModuleRef,
-    TaskPriority, TaskStatus,
+    dates_ok, title_ok, TaskAssignees, TaskAudit, TaskBlockedBy, TaskInfo, TaskLabels,
+    TaskModuleRef, TaskParent, TaskPriority, TaskStatus,
 };
 use persistence::Store;
 
 use super::record::{load_module, modules_for_project};
 use super::task_record::{load_task, tasks_for_module, tasks_for_modules, to_proto, TaskRecord};
-use super::{internal, parse_pid, require_auth, require_member, StoreExt};
+use super::{
+    internal, parse_pid, require_auth, require_member, strip_dependency, subtask_pids,
+    validate_blocked_by, validate_parent, StoreExt,
+};
 use crate::activity::record;
 use crate::notifications::{emit, NotifRefs, Notifier};
 use crate::projects::record::project_member_ids;
@@ -144,7 +147,16 @@ async fn create_task(
             "start_date must be on or before due_date",
         ));
     }
-    let order = next_order_in_module(&store, &r.module_id).await?;
+    // A subtask lives in its parent's module; the request's module_id is
+    // ignored rather than trusted, so the invariant cannot be bypassed.
+    let (module_id, parent_id) = match r.parent_id.as_deref().filter(|s| !s.is_empty()) {
+        Some(p) => (
+            validate_parent(&store, &project_id, p, 0).await?,
+            Some(p.to_string()),
+        ),
+        None => (r.module_id.clone(), None),
+    };
+    let order = next_order_in_module(&store, &module_id).await?;
     let now = now_iso();
     let completed_at = (status == TaskStatus::Done).then(|| now.clone());
     let description_for_index = domain::sanitize::clean_html(&r.description.unwrap_or_default());
@@ -161,7 +173,7 @@ async fn create_task(
                 sort_order: order,
             },
             TaskModuleRef {
-                module_id: r.module_id.clone(),
+                module_id: module_id.clone(),
             },
             TaskAssignees {
                 user_ids: r.assignee_ids,
@@ -178,6 +190,15 @@ async fn create_task(
         ))
         .await
         .map_err(internal)?;
+    if let Some(p) = &parent_id {
+        let p = p.clone();
+        store
+            .update(pid, move |w, e| {
+                w.insert(e, TaskParent { parent_id: p });
+            })
+            .await
+            .map_err(internal)?;
+    }
     // Notify each assignee (emit no-ops on self-assignment).
     if let Some(Extension(n)) = notifier {
         let refs = NotifRefs::task(&project_id, &pid.to_string());
@@ -271,6 +292,27 @@ async fn update_task(
         None => t.label_ids.clone(),
     };
 
+    // Dependencies: present wrapper = replace, absent = unchanged.
+    let blocked_by = match r.blocked_by_ids {
+        Some(list) => validate_blocked_by(&store, &project_id, pid, &list.values).await?,
+        None => t.blocked_by_ids.clone(),
+    };
+    // Re-parenting: absent = unchanged, empty = detach, one = set.
+    let new_parent: Option<Option<String>> = match r.parent_id_set {
+        None => None,
+        Some(list) if list.values.is_empty() => Some(None),
+        Some(list) if list.values.len() == 1 => {
+            let p = list.values[0].clone();
+            validate_parent(&store, &project_id, &p, pid).await?;
+            Some(Some(p))
+        }
+        Some(_) => {
+            return Err(ConnectError::new_invalid_argument(
+                "parent_id_set takes at most one id",
+            ))
+        }
+    };
+
     // completed_at automation around Done.
     let now = now_iso();
     let completed_at = if status == TaskStatus::Done {
@@ -348,6 +390,14 @@ async fn update_task(
             w.insert(e, TaskAssignees { user_ids: assignees });
             w.remove::<TaskLabels>(e);
             w.insert(e, TaskLabels { label_ids: labels });
+            w.remove::<TaskBlockedBy>(e);
+            w.insert(e, TaskBlockedBy { task_ids: blocked_by });
+            if let Some(p) = new_parent {
+                w.remove::<TaskParent>(e);
+                if let Some(pid_str) = p {
+                    w.insert(e, TaskParent { parent_id: pid_str });
+                }
+            }
         })
         .await
         .map_err(internal)?;
@@ -398,6 +448,11 @@ async fn delete_task(
     let t = require_task(&store, pid).await?;
     let (_mpid, project_id) = module_project(&store, &t.module_id).await?;
     require_member(&store, &project_id, &auth).await?;
+    // Cascade to subtasks first, so each leaves the search index too.
+    for spid in subtask_pids(&store, &pid.to_string()).await.map_err(internal)? {
+        store.delete(spid).await.map_err(internal)?;
+        super::deindex_task_and_comments(&store, &spid.to_string()).await;
+    }
     store.delete(pid).await.map_err(internal)?;
     record(
         &store,
@@ -411,6 +466,11 @@ async fn delete_task(
     )
     .await;
     super::deindex_task_and_comments(&store, &pid.to_string()).await;
+    // Drop this id from every task that listed it as a blocker, or those lists
+    // accumulate ids that resolve to nothing and cannot be rendered.
+    strip_dependency(&store, &project_id, &pid.to_string())
+        .await
+        .map_err(internal)?;
     Ok(ConnectResponse::new(pb::DeleteTaskResponse { ok: true }))
 }
 
@@ -461,6 +521,18 @@ async fn move_task(
         })
         .await
         .map_err(internal)?;
+    // A subtask always lives in its parent's module; moving the parent moves
+    // the children rather than leaving them behind in the old module.
+    for spid in subtask_pids(&store, &pid.to_string()).await.map_err(internal)? {
+        let mid = r.module_id.clone();
+        store
+            .update(spid, move |w, e| {
+                w.remove::<TaskModuleRef>(e);
+                w.insert(e, TaskModuleRef { module_id: mid });
+            })
+            .await
+            .map_err(internal)?;
+    }
     let t = require_task(&store, pid).await?;
     // `unwrap_or_default()` here would turn a `None` (module deleted out from
     // under this move — a narrow race) into `Some("")`. An empty string is
