@@ -102,6 +102,140 @@ pub(crate) async fn task_project_id(
         .map(|m| m.project_id))
 }
 
+/// Validate a proposed parent for `child_pid` (which may be 0 on create).
+///
+/// Returns the parent's module id, because a subtask always lives in its
+/// parent's module and the caller needs it. Rejects: a missing parent, a parent
+/// in another project, a parent that is itself a subtask (the one-level rule),
+/// and a task parenting itself.
+#[allow(dead_code)]
+pub(crate) async fn validate_parent(
+    store: &Store,
+    project_id: &str,
+    parent_id: &str,
+    child_pid: i64,
+) -> Result<String, ConnectError> {
+    let ppid = parse_pid(parent_id)?;
+    if ppid == child_pid {
+        return Err(ConnectError::new_invalid_argument(
+            "a task cannot be its own parent",
+        ));
+    }
+    let parent = task_record::load_task(store, ppid)
+        .await
+        .map_err(internal)?
+        .ok_or_else(|| ConnectError::new_not_found("parent task not found"))?;
+    if parent.parent_id.is_some() {
+        return Err(ConnectError::new_invalid_argument(
+            "a subtask cannot have subtasks",
+        ));
+    }
+    let parent_project = task_project_id(store, parent_id)
+        .await
+        .map_err(internal)?
+        .unwrap_or_default();
+    if parent_project != project_id {
+        return Err(ConnectError::new_invalid_argument(
+            "parent task must be in the same project",
+        ));
+    }
+    Ok(parent.module_id)
+}
+
+/// Validate `blocked_by` ids for a task in `project_id`. Rejects a
+/// self-dependency and any id outside the project. Duplicates are collapsed.
+///
+/// Deliberately does NOT look for cycles: dependencies only warn, and conflicts
+/// are computed per edge, so nothing ever walks the chain. See the spec's
+/// "Consequence: no cycle detection is needed".
+#[allow(dead_code)]
+pub(crate) async fn validate_blocked_by(
+    store: &Store,
+    project_id: &str,
+    task_pid: i64,
+    ids: &[String],
+) -> Result<Vec<String>, ConnectError> {
+    let mut seen = std::collections::HashSet::new();
+    let mut out = Vec::new();
+    for id in ids {
+        if id == &task_pid.to_string() {
+            return Err(ConnectError::new_invalid_argument(
+                "a task cannot block itself",
+            ));
+        }
+        if !seen.insert(id.clone()) {
+            continue;
+        }
+        let owner = task_project_id(store, id).await.map_err(internal)?;
+        match owner {
+            Some(p) if p == project_id => out.push(id.clone()),
+            _ => {
+                return Err(ConnectError::new_invalid_argument(
+                    "every dependency must be a task in the same project",
+                ))
+            }
+        }
+    }
+    Ok(out)
+}
+
+/// Subtask `pid`s of a parent (for cascade delete and module moves).
+#[allow(dead_code)]
+pub(crate) async fn subtask_pids(store: &Store, parent_id: &str) -> anyhow::Result<Vec<i64>> {
+    let p = parent_id.to_string();
+    store
+        .query::<domain::task::TaskParent, i64>(None, move |world, pairs| {
+            pairs
+                .iter()
+                .filter(|(_, e)| {
+                    world
+                        .get::<domain::task::TaskParent>(*e)
+                        .map(|r| r.parent_id == p)
+                        .unwrap_or(false)
+                })
+                .map(|(pid, _)| *pid)
+                .collect()
+        })
+        .await
+}
+
+/// Remove `gone_id` from every task in the project that listed it as a blocker.
+///
+/// Called after a task is deleted. Without it `blocked_by` accumulates ids that
+/// resolve to nothing: the frontend skips them when building conflicts, so they
+/// are invisible rather than broken — which is exactly why they would otherwise
+/// never get cleaned up.
+#[allow(dead_code)]
+pub(crate) async fn strip_dependency(
+    store: &Store,
+    project_id: &str,
+    gone_id: &str,
+) -> anyhow::Result<()> {
+    let module_ids: std::collections::HashSet<String> = record::modules_for_project(store, project_id)
+        .await?
+        .into_iter()
+        .map(|m| m.pid.to_string())
+        .collect();
+    for t in task_record::tasks_for_modules(store, module_ids).await? {
+        if !t.blocked_by_ids.iter().any(|b| b == gone_id) {
+            continue;
+        }
+        let kept: Vec<String> = t
+            .blocked_by_ids
+            .iter()
+            .filter(|b| *b != gone_id)
+            .cloned()
+            .collect();
+        store
+            .update(t.pid, move |w, e| {
+                w.remove::<domain::task::TaskBlockedBy>(e);
+                w.insert(e, domain::task::TaskBlockedBy { task_ids: kept });
+            })
+            .await?;
+    }
+    Ok(())
+}
+
 /// Drop a deleted task and its comments from the search index.
 ///
 /// A task's comments are not entity-deleted with it (they are already
