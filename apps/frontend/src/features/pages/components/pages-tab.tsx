@@ -37,9 +37,14 @@ export function PagesTab({
     } else if (!selectedId || !pages.some((p) => p.id === selectedId)) {
       setSelected(pages[0].id);
     }
-    // setSelected intentionally excluded: it's derived from stable
-    // primitives each render, and including it would navigate on every
-    // render rather than only when pages/selectedId genuinely change.
+    // setSelected intentionally excluded from deps: it calls navigate() with
+    // the FUNCTIONAL updater form (`search: (prev) => ...`), which TanStack
+    // Router calls with the live search state at navigation time — not a
+    // value captured from this render's closure. That's what makes omitting
+    // it safe; a rewrite to a static `search: {...}` object would
+    // reintroduce the stale-closure risk exhaustive-deps is warning about,
+    // and including it here would navigate on every render instead of only
+    // when pages/selectedId genuinely change.
   }, [pages, selectedId]);
 
   const selected = pages.find((p) => p.id === selectedId) ?? null;

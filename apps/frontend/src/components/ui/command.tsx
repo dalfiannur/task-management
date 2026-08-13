@@ -41,10 +41,12 @@ function CommandDialog({
   description?: string
   className?: string
   showCloseButton?: boolean
-  // Default true keeps existing consumers (label/assignee pickers, which
-  // filter a small local list client-side) untouched. Server-backed search
-  // passes false — its results are already ranked, and cmdk's own text
-  // filter would silently drop rows that only matched a stemmed form.
+  // Default true preserves cmdk's own client-side text filter, so any future
+  // consumer that lists a small local set (the way label/assignee pickers
+  // list theirs, though neither is actually built on this component today)
+  // gets filtering for free. The global search overlay passes false — its
+  // results are already ranked server-side, and cmdk's filter would
+  // silently drop rows that only matched a stemmed form.
   shouldFilter?: boolean
 }) {
   return (
