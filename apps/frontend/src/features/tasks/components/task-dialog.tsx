@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { RichTextEditor } from "@/components/shared/rich-text-editor";
 import {
   Dialog,
@@ -43,8 +44,19 @@ interface Props {
   projectId: string;
   /** Create mode: target module. */
   moduleId: string;
-  /** Edit mode: existing task (omit for create). */
+  /** Edit mode: existing task (omit for create, or while a URL-driven fetch
+   *  for it is still in flight — see `editing`). */
   task?: Task;
+  /**
+   * Whether this dialog addresses an existing task, independent of whether
+   * `task` has arrived yet. Defaults to `!!task` for the state-driven create
+   * dialog (which never has a task to wait on). The URL-driven edit dialog
+   * passes this explicitly as `!!taskParam`: while a deep-linked task is
+   * still being fetched, `task` is `undefined` but the *intent* is still
+   * "edit" — deriving mode from `!!task` alone would show a blank,
+   * submittable "New task" form for that whole window instead.
+   */
+  editing?: boolean;
   memberIds: string[];
   userMap: Record<string, AppUser>;
   /** Comment id to scroll to and highlight (from a deep link). Edit mode only. */
@@ -57,13 +69,18 @@ export function TaskDialog({
   projectId,
   moduleId,
   task,
+  editing: editingProp,
   memberIds,
   userMap,
   highlightCommentId,
 }: Props) {
   const create = useCreateTask();
   const update = useUpdateTask();
-  const editing = !!task;
+  const editing = editingProp ?? !!task;
+  // Edit intent confirmed, but the object hasn't arrived yet. The create
+  // path must stay unreachable through this whole window, not just visually
+  // — see onSubmit and the loading branch below.
+  const loading = editing && !task;
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -96,6 +113,12 @@ export function TaskDialog({
       toast.error(err.message || "Failed to save task");
 
     if (editing) {
+      // Still loading (or, defensively, closed out from under us) — there is
+      // nothing to submit yet. The form isn't rendered while `loading` is
+      // true (see below), so this is a belt-and-suspenders guard, not the
+      // primary defense: it's what stops `editing` ever falling through to
+      // the create branch below.
+      if (!task) return;
       update.mutate(
         {
           id: task.id,
@@ -134,6 +157,21 @@ export function TaskDialog({
         <DialogHeader>
           <DialogTitle>{editing ? "Edit task" : "New task"}</DialogTitle>
         </DialogHeader>
+        {loading ? (
+          // Edit intent is already known here — only the data isn't in yet.
+          // Rendering the real (empty) form in this window is what let a
+          // deep link submit as a create; a placeholder with no submit
+          // control removes that path entirely rather than just disabling it.
+          <div className="space-y-4 py-1" aria-busy="true" aria-label="Loading task">
+            <Skeleton className="h-9 w-2/3 rounded-lg" />
+            <Skeleton className="h-24 w-full rounded-lg" />
+            <div className="grid grid-cols-2 gap-4">
+              <Skeleton className="h-9 rounded-lg" />
+              <Skeleton className="h-9 rounded-lg" />
+            </div>
+            <Skeleton className="h-9 w-40 rounded-lg" />
+          </div>
+        ) : (
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="title">Title</Label>
@@ -222,6 +260,7 @@ export function TaskDialog({
             </Button>
           </DialogFooter>
         </form>
+        )}
         {editing && task && (
           <>
             <div className="my-2 border-t border-border-subtle" />

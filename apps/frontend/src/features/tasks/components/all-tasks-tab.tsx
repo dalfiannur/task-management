@@ -58,6 +58,27 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
   );
   const editingTask = taskFromList ?? fetchedTask;
 
+  // A resolved task doesn't necessarily belong to *this* project: GetTask
+  // fetches by id alone, and a task moved to another project (MoveTask
+  // re-resolves and re-indexes it under its new project) leaves any
+  // previously bookmarked/shared URL pointing at a task this project's
+  // modules no longer contain. Rendering it anyway would offer this
+  // project's labels/members in the dialog while saving onto a task that
+  // belongs to a different project's data — silent cross-project
+  // corruption, not just a wrong display. `tasks` (and so `taskFromList`)
+  // is already project-scoped and can never trip this; only the
+  // fetch-fallback path can. Gated on modules having actually loaded, so an
+  // empty `modules` mid-fetch doesn't reject every valid deep link.
+  const modulesReady = !modulesLoading;
+  const crossProjectTask =
+    modulesReady &&
+    !!editingTask &&
+    !modules.some((m) => m.id === editingTask.moduleId);
+  // Never hand the mismatched task to the dialog, even for the one render
+  // before the effect below closes it — the loading skeleton (task-dialog's
+  // `loading` branch) is what's shown instead until it's stripped.
+  const safeEditingTask = crossProjectTask ? undefined : editingTask;
+
   function setTaskSearch(next: { task?: string; comment?: string }) {
     navigate({ to: ".", search: (prev) => ({ ...prev, ...next }) });
   }
@@ -70,17 +91,27 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
     setTaskSearch({ task: undefined, comment: undefined });
   }
 
-  // Deleted task, or one the caller can't see: tell the user and drop the
-  // stale param rather than leaving the dialog stuck open on nothing.
+  // Deleted task / no access, or a task that's moved to another project
+  // since the link was made: either way, tell the user and drop the stale
+  // param rather than leaving the dialog stuck open on nothing (or on the
+  // wrong project's data).
   useEffect(() => {
     if (needsFetch && taskFetchError) {
       toast.error("Task not found, or you do not have access");
       closeTaskDialog();
+      return;
     }
-    // closeTaskDialog intentionally excluded: it's derived from stable
-    // primitives each render, and including it would refire this on every
-    // render rather than only when the fetch outcome changes.
-  }, [needsFetch, taskFetchError]);
+    if (crossProjectTask) {
+      toast.error("That task has moved to another project");
+      closeTaskDialog();
+    }
+    // closeTaskDialog intentionally excluded from deps: it calls navigate()
+    // with the FUNCTIONAL updater form (`search: (prev) => ...`), which
+    // TanStack Router calls with the live search state at navigation time —
+    // not a value captured from this render's closure. That's what makes
+    // omitting it safe; a rewrite to a static `search: {...}` object would
+    // reintroduce the stale-closure risk exhaustive-deps is warning about.
+  }, [needsFetch, taskFetchError, crossProjectTask]);
 
   const [createDialog, setCreateDialog] = useState<{
     open: boolean;
@@ -210,8 +241,9 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
           if (!open) closeTaskDialog();
         }}
         projectId={projectId}
-        moduleId={editingTask?.moduleId ?? ""}
-        task={editingTask}
+        moduleId={safeEditingTask?.moduleId ?? ""}
+        task={safeEditingTask}
+        editing={!!taskParam}
         highlightCommentId={commentParam}
         memberIds={memberIds}
         userMap={userMap}
