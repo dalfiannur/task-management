@@ -266,6 +266,8 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
         highlightCommentId={commentParam}
         memberIds={memberIds}
         userMap={userMap}
+        tasks={tasks}
+        onOpenTask={openTask}
       />
       {/* Create dialog stays on local state — a task being created has no id
           yet, so there's nothing to address. */}
@@ -278,6 +280,8 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
         moduleId={createDialog.moduleId}
         memberIds={memberIds}
         userMap={userMap}
+        tasks={tasks}
+        onOpenTask={openTask}
       />
       <ModuleDialog
         open={moduleDialog.open}

@@ -29,7 +29,10 @@ import { TASK_PRIORITIES, TASK_STATUSES } from "../types";
 import { TASK_PRIORITY_CONFIG, TASK_STATUS_CONFIG } from "../config";
 import { statusToProto, priorityToProto } from "../api/mappers";
 import { useCreateTask, useUpdateTask } from "../api/hooks";
+import { buildHierarchy } from "../task-graph";
 import { AssigneePicker } from "./assignee-picker";
+import { SubtaskSection } from "./subtask-section";
+import { DependencyPicker } from "./dependency-picker";
 
 function isoToDate(v?: string): Date | undefined {
   return v ? new Date(v) : undefined;
@@ -61,6 +64,14 @@ interface Props {
   userMap: Record<string, AppUser>;
   /** Comment id to scroll to and highlight (from a deep link). Edit mode only. */
   highlightCommentId?: string;
+  /**
+   * The project's full task list, for the subtask and dependency sections
+   * (edit mode only — a task being created has no id to hang either on).
+   */
+  tasks: Task[];
+  /** Opens another task in the URL-addressed dialog (`?task=`) — used to
+   *  navigate to a subtask, or from a subtask to its parent. */
+  onOpenTask: (id: string) => void;
 }
 
 export function TaskDialog({
@@ -73,6 +84,8 @@ export function TaskDialog({
   memberIds,
   userMap,
   highlightCommentId,
+  tasks,
+  onOpenTask,
 }: Props) {
   const create = useCreateTask();
   const update = useUpdateTask();
@@ -105,6 +118,31 @@ export function TaskDialog({
   }, [open, task]);
 
   const pending = create.isPending || update.isPending;
+
+  // Subtask + dependency sections (edit mode only — a task being created has
+  // no id to hang either on). A subtask can never itself have children (the
+  // one-level rule), so `subtasks` is only meaningful when `task` isn't one.
+  const { childrenOf } = buildHierarchy(tasks);
+  const subtasks = task ? childrenOf[task.id] ?? [] : [];
+  const parentTask = task?.parentId
+    ? tasks.find((t) => t.id === task.parentId)
+    : undefined;
+  // Blocked-by candidates: every other task in the project, minus this
+  // task's own subtasks (a subtask cannot block its own parent's schedule).
+  const dependencyCandidates = task
+    ? tasks.filter((t) => t.id !== task.id && t.parentId !== task.id)
+    : [];
+
+  function onDependencyChange(blockedByIds: string[]) {
+    if (!task) return;
+    update.mutate(
+      { id: task.id, blockedByIds: { values: blockedByIds } },
+      {
+        onError: (err) =>
+          toast.error(err.message || "Failed to update dependencies"),
+      },
+    );
+  }
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -263,6 +301,38 @@ export function TaskDialog({
         )}
         {editing && task && (
           <>
+            <div className="my-2 space-y-4 border-t border-border-subtle pt-4">
+              {task.parentId ? (
+                // The one-level rule made visible: a subtask never gets its
+                // own "add subtask" UI (the backend would reject it) — just
+                // a way back to the task that owns it. `parentTask` can be
+                // momentarily missing from `tasks` (e.g. the parent hasn't
+                // loaded yet); still honor the "no subtask UI on a subtask"
+                // rule rather than falling through to SubtaskSection.
+                parentTask ? (
+                  <button
+                    type="button"
+                    onClick={() => onOpenTask(parentTask.id)}
+                    className="text-sm text-brand-text hover:underline"
+                  >
+                    ← Subtask of “{parentTask.title}”
+                  </button>
+                ) : (
+                  <p className="text-sm text-text-muted">This is a subtask.</p>
+                )
+              ) : (
+                <SubtaskSection
+                  parent={task}
+                  children={subtasks}
+                  onOpenTask={onOpenTask}
+                />
+              )}
+              <DependencyPicker
+                task={task}
+                candidates={dependencyCandidates}
+                onChange={onDependencyChange}
+              />
+            </div>
             <div className="my-2 border-t border-border-subtle" />
             <CommentThread
               taskId={task.id}
