@@ -63,6 +63,8 @@ message Task {
   string updated_at = 13;
   optional string completed_at = 14;
   string created_by = 15;
+  optional string parent_id = 16;
+  repeated string blocked_by_ids = 17;
 }
 
 enum TaskStatus {
@@ -98,6 +100,7 @@ message CreateTaskRequest {
   optional string due_date = 7;
   repeated string assignee_ids = 8;
   repeated string label_ids = 9;
+  optional string parent_id = 10;
 }
 // Wrapper so a repeated field can be distinguished from "absent" on update
 // (proto3 can't tell an omitted `repeated` from an empty one).
@@ -113,6 +116,13 @@ message UpdateTaskRequest {
   optional string due_date = 7;
   optional StringList assignee_ids = 8; // absent = unchanged; present (incl. empty) = replace
   optional StringList label_ids = 9;
+  optional StringList blocked_by_ids = 10;
+  // Re-parenting needs three states — leave alone, set a parent, detach to top
+  // level — which a bare `optional string` cannot express (absent and "clear"
+  // collapse into the same value). Reuse the StringList wrapper: absent =
+  // unchanged, empty = detach, one element = that parent. Two or more is an
+  // invalid argument.
+  optional StringList parent_id_set = 11;
 }
 message DeleteTaskRequest { string id = 1; }
 message DeleteTaskResponse { bool ok = 1; }

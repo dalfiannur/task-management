@@ -4,7 +4,8 @@ use std::collections::HashSet;
 
 use arke::{Entity, World};
 use domain::task::{
-    TaskAssignees, TaskAudit, TaskInfo, TaskLabels, TaskModuleRef, TaskPriority, TaskStatus,
+    TaskAssignees, TaskAudit, TaskBlockedBy, TaskInfo, TaskLabels, TaskModuleRef, TaskParent,
+    TaskPriority, TaskStatus,
 };
 use persistence::Store;
 
@@ -27,6 +28,8 @@ pub(crate) struct TaskRecord {
     pub updated_at: String,
     pub completed_at: Option<String>,
     pub created_by: String,
+    pub parent_id: Option<String>,
+    pub blocked_by_ids: Vec<String>,
 }
 
 pub(crate) fn read_task(world: &World, e: Entity, pid: i64) -> Option<TaskRecord> {
@@ -55,6 +58,11 @@ pub(crate) fn read_task(world: &World, e: Entity, pid: i64) -> Option<TaskRecord
         updated_at: audit.updated_at.clone(),
         completed_at: audit.completed_at.clone(),
         created_by: audit.created_by.clone(),
+        parent_id: world.get::<TaskParent>(e).map(|p| p.parent_id.clone()),
+        blocked_by_ids: world
+            .get::<TaskBlockedBy>(e)
+            .map(|b| b.task_ids.clone())
+            .unwrap_or_default(),
     })
 }
 
@@ -75,6 +83,8 @@ pub(crate) fn to_proto(t: &TaskRecord) -> pb::Task {
         updated_at: t.updated_at.clone(),
         completed_at: t.completed_at.clone(),
         created_by: t.created_by.clone(),
+        parent_id: t.parent_id.clone(),
+        blocked_by_ids: t.blocked_by_ids.clone(),
     }
 }
 
