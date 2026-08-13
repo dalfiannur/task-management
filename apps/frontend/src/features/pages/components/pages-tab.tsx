@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { FileText, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -8,19 +9,35 @@ import { cn } from "@/lib/utils";
 import { usePages, useCreatePage } from "../api/hooks";
 import { PageEditor } from "./page-editor";
 
-/** Master-detail wiki: page list (left) + editor (right). Member-gated. */
-export function PagesTab({ projectId }: { projectId: string }) {
+/** Master-detail wiki: page list (left) + editor (right). Member-gated.
+ *  Selection lives in the URL (`page` search param) so a page is a
+ *  shareable/deep-linkable address, not just local UI state. */
+export function PagesTab({
+  projectId,
+  selectedId,
+}: {
+  projectId: string;
+  selectedId?: string;
+}) {
   const { pages, isLoading } = usePages(projectId);
   const create = useCreatePage();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const navigate = useNavigate();
 
-  // Default selection → first page; clear when the selected page disappears.
+  function setSelected(id: string | null) {
+    navigate({ to: ".", search: (prev) => ({ ...prev, page: id ?? undefined }) });
+  }
+
+  // Default selection → first page; clear/reselect when the selected page
+  // disappears (deleted) or a deep-linked id doesn't exist in this project.
+  // Guarded so it only navigates when the URL genuinely needs to change —
+  // an effect that always calls setSelected would navigate every render.
   useEffect(() => {
     if (pages.length === 0) {
-      setSelectedId(null);
+      if (selectedId) setSelected(null);
     } else if (!selectedId || !pages.some((p) => p.id === selectedId)) {
-      setSelectedId(pages[0].id);
+      setSelected(pages[0].id);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pages, selectedId]);
 
   const selected = pages.find((p) => p.id === selectedId) ?? null;
@@ -29,7 +46,7 @@ export function PagesTab({ projectId }: { projectId: string }) {
     create.mutate(
       { projectId },
       {
-        onSuccess: (page) => setSelectedId(page.id),
+        onSuccess: (page) => setSelected(page.id),
         onError: (e) => toast.error(e.message || "Failed to create page"),
       },
     );
@@ -125,7 +142,7 @@ export function PagesTab({ projectId }: { projectId: string }) {
               <li key={p.id}>
                 <button
                   type="button"
-                  onClick={() => setSelectedId(p.id)}
+                  onClick={() => setSelected(p.id)}
                   className={cn(
                     "flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm",
                     "transition-colors [transition-duration:var(--duration-fast)]",
@@ -160,7 +177,7 @@ export function PagesTab({ projectId }: { projectId: string }) {
             <PageEditor
               key={selected.id}
               page={selected}
-              onDeleted={() => setSelectedId(null)}
+              onDeleted={() => setSelected(null)}
             />
           )}
         </div>
