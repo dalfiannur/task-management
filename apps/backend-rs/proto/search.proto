@@ -35,6 +35,9 @@ message SearchResult {
   optional string task_id = 7;      // comment results: the parent task
   float score = 8;
   optional string parent_id = 9;    // subtask results: the parent task
+  // subtask results: the parent task's title, resolved live at query time
+  // (not stored), so a renamed parent never leaves a stale title here.
+  optional string parent_title = 10;
 }
 
 message SearchResponse { repeated SearchResult results = 1; }

@@ -45,6 +45,10 @@ pub struct SearchRow {
     pub snippet: String,
     pub score: f32,
     pub parent_id: Option<String>,
+    /// Resolved live via a self-join on `search_doc` (below), same reasoning
+    /// as `project_name` in `search_service.rs`: not stored, so a renamed
+    /// parent task never leaves a stale title in a subtask's result.
+    pub parent_title: Option<String>,
 }
 
 pub(crate) async fn migrate(pool: &PgPool) -> Result<()> {
@@ -149,16 +153,23 @@ impl crate::Store {
         assignee_ids: &[String],
         limit: i64,
     ) -> Result<Vec<SearchRow>> {
+        // `pd` is a self-join back onto search_doc, resolving a subtask
+        // result's parent title live (same idea as the LEFT JOIN it is:
+        // absent for anything without a parent_id, including every non-task
+        // kind, so it costs nothing there).
         let sql = format!(
-            "SELECT kind, entity_id, project_id, title, parent_id,
-                    ts_headline('{cfg}', body, q, 'MaxWords=18,MinWords=8') AS snippet,
-                    ts_rank(vec, q) AS score
-             FROM search_doc, websearch_to_tsquery('{cfg}', $1) q
-             WHERE vec @@ q
-               AND ($2 OR project_id IS NULL OR project_id = ANY($3))
-               AND (cardinality($4::text[]) = 0 OR kind = ANY($4))
-               AND (cardinality($5::text[]) = 0 OR assignee_ids && $5)
-             ORDER BY score DESC, updated_at DESC
+            "SELECT sd.kind, sd.entity_id, sd.project_id, sd.title, sd.parent_id,
+                    pd.title AS parent_title,
+                    ts_headline('{cfg}', sd.body, q, 'MaxWords=18,MinWords=8') AS snippet,
+                    ts_rank(sd.vec, q) AS score
+             FROM search_doc sd
+             LEFT JOIN search_doc pd ON pd.kind = 'task' AND pd.entity_id = sd.parent_id,
+                  websearch_to_tsquery('{cfg}', $1) q
+             WHERE sd.vec @@ q
+               AND ($2 OR sd.project_id IS NULL OR sd.project_id = ANY($3))
+               AND (cardinality($4::text[]) = 0 OR sd.kind = ANY($4))
+               AND (cardinality($5::text[]) = 0 OR sd.assignee_ids && $5)
+             ORDER BY score DESC, sd.updated_at DESC
              LIMIT $6",
             cfg = TS_CONFIG
         );
@@ -181,6 +192,7 @@ impl crate::Store {
                 snippet: r.get("snippet"),
                 score: r.get("score"),
                 parent_id: r.get("parent_id"),
+                parent_title: r.get("parent_title"),
             })
             .collect())
     }

@@ -14,5 +14,8 @@ export interface SearchHit {
   taskId?: string;
   /** Task hits that are subtasks: the parent's id, for context in the row. */
   parentId?: string;
+  /** Task hits that are subtasks: the parent's title, resolved server-side
+   *  (live, not stored) so a renamed parent never shows stale here. */
+  parentTitle?: string;
   score: number;
 }

@@ -664,6 +664,24 @@ async fn subtask_result_carries_its_parent_and_both_are_deindexed_together() {
         hits[0]["parentId"], parent,
         "search result carries the subtask's parent"
     );
+    assert_eq!(
+        hits[0]["parentTitle"],
+        format!("Perbaiki {parent_term}"),
+        "search result carries the parent's title, for display context"
+    );
+
+    // parent_title is resolved live (a join), not stored on the subtask's own
+    // document — so renaming the parent is reflected immediately, with no
+    // re-index of the subtask needed.
+    ok(&router, &format!("{TASK}/UpdateTask"), &to, json!({
+        "id": parent, "title": format!("Renamed {parent_term}")
+    })).await;
+    let hits = find(&router, &to, &sub_term).await;
+    assert_eq!(
+        hits[0]["parentTitle"],
+        format!("Renamed {parent_term}"),
+        "parent_title is resolved live, not a stale copy"
+    );
 
     // The parent itself is not a subtask, so its own result carries no parent.
     let parent_hits = find(&router, &to, &parent_term).await;

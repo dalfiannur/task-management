@@ -122,6 +122,7 @@ async fn search(
             task_id,
             score: row.score,
             parent_id: row.parent_id,
+            parent_title: row.parent_title,
         });
     }
 

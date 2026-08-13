@@ -219,11 +219,22 @@ export function SearchOverlay() {
                     {hit.kind !== "user" && hit.snippet && (
                       <Snippet html={hit.snippet} />
                     )}
-                    {hit.kind !== "project" && hit.projectName && (
-                      <span className="block truncate text-xs text-text-subtle group-data-[selected=true]:text-brand-text">
-                        {hit.projectName}
-                      </span>
-                    )}
+                    {/* A subtask result's most useful context is which task
+                        it belongs to, not which project — the project name
+                        line stands in for that everywhere else, but here it
+                        would just repeat what "Tasks" already implies. */}
+                    {hit.kind !== "project" &&
+                      (hit.parentTitle ? (
+                        <span className="block truncate text-xs text-text-subtle group-data-[selected=true]:text-brand-text">
+                          Subtask of {hit.parentTitle}
+                        </span>
+                      ) : (
+                        hit.projectName && (
+                          <span className="block truncate text-xs text-text-subtle group-data-[selected=true]:text-brand-text">
+                            {hit.projectName}
+                          </span>
+                        )
+                      ))}
                   </div>
                 </CommandItem>
               ))}
