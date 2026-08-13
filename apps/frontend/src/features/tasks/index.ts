@@ -25,3 +25,11 @@ export {
 } from "./api/hooks";
 export { AllTasksTab } from "./components/all-tasks-tab";
 export { StatusBadge, PriorityLabel } from "./components/task-badges";
+export {
+  buildHierarchy,
+  subtaskProgress,
+  reverseDependencies,
+  edgeConflicts,
+  allConflicts,
+  type ConflictKind,
+} from "./task-graph";

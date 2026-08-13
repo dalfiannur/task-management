@@ -22,6 +22,7 @@ export function GanttBar({
   pxPerDay,
   canEdit,
   onReschedule,
+  conflict,
 }: {
   task: Task;
   span: { start: Date; end: Date };
@@ -30,6 +31,8 @@ export function GanttBar({
   pxPerDay: number;
   canEdit: boolean;
   onReschedule: (taskId: string, patch: ReschedulePatch) => void;
+  /** True when this task sits on a conflicting dependency edge, either side. */
+  conflict?: boolean;
 }) {
   const [drag, setDrag] = useState<{ mode: Mode; startX: number; delta: number } | null>(
     null,
@@ -114,9 +117,12 @@ export function GanttBar({
         done
           ? "bg-surface-hover text-text-muted"
           : "bg-brand text-text-on-brand",
+        // Conflict ring loses to the drag ring — mid-drag feedback is the
+        // more urgent signal, and the conflict is still visible once released.
+        conflict && "ring-2 ring-danger",
         drag && "ring-2 ring-focus",
       )}
-      title={task.title}
+      title={conflict ? `${task.title} — dependency conflict` : task.title}
     >
       {canEdit && (
         <span
@@ -131,7 +137,10 @@ export function GanttBar({
           className="absolute right-0 top-0 h-full w-1.5 cursor-ew-resize rounded-r-full bg-current opacity-30"
         />
       )}
-      <span className="sr-only">{TASK_STATUS_CONFIG[task.status].label}</span>
+      <span className="sr-only">
+        {TASK_STATUS_CONFIG[task.status].label}
+        {conflict && " · Dependency conflict"}
+      </span>
     </div>
   );
 }

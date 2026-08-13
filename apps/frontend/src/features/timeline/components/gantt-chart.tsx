@@ -9,7 +9,14 @@ import {
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import { useModules, useTasks, useUpdateTask, type Task } from "@/features/tasks";
+import {
+  allConflicts,
+  buildHierarchy,
+  useModules,
+  useTasks,
+  useUpdateTask,
+  type Task,
+} from "@/features/tasks";
 import {
   PX_PER_DAY,
   ROW_HEIGHT,
@@ -22,12 +29,17 @@ import {
   toIso,
   type Zoom,
 } from "../timeline-utils";
+import { DependencyLayer } from "./dependency-layer";
 import { GanttBar, type ReschedulePatch } from "./gantt-bar";
 import { UnscheduledPanel } from "./unscheduled-panel";
 
 const ZOOMS: Zoom[] = ["day", "week", "month"];
 const NAME_COL = 220;
 const HEADER_H = 32;
+// One indent step per subtask depth (1 level only), on top of the name
+// column's own inset — mirrors the task list's pl-10 (12px base + 24px step).
+const NAME_INDENT_BASE = 12;
+const NAME_INDENT_STEP = 24;
 
 interface Row {
   kind: "module" | "task";
@@ -35,6 +47,8 @@ interface Row {
   name: string;
   task?: Task;
   span?: { start: Date; end: Date };
+  /** 0 = top-level, 1 = subtask. Modules are always 0. */
+  depth: number;
 }
 
 export function GanttChart({ projectId }: { projectId: string }) {
@@ -62,21 +76,64 @@ export function GanttChart({ projectId }: { projectId: string }) {
     }
     const rowList: Row[] = [];
     for (const m of modules) {
-      const mt = (byModule[m.id] ?? []).sort((a, b) => a.order - b.order);
+      const mt = byModule[m.id] ?? [];
       if (mt.length === 0) continue;
-      rowList.push({ kind: "module", id: m.id, name: m.name });
-      for (const t of mt) {
+      // Hierarchy scoped to this module's *scheduled* tasks: buildHierarchy's
+      // `roots` only covers tasks with no parentId. A subtask whose parent
+      // isn't itself scheduled would otherwise vanish rather than nest under
+      // it — `orphaned` promotes it back to the top level instead.
+      const { roots, childrenOf } = buildHierarchy(mt);
+      const scheduledIds = new Set(mt.map((t) => t.id));
+      const orphaned = mt.filter((t) => t.parentId && !scheduledIds.has(t.parentId));
+      const topLevel = [...roots, ...orphaned].sort((a, b) => a.order - b.order);
+
+      rowList.push({ kind: "module", id: m.id, name: m.name, depth: 0 });
+      for (const t of topLevel) {
         rowList.push({
           kind: "task",
           id: t.id,
           name: t.title,
           task: t,
           span: effectiveSpan(t)!,
+          depth: 0,
         });
+        for (const child of childrenOf[t.id] ?? []) {
+          rowList.push({
+            kind: "task",
+            id: child.id,
+            name: child.title,
+            task: child,
+            span: effectiveSpan(child)!,
+            depth: 1,
+          });
+        }
       }
     }
     return { rows: rowList, unscheduled: unsched };
   }, [modules, tasks]);
+
+  // taskId → y offset of its row, for the dependency overlay. Rows (module
+  // headers included) are all ROW_HEIGHT tall and stack directly under the
+  // header, so the index alone gives the offset — no separate layout pass.
+  const rowTop = useMemo(() => {
+    const out: Record<string, number> = {};
+    rows.forEach((r, i) => {
+      if (r.kind === "task") out[r.id] = HEADER_H + i * ROW_HEIGHT;
+    });
+    return out;
+  }, [rows]);
+  const gridHeight = HEADER_H + rows.length * ROW_HEIGHT;
+
+  // Every task on either end of a conflicting dependency edge, so its bar
+  // can carry the same warning the arrow does.
+  const conflictTaskIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const c of allConflicts(tasks)) {
+      ids.add(c.blockerId);
+      ids.add(c.dependentId);
+    }
+    return ids;
+  }, [tasks]);
 
   // Dua tepi scroll horizontal, dilacak supaya sinyalnya hanya muncul saat ada
   // yang benar-benar tersembunyi: `start` menguatkan pemisah kolom nama yang
@@ -173,11 +230,16 @@ export function GanttChart({ projectId }: { projectId: string }) {
                   grid di-scroll ke kanan; tanpa ini bar melayang tanpa label
                   dan grid berhenti bisa dibaca persis saat mulai dipakai.
 
-                  URUTAN LAPIS grid ini, dipakai bersama gantt-bar.tsx:
+                  URUTAN LAPIS grid ini, dipakai bersama gantt-bar.tsx dan
+                  dependency-layer.tsx:
                     z-auto  gridline, latar baris, label tanggal
-                    z-10    fade tepi kanan  — meredam grid, bukan bar
-                    z-20    GanttBar         — tetap pekat sampai tepi kartu
-                    z-30    kolom nama       — menang atas semuanya
+                    z-10    fade tepi kanan     — meredam grid, bukan bar
+                    z-15    DependencyLayer     — di atas fade (panah konflik
+                                                   tetap pekat sampai tepi),
+                                                   di bawah bar (ujung panah
+                                                   masuk ke bawah tepi bar)
+                    z-20    GanttBar            — tetap pekat sampai tepi kartu
+                    z-30    kolom nama          — menang atas semuanya
                   Angka eksplisit wajib: `overflow-x` TIDAK membuat stacking
                   context, jadi ketiganya beradu di context yang sama dan
                   urutan DOM saja tidak cukup — elemen ber-z-index selalu
@@ -202,7 +264,14 @@ export function GanttChart({ projectId }: { projectId: string }) {
                 {rows.map((r) => (
                   <div
                     key={r.id}
-                    style={{ height: ROW_HEIGHT }}
+                    style={{
+                      height: ROW_HEIGHT,
+                      // Subtasks get one extra indent step, same idea as the
+                      // task list's pl-10 — px-3's own 12px plus a 24px step.
+                      paddingLeft: r.depth
+                        ? NAME_INDENT_BASE + r.depth * NAME_INDENT_STEP
+                        : undefined,
+                    }}
                     className={cn(
                       "flex items-center truncate px-3 text-sm",
                       r.kind === "module"
@@ -281,10 +350,23 @@ export function GanttChart({ projectId }: { projectId: string }) {
                         pxPerDay={pxPerDay}
                         canEdit={canEdit}
                         onReschedule={reschedule}
+                        conflict={conflictTaskIds.has(r.task.id)}
                       />
                     )}
                   </div>
                 ))}
+                {/* z-[15] — see the layer-order note above; not a scale step,
+                    just "between fade (z-10) and bar (z-20)". */}
+                <div className="pointer-events-none absolute left-0 top-0 z-[15]">
+                  <DependencyLayer
+                    tasks={tasks}
+                    rowTop={rowTop}
+                    rangeStart={range.start}
+                    pxPerDay={pxPerDay}
+                    width={gridWidth}
+                    height={gridHeight}
+                  />
+                </div>
               </div>
             </div>
           </div>
