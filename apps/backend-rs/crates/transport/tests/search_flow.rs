@@ -269,6 +269,48 @@ async fn task_is_indexed_on_create_update_and_delete() {
 }
 
 #[tokio::test]
+async fn moved_task_stays_indexed_with_the_right_project() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let owner = mk_user(&store).await;
+    let pid = project_with(&router, &owner, &[]).await;
+    let to = token(&owner);
+    let m1 = module_in(&router, &to, &pid).await;
+    let m2 = module_in(&router, &to, &pid).await;
+
+    let t = term();
+    let task = ok(
+        &router,
+        &format!("{TASK}/CreateTask"),
+        &to,
+        json!({ "moduleId": m1, "title": format!("Pindahkan {t}") }),
+    )
+    .await["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    assert_eq!(find(&router, &to, &t).await.len(), 1, "indexed at creation");
+
+    ok(
+        &router,
+        &format!("{TASK}/MoveTask"),
+        &to,
+        json!({ "id": task, "moduleId": m2, "order": 0 }),
+    )
+    .await;
+
+    let hits = find(&router, &to, &t).await;
+    assert_eq!(hits.len(), 1, "still findable after the move: {hits:?}");
+    assert_eq!(hits[0]["id"], task);
+    assert_eq!(
+        hits[0]["projectId"], pid,
+        "re-resolved project_id is still correct, not dropped or blanked"
+    );
+}
+
+#[tokio::test]
 async fn page_is_indexed_on_create_update_and_delete() {
     let Some((router, store)) = setup().await else {
         eprintln!("skip: DATABASE_URL not set");
