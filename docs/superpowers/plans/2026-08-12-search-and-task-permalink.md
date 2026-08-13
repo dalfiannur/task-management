@@ -472,6 +472,8 @@ git commit -m "feat(domain): project rich-text HTML to plain text for indexing"
 
 ---
 
+> **Execution note (added during implementation):** Task 9 is built immediately after Task 3, before Tasks 4–8. As originally ordered, each of Tasks 4–8 wrote a flow test that could not even compile until Task 9 introduced `search_router`, so five tasks would accumulate unrunnable tests that all went green at once — burying the feedback for whichever one was actually broken. Task 9 depends on nothing in 4–8 (it needs only the proto, `Store::search`, and existing helpers), so moving it up makes each write-path task verifiable on its own the moment it lands. Task numbering below is unchanged; only the order of execution differs.
+
 ## Phase 2 — Write path
 
 ### Task 3: The indexer helper
