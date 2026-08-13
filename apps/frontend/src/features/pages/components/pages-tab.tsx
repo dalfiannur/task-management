@@ -37,7 +37,9 @@ export function PagesTab({
     } else if (!selectedId || !pages.some((p) => p.id === selectedId)) {
       setSelected(pages[0].id);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // setSelected intentionally excluded: it's derived from stable
+    // primitives each render, and including it would navigate on every
+    // render rather than only when pages/selectedId genuinely change.
   }, [pages, selectedId]);
 
   const selected = pages.find((p) => p.id === selectedId) ?? null;

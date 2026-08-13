@@ -77,7 +77,9 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
       toast.error("Task not found, or you do not have access");
       closeTaskDialog();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // closeTaskDialog intentionally excluded: it's derived from stable
+    // primitives each render, and including it would refire this on every
+    // render rather than only when the fetch outcome changes.
   }, [needsFetch, taskFetchError]);
 
   const [createDialog, setCreateDialog] = useState<{
