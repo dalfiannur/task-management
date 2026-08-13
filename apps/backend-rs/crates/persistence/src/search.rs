@@ -31,6 +31,9 @@ pub struct SearchDoc {
     /// Tasks only; empty elsewhere, which is what makes the person-chip filter
     /// narrow to tasks without a `kind` clause.
     pub assignee_ids: Vec<String>,
+    /// Tasks that are subtasks carry their parent's id here, so a search
+    /// result can show which task it belongs to; `None` everywhere else.
+    pub parent_id: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -41,6 +44,7 @@ pub struct SearchRow {
     pub title: String,
     pub snippet: String,
     pub score: f32,
+    pub parent_id: Option<String>,
 }
 
 pub(crate) async fn migrate(pool: &PgPool) -> Result<()> {
@@ -52,6 +56,7 @@ pub(crate) async fn migrate(pool: &PgPool) -> Result<()> {
            title        text NOT NULL DEFAULT '',
            body         text NOT NULL DEFAULT '',
            assignee_ids text[] NOT NULL DEFAULT '{{}}',
+           parent_id    text,
            updated_at   timestamptz NOT NULL DEFAULT now(),
            vec tsvector GENERATED ALWAYS AS (
                  setweight(to_tsvector('{cfg}', title), 'A') ||
@@ -65,6 +70,13 @@ pub(crate) async fn migrate(pool: &PgPool) -> Result<()> {
     sqlx::query("CREATE INDEX IF NOT EXISTS search_doc_vec ON search_doc USING GIN (vec)")
         .execute(pool)
         .await?;
+    // CREATE TABLE IF NOT EXISTS does nothing on a database that already has
+    // search_doc, so a column added later must be applied separately. Same
+    // trap as TS_CONFIG above: the create silently succeeds and the change
+    // silently does not happen.
+    sqlx::query("ALTER TABLE search_doc ADD COLUMN IF NOT EXISTS parent_id text")
+        .execute(pool)
+        .await?;
     Ok(())
 }
 
@@ -73,13 +85,14 @@ impl crate::Store {
     pub async fn index_doc(&self, doc: SearchDoc) -> Result<()> {
         sqlx::query(
             "INSERT INTO search_doc
-               (kind, entity_id, project_id, title, body, assignee_ids, updated_at)
-             VALUES ($1, $2, $3, $4, $5, $6, now())
+               (kind, entity_id, project_id, title, body, assignee_ids, parent_id, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, now())
              ON CONFLICT (kind, entity_id) DO UPDATE SET
                project_id   = EXCLUDED.project_id,
                title        = EXCLUDED.title,
                body         = EXCLUDED.body,
                assignee_ids = EXCLUDED.assignee_ids,
+               parent_id    = EXCLUDED.parent_id,
                updated_at   = now()",
         )
         .bind(&doc.kind)
@@ -88,6 +101,7 @@ impl crate::Store {
         .bind(&doc.title)
         .bind(&doc.body)
         .bind(&doc.assignee_ids)
+        .bind(&doc.parent_id)
         .execute(&self.pool)
         .await?;
         Ok(())
@@ -136,7 +150,7 @@ impl crate::Store {
         limit: i64,
     ) -> Result<Vec<SearchRow>> {
         let sql = format!(
-            "SELECT kind, entity_id, project_id, title,
+            "SELECT kind, entity_id, project_id, title, parent_id,
                     ts_headline('{cfg}', body, q, 'MaxWords=18,MinWords=8') AS snippet,
                     ts_rank(vec, q) AS score
              FROM search_doc, websearch_to_tsquery('{cfg}', $1) q
@@ -166,6 +180,7 @@ impl crate::Store {
                 title: r.get("title"),
                 snippet: r.get("snippet"),
                 score: r.get("score"),
+                parent_id: r.get("parent_id"),
             })
             .collect())
     }
@@ -189,6 +204,7 @@ mod tests {
             title: title.into(),
             body: body.into(),
             assignee_ids: vec![],
+            parent_id: None,
         }
     }
 

@@ -36,12 +36,15 @@ pub(crate) async fn deindex_project(store: &Store, project_id: &str) {
 }
 
 /// Build a task document. `body` is the description projected to plain text.
+/// `parent_id` is set when the task is a subtask, so a search result can show
+/// which task it belongs to.
 pub(crate) fn task_doc(
     id: &str,
     project_id: &str,
     title: &str,
     description: &str,
     assignee_ids: Vec<String>,
+    parent_id: Option<String>,
 ) -> SearchDoc {
     SearchDoc {
         kind: kind::TASK.into(),
@@ -50,6 +53,7 @@ pub(crate) fn task_doc(
         title: title.into(),
         body: domain::sanitize::plain_text(description),
         assignee_ids,
+        parent_id,
     }
 }
 
@@ -61,6 +65,7 @@ pub(crate) fn page_doc(id: &str, project_id: &str, title: &str, content: &str) -
         title: title.into(),
         body: domain::sanitize::plain_text(content),
         assignee_ids: vec![],
+        parent_id: None,
     }
 }
 
@@ -74,6 +79,7 @@ pub(crate) fn comment_doc(id: &str, project_id: &str, content: &str) -> SearchDo
         title: String::new(),
         body: domain::sanitize::plain_text(content),
         assignee_ids: vec![],
+        parent_id: None,
     }
 }
 
@@ -86,6 +92,7 @@ pub(crate) fn project_doc(id: &str, name: &str, description: &str) -> SearchDoc 
         title: name.into(),
         body: domain::sanitize::plain_text(description),
         assignee_ids: vec![],
+        parent_id: None,
     }
 }
 
@@ -99,6 +106,7 @@ pub(crate) fn user_doc(id: &str, display_name: &str, phone: &str) -> SearchDoc {
         title: display_name.into(),
         body: phone.into(),
         assignee_ids: vec![],
+        parent_id: None,
     }
 }
 
@@ -127,7 +135,7 @@ mod tests {
 
     #[test]
     fn task_doc_projects_through_plain_text() {
-        let d = task_doc("1", "p1", "title", RAW, vec![]);
+        let d = task_doc("1", "p1", "title", RAW, vec![], None);
         assert_eq!(d.body, PROJECTED);
     }
 

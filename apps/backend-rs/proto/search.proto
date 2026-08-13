@@ -34,6 +34,7 @@ message SearchResult {
   optional string project_name = 6;
   optional string task_id = 7;      // comment results: the parent task
   float score = 8;
+  optional string parent_id = 9;    // subtask results: the parent task
 }
 
 message SearchResponse { repeated SearchResult results = 1; }

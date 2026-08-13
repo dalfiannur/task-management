@@ -121,6 +121,7 @@ async fn search(
             project_name,
             task_id,
             score: row.score,
+            parent_id: row.parent_id,
         });
     }
 

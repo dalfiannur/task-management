@@ -23,7 +23,7 @@ use domain::module::{ModuleName, ModuleProjectRef};
 use domain::page::PageInfo;
 use domain::project::{ProjectDescription, ProjectName};
 use domain::sanitize::plain_text;
-use domain::task::{TaskAssignees, TaskInfo, TaskModuleRef};
+use domain::task::{TaskAssignees, TaskInfo, TaskModuleRef, TaskParent};
 use domain::user::{UserPhone, UserProfile, UserStatus, UserStatusComponent};
 use persistence::{SearchDoc, Store};
 
@@ -75,6 +75,7 @@ async fn main() -> Result<()> {
                 title: name.clone(),
                 body: plain_text(description),
                 assignee_ids: vec![],
+                parent_id: None,
             })
             .await?;
         count += 1;
@@ -105,29 +106,35 @@ async fn main() -> Result<()> {
     // Tasks. Skip a task whose module is missing rather than inventing a
     // project_id — same call as the production fix in `move_task`.
     let tasks = store
-        .query::<TaskInfo, (i64, String, String, String, Vec<String>)>(None, |world, pairs| {
-            pairs
-                .iter()
-                .filter_map(|(pid, e)| {
-                    let info = world.get::<TaskInfo>(*e)?;
-                    let mref = world.get::<TaskModuleRef>(*e)?;
-                    let assignees = world
-                        .get::<TaskAssignees>(*e)
-                        .map(|a| a.user_ids.clone())
-                        .unwrap_or_default();
-                    Some((
-                        *pid,
-                        mref.module_id.clone(),
-                        info.title.clone(),
-                        info.description.clone(),
-                        assignees,
-                    ))
-                })
-                .collect()
-        })
+        .query::<TaskInfo, (i64, String, String, String, Vec<String>, Option<String>)>(
+            None,
+            |world, pairs| {
+                pairs
+                    .iter()
+                    .filter_map(|(pid, e)| {
+                        let info = world.get::<TaskInfo>(*e)?;
+                        let mref = world.get::<TaskModuleRef>(*e)?;
+                        let assignees = world
+                            .get::<TaskAssignees>(*e)
+                            .map(|a| a.user_ids.clone())
+                            .unwrap_or_default();
+                        let parent_id =
+                            world.get::<TaskParent>(*e).map(|p| p.parent_id.clone());
+                        Some((
+                            *pid,
+                            mref.module_id.clone(),
+                            info.title.clone(),
+                            info.description.clone(),
+                            assignees,
+                            parent_id,
+                        ))
+                    })
+                    .collect()
+            },
+        )
         .await?;
     let mut task_project: HashMap<String, String> = HashMap::new();
-    for (pid, module_id, title, description, assignee_ids) in &tasks {
+    for (pid, module_id, title, description, assignee_ids, parent_id) in &tasks {
         let Some(project_id) = module_project.get(module_id) else {
             continue; // orphaned task (module missing) — no resolvable project
         };
@@ -141,6 +148,7 @@ async fn main() -> Result<()> {
                 title: title.clone(),
                 body: plain_text(description),
                 assignee_ids: assignee_ids.clone(),
+                parent_id: parent_id.clone(),
             })
             .await?;
         count += 1;
@@ -173,6 +181,7 @@ async fn main() -> Result<()> {
                 title: title.clone(),
                 body: plain_text(content),
                 assignee_ids: vec![],
+                parent_id: None,
             })
             .await?;
         count += 1;
@@ -204,6 +213,7 @@ async fn main() -> Result<()> {
                 title: String::new(),
                 body: plain_text(content),
                 assignee_ids: vec![],
+                parent_id: None,
             })
             .await?;
         count += 1;
@@ -243,6 +253,7 @@ async fn main() -> Result<()> {
                 title: display_name.clone(),
                 body: phone.clone(),
                 assignee_ids: vec![],
+                parent_id: None,
             })
             .await?;
         count += 1;

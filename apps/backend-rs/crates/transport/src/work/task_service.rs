@@ -228,7 +228,14 @@ async fn create_task(
     .await;
     index(
         &store,
-        task_doc(&pid.to_string(), &project_id, title, &description_for_index, assignees.clone()),
+        task_doc(
+            &pid.to_string(),
+            &project_id,
+            title,
+            &description_for_index,
+            assignees.clone(),
+            parent_id.clone(),
+        ),
     )
     .await;
     let t = require_task(&store, pid).await?;
@@ -431,7 +438,14 @@ async fn update_task(
     let t = require_task(&store, pid).await?;
     index(
         &store,
-        task_doc(&pid.to_string(), &project_id, &t.title, &t.description, t.assignee_ids.clone()),
+        task_doc(
+            &pid.to_string(),
+            &project_id,
+            &t.title,
+            &t.description,
+            t.assignee_ids.clone(),
+            t.parent_id.clone(),
+        ),
     )
     .await;
     Ok(ConnectResponse::new(to_proto(&t)))
@@ -553,7 +567,14 @@ async fn move_task(
     {
         index(
             &store,
-            task_doc(&pid.to_string(), &moved_project, &t.title, &t.description, t.assignee_ids.clone()),
+            task_doc(
+                &pid.to_string(),
+                &moved_project,
+                &t.title,
+                &t.description,
+                t.assignee_ids.clone(),
+                t.parent_id.clone(),
+            ),
         )
         .await;
     }

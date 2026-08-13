@@ -628,6 +628,62 @@ async fn ranking_kinds_filter_and_person_refinement() {
     assert_eq!(mine[0]["kind"], "TASK", "non-task kinds have empty assignees, so they drop out");
 }
 
+#[tokio::test]
+async fn subtask_result_carries_its_parent_and_both_are_deindexed_together() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let owner = mk_user(&store).await;
+    let pid = project_with(&router, &owner, &[]).await;
+    let to = token(&owner);
+    let m = module_in(&router, &to, &pid).await;
+
+    let parent_term = term();
+    let parent = ok(&router, &format!("{TASK}/CreateTask"), &to, json!({
+        "moduleId": m, "title": format!("Perbaiki {parent_term}")
+    }))
+    .await["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    let sub_term = term();
+    let sub = ok(&router, &format!("{TASK}/CreateTask"), &to, json!({
+        "moduleId": m, "title": format!("Audit {sub_term}"), "parentId": parent
+    }))
+    .await["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    let hits = find(&router, &to, &sub_term).await;
+    assert_eq!(hits.len(), 1, "subtask is findable: {hits:?}");
+    assert_eq!(hits[0]["id"], sub);
+    assert_eq!(
+        hits[0]["parentId"], parent,
+        "search result carries the subtask's parent"
+    );
+
+    // The parent itself is not a subtask, so its own result carries no parent.
+    let parent_hits = find(&router, &to, &parent_term).await;
+    assert_eq!(parent_hits.len(), 1);
+    assert!(
+        parent_hits[0]["parentId"].is_null(),
+        "a top-level task's result has no parent"
+    );
+
+    ok(&router, &format!("{TASK}/DeleteTask"), &to, json!({ "id": parent })).await;
+    assert!(
+        find(&router, &to, &parent_term).await.is_empty(),
+        "parent doc gone"
+    );
+    assert!(
+        find(&router, &to, &sub_term).await.is_empty(),
+        "subtask doc gone too — deleting the parent cascades"
+    );
+}
+
 /// Deleting a module cascade-deletes its tasks, and deleting a task orphans its
 /// comments. Neither cascade touches the index on its own, so both used to leave
 /// findable ghosts: search would return a task or a comment thread that opens
