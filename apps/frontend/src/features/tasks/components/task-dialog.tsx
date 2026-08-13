@@ -47,6 +47,8 @@ interface Props {
   task?: Task;
   memberIds: string[];
   userMap: Record<string, AppUser>;
+  /** Comment id to scroll to and highlight (from a deep link). Edit mode only. */
+  highlightCommentId?: string;
 }
 
 export function TaskDialog({
@@ -57,6 +59,7 @@ export function TaskDialog({
   task,
   memberIds,
   userMap,
+  highlightCommentId,
 }: Props) {
   const create = useCreateTask();
   const update = useUpdateTask();
@@ -222,7 +225,11 @@ export function TaskDialog({
         {editing && task && (
           <>
             <div className="my-2 border-t border-border-subtle" />
-            <CommentThread taskId={task.id} projectId={projectId} />
+            <CommentThread
+              taskId={task.id}
+              projectId={projectId}
+              highlightCommentId={highlightCommentId}
+            />
           </>
         )}
       </DialogContent>

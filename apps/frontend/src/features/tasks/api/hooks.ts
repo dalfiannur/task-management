@@ -69,6 +69,18 @@ export function useTasks(projectId: string) {
   return { ...result, tasks };
 }
 
+/** Single task by id — the fallback for a URL-addressed task dialog when the
+ *  task isn't already in a loaded list (e.g. a cold deep link). */
+export function useTask(id: string | undefined) {
+  const result = useQuery(
+    TaskService.method.getTask,
+    { id: id ?? "" },
+    { enabled: !!id, retry: false },
+  );
+  const task: Task | undefined = result.data ? mapTask(result.data) : undefined;
+  return { ...result, task };
+}
+
 export function useCreateTask() {
   return useMutation(TaskService.method.createTask, {
     onSuccess: invalidateTasks,

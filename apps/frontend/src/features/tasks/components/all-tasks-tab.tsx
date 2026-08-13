@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAtomValue } from "jotai";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import {
   DndContext,
   PointerSensor,
@@ -16,7 +17,13 @@ import { useProject, useProjectMembers } from "@/features/projects";
 import { useUserMap } from "@/features/users";
 import { useLabelMap } from "@/features/labels";
 import type { Module, Task } from "../types";
-import { useModules, useTasks, useMoveTask, useReorderModules } from "../api/hooks";
+import {
+  useModules,
+  useTasks,
+  useTask,
+  useMoveTask,
+  useReorderModules,
+} from "../api/hooks";
 import { ModuleSection } from "./module-section";
 import { ModuleDialog } from "./module-dialog";
 import { TaskDialog } from "./task-dialog";
@@ -24,6 +31,10 @@ import { TaskDialog } from "./task-dialog";
 export function AllTasksTab({ projectId }: { projectId: string }) {
   const me = useAtomValue(currentUserAtom);
   const isAdmin = useAtomValue(isAdminAtom);
+  const navigate = useNavigate();
+  const { task: taskParam, comment: commentParam } = useSearch({
+    from: "/_authed/projects/$projectId",
+  });
   const { project } = useProject(projectId);
   const { modules, isLoading: modulesLoading } = useModules(projectId);
   const { tasks, isLoading: tasksLoading } = useTasks(projectId);
@@ -35,10 +46,43 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
 
   const canManage = isAdmin || (!!project && project.ownerId === me?.id);
 
-  const [taskDialog, setTaskDialog] = useState<{
+  // Resolve the URL-addressed task from the already-loaded list first (a warm
+  // click never waits on a round-trip); fall back to a direct fetch so a cold
+  // deep link still works.
+  const taskFromList = taskParam
+    ? tasks.find((t) => t.id === taskParam)
+    : undefined;
+  const needsFetch = !!taskParam && !taskFromList;
+  const { task: fetchedTask, isError: taskFetchError } = useTask(
+    needsFetch ? taskParam : undefined,
+  );
+  const editingTask = taskFromList ?? fetchedTask;
+
+  function setTaskSearch(next: { task?: string; comment?: string }) {
+    navigate({ to: ".", search: (prev) => ({ ...prev, ...next }) });
+  }
+
+  function openTask(id: string) {
+    setTaskSearch({ task: id, comment: undefined });
+  }
+
+  function closeTaskDialog() {
+    setTaskSearch({ task: undefined, comment: undefined });
+  }
+
+  // Deleted task, or one the caller can't see: tell the user and drop the
+  // stale param rather than leaving the dialog stuck open on nothing.
+  useEffect(() => {
+    if (needsFetch && taskFetchError) {
+      toast.error("Task not found, or you do not have access");
+      closeTaskDialog();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [needsFetch, taskFetchError]);
+
+  const [createDialog, setCreateDialog] = useState<{
     open: boolean;
     moduleId: string;
-    task?: Task;
   }>({ open: false, moduleId: "" });
   const [moduleDialog, setModuleDialog] = useState<{
     open: boolean;
@@ -143,9 +187,7 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
                 canManage={canManage}
                 userMap={userMap}
                 labelMap={labelMap}
-                onEditTask={(task) =>
-                  setTaskDialog({ open: true, moduleId: m.id, task })
-                }
+                onEditTask={(task) => openTask(task.id)}
                 onEditModule={(module) => setModuleDialog({ open: true, module })}
                 onMoveUp={() => moveModule(i, -1)}
                 onMoveDown={() => moveModule(i, 1)}
@@ -157,14 +199,30 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
         </DndContext>
       )}
 
+      {/* URL-driven edit dialog: `open` follows the `task` search param
+          directly rather than local state, so Back/forward and a pasted
+          link both work. */}
       <TaskDialog
-        open={taskDialog.open}
+        open={!!taskParam}
+        onOpenChange={(open) => {
+          if (!open) closeTaskDialog();
+        }}
+        projectId={projectId}
+        moduleId={editingTask?.moduleId ?? ""}
+        task={editingTask}
+        highlightCommentId={commentParam}
+        memberIds={memberIds}
+        userMap={userMap}
+      />
+      {/* Create dialog stays on local state — a task being created has no id
+          yet, so there's nothing to address. */}
+      <TaskDialog
+        open={createDialog.open}
         onOpenChange={(open) =>
-          setTaskDialog((s) => ({ ...s, open }))
+          setCreateDialog((s) => ({ ...s, open }))
         }
         projectId={projectId}
-        moduleId={taskDialog.moduleId}
-        task={taskDialog.task}
+        moduleId={createDialog.moduleId}
         memberIds={memberIds}
         userMap={userMap}
       />
