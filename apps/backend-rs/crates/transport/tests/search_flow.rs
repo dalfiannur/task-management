@@ -563,3 +563,58 @@ async fn self_profile_update_is_indexed() {
     assert_eq!(hits[0]["kind"], "USER");
     assert_eq!(hits[0]["id"], me);
 }
+
+#[tokio::test]
+async fn ranking_kinds_filter_and_person_refinement() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let owner = mk_user(&store).await;
+    let mate = mk_user(&store).await;
+    let pid = project_with(&router, &owner, &[&mate]).await;
+    let to = token(&owner);
+    let m = module_in(&router, &to, &pid).await;
+
+    let t = term();
+    // A page also matches, to prove the kinds filter. Created (and titled)
+    // *before* the tasks below: a single-word title match scores identically
+    // at weight A regardless of surrounding words (ts_rank's default
+    // normalization ignores document length), so this page's title hit would
+    // otherwise exactly tie the task's title hit and, per `ORDER BY score
+    // DESC, updated_at DESC`, win on recency — defeating the "title beats
+    // body" assertion below. Creating it first makes the titled task the
+    // more-recently-touched of the two weight-A hits, so the real tie-break
+    // resolves the way this test needs it to.
+    let page = ok(&router, &format!("{PAGE}/CreatePage"), &to, json!({ "projectId": pid })).await["id"]
+        .as_str().unwrap().to_string();
+    ok(&router, &format!("{PAGE}/UpdatePage"), &to, json!({ "id": page, "title": format!("Doc {t}") })).await;
+
+    // One task matches in the title, another only in the description.
+    let titled = ok(&router, &format!("{TASK}/CreateTask"), &to, json!({
+        "moduleId": m, "title": format!("Judul {t}")
+    })).await["id"].as_str().unwrap().to_string();
+    ok(&router, &format!("{TASK}/CreateTask"), &to, json!({
+        "moduleId": m, "title": "Lain", "description": format!("<p>isi {t}</p>")
+    })).await;
+
+    let hits = find(&router, &to, &t).await;
+    assert_eq!(hits.len(), 3, "three documents match: {hits:?}");
+    assert_eq!(hits[0]["id"], titled, "a title hit ranks first");
+
+    // Kinds filter.
+    let v = ok(&router, &format!("{SEARCH}/Search"), &to, json!({ "q": t, "kinds": ["PAGE"] })).await;
+    let only = v["results"].as_array().unwrap();
+    assert_eq!(only.len(), 1);
+    assert_eq!(only[0]["kind"], "PAGE");
+
+    // Person refinement: assign one task to `mate`, then filter by them.
+    ok(&router, &format!("{TASK}/UpdateTask"), &to, json!({
+        "id": titled, "assigneeIds": { "values": [mate] }
+    })).await;
+    let v = ok(&router, &format!("{SEARCH}/Search"), &to, json!({ "q": t, "assigneeIds": [mate] })).await;
+    let mine = v["results"].as_array().unwrap();
+    assert_eq!(mine.len(), 1, "only that person's task: {mine:?}");
+    assert_eq!(mine[0]["id"], titled);
+    assert_eq!(mine[0]["kind"], "TASK", "non-task kinds have empty assignees, so they drop out");
+}
