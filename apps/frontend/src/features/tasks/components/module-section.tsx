@@ -173,6 +173,7 @@ export function ModuleSection({
                 onEdit={onEditTask}
                 progress={subtaskProgress(task, childrenOf)}
                 blocked={blockedMap[task.id]}
+                subtaskCount={(childrenOf[task.id] ?? []).length}
               />
               {(childrenOf[task.id] ?? []).map((child) => (
                 <TaskRow

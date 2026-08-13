@@ -4,6 +4,17 @@ import { GripVertical, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import type { AppUser } from "@/features/auth";
 import { LabelChips, type Label } from "@/features/labels";
@@ -21,6 +32,7 @@ export function TaskRow({
   depth = 0,
   progress,
   blocked,
+  subtaskCount = 0,
 }: {
   task: Task;
   userMap: Record<string, AppUser>;
@@ -32,6 +44,14 @@ export function TaskRow({
   progress?: { done: number; total: number } | null;
   /** True when a `blockedByIds` entry resolves to a not-done task. */
   blocked?: boolean;
+  /**
+   * Number of subtasks this task has (always 0 for a subtask itself — the
+   * one-level rule means it can't have any). Above zero, delete goes through
+   * a confirmation naming the count instead of the one-click delete a
+   * childless task still gets — deleting a parent now takes its subtree
+   * with it, so the blast radius grew and the guard has to grow with it.
+   */
+  subtaskCount?: number;
 }) {
   const update = useUpdateTask();
   const del = useDeleteTask();
@@ -126,15 +146,44 @@ export function TaskRow({
           Blocked
         </button>
       )}
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-7 w-7 opacity-0 group-hover:opacity-100"
-        onClick={onDelete}
-        aria-label="Delete task"
-      >
-        <Trash2 className="h-4 w-4" />
-      </Button>
+      {subtaskCount > 0 ? (
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 opacity-0 group-hover:opacity-100"
+              onClick={(e) => e.stopPropagation()}
+              aria-label="Delete task"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete “{task.title}”?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This deletes this task and its {subtaskCount}{" "}
+                subtask{subtaskCount === 1 ? "" : "s"}. This cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={onDelete}>Delete</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      ) : (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 opacity-0 group-hover:opacity-100"
+          onClick={onDelete}
+          aria-label="Delete task"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      )}
     </div>
   );
 }
