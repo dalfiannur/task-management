@@ -9,6 +9,13 @@ use sqlx::{PgPool, Row};
 /// Postgres text-search config. `simple` is the fallback when a deployment's
 /// Postgres lacks the Snowball `indonesian` dictionary; it costs stemming
 /// ("mereset" no longer matches "reset") and nothing else.
+///
+/// Changing this value has no effect on a database where `search_doc` already
+/// exists: `migrate()` uses `CREATE TABLE IF NOT EXISTS`, so the generated
+/// `vec` column keeps building tsvectors with whatever config it was created
+/// with — silently, with no error. Search then just stops matching the way
+/// this constant claims it should. To actually apply a new value here, drop
+/// the table (`DROP TABLE search_doc`) or run a real migration first.
 pub const TS_CONFIG: &str = "indonesian";
 
 /// One indexable thing. `title` carries weight A, `body` weight B, so a title
@@ -244,5 +251,44 @@ mod tests {
         s.deindex_doc("task", &other).await.unwrap();
         let rows = s.search(&term, true, &[], &[], &[], 10).await.unwrap();
         assert!(rows.is_empty(), "deindexed");
+    }
+
+    #[tokio::test]
+    async fn deindex_project_only_drops_its_own_docs() {
+        let Some(s) = store().await else {
+            eprintln!("skip: ARKE_TEST_DATABASE_URL not set");
+            return;
+        };
+        let uniq = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+            .to_string();
+        let term_a = format!("zqxa{uniq}");
+        let term_b = format!("zqxb{uniq}");
+        let project_a = format!("proj-a-{uniq}");
+        let project_b = format!("proj-b-{uniq}");
+
+        let mut doc_a = doc("task", &format!("ta-{uniq}"), &term_a, "body");
+        doc_a.project_id = Some(project_a.clone());
+        let mut doc_b = doc("task", &format!("tb-{uniq}"), &term_b, "body");
+        doc_b.project_id = Some(project_b.clone());
+
+        s.index_doc(doc_a).await.unwrap();
+        s.index_doc(doc_b).await.unwrap();
+
+        s.deindex_project(&project_a).await.unwrap();
+
+        let rows_a = s.search(&term_a, true, &[], &[], &[], 10).await.unwrap();
+        assert!(rows_a.is_empty(), "deindex_project drops its own docs");
+
+        let rows_b = s.search(&term_b, true, &[], &[], &[], 10).await.unwrap();
+        assert_eq!(
+            rows_b.len(),
+            1,
+            "deindex_project leaves other projects alone"
+        );
+
+        s.deindex_project(&project_b).await.unwrap();
     }
 }
