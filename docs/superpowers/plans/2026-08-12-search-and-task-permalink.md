@@ -1967,12 +1967,14 @@ git commit -m "feat(work): add GetTask for deep-linked task dialogs"
 
 ```bash
 cd apps/backend-rs
-cargo fmt --check
+rustfmt --edition 2021 --check $(git diff --name-only origin/main...HEAD -- '*.rs' | sed 's|^apps/backend-rs/||')
 cargo clippy --all-targets -- -D warnings
 cargo test --workspace -- --nocapture 2>&1 | grep -c "^skip:" ; cargo test --workspace
 ```
 
-Expected: `cargo fmt --check` silent, clippy clean, the skip count `0`, and every test passing.
+Expected: rustfmt silent, clippy clean, the skip count `0`, and every test passing.
+
+**Do not run `cargo fmt --all -- --check`.** This repo has never been rustfmt-clean: `main` carries 193 pre-existing diffs across `seed_admin.rs`, `seed_user.rs`, `auth/hash.rs`, and others. A workspace-wide check can therefore never pass, and running `cargo fmt --all` to fix it would bury this feature's diff under hundreds of unrelated reformatting hunks. The gate is that **the files this work touches** are formatted — hence the targeted `rustfmt` above. Clippy, by contrast, *is* clean workspace-wide at baseline, so `-D warnings` across all targets is a real gate; keep it.
 
 - [ ] **Step 2: Commit any formatting fixes**
 
@@ -2712,10 +2714,11 @@ git commit -m "feat(notifications): deep-link mentions to the task and comment"
 
 ```bash
 cd apps/backend-rs
-cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test --workspace
+rustfmt --edition 2021 --check $(git diff --name-only origin/main...HEAD -- '*.rs' | sed 's|^apps/backend-rs/||')
+cargo clippy --all-targets -- -D warnings && cargo test --workspace
 ```
 
-Expected: all clean, no `skip:` lines in the output.
+Expected: all clean, no `skip:` lines in the output. As in Task 13, the fmt check is scoped to touched files — `cargo fmt --all -- --check` fails on 193 pre-existing diffs that predate this work.
 
 - [ ] **Step 2: Frontend**
 
