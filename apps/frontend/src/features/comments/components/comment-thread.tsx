@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAtomValue } from "jotai";
 import { formatDistanceToNow, parseISO } from "date-fns";
 import { Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { getInitials } from "@/lib/utils";
+import { cn, getInitials } from "@/lib/utils";
 import { currentUserAtom, isAdminAtom } from "@/features/auth";
 import { useProjectMembers } from "@/features/projects";
 import { useUserMap } from "@/features/users";
@@ -28,7 +28,16 @@ function relative(iso: string): string {
 }
 
 /** Task comment thread + composer. Mounted in the task dialog (edit mode). */
-export function CommentThread({ taskId, projectId }: { taskId: string; projectId: string }) {
+export function CommentThread({
+  taskId,
+  projectId,
+  highlightCommentId,
+}: {
+  taskId: string;
+  projectId: string;
+  /** Deep-linked comment id: scrolled into view and marked once loaded. */
+  highlightCommentId?: string;
+}) {
   const me = useAtomValue(currentUserAtom);
   const isAdmin = useAtomValue(isAdminAtom);
   const { comments, isLoading } = useComments(taskId);
@@ -38,8 +47,16 @@ export function CommentThread({ taskId, projectId }: { taskId: string; projectId
   const update = useUpdateComment();
   const del = useDeleteComment();
   const [editingId, setEditingId] = useState<string | null>(null);
+  const highlightRef = useRef<HTMLLIElement | null>(null);
 
   const canModerate = isAdmin || ownerId === me?.id;
+
+  // Runs once the matching <li> exists — i.e. after `comments` loads — not
+  // on every render, since the ref is only attached post-render.
+  useEffect(() => {
+    if (!highlightCommentId) return;
+    highlightRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [highlightCommentId, comments]);
 
   function add(content: string, mentionIds: string[]) {
     create.mutate(
@@ -85,8 +102,22 @@ export function CommentThread({ taskId, projectId }: { taskId: string; projectId
             const author = userMap[c.authorId];
             const name = author?.displayName ?? c.authorId;
             const mine = c.authorId === me?.id;
+            const highlighted = c.id === highlightCommentId;
             return (
-              <li key={c.id} className="flex gap-3">
+              <li
+                key={c.id}
+                ref={highlighted ? highlightRef : undefined}
+                className={cn(
+                  "flex gap-3 rounded-lg transition-colors [transition-duration:var(--duration-slow)]",
+                  // A neutral fill (--surface-hover), not a brand-colored one:
+                  // the body text inside keeps using --text-muted for the
+                  // timestamp, and --text-muted over a colored -subtle fill
+                  // is exactly what ui-design's "no grey on color" rule
+                  // forbids. The border accent carries the "this one" signal
+                  // instead.
+                  highlighted && "-mx-2 border-l-2 border-brand bg-surface-hover p-2",
+                )}
+              >
                 <Avatar className="h-7 w-7">
                   {author?.avatarUrl && <AvatarImage src={author.avatarUrl} />}
                   <AvatarFallback className="text-xs">
