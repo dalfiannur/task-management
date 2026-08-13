@@ -61,6 +61,7 @@ async fn setup() -> Option<(Router, Arc<Store>)> {
         .merge(transport::module_router(store.clone()))
         .merge(transport::task_router(store.clone()))
         .merge(transport::comment_router(store.clone()))
+        .merge(transport::page_router(store.clone()))
         .merge(transport::search_router(store.clone()))
         .layer(from_fn(auth_mw));
     Some((router, store))
@@ -263,4 +264,63 @@ async fn task_is_indexed_on_create_update_and_delete() {
     )
     .await;
     assert!(find(&router, &to, &t2).await.is_empty(), "deleted task gone");
+}
+
+#[tokio::test]
+async fn page_is_indexed_on_create_update_and_delete() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let owner = mk_user(&store).await;
+    let pid = project_with(&router, &owner, &[]).await;
+    let to = token(&owner);
+
+    let page = ok(
+        &router,
+        &format!("{PAGE}/CreatePage"),
+        &to,
+        json!({ "projectId": pid }),
+    )
+    .await["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    let t = term();
+    ok(
+        &router,
+        &format!("{PAGE}/UpdatePage"),
+        &to,
+        json!({
+            "id": page, "title": format!("Alur {t}"), "content": "<p>langkah pertama</p>"
+        }),
+    )
+    .await;
+
+    let hits = find(&router, &to, &t).await;
+    assert_eq!(hits.len(), 1, "page findable by title: {hits:?}");
+    assert_eq!(hits[0]["kind"], "PAGE");
+    assert_eq!(hits[0]["id"], page);
+
+    let t2 = term();
+    ok(
+        &router,
+        &format!("{PAGE}/UpdatePage"),
+        &to,
+        json!({
+            "id": page, "content": format!("<p>isi {t2} di sini</p>")
+        }),
+    )
+    .await;
+    assert_eq!(find(&router, &to, &t2).await.len(), 1, "page body indexed");
+
+    ok(
+        &router,
+        &format!("{PAGE}/DeletePage"),
+        &to,
+        json!({ "id": page }),
+    )
+    .await;
+    assert!(find(&router, &to, &t2).await.is_empty(), "deleted page gone");
 }

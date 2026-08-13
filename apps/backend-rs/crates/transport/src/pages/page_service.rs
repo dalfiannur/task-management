@@ -11,6 +11,7 @@ use persistence::Store;
 use super::record::{load_page, pages_for_project, to_proto, PageRecord};
 use super::{internal, parse_pid, require_auth, require_member, StoreExt};
 use crate::activity::record;
+use crate::search::{deindex, index, kind, page_doc};
 use domain::activity::{ActivityAction, EntityType};
 use crate::sedjiwa::tasks::page::v1 as pb;
 use crate::sedjiwa::tasks::page::v1::page_service_connect::PageServiceBuilder;
@@ -112,6 +113,7 @@ async fn create_page(
         vec![],
     )
     .await;
+    index(&store, page_doc(&pid.to_string(), &p.project_id, &p.title, &p.content)).await;
     Ok(ConnectResponse::new(to_proto(&p)))
 }
 
@@ -160,6 +162,7 @@ async fn update_page(
         vec![],
     )
     .await;
+    index(&store, page_doc(&pid.to_string(), &p.project_id, &p.title, &p.content)).await;
     Ok(ConnectResponse::new(to_proto(&p)))
 }
 
@@ -185,6 +188,7 @@ async fn delete_page(
         vec![],
     )
     .await;
+    deindex(&store, kind::PAGE, &pid.to_string()).await;
     Ok(ConnectResponse::new(pb::DeletePageResponse { ok: true }))
 }
 
