@@ -1,14 +1,16 @@
 import { useEffect, useState } from "react";
 import { Link, Outlet, useNavigate } from "@tanstack/react-router";
-import { useAtomValue } from "jotai";
+import { useAtomValue, useSetAtom } from "jotai";
 import {
   ChevronsUpDown,
   FolderKanban,
   LayoutDashboard,
   ListTodo,
   LogOut,
+  Search,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,6 +21,7 @@ import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { cn, getInitials } from "@/lib/utils";
 import { APP_NAME } from "@/lib/app-config";
 import { NotificationBell } from "@/features/notifications";
+import { SearchOverlay, searchOpenAtom } from "@/features/search";
 import { currentUserAtom } from "../atoms/session";
 import { useLogout } from "../api/hooks";
 
@@ -52,6 +55,7 @@ const NAV: { to: string; label: string; icon: LucideIcon }[] = [
  *  butuh scroll container sendiri. */
 export function AppShell() {
   const user = useAtomValue(currentUserAtom);
+  const setSearchOpen = useSetAtom(searchOpenAtom);
   const logout = useLogout();
   const navigate = useNavigate();
   // Action bar duduk di atas kanvas dengan warna yang sama dan tanpa border,
@@ -73,6 +77,7 @@ export function AppShell() {
 
   return (
     <div className="flex min-h-screen bg-surface">
+      <SearchOverlay />
       <aside className="sticky top-0 flex h-screen w-56 shrink-0 flex-col bg-surface-chrome">
         <span className="flex h-14 items-center px-5 font-semibold text-text-on-chrome">
           {APP_NAME}
@@ -138,13 +143,35 @@ export function AppShell() {
       <div className="flex min-w-0 flex-1 flex-col">
         <header
           className={cn(
-            "sticky top-0 z-40 flex h-14 shrink-0 items-center justify-end gap-3 bg-surface px-4",
+            "sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between gap-3 bg-surface px-4",
             "transition-shadow [transition-duration:var(--duration-fast)] [transition-timing-function:var(--ease-out)]",
             scrolled && "shadow-1",
           )}
         >
-          <ThemeToggle />
-          <NotificationBell />
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-56 justify-start text-text-muted hover:text-text"
+            onClick={() => setSearchOpen(true)}
+          >
+            <Search className="h-4 w-4" />
+            Search…
+            {/* kbd hint sits on --surface-sunken, so its own text is
+                --text-muted (tier 2) — --text-subtle on sunken fails
+                contrast in light mode (accessibility.md). */}
+            <span className="ml-auto flex items-center gap-0.5">
+              <kbd className="rounded border border-border bg-surface-sunken px-1 text-xs font-sans text-text-muted">
+                ⌘
+              </kbd>
+              <kbd className="rounded border border-border bg-surface-sunken px-1 text-xs font-sans text-text-muted">
+                K
+              </kbd>
+            </span>
+          </Button>
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
+            <NotificationBell />
+          </div>
         </header>
         <main className="flex-1">
           <Outlet />

@@ -34,12 +34,18 @@ function CommandDialog({
   children,
   className,
   showCloseButton = true,
+  shouldFilter = true,
   ...props
 }: React.ComponentProps<typeof Dialog> & {
   title?: string
   description?: string
   className?: string
   showCloseButton?: boolean
+  // Default true keeps existing consumers (label/assignee pickers, which
+  // filter a small local list client-side) untouched. Server-backed search
+  // passes false — its results are already ranked, and cmdk's own text
+  // filter would silently drop rows that only matched a stemmed form.
+  shouldFilter?: boolean
 }) {
   return (
     <Dialog {...props}>
@@ -51,7 +57,7 @@ function CommandDialog({
         className={cn("overflow-hidden p-0", className)}
         showCloseButton={showCloseButton}
       >
-        <Command className={cn(
+        <Command shouldFilter={shouldFilter} className={cn(
           "[&_[data-slot=command-input-wrapper]]:h-12",
           "[&_[cmdk-group-heading]]:text-text-muted [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium",
           "[&_[cmdk-group]]:px-2",
