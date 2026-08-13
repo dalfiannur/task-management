@@ -594,13 +594,22 @@ async fn ranking_kinds_filter_and_person_refinement() {
     let titled = ok(&router, &format!("{TASK}/CreateTask"), &to, json!({
         "moduleId": m, "title": format!("Judul {t}")
     })).await["id"].as_str().unwrap().to_string();
-    ok(&router, &format!("{TASK}/CreateTask"), &to, json!({
+    let body_only = ok(&router, &format!("{TASK}/CreateTask"), &to, json!({
         "moduleId": m, "title": "Lain", "description": format!("<p>isi {t}</p>")
-    })).await;
+    })).await["id"].as_str().unwrap().to_string();
 
     let hits = find(&router, &to, &t).await;
     assert_eq!(hits.len(), 3, "three documents match: {hits:?}");
-    assert_eq!(hits[0]["id"], titled, "a title hit ranks first");
+    // NOT proof of the A/B weighting: the page's title hit and the task's
+    // title hit are exactly tied on score (both single weight-A matches;
+    // ts_rank's default normalization ignores document length), so this only
+    // checks that ORDER BY's updated_at DESC tie-break picks the
+    // more-recently-touched of the two — which is `titled`, because the page
+    // above was deliberately created first. See the comment on `page` above.
+    assert_eq!(hits[0]["id"], titled, "the more recently touched of the two tied title hits ranks first");
+    // The real weighting property, independent of how the two title hits tie
+    // with each other: a body-only match always sorts below both of them.
+    assert_eq!(hits[2]["id"], body_only, "a body-only match ranks last: {hits:?}");
 
     // Kinds filter.
     let v = ok(&router, &format!("{SEARCH}/Search"), &to, json!({ "q": t, "kinds": ["PAGE"] })).await;
