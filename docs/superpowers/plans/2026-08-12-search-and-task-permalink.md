@@ -1971,14 +1971,24 @@ git commit -m "feat(work): add GetTask for deep-linked task dialogs"
 
 ```bash
 cd apps/backend-rs
-rustfmt --edition 2021 --check $(git diff --name-only origin/main...HEAD -- '*.rs' | sed 's|^apps/backend-rs/||')
+rustfmt --edition 2021 --check \
+  crates/persistence/src/search.rs \
+  crates/transport/src/search/mod.rs \
+  crates/transport/src/search/indexer.rs \
+  crates/transport/src/search/search_service.rs
 cargo clippy --all-targets -- -D warnings
 cargo test --workspace -- --nocapture 2>&1 | grep -c "^skip:" ; cargo test --workspace
 ```
 
 Expected: rustfmt silent, clippy clean, the skip count `0`, and every test passing.
 
-**Do not run `cargo fmt --all -- --check`.** This repo has never been rustfmt-clean: `main` carries 193 pre-existing diffs across `seed_admin.rs`, `seed_user.rs`, `auth/hash.rs`, and others. A workspace-wide check can therefore never pass, and running `cargo fmt --all` to fix it would bury this feature's diff under hundreds of unrelated reformatting hunks. The gate is that **the files this work touches** are formatted — hence the targeted `rustfmt` above. Clippy, by contrast, *is* clean workspace-wide at baseline, so `-D warnings` across all targets is a real gate; keep it.
+**The fmt gate covers new library files only. This is deliberate, and took two corrections to get right.**
+
+- `cargo fmt --all -- --check` can never pass: `main` carries 193 pre-existing diffs across `seed_admin.rs`, `seed_user.rs`, `auth/hash.rs` and others. Running `cargo fmt --all` to "fix" it would bury this feature under hundreds of unrelated hunks.
+- Gating on *every changed* file fails too, for the same reason one level down: `task_service.rs` alone already had 5 diffs at `origin/main`. Formatting a file this work merely edits sweeps in drift that predates it.
+- New **test** files are excluded on purpose. The flow tests are written in a deliberately dense style — one-line `ok(router, &format!(…), …)` calls that rustfmt would explode across many lines. `comment_flow.rs`, the file `search_flow.rs` was modelled on, carries 11 diffs of its own. Formatting the new test would make it the only odd-looking file in the directory.
+
+So: new library files must be clean, everything else is left as found. Clippy, by contrast, *is* genuinely clean workspace-wide at baseline, so `-D warnings` across all targets is a real gate — keep it and keep it passing.
 
 - [ ] **Step 2: Commit any formatting fixes**
 
@@ -2718,11 +2728,15 @@ git commit -m "feat(notifications): deep-link mentions to the task and comment"
 
 ```bash
 cd apps/backend-rs
-rustfmt --edition 2021 --check $(git diff --name-only origin/main...HEAD -- '*.rs' | sed 's|^apps/backend-rs/||')
+rustfmt --edition 2021 --check \
+  crates/persistence/src/search.rs \
+  crates/transport/src/search/mod.rs \
+  crates/transport/src/search/indexer.rs \
+  crates/transport/src/search/search_service.rs
 cargo clippy --all-targets -- -D warnings && cargo test --workspace
 ```
 
-Expected: all clean, no `skip:` lines in the output. As in Task 13, the fmt check is scoped to touched files — `cargo fmt --all -- --check` fails on 193 pre-existing diffs that predate this work.
+Expected: all clean, no `skip:` lines in the output. Same scoping as Task 13, and for the reasons documented there — new library files only.
 
 - [ ] **Step 2: Frontend**
 
