@@ -73,9 +73,33 @@ pub fn plain_text(input: &str) -> String {
         .clean_content_tags(["script", "style"].into_iter().collect())
         .clean(&spaced)
         .to_string();
-    // Ammonia escapes bare text entities; collapse whitespace so the tsvector
-    // and any snippet stay tidy.
-    stripped.split_whitespace().collect::<Vec<_>>().join(" ")
+    // Ammonia HTML-escapes the text it keeps (e.g. a literal `&` becomes
+    // `&amp;`), which would otherwise hand Postgres the token `amp` instead of
+    // `&`. Decode that closed, known entity set back to plain characters
+    // before collapsing whitespace so the tsvector and any snippet stay clean.
+    let decoded = decode_entities(&stripped);
+    decoded.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// Undo the HTML entity-escaping `ammonia` applies to kept text. The set is
+/// closed because `ammonia` is the only emitter here, so no crate dependency
+/// is needed for this.
+///
+/// `&amp;` is decoded *last*, deliberately: every other entity starts with
+/// `&`, so if `&amp;` were decoded first, a double-escaped sequence like
+/// `&amp;lt;` (i.e. `&lt;` escaped again) would turn into `&lt;` and then, on
+/// a second pass, wrongly collapse all the way to `<`. Decoding `&amp;` last
+/// guarantees each entity is unescaped exactly once.
+fn decode_entities(input: &str) -> String {
+    input
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&quot;", "\"")
+        .replace("&apos;", "'")
+        .replace("&#39;", "'")
+        .replace("&#x27;", "'")
+        .replace("&nbsp;", " ")
+        .replace("&amp;", "&")
 }
 
 #[cfg(test)]
@@ -161,5 +185,26 @@ mod tests {
     fn plain_text_drops_script_content() {
         let out = plain_text("<p>hi</p><script>alert(1)</script>");
         assert!(!out.contains("alert"));
+    }
+
+    #[test]
+    fn plain_text_decodes_amp_entity() {
+        let out = plain_text("Tom &amp; Jerry");
+        assert_eq!(out, "Tom & Jerry");
+        assert!(!out.contains("amp"), "no junk `amp` token: {out}");
+    }
+
+    #[test]
+    fn plain_text_decodes_only_one_level_of_double_escaping() {
+        // `&amp;lt;` is `&lt;` escaped again. Decoding `&amp;` before `&lt;`
+        // would wrongly collapse this all the way down to `<`.
+        let out = plain_text("<p>a &amp;lt; b</p>");
+        assert_eq!(out, "a &lt; b");
+    }
+
+    #[test]
+    fn plain_text_round_trips_raw_ampersand() {
+        let out = plain_text("Tom & Jerry");
+        assert_eq!(out, "Tom & Jerry");
     }
 }
