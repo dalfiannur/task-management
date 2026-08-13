@@ -13,6 +13,7 @@ use persistence::Store;
 
 use super::record::{find_by_phone, load_user, to_proto};
 use super::{internal, now_iso, now_unix, parse_pid, JwtConfig};
+use crate::search::{index, user_doc};
 use crate::sedjiwa::tasks::auth::v1 as pb;
 use crate::sedjiwa::tasks::auth::v1::auth_service_connect::AuthServiceBuilder;
 
@@ -181,6 +182,7 @@ async fn update_my_profile(
         .await
         .map_err(internal)?
         .ok_or_else(|| ConnectError::new_not_found("user not found"))?;
+    index(&store, user_doc(&u.pid.to_string(), &u.display_name, &u.phone)).await;
     Ok(ConnectResponse::new(to_proto(&u)))
 }
 

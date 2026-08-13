@@ -1,7 +1,8 @@
 //! End-to-end SearchService over the real Connect router + Postgres.
-//! Skipped unless `DATABASE_URL` is set. Nothing indexes real entities yet
-//! (later tasks add those call sites), so this only proves the RPC itself is
-//! real: guarded, quiet on an empty index, and inert against injection.
+//! Skipped unless `DATABASE_URL` is set. Covers both the RPC itself (guarded,
+//! quiet on an empty index, inert against injection) and the write-path
+//! indexer call sites in each mutating service (tasks, pages, comments,
+//! projects, people).
 
 use std::sync::Arc;
 
@@ -62,6 +63,7 @@ async fn setup() -> Option<(Router, Arc<Store>)> {
         .merge(transport::task_router(store.clone()))
         .merge(transport::comment_router(store.clone()))
         .merge(transport::page_router(store.clone()))
+        .merge(transport::user_router(store.clone()))
         .merge(transport::search_router(store.clone()))
         .layer(from_fn(auth_mw));
     Some((router, store))
@@ -441,5 +443,44 @@ async fn project_is_indexed_and_delete_clears_its_children() {
     assert!(
         find(&router, &to, &tterm).await.is_empty(),
         "child task doc gone"
+    );
+}
+
+#[tokio::test]
+async fn person_is_indexed_and_leaves_on_suspend() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let admin = mk_user(&store).await;
+    let admin_tok = auth::sign_jwt(SECRET, &admin, &["*".to_string()], 9_999_999_999).unwrap();
+
+    let name = term();
+    let created = ok(
+        &router,
+        &format!("{USERS}/CreateUser"),
+        &admin_tok,
+        json!({
+            "phone": format!("s{}", uniq()), "password": "secret123", "displayName": format!("Rina {name}")
+        }),
+    )
+    .await;
+    let uid = created["id"].as_str().unwrap().to_string();
+
+    let hits = find(&router, &admin_tok, &name).await;
+    assert_eq!(hits.len(), 1, "person findable: {hits:?}");
+    assert_eq!(hits[0]["kind"], "USER");
+    assert_eq!(hits[0]["id"], uid);
+
+    ok(
+        &router,
+        &format!("{USERS}/SuspendUser"),
+        &admin_tok,
+        json!({ "id": uid }),
+    )
+    .await;
+    assert!(
+        find(&router, &admin_tok, &name).await.is_empty(),
+        "suspended person leaves the index"
     );
 }

@@ -14,6 +14,7 @@ use persistence::Store;
 use super::record::{find_by_phone, load_all_users, load_user, to_proto, UserRecord};
 use super::{internal, now_iso, parse_pid};
 use crate::notifications::{emit, NotifRefs, Notifier};
+use crate::search::{deindex, index, kind, user_doc};
 use crate::sedjiwa::tasks::auth::v1 as pb;
 use crate::sedjiwa::tasks::auth::v1::user_directory_service_connect::UserDirectoryServiceBuilder;
 
@@ -199,6 +200,7 @@ async fn create_user(
         .await
         .map_err(internal)?
         .ok_or_else(|| internal("user missing after create"))?;
+    index(&store, user_doc(&u.pid.to_string(), &u.display_name, &u.phone)).await;
     Ok(ConnectResponse::new(to_proto(&u)))
 }
 
@@ -231,6 +233,7 @@ async fn update_user(
         .await
         .map_err(internal)?
         .ok_or_else(|| ConnectError::new_not_found("user not found"))?;
+    index(&store, user_doc(&u.pid.to_string(), &u.display_name, &u.phone)).await;
     Ok(ConnectResponse::new(to_proto(&u)))
 }
 
@@ -258,6 +261,7 @@ async fn activate_user(
         )
         .await;
     }
+    index(&store, user_doc(&u.pid.to_string(), &u.display_name, &u.phone)).await;
     Ok(ConnectResponse::new(to_proto(&u)))
 }
 
@@ -271,6 +275,7 @@ async fn suspend_user(
     let ConnectRequest(r) = req;
     let pid = parse_pid(&r.id)?;
     let u = set_status(&store, pid, UserStatus::Suspended).await?;
+    deindex(&store, kind::USER, &pid.to_string()).await;
     Ok(ConnectResponse::new(to_proto(&u)))
 }
 
@@ -344,6 +349,7 @@ async fn delete_user(
     let ConnectRequest(r) = req;
     let pid = parse_pid(&r.id)?;
     store.delete(pid).await.map_err(internal)?;
+    deindex(&store, kind::USER, &pid.to_string()).await;
     Ok(ConnectResponse::new(pb::OkResponse { ok: true }))
 }
 
