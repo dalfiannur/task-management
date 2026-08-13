@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { PagesTab } from "@/features/pages";
+import { coerceSearchParam } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authed/projects/$projectId/pages")({
   validateSearch: (search: Record<string, unknown>): { page?: string } => ({
-    page: typeof search.page === "string" ? search.page : undefined,
+    page: coerceSearchParam(search.page),
   }),
   component: Pages,
 });
