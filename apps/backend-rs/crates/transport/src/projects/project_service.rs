@@ -20,6 +20,7 @@ use super::record::{
 use super::{internal, parse_pid};
 use crate::activity::record;
 use crate::notifications::{emit, NotifRefs, Notifier};
+use crate::search::{deindex_project, index, project_doc};
 use domain::activity::{ActivityAction, EntityType};
 use crate::sedjiwa::tasks::project::v1 as pb;
 use crate::sedjiwa::tasks::project::v1::project_service_connect::ProjectServiceBuilder;
@@ -117,6 +118,11 @@ async fn create_project(
     }
 
     let p = require_project(&store, pid).await?;
+    index(
+        &store,
+        project_doc(&pid.to_string(), &p.name, p.description.as_deref().unwrap_or_default()),
+    )
+    .await;
     Ok(ConnectResponse::new(to_proto(&p)))
 }
 
@@ -302,6 +308,7 @@ async fn delete_project(
     {
         store.delete(mpid).await.map_err(internal)?;
     }
+    deindex_project(&store, &pid.to_string()).await;
     Ok(ConnectResponse::new(pb::DeleteProjectResponse { ok: true }))
 }
 

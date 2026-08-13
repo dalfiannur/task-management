@@ -392,3 +392,54 @@ async fn comment_is_indexed_and_carries_its_task() {
     .await;
     assert!(find(&router, &to, &t).await.is_empty(), "deleted comment gone");
 }
+
+#[tokio::test]
+async fn project_is_indexed_and_delete_clears_its_children() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let owner = mk_user(&store).await;
+    let to = token(&owner);
+
+    let pname = term();
+    let pid = ok(
+        &router,
+        &format!("{PROJECT}/CreateProject"),
+        &to,
+        json!({ "name": format!("Proyek {pname}") }),
+    )
+    .await["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    let hits = find(&router, &to, &pname).await;
+    assert_eq!(hits.len(), 1, "project findable: {hits:?}");
+    assert_eq!(hits[0]["kind"], "PROJECT");
+    assert_eq!(hits[0]["id"], pid);
+
+    let m = module_in(&router, &to, &pid).await;
+    let tterm = term();
+    ok(
+        &router,
+        &format!("{TASK}/CreateTask"),
+        &to,
+        json!({ "moduleId": m, "title": format!("X {tterm}") }),
+    )
+    .await;
+    assert_eq!(find(&router, &to, &tterm).await.len(), 1);
+
+    ok(
+        &router,
+        &format!("{PROJECT}/DeleteProject"),
+        &to,
+        json!({ "id": pid }),
+    )
+    .await;
+    assert!(find(&router, &to, &pname).await.is_empty(), "project doc gone");
+    assert!(
+        find(&router, &to, &tterm).await.is_empty(),
+        "child task doc gone"
+    );
+}
