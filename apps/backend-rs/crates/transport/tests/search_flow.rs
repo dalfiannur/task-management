@@ -26,6 +26,7 @@ const TASK: &str = "/sedjiwa.tasks.work.v1.TaskService";
 const COMMENT: &str = "/sedjiwa.tasks.comment.v1.CommentService";
 const PAGE: &str = "/sedjiwa.tasks.page.v1.PageService";
 const USERS: &str = "/sedjiwa.tasks.auth.v1.UserDirectoryService";
+const AUTH: &str = "/sedjiwa.tasks.auth.v1.AuthService";
 const SEARCH: &str = "/sedjiwa.tasks.search.v1.SearchService";
 
 fn uniq() -> String {
@@ -58,12 +59,17 @@ async fn auth_mw(mut req: Request, next: Next) -> Response {
 async fn setup() -> Option<(Router, Arc<Store>)> {
     let url = std::env::var("DATABASE_URL").ok()?;
     let store = Arc::new(Store::connect(&url, domain::register_all).await.unwrap());
+    let jwt = Arc::new(transport::JwtConfig {
+        secret: SECRET.to_string(),
+        ttl_secs: 3600,
+    });
     let router = transport::project_router(store.clone())
         .merge(transport::module_router(store.clone()))
         .merge(transport::task_router(store.clone()))
         .merge(transport::comment_router(store.clone()))
         .merge(transport::page_router(store.clone()))
         .merge(transport::user_router(store.clone()))
+        .merge(transport::auth_router(store.clone(), jwt))
         .merge(transport::search_router(store.clone()))
         .layer(from_fn(auth_mw));
     Some((router, store))
@@ -529,4 +535,31 @@ async fn person_is_indexed_and_leaves_on_suspend() {
         find(&router, &admin_tok, &name).await.is_empty(),
         "suspended person leaves the index"
     );
+}
+
+#[tokio::test]
+async fn self_profile_update_is_indexed() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    // Self-service: the caller updates their own profile with their own
+    // token, not an admin's — the AuthService::UpdateMyProfile call site,
+    // separate from directory_service.rs's admin-only UpdateUser.
+    let me = mk_user(&store).await;
+    let my_tok = token(&me);
+
+    let name = term();
+    ok(
+        &router,
+        &format!("{AUTH}/UpdateMyProfile"),
+        &my_tok,
+        json!({ "displayName": format!("Sari {name}") }),
+    )
+    .await;
+
+    let hits = find(&router, &my_tok, &name).await;
+    assert_eq!(hits.len(), 1, "self-updated profile is findable: {hits:?}");
+    assert_eq!(hits[0]["kind"], "USER");
+    assert_eq!(hits[0]["id"], me);
 }
