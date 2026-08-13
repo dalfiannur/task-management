@@ -24,6 +24,7 @@ import {
   useMoveTask,
   useReorderModules,
 } from "../api/hooks";
+import { edgeConflicts } from "../task-graph";
 import { ModuleSection } from "./module-section";
 import { ModuleDialog } from "./module-dialog";
 import { TaskDialog } from "./task-dialog";
@@ -121,6 +122,23 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
     open: boolean;
     module?: Module;
   }>({ open: false });
+
+  // Whether a task is "blocked": any of its blockedByIds resolves to a task
+  // that is not done. Reuses edgeConflicts' "status" rule rather than
+  // re-deriving it. Dependencies can point at a task in any module of the
+  // project, so this is computed over the full project task list, not per
+  // module.
+  const blockedMap = useMemo(() => {
+    const byId = new Map(tasks.map((t) => [t.id, t]));
+    const out: Record<string, boolean> = {};
+    for (const t of tasks) {
+      out[t.id] = t.blockedByIds.some((bId) => {
+        const blocker = byId.get(bId);
+        return !!blocker && edgeConflicts(blocker, t).includes("status");
+      });
+    }
+    return out;
+  }, [tasks]);
 
   const tasksByModule = useMemo(() => {
     const map: Record<string, Task[]> = {};
@@ -220,6 +238,7 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
                 canManage={canManage}
                 userMap={userMap}
                 labelMap={labelMap}
+                blockedMap={blockedMap}
                 onEditTask={(task) => openTask(task.id)}
                 onEditModule={(module) => setModuleDialog({ open: true, module })}
                 onMoveUp={() => moveModule(i, -1)}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -23,6 +23,7 @@ import type { AppUser } from "@/features/auth";
 import type { Label } from "@/features/labels";
 import type { Module, Task } from "../types";
 import { useCreateTask, useDeleteModule } from "../api/hooks";
+import { buildHierarchy, subtaskProgress } from "../task-graph";
 import { TaskRow } from "./task-row";
 
 export function ModuleSection({
@@ -31,6 +32,7 @@ export function ModuleSection({
   canManage,
   userMap,
   labelMap,
+  blockedMap,
   onEditTask,
   onEditModule,
   onMoveUp,
@@ -43,6 +45,8 @@ export function ModuleSection({
   canManage: boolean;
   userMap: Record<string, AppUser>;
   labelMap: Record<string, Label>;
+  /** taskId → whether a `blockedByIds` entry resolves to a not-done task. */
+  blockedMap: Record<string, boolean>;
   onEditTask: (task: Task) => void;
   onEditModule: (module: Module) => void;
   onMoveUp: () => void;
@@ -54,6 +58,18 @@ export function ModuleSection({
   const del = useDeleteModule();
   const [quick, setQuick] = useState("");
   const { setNodeRef } = useDroppable({ id: `mod:${module.id}` });
+
+  // Parent and children always share a module (the backend enforces it), so
+  // hierarchy can be built from this module's own task slice.
+  const { roots, childrenOf } = buildHierarchy(tasks);
+  // Sortable items in the same order they're rendered (root, its children,
+  // next root, …) — one flat SortableContext, not a nested one. Dragging a
+  // subtask between parents is out of scope; this only lets rows reorder
+  // within the existing flat drag mechanics.
+  const orderedIds = roots.flatMap((r) => [
+    r.id,
+    ...(childrenOf[r.id] ?? []).map((c) => c.id),
+  ]);
 
   function addTask(e: React.FormEvent) {
     e.preventDefault();
@@ -147,18 +163,29 @@ export function ModuleSection({
       </header>
 
       <div ref={setNodeRef} className="min-h-[0.5rem]">
-        <SortableContext
-          items={tasks.map((t) => t.id)}
-          strategy={verticalListSortingStrategy}
-        >
-          {tasks.map((task) => (
-            <TaskRow
-              key={task.id}
-              task={task}
-              userMap={userMap}
-              labelMap={labelMap}
-              onEdit={onEditTask}
-            />
+        <SortableContext items={orderedIds} strategy={verticalListSortingStrategy}>
+          {roots.map((task) => (
+            <Fragment key={task.id}>
+              <TaskRow
+                task={task}
+                userMap={userMap}
+                labelMap={labelMap}
+                onEdit={onEditTask}
+                progress={subtaskProgress(task, childrenOf)}
+                blocked={blockedMap[task.id]}
+              />
+              {(childrenOf[task.id] ?? []).map((child) => (
+                <TaskRow
+                  key={child.id}
+                  task={child}
+                  userMap={userMap}
+                  labelMap={labelMap}
+                  onEdit={onEditTask}
+                  depth={1}
+                  blocked={blockedMap[child.id]}
+                />
+              ))}
+            </Fragment>
           ))}
         </SortableContext>
         {tasks.length === 0 && (

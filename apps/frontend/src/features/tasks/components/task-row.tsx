@@ -18,11 +18,20 @@ export function TaskRow({
   userMap,
   labelMap,
   onEdit,
+  depth = 0,
+  progress,
+  blocked,
 }: {
   task: Task;
   userMap: Record<string, AppUser>;
   labelMap: Record<string, Label>;
   onEdit: (task: Task) => void;
+  /** 0 = top-level, 1 = subtask (subtasks go one level deep only). */
+  depth?: number;
+  /** `{ done, total }` for a parent with subtasks — null/omitted otherwise. */
+  progress?: { done: number; total: number } | null;
+  /** True when a `blockedByIds` entry resolves to a not-done task. */
+  blocked?: boolean;
 }) {
   const update = useUpdateTask();
   const del = useDeleteTask();
@@ -54,7 +63,11 @@ export function TaskRow({
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(
-        "group flex items-center gap-2 border-b border-border-subtle px-4 py-3 last:border-b-0",
+        "group flex items-center gap-2 border-b border-border-subtle py-3 last:border-b-0",
+        // Subtasks (depth 1) get one extra indent step (24px, `pl-6`) on top
+        // of the row's own 16px inset — pl-10 is that sum. Subtasks go one
+        // level deep only, so this never needs to compound further.
+        depth ? "pl-10 pr-4" : "px-4",
         "transition-colors [transition-duration:var(--duration-fast)] hover:bg-surface-hover",
         isDragging && "opacity-50",
       )}
@@ -86,6 +99,11 @@ export function TaskRow({
         >
           {task.title}
         </span>
+        {progress && (
+          <span className="text-num text-xs text-text-muted">
+            {progress.done}/{progress.total}
+          </span>
+        )}
         <LabelChips ids={task.labelIds} labelMap={labelMap} max={2} />
         <PriorityLabel priority={task.priority} />
         {task.dueDate && (
@@ -96,6 +114,18 @@ export function TaskRow({
         <AssigneeAvatars ids={task.assigneeIds} userMap={userMap} />
         <StatusBadge status={task.status} />
       </button>
+      {blocked && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onEdit(task);
+          }}
+          className="inline-flex items-center gap-1 rounded-full bg-danger-subtle px-2.5 py-0.5 text-xs font-medium text-danger transition-colors [transition-duration:var(--duration-fast)] hover:opacity-80"
+        >
+          Blocked
+        </button>
+      )}
       <Button
         variant="ghost"
         size="icon"
