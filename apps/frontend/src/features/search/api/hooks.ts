@@ -25,13 +25,22 @@ export function useDebounced<T>(value: T, ms = 200): T {
 export function useSearch(q: string, assigneeIds: string[] = []) {
   const debouncedQ = useDebounced(q);
   const trimmed = debouncedQ.trim();
+  const belowMin = trimmed.length < MIN_QUERY;
   const result = useQuery(
     SearchService.method.search,
     { q: trimmed, assigneeIds },
-    { enabled: trimmed.length >= MIN_QUERY, retry: false },
+    { enabled: !belowMin, retry: false },
   );
   const hits: SearchHit[] = (result.data?.results ?? []).map(mapSearchHit);
   // isFetching (not isLoading) so a refetch under a changing query still reads
   // as "searching" rather than showing stale results as settled.
-  return { ...result, hits, isSearching: result.isFetching };
+  //
+  // belowMin is derived from the DEBOUNCED query, same as `enabled` above —
+  // not the caller's raw `q`. A caller gating its own "type more" message on
+  // raw `q` would flip that message off the instant the threshold is
+  // crossed, while `enabled` (and so `isSearching`) stays false until the
+  // debounce settles a beat later — a window where nothing is loading and
+  // nothing has results, easy to misread as "no results" for a query that
+  // was never actually sent.
+  return { ...result, hits, isSearching: result.isFetching, belowMin };
 }

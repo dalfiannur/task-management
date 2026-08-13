@@ -68,7 +68,7 @@ export function SearchOverlay() {
   }
 
   const assigneeIds = useMemo(() => (person ? [person.id] : []), [person]);
-  const { hits, isSearching, isError } = useSearch(query, assigneeIds);
+  const { hits, isSearching, isError, belowMin } = useSearch(query, assigneeIds);
 
   const groups = useMemo(
     () =>
@@ -81,8 +81,10 @@ export function SearchOverlay() {
     [hits],
   );
 
+  // `belowMin` comes from the hook (debounce-consistent — see its comment);
+  // `trimmed` here is only for display text, so it always echoes what's
+  // currently in the input.
   const trimmed = query.trim();
-  const belowMin = trimmed.length < MIN_QUERY;
 
   function onSelect(hit: SearchHit) {
     switch (hit.kind) {
