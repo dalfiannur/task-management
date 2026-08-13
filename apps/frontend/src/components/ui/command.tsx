@@ -35,6 +35,8 @@ function CommandDialog({
   className,
   showCloseButton = true,
   shouldFilter = true,
+  value,
+  onValueChange,
   ...props
 }: React.ComponentProps<typeof Dialog> & {
   title?: string
@@ -48,6 +50,13 @@ function CommandDialog({
   // results are already ranked server-side, and cmdk's filter would
   // silently drop rows that only matched a stemmed form.
   shouldFilter?: boolean
+  // Controlled selection passthrough (cmdk's own `value`/`onValueChange` on
+  // its root Command). A consumer with `shouldFilter={false}` needs this —
+  // cmdk's automatic "select the first item" behaviour is driven by its own
+  // filter/score pass, so with filtering off nothing re-establishes a
+  // selection when the rendered item set changes identity out from under it.
+  value?: string
+  onValueChange?: (value: string) => void
 }) {
   return (
     <Dialog {...props}>
@@ -59,7 +68,7 @@ function CommandDialog({
         className={cn("overflow-hidden p-0", className)}
         showCloseButton={showCloseButton}
       >
-        <Command shouldFilter={shouldFilter} className={cn(
+        <Command shouldFilter={shouldFilter} value={value} onValueChange={onValueChange} className={cn(
           "[&_[data-slot=command-input-wrapper]]:h-12",
           "[&_[cmdk-group-heading]]:text-text-muted [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium",
           "[&_[cmdk-group]]:px-2",

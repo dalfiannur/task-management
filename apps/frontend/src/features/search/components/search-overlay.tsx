@@ -81,6 +81,25 @@ export function SearchOverlay() {
     [hits],
   );
 
+  // cmdk's automatic "select the first item" only fires off its own
+  // filter/score pass, which is disabled below (`shouldFilter={false}`) —
+  // so with a server-ranked list, nothing re-selects a row when the result
+  // set is swapped out from under it (works once, then the first item stays
+  // unselected on every subsequent query). Drive selection explicitly via
+  // cmdk's controlled `value`/`onValueChange` instead: reset to the first
+  // rendered row whenever the *result set itself* changes (this list is
+  // referentially stable across unrelated re-renders — see the memo in
+  // useSearch — so this does not re-fire on every render, e.g. an arrow-key
+  // selection change, which would otherwise fight the user's own navigation).
+  const orderedValues = useMemo(
+    () => groups.flatMap((g) => g.hits.map((h) => `${h.kind}:${h.id}`)),
+    [groups],
+  );
+  const [selected, setSelected] = useState("");
+  useEffect(() => {
+    setSelected(orderedValues[0] ?? "");
+  }, [orderedValues]);
+
   // `belowMin` comes from the hook (debounce-consistent — see its comment);
   // `trimmed` here is only for display text, so it always echoes what's
   // currently in the input.
@@ -137,6 +156,8 @@ export function SearchOverlay() {
       open={open}
       onOpenChange={onOpenChange}
       shouldFilter={false}
+      value={selected}
+      onValueChange={setSelected}
       title="Search"
       description="Search tasks, pages, comments, projects, and people"
     >

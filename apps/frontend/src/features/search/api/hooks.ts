@@ -1,7 +1,7 @@
 // Global search RPC hook (connect-query over SearchService). Debounces the
 // raw query locally so keystrokes don't each fire a request.
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@connectrpc/connect-query";
 import { SearchService } from "@/lib/gen/search_pb";
 import type { SearchHit } from "../types";
@@ -31,7 +31,14 @@ export function useSearch(q: string, assigneeIds: string[] = []) {
     { q: trimmed, assigneeIds },
     { enabled: !belowMin, retry: false },
   );
-  const hits: SearchHit[] = (result.data?.results ?? []).map(mapSearchHit);
+  // Memoized on `result.data` (not recomputed every render) so consumers can
+  // key their own effects off `hits`' identity to detect an actual new
+  // result set landing, as opposed to an unrelated re-render (e.g. moving
+  // the palette's own selection) producing a `.map()`-fresh array every time.
+  const hits: SearchHit[] = useMemo(
+    () => (result.data?.results ?? []).map(mapSearchHit),
+    [result.data],
+  );
   // isFetching (not isLoading) so a refetch under a changing query still reads
   // as "searching" rather than showing stale results as settled.
   //
