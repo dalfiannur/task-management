@@ -101,3 +101,25 @@ pub(crate) async fn task_project_id(
         .await?
         .map(|m| m.project_id))
 }
+
+/// Drop a deleted task and its comments from the search index.
+///
+/// A task's comments are not entity-deleted with it (they are already
+/// unreachable, since every comment read resolves through its task), but they
+/// ARE indexed. Leaving them behind makes search the one place a deleted task's
+/// discussion still surfaces — a result that opens nothing. Both delete paths
+/// call this: `delete_task` directly, and `delete_module` for every task it
+/// cascades over.
+pub(crate) async fn deindex_task_and_comments(store: &Store, task_id: &str) {
+    crate::search::deindex(store, crate::search::kind::TASK, task_id).await;
+    let comments = match crate::comments::record::comments_for_task(store, task_id).await {
+        Ok(c) => c,
+        Err(e) => {
+            tracing::warn!(error = %e, task = %task_id, "failed to list comments for deindexing");
+            return;
+        }
+    };
+    for c in comments {
+        crate::search::deindex(store, crate::search::kind::COMMENT, &c.pid.to_string()).await;
+    }
+}

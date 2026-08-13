@@ -627,3 +627,44 @@ async fn ranking_kinds_filter_and_person_refinement() {
     assert_eq!(mine[0]["id"], titled);
     assert_eq!(mine[0]["kind"], "TASK", "non-task kinds have empty assignees, so they drop out");
 }
+
+/// Deleting a module cascade-deletes its tasks, and deleting a task orphans its
+/// comments. Neither cascade touches the index on its own, so both used to leave
+/// findable ghosts: search would return a task or a comment thread that opens
+/// nothing. Covers both paths in one test since they share the same helper.
+#[tokio::test]
+async fn deleting_a_module_or_task_removes_its_docs_and_its_comments() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let owner = mk_user(&store).await;
+    let pid = project_with(&router, &owner, &[]).await;
+    let to = token(&owner);
+
+    // Path 1: delete the task directly — its comment must go too.
+    let m1 = module_in(&router, &to, &pid).await;
+    let t_direct = term();
+    let c_direct = term();
+    let task1 = ok(&router, &format!("{TASK}/CreateTask"), &to, json!({ "moduleId": m1, "title": format!("D {t_direct}") })).await["id"].as_str().unwrap().to_string();
+    ok(&router, &format!("{COMMENT}/CreateComment"), &to, json!({ "taskId": task1, "content": format!("<p>catatan {c_direct}</p>") })).await;
+    assert_eq!(find(&router, &to, &t_direct).await.len(), 1, "task indexed");
+    assert_eq!(find(&router, &to, &c_direct).await.len(), 1, "comment indexed");
+
+    ok(&router, &format!("{TASK}/DeleteTask"), &to, json!({ "id": task1 })).await;
+    assert!(find(&router, &to, &t_direct).await.is_empty(), "deleted task gone");
+    assert!(find(&router, &to, &c_direct).await.is_empty(), "its comment gone too");
+
+    // Path 2: delete the module — every task under it, and their comments, go.
+    let m2 = module_in(&router, &to, &pid).await;
+    let t_cascade = term();
+    let c_cascade = term();
+    let task2 = ok(&router, &format!("{TASK}/CreateTask"), &to, json!({ "moduleId": m2, "title": format!("C {t_cascade}") })).await["id"].as_str().unwrap().to_string();
+    ok(&router, &format!("{COMMENT}/CreateComment"), &to, json!({ "taskId": task2, "content": format!("<p>catatan {c_cascade}</p>") })).await;
+    assert_eq!(find(&router, &to, &t_cascade).await.len(), 1, "task indexed");
+    assert_eq!(find(&router, &to, &c_cascade).await.len(), 1, "comment indexed");
+
+    ok(&router, &format!("{MODULE}/DeleteModule"), &to, json!({ "id": m2 })).await;
+    assert!(find(&router, &to, &t_cascade).await.is_empty(), "cascaded task gone");
+    assert!(find(&router, &to, &c_cascade).await.is_empty(), "its comment gone too");
+}

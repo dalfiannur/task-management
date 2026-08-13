@@ -20,7 +20,7 @@ use super::{internal, parse_pid, require_auth, require_member, StoreExt};
 use crate::activity::record;
 use crate::notifications::{emit, NotifRefs, Notifier};
 use crate::projects::record::project_member_ids;
-use crate::search::{deindex, index, kind, task_doc};
+use crate::search::{index, task_doc};
 use domain::activity::{ActivityAction, EntityType, FieldChange};
 use domain::notification::NotificationType;
 use crate::sedjiwa::tasks::work::v1 as pb;
@@ -410,7 +410,7 @@ async fn delete_task(
         vec![],
     )
     .await;
-    deindex(&store, kind::TASK, &pid.to_string()).await;
+    super::deindex_task_and_comments(&store, &pid.to_string()).await;
     Ok(ConnectResponse::new(pb::DeleteTaskResponse { ok: true }))
 }
 

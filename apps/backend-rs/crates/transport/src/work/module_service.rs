@@ -168,6 +168,9 @@ async fn delete_module(
         .map_err(internal)?
     {
         store.delete(tpid).await.map_err(internal)?;
+        // The cascade deletes entities but the index does not follow on its
+        // own; without this, every task under a deleted module stays findable.
+        super::deindex_task_and_comments(&store, &tpid.to_string()).await;
     }
     store.delete(pid).await.map_err(internal)?;
     record(
