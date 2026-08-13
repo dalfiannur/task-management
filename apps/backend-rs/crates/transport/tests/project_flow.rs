@@ -198,7 +198,13 @@ async fn list_is_member_scoped_with_filters() {
     let name2 = format!("Beta{}", uniq());
     let p1 = create(&router, &ta, json!({ "name": name1 })).await;
     let p2 = create(&router, &ta, json!({ "name": name2 })).await;
-    let p3 = create(&router, &user_token(&b), json!({ "name": "Gamma" })).await;
+    // Uniquified like its two siblings above. With a literal "Gamma" this test
+    // was a time bomb against the persistent dev database: every run left
+    // another "Gamma" behind, and once more than `DEFAULT_LIMIT` (12) had
+    // accumulated, the search below returned a full first page of older rows
+    // and this run's project fell off it.
+    let name3 = format!("Gamma{}", uniq());
+    let p3 = create(&router, &user_token(&b), json!({ "name": name3 })).await;
 
     // A sees only their projects (member-scoped), not B's.
     let (st, body) = call(&router, "ListProjects", Some(&ta), json!({})).await;
@@ -249,7 +255,7 @@ async fn list_is_member_scoped_with_filters() {
 
     // Admin sees B's project too (via search to avoid pagination noise).
     let adm = admin_token(&format!("adm{}", uniq()));
-    let (_, body) = call(&router, "ListProjects", Some(&adm), json!({ "search": "Gamma" })).await;
+    let (_, body) = call(&router, "ListProjects", Some(&adm), json!({ "search": name3 })).await;
     assert!(list_ids(&body).contains(&p3), "admin sees all");
 }
 
