@@ -30,6 +30,8 @@ cargo test -p transport --test comment_flow -- --nocapture
 
 Expected: `test comments_crud_mentions_and_guards ... ok` **without** a `skip: DATABASE_URL not set` line above it. If you see the skip line, fix your env before continuing.
 
+**Never point `rustfmt` at a crate root** (`lib.rs`, `main.rs`). It follows `mod` declarations and reformats the whole module tree — aimed at `crates/transport/src/lib.rs` it rewrote 17 unrelated files, because this repo is not rustfmt-clean. Format leaf modules individually (`rustfmt --edition 2021 path/to/leaf.rs`) and hand-edit crate roots.
+
 **Confirm the text search config exists** (spec step zero):
 
 ```bash
