@@ -324,3 +324,71 @@ async fn page_is_indexed_on_create_update_and_delete() {
     .await;
     assert!(find(&router, &to, &t2).await.is_empty(), "deleted page gone");
 }
+
+#[tokio::test]
+async fn comment_is_indexed_and_carries_its_task() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let owner = mk_user(&store).await;
+    let outsider = mk_user(&store).await;
+    let pid = project_with(&router, &owner, &[]).await;
+    let to = token(&owner);
+    let m = module_in(&router, &to, &pid).await;
+    let task = ok(
+        &router,
+        &format!("{TASK}/CreateTask"),
+        &to,
+        json!({ "moduleId": m, "title": "T" }),
+    )
+    .await["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    let t = term();
+    let cid = ok(
+        &router,
+        &format!("{COMMENT}/CreateComment"),
+        &to,
+        json!({
+            "taskId": task, "content": format!("<p>gagal karena {t}</p>")
+        }),
+    )
+    .await["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    let hits = find(&router, &to, &t).await;
+    assert_eq!(hits.len(), 1, "comment findable: {hits:?}");
+    assert_eq!(hits[0]["kind"], "COMMENT");
+    assert_eq!(hits[0]["id"], cid);
+    assert_eq!(hits[0]["taskId"], task, "comment result carries its parent task");
+    // The stored body must be the `plain_text` projection, not raw HTML: the
+    // source `<p>` wrapper must not survive into the index. `ts_headline`
+    // itself is expected to add its own `<b>` highlight marks around the
+    // matched term (see search.proto's `snippet` field comment and the
+    // design doc) — those are not a sign of unsanitized markup, so this
+    // checks for the specific source tag rather than for any `<` at all.
+    let snippet = hits[0]["snippet"].as_str().unwrap();
+    assert!(
+        !snippet.contains("<p>") && !snippet.contains("</p>"),
+        "snippet is the plain_text projection, not raw markup: {snippet:?}"
+    );
+
+    assert!(
+        find(&router, &token(&outsider), &t).await.is_empty(),
+        "non-member sees nothing"
+    );
+
+    ok(
+        &router,
+        &format!("{COMMENT}/DeleteComment"),
+        &to,
+        json!({ "id": cid }),
+    )
+    .await;
+    assert!(find(&router, &to, &t).await.is_empty(), "deleted comment gone");
+}

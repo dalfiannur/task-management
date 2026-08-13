@@ -18,6 +18,7 @@ use super::{
 };
 use crate::notifications::{emit, NotifRefs, Notifier};
 use crate::projects::record::project_member_ids;
+use crate::search::{comment_doc, deindex, index, kind};
 use crate::sedjiwa::tasks::comment::v1 as pb;
 use crate::sedjiwa::tasks::comment::v1::comment_service_connect::CommentServiceBuilder;
 use crate::work::task_project_id;
@@ -146,6 +147,7 @@ async fn create_comment(
         }
     }
     let c = require_comment(&store, pid).await?;
+    index(&store, comment_doc(&pid.to_string(), &project_id, &c.content)).await;
     Ok(ConnectResponse::new(to_proto(&c)))
 }
 
@@ -200,6 +202,7 @@ async fn update_comment(
         }
     }
     let c = require_comment(&store, pid).await?;
+    index(&store, comment_doc(&pid.to_string(), &project_id, &c.content)).await;
     Ok(ConnectResponse::new(to_proto(&c)))
 }
 
@@ -215,6 +218,7 @@ async fn delete_comment(
     let project_id = task_project(&store, &c.task_id).await?;
     require_author_owner_or_admin(&store, &c, &project_id, &auth).await?;
     store.delete(pid).await.map_err(internal)?;
+    deindex(&store, kind::COMMENT, &pid.to_string()).await;
     Ok(ConnectResponse::new(pb::DeleteCommentResponse { ok: true }))
 }
 
