@@ -20,6 +20,7 @@ use super::{internal, parse_pid, require_auth, require_member, StoreExt};
 use crate::activity::record;
 use crate::notifications::{emit, NotifRefs, Notifier};
 use crate::projects::record::project_member_ids;
+use crate::search::{deindex, index, kind, task_doc};
 use domain::activity::{ActivityAction, EntityType, FieldChange};
 use domain::notification::NotificationType;
 use crate::sedjiwa::tasks::work::v1 as pb;
@@ -130,12 +131,13 @@ async fn create_task(
     let order = next_order_in_module(&store, &r.module_id).await?;
     let now = now_iso();
     let completed_at = (status == TaskStatus::Done).then(|| now.clone());
+    let description_for_index = domain::sanitize::clean_html(&r.description.unwrap_or_default());
 
     let pid = store
         .create((
             TaskInfo {
                 title: title.to_string(),
-                description: domain::sanitize::clean_html(&r.description.unwrap_or_default()),
+                description: description_for_index.clone(),
                 status: status.as_str().to_string(),
                 priority: priority.as_str().to_string(),
                 start_date,
@@ -185,6 +187,11 @@ async fn create_task(
         ActivityAction::Created,
         format!("created task '{title}'"),
         vec![],
+    )
+    .await;
+    index(
+        &store,
+        task_doc(&pid.to_string(), &project_id, title, &description_for_index, assignees.clone()),
     )
     .await;
     let t = require_task(&store, pid).await?;
@@ -356,6 +363,11 @@ async fn update_task(
     )
     .await;
     let t = require_task(&store, pid).await?;
+    index(
+        &store,
+        task_doc(&pid.to_string(), &project_id, &t.title, &t.description, t.assignee_ids.clone()),
+    )
+    .await;
     Ok(ConnectResponse::new(to_proto(&t)))
 }
 
@@ -382,6 +394,7 @@ async fn delete_task(
         vec![],
     )
     .await;
+    deindex(&store, kind::TASK, &pid.to_string()).await;
     Ok(ConnectResponse::new(pb::DeleteTaskResponse { ok: true }))
 }
 
@@ -433,6 +446,15 @@ async fn move_task(
         .await
         .map_err(internal)?;
     let t = require_task(&store, pid).await?;
+    let moved_project = super::task_project_id(&store, &pid.to_string())
+        .await
+        .map_err(internal)?
+        .unwrap_or_default();
+    index(
+        &store,
+        task_doc(&pid.to_string(), &moved_project, &t.title, &t.description, t.assignee_ids.clone()),
+    )
+    .await;
     Ok(ConnectResponse::new(to_proto(&t)))
 }
 

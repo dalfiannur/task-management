@@ -20,6 +20,11 @@ use tower::ServiceExt;
 
 const SECRET: &str = "test-secret";
 const PROJECT: &str = "/sedjiwa.tasks.project.v1.ProjectService";
+const MODULE: &str = "/sedjiwa.tasks.work.v1.ModuleService";
+const TASK: &str = "/sedjiwa.tasks.work.v1.TaskService";
+const COMMENT: &str = "/sedjiwa.tasks.comment.v1.CommentService";
+const PAGE: &str = "/sedjiwa.tasks.page.v1.PageService";
+const USERS: &str = "/sedjiwa.tasks.auth.v1.UserDirectoryService";
 const SEARCH: &str = "/sedjiwa.tasks.search.v1.SearchService";
 
 fn uniq() -> String {
@@ -122,7 +127,6 @@ async fn mk_user(store: &Store) -> String {
         .to_string()
 }
 
-#[allow(dead_code)]
 async fn project_with(router: &Router, owner: &str, members: &[&str]) -> String {
     let p = ok(
         router,
@@ -147,6 +151,19 @@ async fn project_with(router: &Router, owner: &str, members: &[&str]) -> String 
 async fn find(router: &Router, tok: &str, q: &str) -> Vec<Value> {
     let v = ok(router, &format!("{SEARCH}/Search"), tok, json!({ "q": q })).await;
     v["results"].as_array().cloned().unwrap_or_default()
+}
+
+async fn module_in(router: &Router, owner_tok: &str, project: &str) -> String {
+    ok(
+        router,
+        &format!("{MODULE}/CreateModule"),
+        owner_tok,
+        json!({ "projectId": project, "name": "M" }),
+    )
+    .await["id"]
+        .as_str()
+        .unwrap()
+        .to_string()
 }
 
 #[tokio::test]
@@ -185,4 +202,65 @@ async fn search_is_guarded_and_quiet_on_an_empty_index() {
         results.is_empty(),
         "search_doc still exists after the injection attempt"
     );
+}
+
+#[tokio::test]
+async fn task_is_indexed_on_create_update_and_delete() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let owner = mk_user(&store).await;
+    let outsider = mk_user(&store).await;
+    let pid = project_with(&router, &owner, &[]).await;
+    let to = token(&owner);
+    let m = module_in(&router, &to, &pid).await;
+
+    let t1 = term();
+    let task = ok(
+        &router,
+        &format!("{TASK}/CreateTask"),
+        &to,
+        json!({
+            "moduleId": m, "title": format!("Perbaiki {t1}"), "description": "<p>catatan</p>"
+        }),
+    )
+    .await["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    let hits = find(&router, &to, &t1).await;
+    assert_eq!(hits.len(), 1, "created task is findable: {hits:?}");
+    assert_eq!(hits[0]["kind"], "TASK");
+    assert_eq!(hits[0]["id"], task);
+    assert_eq!(hits[0]["projectId"], pid);
+
+    let hits = find(&router, &token(&outsider), &t1).await;
+    assert!(hits.is_empty(), "non-member sees nothing: {hits:?}");
+
+    // An admin bypasses the membership filter, matching `list_projects`.
+    let admin_tok = auth::sign_jwt(SECRET, &outsider, &["*".to_string()], 9_999_999_999).unwrap();
+    let hits = find(&router, &admin_tok, &t1).await;
+    assert_eq!(hits.len(), 1, "admin sees every project: {hits:?}");
+
+    let t2 = term();
+    ok(
+        &router,
+        &format!("{TASK}/UpdateTask"),
+        &to,
+        json!({ "id": task, "title": format!("Ganti {t2}") }),
+    )
+    .await;
+    assert_eq!(find(&router, &to, &t2).await.len(), 1, "new title indexed");
+    assert!(find(&router, &to, &t1).await.is_empty(), "old title gone");
+
+    ok(
+        &router,
+        &format!("{TASK}/DeleteTask"),
+        &to,
+        json!({ "id": task }),
+    )
+    .await;
+    assert!(find(&router, &to, &t2).await.is_empty(), "deleted task gone");
 }
