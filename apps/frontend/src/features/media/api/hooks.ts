@@ -44,6 +44,24 @@ export function useDownloadUrl() {
 }
 
 /**
+ * Storage rejects a presigned PUT with an XML body — `<Code>` names the real
+ * cause (InvalidAccessKeyId, SignatureDoesNotMatch, EntityTooLarge…). Without
+ * it the toast only shows a status code and every misconfiguration looks alike.
+ */
+async function storageErrorDetail(res: Response): Promise<string> {
+  let body: string;
+  try {
+    body = await res.text();
+  } catch {
+    return "";
+  }
+  const code = body.match(/<Code>([^<]+)<\/Code>/)?.[1];
+  const message = body.match(/<Message>([^<]+)<\/Message>/)?.[1];
+  if (code || message) return [code, message].filter(Boolean).join(": ");
+  return body.trim().slice(0, 200);
+}
+
+/**
  * Orchestrated upload: reserve a slot + presigned PUT url, upload the bytes
  * straight to storage, then finalize. Refreshes the list on completion.
  */
@@ -67,7 +85,12 @@ export function useUploadFile(projectId: string) {
         headers: { "Content-Type": file.type || "application/octet-stream" },
       });
       if (!put.ok) {
-        throw new Error(`Upload failed (${put.status})`);
+        const detail = await storageErrorDetail(put);
+        throw new Error(
+          detail
+            ? `Upload failed (${put.status}): ${detail}`
+            : `Upload failed (${put.status})`,
+        );
       }
       await complete.mutateAsync({ mediaFileId });
       await invalidateMedia();

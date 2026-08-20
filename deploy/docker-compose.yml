@@ -60,7 +60,11 @@ services:
       - "127.0.0.1:9101:9001"
     networks: [taskmgmt]
 
-  # One-shot: create the tasks-media bucket, then exit.
+  # One-shot: create the tasks-media bucket + its CORS rule, then exit.
+  #
+  # The CORS rule is not optional: media uploads are presigned PUTs the BROWSER
+  # sends straight to rustfs, so they are cross-origin. Without it the preflight
+  # returns no Access-Control-Allow-Origin and every upload fails.
   createbucket:
     image: docker.io/minio/mc:latest
     container_name: taskmgmt-createbucket
@@ -72,7 +76,9 @@ services:
         echo 'waiting for rustfs...'; sleep 2;
       done;
       mc mb --ignore-existing fs/tasks-media;
-      echo 'bucket tasks-media ready';
+      printf '%s' '<CORSConfiguration><CORSRule><AllowedOrigin>http://localhost:3011</AllowedOrigin><AllowedOrigin>http://127.0.0.1:3011</AllowedOrigin><AllowedOrigin>http://${HOST_LAN_IP:-192.168.33.111}:3011</AllowedOrigin><AllowedMethod>PUT</AllowedMethod><AllowedMethod>GET</AllowedMethod><AllowedMethod>HEAD</AllowedMethod><AllowedHeader>*</AllowedHeader><ExposeHeader>ETag</ExposeHeader><MaxAgeSeconds>3000</MaxAgeSeconds></CORSRule></CORSConfiguration>' > /tmp/cors.xml;
+      mc cors set fs/tasks-media /tmp/cors.xml;
+      echo 'bucket tasks-media ready (CORS applied)';
       "
     restart: "no"
     networks: [taskmgmt]

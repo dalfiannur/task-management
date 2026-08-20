@@ -60,6 +60,15 @@ your machine's IP differs, set it:
 HOST_LAN_IP=192.168.x.y podman-compose up -d --build
 ```
 
-Cross-origin browser uploads to rustfs may require bucket CORS on rustfs; the core
+Those uploads are cross-origin (SPA on `:3011` → rustfs on `:9100`), so the
+`createbucket` one-shot also writes a bucket CORS rule allowing the three SPA
+origins. Without it the preflight comes back with no `Access-Control-Allow-Origin`
+and uploads fail before any bytes move. Change `HOST_LAN_IP` and the rule follows,
+but re-run `podman-compose up createbucket` so it is re-applied. The rest of the
 app (auth, projects, tasks, comments, notifications, etc.) is same-origin through
 nginx and unaffected.
+
+For local dev — SPA on `:3001`, backend on the host, rustfs shared with the wider
+sedjiwa stack — the equivalent step is `apps/backend-rs/scripts/setup-s3-cors.sh`,
+and `S3_ACCESS_KEY`/`S3_SECRET_KEY` in `apps/backend-rs/.env` must match that
+rustfs (`rustfsadmin`), not the `minioadmin` default.
