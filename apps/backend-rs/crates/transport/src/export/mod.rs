@@ -1,6 +1,7 @@
 //! Export: taking a project out of the app.
 //! See docs/superpowers/specs/2026-08-20-project-export-design.md.
 
+mod csv;
 mod model;
 
 use std::sync::Arc;
