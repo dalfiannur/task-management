@@ -8,7 +8,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useExportTasksCsv, downloadText } from "../api/hooks";
+import { downloadCsv } from "@/lib/download";
+import { useExportTasksCsv } from "../api/hooks";
+
+/**
+ * CSV shape: a header line, then one line per task, then a trailing newline.
+ * Splitting on "\n" over-counts by two — the header line and the empty
+ * string after the final newline — so subtract both to get the row count.
+ */
+function countDataRows(csv: string): number {
+  return csv.split("\n").length - 2;
+}
 
 export function ExportDialog({
   projectId,
@@ -25,8 +35,15 @@ export function ExportDialog({
     csv.mutate(
       { projectId },
       {
-        onSuccess: (res) =>
-          downloadText(res.fileName, res.csv, "text/csv;charset=utf-8"),
+        onSuccess: (res) => {
+          downloadCsv(res.fileName, res.csv);
+          const count = countDataRows(res.csv);
+          toast.success(
+            count === 0
+              ? "Nothing to export — the file only has column headers."
+              : `${count} ${count === 1 ? "task" : "tasks"} exported.`,
+          );
+        },
         onError: (err) => toast.error(err.message || "Export failed"),
       },
     );
@@ -42,7 +59,7 @@ export function ExportDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
-          <div className="flex items-center justify-between gap-4 rounded-md border border-border p-3">
+          <div className="flex items-center justify-between gap-4 rounded-lg border border-border-subtle p-3">
             <div>
               <p className="text-sm font-medium">Task list (.csv)</p>
               <p className="text-sm text-text-muted">
