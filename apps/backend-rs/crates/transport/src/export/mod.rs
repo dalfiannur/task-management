@@ -2,6 +2,7 @@
 //! See docs/superpowers/specs/2026-08-20-project-export-design.md.
 
 mod csv;
+mod gather;
 mod model;
 
 use std::sync::Arc;
