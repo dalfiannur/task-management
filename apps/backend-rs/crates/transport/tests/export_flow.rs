@@ -108,11 +108,11 @@ async fn csv_export_is_owner_gated_and_carries_task_rows() {
 
     // Member is refused: export is a consequential operation, not a read.
     let (st, _) = call(&router, &format!("{EXPORT}/ExportTasksCsv"), Some(&tm), json!({ "projectId": project })).await;
-    assert_ne!(st, StatusCode::OK, "member must not export");
+    assert_eq!(st, StatusCode::FORBIDDEN, "member must not export");
 
     // No token at all is refused.
     let (st, _) = call(&router, &format!("{EXPORT}/ExportTasksCsv"), None, json!({ "projectId": project })).await;
-    assert_ne!(st, StatusCode::OK, "anonymous must not export");
+    assert_eq!(st, StatusCode::UNAUTHORIZED, "anonymous must not export");
 
     // Owner gets a CSV whose rows carry names, with the title properly quoted.
     let out = ok(&router, &format!("{EXPORT}/ExportTasksCsv"), &to, json!({ "projectId": project })).await;
@@ -136,8 +136,8 @@ async fn csv_export_of_a_foreign_project_is_not_found_or_denied() {
         .as_str().unwrap().to_string();
 
     let (st, _) = call(&router, &format!("{EXPORT}/ExportTasksCsv"), Some(&token(&outsider)), json!({ "projectId": project })).await;
-    assert_ne!(st, StatusCode::OK, "a stranger must not export");
+    assert_eq!(st, StatusCode::FORBIDDEN, "a stranger must not export");
 
     let (st, _) = call(&router, &format!("{EXPORT}/ExportTasksCsv"), Some(&token(&owner)), json!({ "projectId": "999999999" })).await;
-    assert_ne!(st, StatusCode::OK, "unknown project is refused, not empty-exported");
+    assert_eq!(st, StatusCode::NOT_FOUND, "unknown project is refused, not empty-exported");
 }
