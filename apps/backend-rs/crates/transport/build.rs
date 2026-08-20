@@ -14,6 +14,7 @@ fn main() {
             "../../proto/activity.proto",
             "../../proto/dashboard.proto",
             "../../proto/search.proto",
+            "../../proto/export.proto",
         ],
         &["../../proto"],
     )
@@ -32,4 +33,5 @@ fn main() {
     println!("cargo:rerun-if-changed=../../proto/activity.proto");
     println!("cargo:rerun-if-changed=../../proto/dashboard.proto");
     println!("cargo:rerun-if-changed=../../proto/search.proto");
+    println!("cargo:rerun-if-changed=../../proto/export.proto");
 }
