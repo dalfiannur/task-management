@@ -3,7 +3,7 @@
 //! Deferred: retention/cleanup (§7).
 
 mod activity_service;
-mod record;
+pub(crate) mod record;
 mod recorder;
 
 pub use activity_service::activity_router;
