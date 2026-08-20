@@ -135,4 +135,42 @@ mod tests {
         assert!(row.starts_with("102,,Yatim,"), "unknown module → empty: {row}");
         assert!(!row.contains("999"), "unresolved user id must not leak: {row}");
     }
+
+    #[test]
+    fn zero_assignees_and_zero_labels_render_empty_columns_not_missing_ones() {
+        // Unassigned, unlabeled is the ordinary case in this app, not an edge
+        // case — pin that names() returning "" leaves the row's shape intact.
+        let mut t = task("103", "Solo task");
+        t.assignee_ids = vec![];
+        t.label_ids = vec![];
+        let out = tasks_csv(&snapshot(vec![t]));
+        let row = out.lines().nth(1).unwrap();
+        // No commas/quotes/newlines anywhere in this task's fields, so a plain
+        // split(',') validly counts columns here.
+        let fields: Vec<&str> = row.split(',').collect();
+        assert_eq!(fields[5], "", "assignees column empty: {row}");
+        assert_eq!(fields[6], "", "labels column empty: {row}");
+        assert_eq!(
+            fields.len(),
+            CSV_HEADER.split(',').count(),
+            "row still has one field per header column: {row}"
+        );
+    }
+
+    #[test]
+    fn header_and_row_have_the_same_number_of_columns() {
+        // This task's field values contain no commas, quotes, or newlines, so
+        // splitting the header and the row on ',' is a valid way to count their
+        // columns here — unlike the quoting tests above, which deliberately
+        // embed commas/quotes/newlines in a field and so cannot be counted this
+        // way. If this count disagrees, CSV_HEADER and the `cells` array in
+        // tasks_csv have drifted out of sync.
+        let out = tasks_csv(&snapshot(vec![task("104", "Plain title")]));
+        let mut lines = out.lines();
+        let header = lines.next().unwrap();
+        let row = lines.next().unwrap();
+        let header_cols = header.split(',').count();
+        let row_cols = row.split(',').count();
+        assert_eq!(header_cols, row_cols, "header: {header} vs row: {row}");
+    }
 }
