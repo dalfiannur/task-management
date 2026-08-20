@@ -18,6 +18,7 @@ include!(concat!(env!("OUT_DIR"), "/generated.rs"));
 mod activity;
 mod comments;
 mod dashboard;
+mod export;
 mod labels;
 mod media;
 mod notifications;
