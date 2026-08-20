@@ -11,15 +11,6 @@ import {
 import { downloadCsv } from "@/lib/download";
 import { useExportTasksCsv } from "../api/hooks";
 
-/**
- * CSV shape: a header line, then one line per task, then a trailing newline.
- * Splitting on "\n" over-counts by two — the header line and the empty
- * string after the final newline — so subtract both to get the row count.
- */
-function countDataRows(csv: string): number {
-  return csv.split("\n").length - 2;
-}
-
 export function ExportDialog({
   projectId,
   open,
@@ -37,7 +28,7 @@ export function ExportDialog({
       {
         onSuccess: (res) => {
           downloadCsv(res.fileName, res.csv);
-          const count = countDataRows(res.csv);
+          const count = res.taskCount;
           toast.success(
             count === 0
               ? "Nothing to export — the file only has column headers."

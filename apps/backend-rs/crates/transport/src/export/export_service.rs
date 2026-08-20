@@ -25,9 +25,11 @@ async fn export_tasks_csv(
     require_owner_or_admin(&auth, &project)?;
 
     let snapshot = gather(&store, &r.project_id).await.map_err(internal)?;
+    let task_count = snapshot.tasks.len() as i32;
     Ok(ConnectResponse::new(pb::ExportTasksCsvResponse {
         csv: tasks_csv(&snapshot),
         file_name: format!("{}-tasks.csv", file_slug(&project.name)),
+        task_count,
     }))
 }
 

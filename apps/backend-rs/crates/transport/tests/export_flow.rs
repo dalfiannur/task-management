@@ -129,6 +129,7 @@ async fn csv_export_is_owner_gated_and_carries_task_rows() {
     assert!(csv.contains("Persiapan"), "module by name: {csv}");
     assert!(csv.contains("Budi"), "assignee by name: {csv}");
     assert!(csv.contains(&label_name), "label by name, not silently dropped by gather: {csv}");
+    assert_eq!(out["taskCount"].as_i64().unwrap(), 1, "task_count matches the one task created: {out}");
 }
 
 #[tokio::test]

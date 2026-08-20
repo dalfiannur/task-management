@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file export.proto.
  */
 export const file_export: GenFile = /*@__PURE__*/
-  fileDesc("CgxleHBvcnQucHJvdG8SF3NlZGppd2EudGFza3MuZXhwb3J0LnYxIisKFUV4cG9ydFRhc2tzQ3N2UmVxdWVzdBISCgpwcm9qZWN0X2lkGAEgASgJIjgKFkV4cG9ydFRhc2tzQ3N2UmVzcG9uc2USCwoDY3N2GAEgASgJEhEKCWZpbGVfbmFtZRgCIAEoCTKCAQoNRXhwb3J0U2VydmljZRJxCg5FeHBvcnRUYXNrc0NzdhIuLnNlZGppd2EudGFza3MuZXhwb3J0LnYxLkV4cG9ydFRhc2tzQ3N2UmVxdWVzdBovLnNlZGppd2EudGFza3MuZXhwb3J0LnYxLkV4cG9ydFRhc2tzQ3N2UmVzcG9uc2ViBnByb3RvMw");
+  fileDesc("CgxleHBvcnQucHJvdG8SF3NlZGppd2EudGFza3MuZXhwb3J0LnYxIisKFUV4cG9ydFRhc2tzQ3N2UmVxdWVzdBISCgpwcm9qZWN0X2lkGAEgASgJIkwKFkV4cG9ydFRhc2tzQ3N2UmVzcG9uc2USCwoDY3N2GAEgASgJEhEKCWZpbGVfbmFtZRgCIAEoCRISCgp0YXNrX2NvdW50GAMgASgFMoIBCg1FeHBvcnRTZXJ2aWNlEnEKDkV4cG9ydFRhc2tzQ3N2Ei4uc2Vkaml3YS50YXNrcy5leHBvcnQudjEuRXhwb3J0VGFza3NDc3ZSZXF1ZXN0Gi8uc2Vkaml3YS50YXNrcy5leHBvcnQudjEuRXhwb3J0VGFza3NDc3ZSZXNwb25zZWIGcHJvdG8z");
 
 /**
  * @generated from message sedjiwa.tasks.export.v1.ExportTasksCsvRequest
@@ -42,6 +42,14 @@ export type ExportTasksCsvResponse = Message<"sedjiwa.tasks.export.v1.ExportTask
    * @generated from field: string file_name = 2;
    */
   fileName: string;
+
+  /**
+   * How many task rows the CSV carries. Counted at the source: deriving it in
+   * the client means parsing quoted fields that may contain newlines.
+   *
+   * @generated from field: int32 task_count = 3;
+   */
+  taskCount: number;
 };
 
 /**

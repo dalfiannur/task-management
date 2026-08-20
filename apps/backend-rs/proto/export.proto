@@ -12,4 +12,7 @@ message ExportTasksCsvRequest { string project_id = 1; }
 message ExportTasksCsvResponse {
   string csv = 1;
   string file_name = 2;
+  // How many task rows the CSV carries. Counted at the source: deriving it in
+  // the client means parsing quoted fields that may contain newlines.
+  int32 task_count = 3;
 }
