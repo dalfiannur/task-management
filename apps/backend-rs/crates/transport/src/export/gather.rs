@@ -1,7 +1,13 @@
 //! Store → ProjectSnapshot. Project, members, modules, tasks and activity reuse
-//! the tested project-scoped loaders other services already call — one place
-//! reads components, this module owns the export shape. Labels, comments, pages
-//! and media stay as inline queries (see the notes at each block for why).
+//! the tested project-scoped loaders other services already call. Labels,
+//! comments, pages, media (and its task links), and users stay as inline
+//! `store.query` calls — their record modules are private, or (comments) a
+//! per-task loader would turn one pass into N+1 — but each is now given the SQL
+//! predicate its indexed column already supports, following `activity_for_project`
+//! exactly: `predicate` is interpolated as raw SQL and never bound, so only a
+//! validated integer goes in, and an id that fails to parse is dropped rather
+//! than passed through (matching the old Rust-side comparison, which matched
+//! nothing for a non-numeric id either).
 
 use std::collections::{HashMap, HashSet};
 
@@ -99,38 +105,47 @@ pub(crate) async fn gather(store: &Store, project_id: &str) -> anyhow::Result<Pr
     let task_ids: HashSet<String> = tasks.iter().map(|t| t.id.clone()).collect();
 
     // --- labels (inline: LabelService's record module is private and this is
-    // its only cross-module consumer) ---------------------------------------
+    // its only cross-module consumer) — filtered in SQL via LabelInfo's indexed
+    // `project_id` column, same as `activity_for_project`. ---------------------
+    let pred = format!("project_id = '{pid}'");
     let mut labels = store
-        .query::<LabelInfo, LabelOut>(None, {
-            let pj = project_id.to_string();
-            move |w, pairs| {
-                pairs
-                    .iter()
-                    .filter_map(|(p, e)| {
-                        let l = w.get::<LabelInfo>(*e)?;
-                        (l.project_id == pj).then(|| LabelOut {
-                            id: p.to_string(),
-                            name: l.name.clone(),
-                            color: l.color.clone(),
-                        })
+        .query::<LabelInfo, LabelOut>(Some(&pred), |w, pairs| {
+            pairs
+                .iter()
+                .filter_map(|(p, e)| {
+                    let l = w.get::<LabelInfo>(*e)?;
+                    Some(LabelOut {
+                        id: p.to_string(),
+                        name: l.name.clone(),
+                        color: l.color.clone(),
                     })
-                    .collect()
-            }
+                })
+                .collect()
         })
         .await?;
     labels.sort_by(|a, b| a.name.cmp(&b.name).then(a.id.cmp(&b.id)));
 
     // --- comments (inline: `comments_for_task` is per-task, and looping it over
-    // every task would be N+1 against this one filtered pass) -----------------
-    let mut comments = store
-        .query::<CommentInfo, CommentOut>(None, {
-            let ids = task_ids.clone();
-            move |w, pairs| {
+    // every task would be N+1 against this one filtered pass) — filtered in SQL
+    // via CommentInfo's indexed `task_id` column, over this project's task ids.
+    // An empty id list would make `IN ()`, a syntax error, so a project with no
+    // tasks skips the query and returns no comments directly. -----------------
+    let comment_task_ids: Vec<String> = task_ids
+        .iter()
+        .filter_map(|id| id.parse::<i64>().ok())
+        .map(|n| format!("'{n}'"))
+        .collect();
+    let mut comments: Vec<CommentOut> = if comment_task_ids.is_empty() {
+        Vec::new()
+    } else {
+        let pred = format!("task_id IN ({})", comment_task_ids.join(", "));
+        store
+            .query::<CommentInfo, CommentOut>(Some(&pred), |w, pairs| {
                 pairs
                     .iter()
                     .filter_map(|(p, e)| {
                         let c = w.get::<CommentInfo>(*e)?;
-                        ids.contains(&c.task_id).then(|| CommentOut {
+                        Some(CommentOut {
                             id: p.to_string(),
                             task_id: c.task_id.clone(),
                             author_id: c.author_id.clone(),
@@ -141,9 +156,9 @@ pub(crate) async fn gather(store: &Store, project_id: &str) -> anyhow::Result<Pr
                         })
                     })
                     .collect()
-            }
-        })
-        .await?;
+            })
+            .await?
+    };
     comments.sort_by(|a, b| a.created_at.cmp(&b.created_at).then(a.id.cmp(&b.id)));
 
     // --- pages (inline, deliberately: `pages::record::read_page` treats
@@ -151,33 +166,29 @@ pub(crate) async fn gather(store: &Store, project_id: &str) -> anyhow::Result<Pr
     // export, a page with blank "created by"/"last edited by" is a better
     // outcome than a page silently vanishing from the archive, so this block
     // treats the audit component as optional and fills defaults instead of
-    // reusing that stricter reader.) -----------------------------------------
+    // reusing that stricter reader. Filtered in SQL via PageInfo's indexed
+    // `project_id` column.) ---------------------------------------------------
+    let pred = format!("project_id = '{pid}'");
     let mut pages = store
-        .query::<PageInfo, PageOut>(None, {
-            let pj = project_id.to_string();
-            move |w, pairs| {
-                pairs
-                    .iter()
-                    .filter_map(|(p, e)| {
-                        let pg = w.get::<PageInfo>(*e)?;
-                        if pg.project_id != pj {
-                            return None;
-                        }
-                        let a = w.get::<PageAudit>(*e);
-                        Some(PageOut {
-                            id: p.to_string(),
-                            title: pg.title.clone(),
-                            icon: pg.icon.clone(),
-                            content: pg.content.clone(),
-                            sort_order: pg.sort_order,
-                            created_by: a.map(|a| a.created_by.clone()).unwrap_or_default(),
-                            last_edited_by: a.map(|a| a.last_edited_by.clone()).unwrap_or_default(),
-                            created_at: a.map(|a| a.created_at.clone()).unwrap_or_default(),
-                            updated_at: a.map(|a| a.updated_at.clone()).unwrap_or_default(),
-                        })
+        .query::<PageInfo, PageOut>(Some(&pred), |w, pairs| {
+            pairs
+                .iter()
+                .filter_map(|(p, e)| {
+                    let pg = w.get::<PageInfo>(*e)?;
+                    let a = w.get::<PageAudit>(*e);
+                    Some(PageOut {
+                        id: p.to_string(),
+                        title: pg.title.clone(),
+                        icon: pg.icon.clone(),
+                        content: pg.content.clone(),
+                        sort_order: pg.sort_order,
+                        created_by: a.map(|a| a.created_by.clone()).unwrap_or_default(),
+                        last_edited_by: a.map(|a| a.last_edited_by.clone()).unwrap_or_default(),
+                        created_at: a.map(|a| a.created_at.clone()).unwrap_or_default(),
+                        updated_at: a.map(|a| a.updated_at.clone()).unwrap_or_default(),
                     })
-                    .collect()
-            }
+                })
+                .collect()
         })
         .await?;
     pages.sort_by(|a, b| a.sort_order.cmp(&b.sort_order).then(a.id.cmp(&b.id)));
@@ -202,18 +213,18 @@ pub(crate) async fn gather(store: &Store, project_id: &str) -> anyhow::Result<Pr
     activity.sort_by(|a, b| a.created_at.cmp(&b.created_at).then(a.id.cmp(&b.id)));
 
     // --- media (ready only, with their task links; inline: MediaService's
-    // record module is private and this is its only cross-module consumer) ---
+    // record module is private and this is its only cross-module consumer).
+    // Both queries below filter in SQL via the indexed `project_id` column on
+    // TaskMediaLinkData and MediaFileInfo respectively. `status == "ready"`
+    // stays a Rust-side filter — it isn't indexed. -----------------------------
+    let pred = format!("project_id = '{pid}'");
     let links = store
-        .query::<TaskMediaLinkData, (String, String)>(None, {
-            let pj = project_id.to_string();
-            move |w, pairs| {
-                pairs
-                    .iter()
-                    .filter_map(|(_, e)| w.get::<TaskMediaLinkData>(*e))
-                    .filter(|l| l.project_id == pj)
-                    .map(|l| (l.media_file_id.clone(), l.task_id.clone()))
-                    .collect()
-            }
+        .query::<TaskMediaLinkData, (String, String)>(Some(&pred), |w, pairs| {
+            pairs
+                .iter()
+                .filter_map(|(_, e)| w.get::<TaskMediaLinkData>(*e))
+                .map(|l| (l.media_file_id.clone(), l.task_id.clone()))
+                .collect()
         })
         .await?;
     let mut links_by_media: HashMap<String, Vec<String>> = HashMap::new();
@@ -222,26 +233,23 @@ pub(crate) async fn gather(store: &Store, project_id: &str) -> anyhow::Result<Pr
     }
 
     let mut media = store
-        .query::<MediaFileInfo, MediaOut>(None, {
-            let pj = project_id.to_string();
-            move |w, pairs| {
-                pairs
-                    .iter()
-                    .filter_map(|(p, e)| {
-                        let m = w.get::<MediaFileInfo>(*e)?;
-                        (m.project_id == pj && m.status == "ready").then(|| MediaOut {
-                            id: p.to_string(),
-                            file_name: m.original_file_name.clone(),
-                            mime_type: m.mime_type.clone(),
-                            size: m.size,
-                            uploaded_by: m.uploaded_by.clone(),
-                            created_at: m.created_at.clone(),
-                            task_ids: vec![],
-                            storage_key: m.storage_key.clone(),
-                        })
+        .query::<MediaFileInfo, MediaOut>(Some(&pred), |w, pairs| {
+            pairs
+                .iter()
+                .filter_map(|(p, e)| {
+                    let m = w.get::<MediaFileInfo>(*e)?;
+                    (m.status == "ready").then(|| MediaOut {
+                        id: p.to_string(),
+                        file_name: m.original_file_name.clone(),
+                        mime_type: m.mime_type.clone(),
+                        size: m.size,
+                        uploaded_by: m.uploaded_by.clone(),
+                        created_at: m.created_at.clone(),
+                        task_ids: vec![],
+                        storage_key: m.storage_key.clone(),
                     })
-                    .collect()
-            }
+                })
+                .collect()
         })
         .await?;
     for m in &mut media {
@@ -258,6 +266,7 @@ pub(crate) async fn gather(store: &Store, project_id: &str) -> anyhow::Result<Pr
     }
     for c in &comments {
         referenced.insert(c.author_id.clone());
+        referenced.extend(c.mentioned_user_ids.iter().cloned());
     }
     for p in &pages {
         referenced.insert(p.created_by.clone());
@@ -271,24 +280,37 @@ pub(crate) async fn gather(store: &Store, project_id: &str) -> anyhow::Result<Pr
     }
     referenced.remove("");
 
-    let mut users = store
-        .query::<UserProfile, UserOut>(None, move |w, pairs| {
-            pairs
-                .iter()
-                .filter_map(|(p, e)| {
-                    let id = p.to_string();
-                    if !referenced.contains(&id) {
-                        return None;
-                    }
-                    // Id and name only. No phone, no email — the PII decision.
-                    Some(UserOut {
-                        id,
-                        name: w.get::<UserProfile>(*e)?.display_name.clone(),
+    // Filtered in SQL via `pid IN (...)` over the referenced-id set, rather than
+    // hydrating every user in the deployment — this query was previously the
+    // worst offender here because it wasn't project-scoped at all. `pid` is the
+    // entity's own bigint primary key (as in `load_project`'s `pid = {pid}`), so
+    // the list is unquoted, unlike the text `project_id`/`task_id` columns above.
+    // An empty referenced set would make `IN ()`, a syntax error, so that case
+    // skips the query and returns no users directly.
+    let user_pids: Vec<String> = referenced
+        .iter()
+        .filter_map(|id| id.parse::<i64>().ok())
+        .map(|n| n.to_string())
+        .collect();
+    let mut users: Vec<UserOut> = if user_pids.is_empty() {
+        Vec::new()
+    } else {
+        let pred = format!("pid IN ({})", user_pids.join(", "));
+        store
+            .query::<UserProfile, UserOut>(Some(&pred), |w, pairs| {
+                pairs
+                    .iter()
+                    .filter_map(|(p, e)| {
+                        // Id and name only. No phone, no email — the PII decision.
+                        Some(UserOut {
+                            id: p.to_string(),
+                            name: w.get::<UserProfile>(*e)?.display_name.clone(),
+                        })
                     })
-                })
-                .collect()
-        })
-        .await?;
+                    .collect()
+            })
+            .await?
+    };
     users.sort_by(|a, b| a.id.cmp(&b.id));
 
     Ok(ProjectSnapshot {
