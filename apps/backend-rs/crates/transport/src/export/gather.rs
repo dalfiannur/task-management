@@ -46,7 +46,7 @@ pub(crate) async fn gather(store: &Store, project_id: &str) -> anyhow::Result<Pr
     project.member_ids = project_member_ids(store, project_id).await?;
 
     // --- modules ---------------------------------------------------------------
-    let modules: Vec<ModuleOut> = modules_for_project(store, project_id)
+    let mut modules: Vec<ModuleOut> = modules_for_project(store, project_id)
         .await?
         .into_iter()
         .map(|m| ModuleOut {
@@ -56,6 +56,7 @@ pub(crate) async fn gather(store: &Store, project_id: &str) -> anyhow::Result<Pr
             sort_order: m.order,
         })
         .collect();
+    modules.sort_by(|a, b| a.sort_order.cmp(&b.sort_order).then(a.id.cmp(&b.id)));
     // Tasks don't carry a project id — `TaskInfo` only carries `module_id` — so
     // the task query below filters against this project's module ids instead.
     let module_ids: HashSet<String> = modules.iter().map(|m| m.id.clone()).collect();
