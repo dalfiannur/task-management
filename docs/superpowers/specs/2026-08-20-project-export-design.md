@@ -317,8 +317,12 @@ URL lives one hour and can be reissued while the job is `ready`.
 
 ### Notifications
 
-`NotificationType` gains `EXPORT_READY = 6` and `EXPORT_FAILED = 7`;
-`Notification` gains `optional string export_id = 10`.
+`NotificationType` gains `EXPORT_READY = 6` and `EXPORT_FAILED = 7`. The
+notification points at the **project**, not the job: `NotificationRefs` is a
+persisted Arke component, and adding a field to it means migrating a live
+component table for a link the project id already provides — the dialog lists the
+jobs once you are there. Kind is stored as a string, so the two new types need no
+migration at all.
 
 **A trap in the existing helper:** `emit()` returns early when
 `recipient_id == actor_id`, because every notification until now was raised by
