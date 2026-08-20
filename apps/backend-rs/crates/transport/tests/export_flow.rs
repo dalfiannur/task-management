@@ -21,6 +21,7 @@ const PROJECT: &str = "/sedjiwa.tasks.project.v1.ProjectService";
 const MODULE: &str = "/sedjiwa.tasks.work.v1.ModuleService";
 const TASK: &str = "/sedjiwa.tasks.work.v1.TaskService";
 const EXPORT: &str = "/sedjiwa.tasks.export.v1.ExportService";
+const LABEL: &str = "/sedjiwa.tasks.label.v1.LabelService";
 
 fn uniq() -> String {
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -47,6 +48,7 @@ async fn setup() -> Option<(Router, Arc<Store>)> {
     let router = transport::project_router(store.clone())
         .merge(transport::module_router(store.clone()))
         .merge(transport::task_router(store.clone()))
+        .merge(transport::label_router(store.clone()))
         .merge(transport::export_router(store.clone()))
         .layer(from_fn(auth_mw));
     Some((router, store))
@@ -103,8 +105,12 @@ async fn csv_export_is_owner_gated_and_carries_task_rows() {
     ok(&router, &format!("{PROJECT}/AddProjectMember"), &to, json!({ "projectId": project, "userId": member })).await;
     let module = ok(&router, &format!("{MODULE}/CreateModule"), &to, json!({ "projectId": project, "name": "Persiapan" })).await["id"]
         .as_str().unwrap().to_string();
+    let label_name = format!("Genting-{}", uniq());
+    let label = ok(&router, &format!("{LABEL}/CreateLabel"), &to,
+        json!({ "projectId": project, "name": label_name, "color": "#ff0000" })).await["id"]
+        .as_str().unwrap().to_string();
     ok(&router, &format!("{TASK}/CreateTask"), &to,
-        json!({ "moduleId": module, "title": "Beli \"paku\", semen", "assigneeIds": [member] })).await;
+        json!({ "moduleId": module, "title": "Beli \"paku\", semen", "assigneeIds": [member], "labelIds": [label] })).await;
 
     // Member is refused: export is a consequential operation, not a read.
     let (st, _) = call(&router, &format!("{EXPORT}/ExportTasksCsv"), Some(&tm), json!({ "projectId": project })).await;
@@ -122,6 +128,7 @@ async fn csv_export_is_owner_gated_and_carries_task_rows() {
     assert!(csv.contains("\"Beli \"\"paku\"\", semen\""), "title quoted: {csv}");
     assert!(csv.contains("Persiapan"), "module by name: {csv}");
     assert!(csv.contains("Budi"), "assignee by name: {csv}");
+    assert!(csv.contains(&label_name), "label by name, not silently dropped by gather: {csv}");
 }
 
 #[tokio::test]
