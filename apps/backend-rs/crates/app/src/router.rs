@@ -52,6 +52,7 @@ pub fn build_router(
         .merge(transport::dashboard_router(store.clone()))
         .merge(transport::mytasks_router(store.clone()))
         .merge(transport::search_router(store.clone()))
+        .merge(transport::export_router(store.clone()))
         .merge(transport::notification_router(store, notifier.clone()))
         // Innermost: protocol detection + Connect Context (required for
         // server-streaming, e.g. StreamNotifications; unary otherwise falls

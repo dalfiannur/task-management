@@ -2,8 +2,11 @@
 //! See docs/superpowers/specs/2026-08-20-project-export-design.md.
 
 mod csv;
+mod export_service;
 mod gather;
 mod model;
+
+pub use export_service::export_router;
 
 use std::sync::Arc;
 

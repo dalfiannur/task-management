@@ -30,6 +30,7 @@ mod work;
 pub use activity::activity_router;
 pub use dashboard::{dashboard_router, mytasks_router};
 pub use comments::comment_router;
+pub use export::export_router;
 pub use labels::label_router;
 pub use notifications::{notification_router, Notifier};
 pub use media::media_router;
