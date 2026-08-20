@@ -25,6 +25,7 @@ import {
 import { getInitials } from "@/lib/utils";
 import { currentUserAtom, isAdminAtom } from "@/features/auth";
 import { useUserMap } from "@/features/users";
+import { ExportDialog } from "@/features/exports";
 import type { Project, ProjectStatus } from "../types";
 import { PROJECT_STATUSES, STATUS_LABEL } from "../types";
 import { useSetProjectStatus, useDeleteProject } from "../api/hooks";
@@ -40,6 +41,7 @@ export function ProjectDetailHeader({ project }: { project: Project }) {
   const setStatus = useSetProjectStatus();
   const del = useDeleteProject();
   const [transferOpen, setTransferOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
 
   const canManage = isAdmin || project.ownerId === me?.id;
   const owner = ownerMap[project.ownerId];
@@ -121,6 +123,14 @@ export function ProjectDetailHeader({ project }: { project: Project }) {
             Transfer
           </Button>
 
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setExportOpen(true)}
+          >
+            Export
+          </Button>
+
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="outline" size="sm">
@@ -147,6 +157,12 @@ export function ProjectDetailHeader({ project }: { project: Project }) {
             currentOwnerId={project.ownerId}
             open={transferOpen}
             onOpenChange={setTransferOpen}
+          />
+
+          <ExportDialog
+            projectId={project.id}
+            open={exportOpen}
+            onOpenChange={setExportOpen}
           />
         </div>
       )}
