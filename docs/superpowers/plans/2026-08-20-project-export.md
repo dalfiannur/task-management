@@ -24,6 +24,8 @@ Three facts that will otherwise cost you an hour each:
 
 1. `Store::query::<T, R>(predicate, map)` selects entities by component `T`'s table but materializes **all** their components, so the `map` closure can read other components off the same `World`. See `projects/record.rs::read_project`.
 2. There is no project-wide `WHERE` for most components. Existing code (`labels_for_project`) queries all rows and filters in the closure. Follow that; do not invent SQL.
+4. **Every `assert_ne!(st, StatusCode::OK)` in this plan's test code is too weak — replace it.** That assertion is satisfied by a 500, so a test written that way passes when the handler crashes instead of refusing, and cannot tell authorization from a bug. This was proven by mutation during Task 6: swapping `permission_denied` for `internal` inside the guard left both tests green. Assert the exact status instead — `assert_eq!(st, StatusCode::FORBIDDEN, "…")` for permission-denied, and likewise for unauthenticated and not-found — determining each status empirically rather than assuming it. `crates/transport/tests/dashboard_flow.rs:248` is the pattern to copy. Most existing flow tests in this repo use the weak form; do not take that as licence.
+
 3. `sqlx` here is built **without** the `time`/`chrono` features. Timestamps in the new table are `text` holding RFC3339 UTC strings — which is also what every domain component already stores, and which compares correctly with `<=` for the expiry sweep.
 
 ## File structure
