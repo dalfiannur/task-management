@@ -239,8 +239,11 @@ returns the running job rather than queueing another.
 
 ### Project deletion
 
-`DeleteProject` already cascades through modules, tasks, media and the search
-index. Export must join that cascade, in two parts:
+`DeleteProject` deletes the project entity, its membership rows, and its search
+documents. It does **not** cascade to modules, tasks or media — the handler says
+so itself ("Module/task cascade is handled by later flows"). So export is not
+joining an existing cascade; it is adding a second targeted cleanup next to
+`deindex_project`, in two parts:
 
 - Rows in `export_job` for the project are deleted, and any archive object still
   in S3 is deleted with them. An archive is a copy of a project that was asked to
@@ -290,9 +293,15 @@ table.
 
 ### Storage trait
 
+Storage is `rust-s3` (crate `s3` 0.35), not the AWS SDK, so there is no
+`ByteStream` to hand around. Both methods are file-shaped, which also makes them
+trivial to fake:
+
 ```rust
-async fn get_stream(&self, key: &str) -> Result<ByteStream>;
-async fn put_file(&self, key: &str, path: &Path, mime: &str) -> Result<u64>;
+/// Download `key` into a local file; `None` if the object is missing.
+async fn get_to_file(&self, key: &str, dest: &Path) -> Result<Option<u64>>;
+/// Upload a local file as `key`; returns bytes uploaded.
+async fn put_file(&self, key: &str, src: &Path, mime: &str) -> Result<u64>;
 ```
 
 ### Authorization
@@ -310,6 +319,13 @@ URL lives one hour and can be reissued while the job is `ready`.
 
 `NotificationType` gains `EXPORT_READY = 6` and `EXPORT_FAILED = 7`;
 `Notification` gains `optional string export_id = 10`.
+
+**A trap in the existing helper:** `emit()` returns early when
+`recipient_id == actor_id`, because every notification until now was raised by
+someone else's action. An export is the one case where the two are the same
+person, so the worker emits with an empty actor id (a system event) rather than
+the requester's — otherwise the notification is silently dropped and the feature
+appears to work everywhere except where it matters.
 
 The recipient is **the requester only**, not the project. An export is that
 person's errand; broadcasting it turns the notification panel into noise. Since
