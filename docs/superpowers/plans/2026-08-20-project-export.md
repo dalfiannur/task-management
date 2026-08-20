@@ -2740,6 +2740,11 @@ git commit -m "feat(export): expire a deleted project's archives for the sweep"
 
 ## Task 15: Flow test — the archive path end to end
 
+**Added after Task 6's review — this task must also prove the snapshot's unseen sections.** `gather.rs` has no unit tests, and the Phase 1 flow test only reaches tasks, modules and labels, because those are the only sections that appear in the CSV. Comments, pages, activity and media are collected by `gather` and surface only in `export.json` — so a silent bug in any of those four queries would empty a section of every archive without failing a single test in the repo.
+
+Therefore one of this task's tests must create a comment, a page, an activity record (any mutation produces one) and a media file, build an archive, unpack it, and assert each appears in `export.json`. Assert on content, not just on the key being present: an empty array satisfies `v["comments"].is_array()`.
+
+
 **Files:**
 - Modify: `apps/backend-rs/crates/transport/tests/export_flow.rs`
 
@@ -3146,7 +3151,9 @@ git commit -m "docs(deploy): note the export worker's disk and retention costs"
 
 ## Self-review notes for the implementer
 
-Three things this plan knowingly leaves thin, so you are not surprised:
+Four things this plan knowingly leaves thin, so you are not surprised:
+
+0.5. **The flow tests duplicate ~63 lines of harness each, across twelve files.** `uniq`, `auth_mw`, `setup`, `token`, `call`, `ok` and `mk_user` are copied into every file in `crates/transport/tests/`, and this repo's own testing policy asks for a shared `test_support` crate that does not exist. A reviewer raised it during Task 6 and it was **deliberately declined**, not overlooked: extracting it rewrites eleven test files belonging to other features, which is its own change rather than a rider on this one.
 
 0. **There are no frontend unit tests, because there is no frontend test runner.** The spec's verification table lists a row for mapper tests via `createRouterTransport`; the repo has no Vitest setup (CLAUDE.md says so plainly), and standing one up is its own piece of work with its own config, CI wiring and conventions. Rather than pretend, the frontend is covered by `tsc`, `lint`, `build` and the browser pass in Task 17. If you want the row the spec promises, add Vitest first as a separate change — do not bolt a half-configured runner onto this one.
 
