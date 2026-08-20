@@ -58,6 +58,12 @@ fn token(sub: &str) -> String {
     sign_jwt(SECRET, sub, &["projects:create".to_string()], 9_999_999_999).unwrap()
 }
 
+/// A platform-admin token ("*" permission) — distinct from `token()` so callers
+/// of the latter keep meaning "an ordinary authenticated user".
+fn admin_token(sub: &str) -> String {
+    sign_jwt(SECRET, sub, &["*".to_string()], 9_999_999_999).unwrap()
+}
+
 async fn call(router: &Router, path: &str, token: Option<&str>, body: Value) -> (StatusCode, Value) {
     let mut b = Request::builder().method("POST").uri(path).header(CONTENT_TYPE, "application/json");
     if let Some(t) = token {
@@ -130,6 +136,14 @@ async fn csv_export_is_owner_gated_and_carries_task_rows() {
     assert!(csv.contains("Budi"), "assignee by name: {csv}");
     assert!(csv.contains(&label_name), "label by name, not silently dropped by gather: {csv}");
     assert_eq!(out["taskCount"].as_i64().unwrap(), 1, "task_count matches the one task created: {out}");
+
+    // Admin: neither the owner nor a member, but permitted by the "*" branch
+    // of require_owner_or_admin — the branch the rest of this test never
+    // exercises since `to` always takes the ownership path.
+    let unaffiliated_admin = mk_user(&store, "Wira").await;
+    let admin_out = ok(&router, &format!("{EXPORT}/ExportTasksCsv"), &admin_token(&unaffiliated_admin), json!({ "projectId": project })).await;
+    assert!(admin_out["csv"].as_str().unwrap().starts_with("id,module,title,"), "admin gets the real CSV: {admin_out}");
+    assert!(admin_out["fileName"].as_str().unwrap().ends_with("-tasks.csv"), "admin gets a real file name: {admin_out}");
 }
 
 #[tokio::test]
