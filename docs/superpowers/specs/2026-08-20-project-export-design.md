@@ -245,10 +245,15 @@ so itself ("Module/task cascade is handled by later flows"). So export is not
 joining an existing cascade; it is adding a second targeted cleanup next to
 `deindex_project`, in two parts:
 
-- Rows in `export_job` for the project are deleted, and any archive object still
-  in S3 is deleted with them. An archive is a copy of a project that was asked to
-  disappear; leaving it downloadable for up to seven days after would be the
-  cascade quietly not meaning what it says.
+- Jobs with no object behind them are deleted outright; ready ones have their
+  expiry brought forward to now, so the worker's existing sweep deletes the S3
+  object on its next tick. The download is unreachable immediately either way —
+  `GetExportDownloadUrl` loads the project first, and the project is gone. An
+  archive is a copy of a project that was asked to disappear; leaving it
+  downloadable for another seven days would be the cleanup quietly not meaning
+  what it says. Expiring rather than deleting also keeps the handler free of
+  object storage, which would otherwise change `project_router`'s signature and
+  every flow test that merges it.
 - A job that is `running` when its project is deleted finds its data gone
   mid-assembly. It fails with a recorded reason rather than panicking, and its
   temporary file is removed by the same guard as any other error path.
@@ -403,7 +408,7 @@ way when the endpoint is unreachable from the browser.
 | Unit — `export.rs` | Status transitions: claim, `running` → `pending` at boot, `attempts >= 3` → `failed`, expiry sweep |
 | Handler — `tests/export_flow.rs` | Guard matrix, positive and negative, on all four RPCs: member → `PERMISSION_DENIED`, owner → allowed, admin → allowed. **And the case most likely to be missed:** owner requests an archive, ownership is transferred, the former owner calls `GetExportDownloadUrl` → refused |
 | Handler | Side-effect smoke: a finished job emits `EXPORT_READY` to the requester, and only to the requester |
-| Frontend | `api/` mappers via `createRouterTransport`; menu item hidden for a member |
+| Frontend | `tsc`, `lint`, `build`, and the browser pass below. There is no Vitest setup in this repo, so the mapper/guard-visibility tests the testing policy asks for wait on one being added — a separate change, not a rider on this one |
 
 `FakeStorage` in `transport/tests/media_flow.rs` grows with the trait.
 
