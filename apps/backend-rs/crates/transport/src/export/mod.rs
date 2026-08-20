@@ -80,5 +80,13 @@ mod tests {
         assert_eq!(file_slug("  spaced  out  "), "spaced-out");
         assert_eq!(file_slug("///"), "project");
         assert_eq!(file_slug(""), "project");
+
+        // ASCII-only is deliberate, not a bug: it keeps the result safe to use
+        // both as a filename and as a path inside an archive (Phase 2 reuses
+        // this for ZIP entry names). Non-ASCII letters are dropped rather than
+        // transliterated, so an accented letter becomes a separator mid-word,
+        // and a name with no ASCII alphanumerics at all falls back to "project".
+        assert_eq!(file_slug("Proyék Baru"), "proy-k-baru");
+        assert_eq!(file_slug("日本語"), "project");
     }
 }
