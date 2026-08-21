@@ -6,7 +6,7 @@ import path from "path";
 
 // Keep in sync with DEFAULT_APP_NAME in src/lib/app-config.ts (the <title> is
 // plain HTML and can't import that module).
-const DEFAULT_APP_NAME = "Sedjiwa · Tasks";
+const DEFAULT_APP_NAME = "Project Management";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, __dirname, "VITE_");
