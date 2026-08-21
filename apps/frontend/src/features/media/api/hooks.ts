@@ -38,6 +38,34 @@ export function useDeleteMedia() {
   });
 }
 
+/** Ready files linked to one task. */
+export function useTaskMedia(taskId: string) {
+  const result = useQuery(
+    MediaService.method.listTaskMedia,
+    { taskId },
+    { enabled: !!taskId },
+  );
+  const files: MediaFile[] = (result.data?.files ?? []).map(mapMedia);
+  return { ...result, files };
+}
+
+/** Attach an existing project file to a task. Idempotent server-side. */
+export function useLinkTaskMedia() {
+  return useMutation(MediaService.method.linkTaskMedia, {
+    onSuccess: invalidateMedia,
+  });
+}
+
+/**
+ * Detach a file from a task. The file itself stays in the project — deleting
+ * it for real is DeleteMediaFile, which only the Media tab offers.
+ */
+export function useUnlinkTaskMedia() {
+  return useMutation(MediaService.method.unlinkTaskMedia, {
+    onSuccess: invalidateMedia,
+  });
+}
+
 /** Fetches a fresh presigned GET url on demand (not cached). */
 export function useDownloadUrl() {
   return useMutation(MediaService.method.getMediaDownloadUrl);
@@ -64,13 +92,17 @@ async function storageErrorDetail(res: Response): Promise<string> {
 /**
  * Orchestrated upload: reserve a slot + presigned PUT url, upload the bytes
  * straight to storage, then finalize. Refreshes the list on completion.
+ *
+ * Resolves with the new file's id so a caller can act on it — the task
+ * attachment flow uploads and then links in one go. Kept out of the hook's
+ * own concerns on purpose: uploading knows nothing about tasks.
  */
 export function useUploadFile(projectId: string) {
   const create = useMutation(MediaService.method.createMediaUpload);
   const complete = useMutation(MediaService.method.completeMediaUpload);
   const [uploading, setUploading] = useState(false);
 
-  async function upload(file: File): Promise<void> {
+  async function upload(file: File): Promise<string> {
     setUploading(true);
     try {
       const { mediaFileId, uploadUrl } = await create.mutateAsync({
@@ -94,6 +126,7 @@ export function useUploadFile(projectId: string) {
       }
       await complete.mutateAsync({ mediaFileId });
       await invalidateMedia();
+      return mediaFileId;
     } finally {
       setUploading(false);
     }

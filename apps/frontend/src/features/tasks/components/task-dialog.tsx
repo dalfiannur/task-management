@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import type { AppUser } from "@/features/auth";
 import { LabelCombobox } from "@/features/labels";
 import { CommentThread } from "@/features/comments";
+import { TaskAttachments } from "@/features/media";
 import type { Task, TaskPriority, TaskStatus } from "../types";
 import { TASK_PRIORITIES, TASK_STATUSES } from "../types";
 import { TASK_PRIORITY_CONFIG, TASK_STATUS_CONFIG } from "../config";
@@ -399,6 +400,10 @@ export function TaskDialog({
                         task={task}
                         candidates={dependencyCandidates}
                         onChange={onDependencyChange}
+                      />
+                      <TaskAttachments
+                        taskId={task.id}
+                        projectId={projectId}
                       />
                     </div>
                     <div className="border-t border-border-subtle pt-6">

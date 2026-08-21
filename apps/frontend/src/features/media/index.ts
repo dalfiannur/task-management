@@ -7,5 +7,9 @@ export {
   useUploadFile,
   useDeleteMedia,
   useDownloadUrl,
+  useTaskMedia,
+  useLinkTaskMedia,
+  useUnlinkTaskMedia,
 } from "./api/hooks";
 export { MediaTab } from "./components/media-tab";
+export { TaskAttachments } from "./components/task-attachments";
