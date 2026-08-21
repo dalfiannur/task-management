@@ -11,12 +11,20 @@ use domain::user::{
 };
 use persistence::Store;
 
-use super::record::{find_by_phone, load_all_users, load_user, to_proto, UserRecord};
+use super::record::{
+    find_by_phone, load_all_users, load_user, load_users_page, to_proto, UserRecord,
+};
 use super::{internal, now_iso, parse_pid};
 use crate::notifications::{emit, NotifRefs, Notifier};
 use crate::search::{deindex, index, kind, user_doc};
 use crate::sedjiwa::tasks::auth::v1 as pb;
 use crate::sedjiwa::tasks::auth::v1::user_directory_service_connect::UserDirectoryServiceBuilder;
+
+/// Page sizing for ListUsers, mirroring `search_service`: a default so a
+/// caller may omit it, and a ceiling so one cannot ask for the whole table
+/// back by naming a huge page.
+const DEFAULT_PAGE_SIZE: u32 = 20;
+const MAX_PAGE_SIZE: u32 = 50;
 
 fn require_auth(user: Option<Extension<AuthUser>>) -> Result<AuthUser, ConnectError> {
     user.map(|Extension(u)| u)
@@ -46,6 +54,22 @@ fn require_admin(auth: &AuthUser) -> Result<(), ConnectError> {
     } else {
         Err(ConnectError::new_permission_denied("admin required"))
     }
+}
+
+/// Refuse an admin action aimed at the caller's own account.
+///
+/// Suspending yourself, revoking your own admin mark, or deleting yourself all
+/// take away the very permission needed to undo them. With a single admin — the
+/// normal case — that locks the whole instance out of user management, and the
+/// only way back is SQL or the seed binary. Every one of these is reachable by
+/// acting on somebody else's account instead, so nothing legitimate is lost.
+fn deny_self(target_id: &str, auth: &AuthUser, action: &str) -> Result<(), ConnectError> {
+    if target_id == auth.id {
+        return Err(ConnectError::new_invalid_argument(format!(
+            "cannot {action} your own account; ask another admin"
+        )));
+    }
+    Ok(())
 }
 
 /// Replace a user's status; return the refreshed record.
@@ -122,18 +146,31 @@ async fn list_users(
     Extension(store): Extension<Arc<Store>>,
     user: Option<Extension<AuthUser>>,
     req: ConnectRequest<pb::ListUsersRequest>,
-) -> Result<ConnectResponse<pb::ListUsersResponse>, ConnectError> {
+) -> Result<ConnectResponse<pb::ListUsersPageResponse>, ConnectError> {
     let auth = require_auth(user)?;
     require_admin(&auth)?;
     let ConnectRequest(r) = req;
-    let want = r.status; // Option<i32> proto enum
-    let users = load_all_users(&store).await.map_err(internal)?;
-    let list = users
-        .iter()
-        .filter(|u| want.is_none_or(|c| u.status.to_proto() == c))
-        .map(to_proto)
-        .collect();
-    Ok(ConnectResponse::new(pb::ListUsersResponse { users: list }))
+    // An unrecognised status enum would silently widen the query to "everyone"
+    // if it were treated as absent, so refuse it instead.
+    let status = match r.status {
+        None => None,
+        Some(code) => Some(
+            UserStatus::from_proto(code)
+                .ok_or_else(|| ConnectError::new_invalid_argument("unknown status"))?,
+        ),
+    };
+    let page = r.page.max(1);
+    let page_size = match r.page_size {
+        0 => DEFAULT_PAGE_SIZE,
+        n => n.min(MAX_PAGE_SIZE),
+    };
+    let (users, total) = load_users_page(&store, status, page, page_size)
+        .await
+        .map_err(internal)?;
+    Ok(ConnectResponse::new(pb::ListUsersPageResponse {
+        users: users.iter().map(to_proto).collect(),
+        total,
+    }))
 }
 
 async fn create_user(
@@ -273,6 +310,7 @@ async fn suspend_user(
     let auth = require_auth(user)?;
     require_admin(&auth)?;
     let ConnectRequest(r) = req;
+    deny_self(&r.id, &auth, "suspend")?;
     let pid = parse_pid(&r.id)?;
     let u = set_status(&store, pid, UserStatus::Suspended).await?;
     deindex(&store, kind::USER, &pid.to_string()).await;
@@ -287,6 +325,9 @@ async fn set_admin(
     let auth = require_auth(user)?;
     require_admin(&auth)?;
     let ConnectRequest(r) = req;
+    // Granting yourself admin is a no-op (you already are), so this only ever
+    // blocks the revoke direction — which is the one that locks you out.
+    deny_self(&r.id, &auth, "change the admin flag on")?;
     let pid = parse_pid(&r.id)?;
     let now = now_iso();
     let grant = r.is_admin;
@@ -347,6 +388,7 @@ async fn delete_user(
     let auth = require_auth(user)?;
     require_admin(&auth)?;
     let ConnectRequest(r) = req;
+    deny_self(&r.id, &auth, "delete")?;
     let pid = parse_pid(&r.id)?;
     store.delete(pid).await.map_err(internal)?;
     deindex(&store, kind::USER, &pid.to_string()).await;

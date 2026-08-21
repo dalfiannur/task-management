@@ -84,6 +84,18 @@ impl UserStatus {
             Self::Suspended => 3,
         }
     }
+
+    /// Inverse of [`Self::to_proto`]; `None` for `UNSPECIFIED` or any code this
+    /// build does not know. Callers must not read `None` as "no filter" — an
+    /// unknown code is a bad request, not a request for everything.
+    pub fn from_proto(code: i32) -> Option<Self> {
+        match code {
+            1 => Some(Self::Pending),
+            2 => Some(Self::Active),
+            3 => Some(Self::Suspended),
+            _ => None,
+        }
+    }
 }
 
 /// Minimum password length (spec §8: min 8).

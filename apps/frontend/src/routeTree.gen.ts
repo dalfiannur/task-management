@@ -15,6 +15,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as AuthedDashboardRouteImport } from './routes/_authed/dashboard'
 import { Route as AuthedMyTasksRouteImport } from './routes/_authed/my-tasks'
+import { Route as AuthedAdminUsersRouteImport } from './routes/_authed/admin/users'
 import { Route as AuthedProjectsIndexRouteImport } from './routes/_authed/projects/index'
 import { Route as AuthedProjectsProjectIdRouteImport } from './routes/_authed/projects/$projectId'
 import { Route as AuthedProjectsProjectIdIndexRouteImport } from './routes/_authed/projects/$projectId/index'
@@ -52,6 +53,11 @@ const AuthedDashboardRoute = AuthedDashboardRouteImport.update({
 const AuthedMyTasksRoute = AuthedMyTasksRouteImport.update({
   id: '/my-tasks',
   path: '/my-tasks',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedAdminUsersRoute = AuthedAdminUsersRouteImport.update({
+  id: '/admin/users',
+  path: '/admin/users',
   getParentRoute: () => AuthedRoute,
 } as any)
 const AuthedProjectsIndexRoute = AuthedProjectsIndexRouteImport.update({
@@ -113,6 +119,7 @@ export interface FileRoutesByFullPath {
   '/register': typeof RegisterRoute
   '/dashboard': typeof AuthedDashboardRoute
   '/my-tasks': typeof AuthedMyTasksRoute
+  '/admin/users': typeof AuthedAdminUsersRoute
   '/projects/$projectId': typeof AuthedProjectsProjectIdRouteWithChildren
   '/projects/': typeof AuthedProjectsIndexRoute
   '/projects/$projectId/all-tasks': typeof AuthedProjectsProjectIdAllTasksRoute
@@ -129,6 +136,7 @@ export interface FileRoutesByTo {
   '/register': typeof RegisterRoute
   '/dashboard': typeof AuthedDashboardRoute
   '/my-tasks': typeof AuthedMyTasksRoute
+  '/admin/users': typeof AuthedAdminUsersRoute
   '/projects': typeof AuthedProjectsIndexRoute
   '/projects/$projectId/all-tasks': typeof AuthedProjectsProjectIdAllTasksRoute
   '/projects/$projectId/media': typeof AuthedProjectsProjectIdMediaRoute
@@ -146,6 +154,7 @@ export interface FileRoutesById {
   '/register': typeof RegisterRoute
   '/_authed/dashboard': typeof AuthedDashboardRoute
   '/_authed/my-tasks': typeof AuthedMyTasksRoute
+  '/_authed/admin/users': typeof AuthedAdminUsersRoute
   '/_authed/projects/$projectId': typeof AuthedProjectsProjectIdRouteWithChildren
   '/_authed/projects/': typeof AuthedProjectsIndexRoute
   '/_authed/projects/$projectId/all-tasks': typeof AuthedProjectsProjectIdAllTasksRoute
@@ -164,6 +173,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/dashboard'
     | '/my-tasks'
+    | '/admin/users'
     | '/projects/$projectId'
     | '/projects/'
     | '/projects/$projectId/all-tasks'
@@ -180,6 +190,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/dashboard'
     | '/my-tasks'
+    | '/admin/users'
     | '/projects'
     | '/projects/$projectId/all-tasks'
     | '/projects/$projectId/media'
@@ -196,6 +207,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/_authed/dashboard'
     | '/_authed/my-tasks'
+    | '/_authed/admin/users'
     | '/_authed/projects/$projectId'
     | '/_authed/projects/'
     | '/_authed/projects/$projectId/all-tasks'
@@ -256,6 +268,13 @@ declare module '@tanstack/react-router' {
       path: '/my-tasks'
       fullPath: '/my-tasks'
       preLoaderRoute: typeof AuthedMyTasksRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/admin/users': {
+      id: '/_authed/admin/users'
+      path: '/admin/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AuthedAdminUsersRouteImport
       parentRoute: typeof AuthedRoute
     }
     '/_authed/projects/': {
@@ -353,6 +372,7 @@ const AuthedProjectsProjectIdRouteWithChildren =
 interface AuthedRouteChildren {
   AuthedDashboardRoute: typeof AuthedDashboardRoute
   AuthedMyTasksRoute: typeof AuthedMyTasksRoute
+  AuthedAdminUsersRoute: typeof AuthedAdminUsersRoute
   AuthedProjectsProjectIdRoute: typeof AuthedProjectsProjectIdRouteWithChildren
   AuthedProjectsIndexRoute: typeof AuthedProjectsIndexRoute
 }
@@ -360,6 +380,7 @@ interface AuthedRouteChildren {
 const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedDashboardRoute: AuthedDashboardRoute,
   AuthedMyTasksRoute: AuthedMyTasksRoute,
+  AuthedAdminUsersRoute: AuthedAdminUsersRoute,
   AuthedProjectsProjectIdRoute: AuthedProjectsProjectIdRouteWithChildren,
   AuthedProjectsIndexRoute: AuthedProjectsIndexRoute,
 }

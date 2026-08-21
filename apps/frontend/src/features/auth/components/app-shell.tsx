@@ -8,6 +8,7 @@ import {
   ListTodo,
   LogOut,
   Search,
+  ShieldCheck,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -22,14 +23,19 @@ import { cn, getInitials } from "@/lib/utils";
 import { APP_NAME } from "@/lib/app-config";
 import { NotificationBell } from "@/features/notifications";
 import { SearchOverlay, searchOpenAtom } from "@/features/search";
-import { currentUserAtom } from "../atoms/session";
+import { currentUserAtom, isAdminAtom } from "../atoms/session";
 import { useLogout } from "../api/hooks";
 
-const NAV: { to: string; label: string; icon: LucideIcon }[] = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/projects", label: "Projects", icon: FolderKanban },
-  { to: "/my-tasks", label: "My tasks", icon: ListTodo },
-];
+const NAV: { to: string; label: string; icon: LucideIcon; adminOnly?: boolean }[] =
+  [
+    { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { to: "/projects", label: "Projects", icon: FolderKanban },
+    { to: "/my-tasks", label: "My tasks", icon: ListTodo },
+    // Hidden rather than disabled for non-admins: a greyed-out entry would
+    // advertise a page they can never open. The route guards itself too, and
+    // the server refuses the RPCs regardless.
+    { to: "/admin/users", label: "Users", icon: ShieldCheck, adminOnly: true },
+  ];
 
 /** Authed shell: sidebar navigation + a thin action bar over the outlet.
  *
@@ -55,6 +61,7 @@ const NAV: { to: string; label: string; icon: LucideIcon }[] = [
  *  butuh scroll container sendiri. */
 export function AppShell() {
   const user = useAtomValue(currentUserAtom);
+  const isAdmin = useAtomValue(isAdminAtom);
   const setSearchOpen = useSetAtom(searchOpenAtom);
   const logout = useLogout();
   const navigate = useNavigate();
@@ -84,7 +91,8 @@ export function AppShell() {
         </span>
 
         <nav className="flex flex-col gap-1 px-3 text-sm">
-          {NAV.map(({ to, label, icon: Icon }) => (
+          {NAV.filter((n) => !n.adminOnly || isAdmin).map(
+            ({ to, label, icon: Icon }) => (
             <Link
               key={to}
               to={to}

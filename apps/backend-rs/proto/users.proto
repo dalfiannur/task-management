@@ -17,7 +17,7 @@ service UserDirectoryService {
   rpc GetUser(GetUserRequest) returns (User);
 
   // Admin
-  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+  rpc ListUsers(ListUsersRequest) returns (ListUsersPageResponse);
   rpc CreateUser(CreateUserRequest) returns (User);
   rpc UpdateUser(UpdateUserRequest) returns (User);
   rpc ActivateUser(UserIdRequest) returns (User);
@@ -81,9 +81,18 @@ message GetUserRequest {
 }
 message ListUsersRequest {
   optional UserStatus status = 1;
+  uint32 page = 2;      // 1-based; 0 means the first page
+  uint32 page_size = 3; // 0 means the server default; clamped to a maximum
 }
 message ListUsersResponse {
   repeated User users = 1;
+}
+// ListUsers is paged, so it answers with its own message rather than sharing
+// ListUsersResponse with the unpaged SearchUsers — a `total` that is always
+// zero for one of two callers is a trap for whoever reads it next.
+message ListUsersPageResponse {
+  repeated User users = 1;
+  uint32 total = 2; // matching rows ignoring the page, for the active filter
 }
 message CreateUserRequest {
   string phone = 1;

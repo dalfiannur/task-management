@@ -4,7 +4,7 @@ use arke::{Entity, World};
 use domain::user::{
     AdminMark, UserPassword, UserPhone, UserProfile, UserStatus, UserStatusComponent,
 };
-use persistence::Store;
+use persistence::{PgTable, Store};
 
 use crate::sedjiwa::tasks::auth::v1 as pb;
 
@@ -71,6 +71,62 @@ pub(crate) async fn load_all_users(store: &Store) -> anyhow::Result<Vec<UserReco
                 .collect()
         })
         .await
+}
+
+/// One page of users, optionally narrowed to a status, newest registration
+/// first, plus the unpaged total for that same filter.
+///
+/// Paged in SQL, following `activity::record::activity_recent_page`. The reason
+/// is the same: nothing bounds this set — an admin listing every account matches
+/// the whole table — and hydrating every match to then keep twenty rows costs an
+/// existence query plus one query per registered component for each row thrown
+/// away. The subselect caps hydration at `page_size` rows whatever the table
+/// size, and `total` comes from a COUNT that hydrates nothing.
+///
+/// Queried through `UserStatusComponent`, not `UserPhone` as the unpaged loader
+/// does, so that the filter, the ordering, and the page all read from one table
+/// — `status` is indexed there and `created_at` lives there too. Hydration still
+/// materializes the entity's other components, so `read_user` is unaffected.
+pub(crate) async fn load_users_page(
+    store: &Store,
+    status: Option<UserStatus>,
+    page: u32,
+    page_size: u32,
+) -> anyhow::Result<(Vec<UserRecord>, u32)> {
+    // `as_str` is a fixed enum rendering, never caller text, so it is safe in
+    // the trusted predicate.
+    let filter = status.map(|s| format!("status = '{}'", s.as_str()));
+    let total = store
+        .count::<UserStatusComponent>(filter.as_deref())
+        .await?;
+
+    let start = page.saturating_sub(1).saturating_mul(page_size);
+    let where_c = filter
+        .as_ref()
+        .map(|f| format!("WHERE {f} "))
+        .unwrap_or_default();
+    // COLLATE "C" so Postgres orders these RFC3339 strings byte-wise, matching
+    // how Rust compares them below; the default collation can order punctuation
+    // differently and would hand back a different page than the caller's sort
+    // implies. The outer query does not preserve this order, hence the re-sort.
+    let pred = format!(
+        "pid IN (SELECT pid FROM {table} {where_c}ORDER BY created_at COLLATE \"C\" DESC, pid DESC LIMIT {page_size} OFFSET {start})",
+        table = <UserStatusComponent as PgTable>::TABLE,
+    );
+    let mut v = store
+        .query::<UserStatusComponent, UserRecord>(Some(&pred), |world, pairs| {
+            pairs
+                .iter()
+                .filter_map(|(pid, e)| read_user(world, *e, *pid))
+                .collect()
+        })
+        .await?;
+    v.sort_by(|a, b| {
+        b.created_at
+            .cmp(&a.created_at)
+            .then_with(|| b.pid.cmp(&a.pid))
+    });
+    Ok((v, total))
 }
 
 /// One user by `pid`. `pid` is a validated integer (safe to inline into the

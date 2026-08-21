@@ -256,3 +256,228 @@ async fn non_admin_cannot_activate_and_duplicate_phone_rejected() {
     .await;
     assert_ne!(st, StatusCode::OK, "unauthenticated activate must be rejected");
 }
+
+/// An admin must not be able to act on their own account. Suspending yourself,
+/// revoking your own admin mark, or deleting yourself each destroy the very
+/// permission needed to undo them — and with a single admin, the normal case,
+/// that locks the instance out of user management for good.
+#[tokio::test]
+async fn admin_cannot_suspend_demote_or_delete_self() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let token = seed_admin(&store, &format!("admin-{}", uniq())).await;
+    let me = verify_jwt(&token, SECRET).unwrap().id;
+
+    for (rpc, body) in [
+        ("SuspendUser", json!({ "id": &me })),
+        ("SetAdmin", json!({ "id": &me, "isAdmin": false })),
+        ("DeleteUser", json!({ "id": &me })),
+    ] {
+        let (st, _) = call(&router, &format!("{DIR}/{rpc}"), Some(&token), body).await;
+        assert_eq!(
+            st,
+            StatusCode::BAD_REQUEST,
+            "{rpc} against one's own account must be refused"
+        );
+    }
+
+    // The guard has to reject before any write lands, not merely report an
+    // error afterwards — so re-read and prove nothing moved.
+    let (st, v) = call(
+        &router,
+        &format!("{DIR}/GetUser"),
+        Some(&token),
+        json!({ "id": &me }),
+    )
+    .await;
+    assert_eq!(st, StatusCode::OK, "the admin must still exist");
+    assert_eq!(v["isAdmin"], json!(true), "admin mark must survive");
+    assert_eq!(v["status"], json!("ACTIVE"), "status must survive");
+}
+
+/// The same three actions aimed at somebody else still work — the guard must
+/// block self-targeting only, not the feature.
+#[tokio::test]
+async fn admin_can_still_suspend_and_demote_another_admin() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let token = seed_admin(&store, &format!("admin-{}", uniq())).await;
+    let other_token = seed_admin(&store, &format!("admin2-{}", uniq())).await;
+    let other = verify_jwt(&other_token, SECRET).unwrap().id;
+
+    // Read first, so the demotion below is measured against a known `true`.
+    // Proto3 JSON omits default-valued scalars, so a demoted user comes back
+    // with no `isAdmin` key at all rather than `false` — asserting equality
+    // with `false` would fail on a correct demotion.
+    let (st, v) = call(
+        &router,
+        &format!("{DIR}/GetUser"),
+        Some(&token),
+        json!({ "id": &other }),
+    )
+    .await;
+    assert_eq!(st, StatusCode::OK);
+    assert_eq!(v["isAdmin"], json!(true), "seeded as an admin");
+
+    let (st, v) = call(
+        &router,
+        &format!("{DIR}/SetAdmin"),
+        Some(&token),
+        json!({ "id": &other, "isAdmin": false }),
+    )
+    .await;
+    assert_eq!(st, StatusCode::OK);
+    assert_ne!(v["isAdmin"], json!(true), "the other admin was demoted");
+
+    let (st, v) = call(
+        &router,
+        &format!("{DIR}/SuspendUser"),
+        Some(&token),
+        json!({ "id": &other }),
+    )
+    .await;
+    assert_eq!(st, StatusCode::OK);
+    assert_eq!(v["status"], json!("SUSPENDED"));
+}
+
+/// ListUsers pages in SQL, so the page must actually narrow what comes back
+/// while `total` keeps describing the whole matching set.
+///
+/// Assertions are relative, never absolute counts: the flow tests share one
+/// database across reruns and other tests seed users of their own, so any
+/// "exactly N users exist" claim would rot on the second run.
+#[tokio::test]
+async fn list_users_pages_in_sql_and_reports_the_unpaged_total() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let token = seed_admin(&store, &format!("admin-{}", uniq())).await;
+
+    // Five fresh registrations, so at least five users exist whatever else the
+    // database already holds.
+    for i in 0..5 {
+        let (st, _) = call(
+            &router,
+            &format!("{AUTH}/Register"),
+            None,
+            json!({
+                "phone": format!("08{}{}", i, uniq()),
+                "password": "sekret123",
+                "displayName": format!("Paged {i}"),
+            }),
+        )
+        .await;
+        assert_eq!(st, StatusCode::OK);
+    }
+
+    let page = |n: u32| {
+        let token = token.clone();
+        let router = router.clone();
+        async move {
+            let (st, v) = call(
+                &router,
+                &format!("{DIR}/ListUsers"),
+                Some(&token),
+                json!({ "page": n, "pageSize": 2 }),
+            )
+            .await;
+            assert_eq!(st, StatusCode::OK);
+            let ids: Vec<String> = v["users"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|u| u["id"].as_str().unwrap().to_string())
+                .collect();
+            let total = v["total"].as_u64().unwrap() as u32;
+            (ids, total)
+        }
+    };
+
+    let (first, total_1) = page(1).await;
+    let (second, total_2) = page(2).await;
+
+    assert_eq!(first.len(), 2, "pageSize must bound the page");
+    assert_eq!(second.len(), 2);
+    assert!(
+        first.iter().all(|id| !second.contains(id)),
+        "consecutive pages must not overlap: {first:?} vs {second:?}"
+    );
+    assert_eq!(total_1, total_2, "total must not depend on the page asked for");
+    assert!(
+        total_1 > 2,
+        "total must count the whole match set, not the page"
+    );
+    assert!(total_1 >= 6, "the five registrations plus the admin");
+}
+
+/// The status filter and the page have to compose: filtering must not leak rows
+/// of another status, and `total` must describe the filtered set, not the table.
+#[tokio::test]
+async fn list_users_filter_and_page_size_ceiling() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let token = seed_admin(&store, &format!("admin-{}", uniq())).await;
+    let (st, _) = call(
+        &router,
+        &format!("{AUTH}/Register"),
+        None,
+        json!({ "phone": format!("089{}", uniq()), "password": "sekret123", "displayName": "Waiting" }),
+    )
+    .await;
+    assert_eq!(st, StatusCode::OK);
+
+    let (st, v) = call(
+        &router,
+        &format!("{DIR}/ListUsers"),
+        Some(&token),
+        json!({ "status": "PENDING", "pageSize": 50 }),
+    )
+    .await;
+    assert_eq!(st, StatusCode::OK);
+    let users = v["users"].as_array().unwrap();
+    assert!(!users.is_empty(), "the registration above is pending");
+    assert!(
+        users.iter().all(|u| u["status"] == json!("PENDING")),
+        "the filter must not leak other statuses"
+    );
+
+    // Newest first: created_at must not increase down the page.
+    let created: Vec<&str> = users
+        .iter()
+        .map(|u| u["createdAt"].as_str().unwrap())
+        .collect();
+    let mut sorted = created.clone();
+    sorted.sort_by(|a, b| b.cmp(a));
+    assert_eq!(created, sorted, "page must be newest-registration first");
+
+    // A page size past the ceiling is clamped, not honoured.
+    let (st, v) = call(
+        &router,
+        &format!("{DIR}/ListUsers"),
+        Some(&token),
+        json!({ "pageSize": 9999 }),
+    )
+    .await;
+    assert_eq!(st, StatusCode::OK);
+    assert!(
+        v["users"].as_array().unwrap().len() <= 50,
+        "page size must be clamped to the server maximum"
+    );
+
+    // An unrecognised status is a bad request, not a silent "everyone".
+    let (st, _) = call(
+        &router,
+        &format!("{DIR}/ListUsers"),
+        Some(&token),
+        json!({ "status": "USER_STATUS_UNSPECIFIED" }),
+    )
+    .await;
+    assert_eq!(st, StatusCode::BAD_REQUEST, "unspecified status is refused");
+}
