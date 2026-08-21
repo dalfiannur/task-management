@@ -1,4 +1,6 @@
-# Build artifacts copied in by build.sh — not source.
+# Staging dir assembled by build.sh for the backend image context.
+.build-context/
+# Artifacts from the retired host-build scheme; build.sh no longer writes these.
 bin/
 web/
 # Local overrides / secrets.

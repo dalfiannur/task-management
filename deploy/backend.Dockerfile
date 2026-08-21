@@ -1,9 +1,39 @@
-# backend-rs runtime image — the Rust binary is built ON THE HOST (its Cargo.toml
-# uses local path deps outside the repo, so it can't build in an isolated context)
-# and copied in here. See deploy/build.sh / deploy/README.md.
+# backend-rs image — compiled from source inside the image.
 #
-# Runtime deps come straight from `ldd target/release/app`: glibc (<=2.34 symbols,
-# so bookworm's 2.36 is fine), OpenSSL 3, zlib, zstd, brotli.
+# Build context is NOT this repo. `deploy/build.sh` stages a directory that
+# holds two checkouts side by side:
+#
+#   <context>/rust-ecs/                        arke + arke-postgres
+#   <context>/task-management/apps/backend-rs/ this service
+#
+# That layout is what makes the manifest's `../../../rust-ecs` resolve: from
+# apps/backend-rs, three levels up is the context root. The same three levels
+# resolve on a developer machine, so nothing about local builds changes.
+#
+# Staging comes from `git archive HEAD` in both repos, so **uncommitted work in
+# rust-ecs is not in the image**. Commit it there first if you meant to ship it.
+
+# ─── Stage 1: compile ────────────────────────────────────────────────────────
+# Pinned to the toolchain the service is developed against; arke needs >= 1.88.
+FROM docker.io/library/rust:1.97-bookworm AS builder
+
+# transport/build.rs compiles the .proto files, which needs protoc on PATH.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends protobuf-compiler \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /src
+COPY rust-ecs/ ./rust-ecs/
+COPY task-management/ ./task-management/
+
+WORKDIR /src/task-management/apps/backend-rs
+# --locked: fail rather than silently resolve a different dependency graph than
+# the Cargo.lock that was tested.
+RUN cargo build --release --locked --bin app --bin seed_admin
+
+# ─── Stage 2: runtime ────────────────────────────────────────────────────────
+# Runtime deps are what `ldd target/release/app` asks for: glibc, OpenSSL 3,
+# zlib, zstd, brotli. bookworm's glibc 2.36 covers the binary's <= 2.34 symbols.
 FROM docker.io/library/debian:bookworm-slim
 
 RUN apt-get update \
@@ -13,15 +43,17 @@ RUN apt-get update \
         zlib1g \
         libzstd1 \
         libbrotli1 \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --system --create-home --uid 10001 app
 
-WORKDIR /app
+COPY --from=builder /src/task-management/apps/backend-rs/target/release/app /usr/local/bin/app
+COPY --from=builder /src/task-management/apps/backend-rs/target/release/seed_admin /usr/local/bin/seed_admin
 
-# Prebuilt binaries copied from deploy/bin/ (built on host by build.sh)
-COPY bin/app /usr/local/bin/app
-COPY bin/seed_admin /usr/local/bin/seed_admin
+# Nothing here needs root: the service binds 3010, well above the privileged range.
+USER app
+WORKDIR /home/app
 
 EXPOSE 3010
 
-# Backend binds 0.0.0.0:$PORT (default 3010). Config comes from env (compose).
+# Binds 0.0.0.0:$PORT (default 3010). All configuration arrives via env.
 CMD ["app"]

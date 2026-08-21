@@ -3,8 +3,11 @@
 # Isolated from the wider sedjiwa podman stack: its own postgres, its own rustfs
 # (S3), on a private network. Nothing here touches sedjiwa-net.
 #
-# The backend-rs binary and the SPA are built ON THE HOST and copied into the
-# images (see build.sh) — run build.sh before `podman-compose up`.
+# Both images are built from source inside their own builder stages; the host
+# only stages the backend's build context (backend-rs needs the sibling arke
+# checkout). Run ./build.sh before `podman-compose up` — there is no `build:`
+# section here, because the backend's context is assembled rather than being a
+# directory in this repo.
 #
 # Host ports:
 #   3011  -> frontend (open http://localhost:3011)
@@ -84,9 +87,6 @@ services:
     networks: [taskmgmt]
 
   backend-rs:
-    build:
-      context: .
-      dockerfile: backend.Dockerfile
     image: taskmgmt/backend-rs:local
     container_name: taskmgmt-backend
     depends_on:
@@ -133,9 +133,6 @@ services:
     networks: [taskmgmt]
 
   frontend:
-    build:
-      context: .
-      dockerfile: frontend.Dockerfile
     image: taskmgmt/frontend:local
     container_name: taskmgmt-frontend
     depends_on:

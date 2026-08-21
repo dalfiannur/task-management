@@ -1,0 +1,26 @@
+# Context for deploy/frontend.Dockerfile is the repository root. Everything
+# below either bloats the context or is rebuilt inside the image.
+
+# Rust build output — gigabytes, and the backend image builds from its own
+# staged context anyway (see deploy/build.sh).
+apps/backend-rs/target/
+
+# Reinstalled by bun inside the builder stage.
+node_modules/
+**/node_modules/
+
+# Rebuilt by vite inside the builder stage.
+apps/frontend/dist/
+
+# Host-staged artifacts from the previous build scheme, and the staging dir the
+# backend image uses — never part of the frontend context.
+deploy/bin/
+deploy/web/
+deploy/.build-context/
+
+.git/
+.claude/
+*.log
+.env
+.env.*
+!.env.example
