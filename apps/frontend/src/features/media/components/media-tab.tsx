@@ -114,7 +114,7 @@ export function MediaTab({ projectId }: { projectId: string }) {
                     {formatBytes(f.size)}
                   </p>
                 </div>
-                <div className="flex items-center opacity-0 transition-opacity group-hover:opacity-100">
+                <div className="flex items-center opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
                   <Button
                     variant="ghost"
                     size="icon"
