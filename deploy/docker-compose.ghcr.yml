@@ -1,0 +1,163 @@
+# Run the stack from published images — no source checkout, no Rust toolchain,
+# no sibling arke repo. The counterpart to docker-compose.yml, which builds
+# everything locally.
+#
+#   podman login ghcr.io -u <user>          # only if the packages are private
+#   cp .env.ghcr.example .env && $EDITOR .env
+#   podman-compose -f docker-compose.ghcr.yml pull
+#   podman-compose -f docker-compose.ghcr.yml up -d
+#
+# TAG selects which images to run. It defaults to `latest` so a first run works,
+# but pin the commit SHA for anything you care about — `latest` moves under you
+# and gives no way to tell what is deployed.
+#
+# Unlike docker-compose.yml, **no secret here has a default**. That file ships a
+# working JWT secret and minioadmin keys because it only ever runs on a
+# developer's own machine. This one is meant to leave that machine, and a
+# default signing key in a file that travels is a key anyone can mint admin
+# tokens with. Compose fails on an unset variable instead.
+
+# A different project name from docker-compose.yml on purpose. Compose derives
+# volume names from it, and the two files disagree about credentials: the local
+# one ships dev defaults, this one demands real secrets. Sharing a project would
+# hand this stack a database that postgres had already initialised under the
+# other file's user — and postgres only creates POSTGRES_USER on an empty data
+# directory, so the mismatch surfaces as "password authentication failed" long
+# after the cause.
+name: task-management-ghcr
+
+networks:
+  taskmgmt:
+    driver: bridge
+
+volumes:
+  pgdata:
+  rustfs-data:
+
+services:
+  postgres:
+    image: docker.io/library/postgres:17-alpine
+    container_name: taskmgmt-ghcr-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-sedjiwa_tasks_rs}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+    networks: [taskmgmt]
+
+  rustfs:
+    image: docker.io/rustfs/rustfs:latest
+    container_name: taskmgmt-ghcr-rustfs
+    environment:
+      RUSTFS_ROOT_USER: ${S3_ACCESS_KEY:?set S3_ACCESS_KEY in .env}
+      RUSTFS_ROOT_PASSWORD: ${S3_SECRET_KEY:?set S3_SECRET_KEY in .env}
+      RUSTFS_VOLUMES: /data
+      RUSTFS_CONSOLE_CORS_ALLOWED_ORIGINS: "*"
+    volumes:
+      - rustfs-data:/data
+    ports:
+      # Published because media uploads are presigned PUTs the BROWSER sends
+      # straight here — the port has to be reachable from the browser at the
+      # same host:port the backend signs with (PUBLIC_S3_ORIGIN).
+      - "${S3_PORT:-9100}:9000"
+    restart: unless-stopped
+    networks: [taskmgmt]
+
+  # One-shot: create the bucket and its CORS rule, then exit.
+  #
+  # The CORS rule is not optional. Uploads are cross-origin by construction —
+  # the browser PUTs to rustfs, not to the API — so without it every preflight
+  # comes back with no Access-Control-Allow-Origin and every upload fails.
+  createbucket:
+    image: docker.io/minio/mc:latest
+    container_name: taskmgmt-ghcr-createbucket
+    depends_on: [rustfs]
+    entrypoint: >
+      /bin/sh -c "
+      until mc alias set fs http://rustfs:9000 ${S3_ACCESS_KEY} ${S3_SECRET_KEY} >/dev/null 2>&1; do
+        echo 'waiting for rustfs...'; sleep 2;
+      done;
+      mc mb --ignore-existing fs/${S3_BUCKET:-tasks-media};
+      printf '%s' '<CORSConfiguration><CORSRule><AllowedOrigin>${PUBLIC_APP_ORIGIN}</AllowedOrigin><AllowedMethod>PUT</AllowedMethod><AllowedMethod>GET</AllowedMethod><AllowedMethod>HEAD</AllowedMethod><AllowedHeader>*</AllowedHeader><ExposeHeader>ETag</ExposeHeader><MaxAgeSeconds>3000</MaxAgeSeconds></CORSRule></CORSConfiguration>' > /tmp/cors.xml;
+      mc cors set fs/${S3_BUCKET:-tasks-media} /tmp/cors.xml;
+      echo 'bucket ready (CORS applied)';
+      "
+    restart: "no"
+    networks: [taskmgmt]
+
+  backend-rs:
+    image: ghcr.io/dalfiannur/task-management/backend:${TAG:-latest}
+    container_name: taskmgmt-ghcr-backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-sedjiwa_tasks_rs}
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:?set AUTH_JWT_SECRET in .env — generate with `openssl rand -hex 32`}
+      AUTH_JWT_EXPIRES_IN: ${AUTH_JWT_EXPIRES_IN:-7d}
+      PORT: "3010"
+      CORS_ORIGINS: ${PUBLIC_APP_ORIGIN:?set PUBLIC_APP_ORIGIN in .env}
+      # Presigned URLs are absolute and are opened by the browser, so the
+      # backend has to sign with an origin the browser can reach — not the
+      # container-internal http://rustfs:9000.
+      S3_ENDPOINT: ${PUBLIC_S3_ORIGIN:?set PUBLIC_S3_ORIGIN in .env}
+      S3_BUCKET: ${S3_BUCKET:-tasks-media}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_FORCE_PATH_STYLE: "true"
+      RUST_LOG: ${RUST_LOG:-info}
+    restart: unless-stopped
+    networks: [taskmgmt]
+
+  # One-shot: create the first admin, then exit. Idempotent — re-running once
+  # the account exists is a no-op.
+  #
+  # Optional. The app has a first-run /setup page that does the same thing from
+  # the browser and picks its own password, which is the better path for a real
+  # deployment; this exists for unattended installs. Start it explicitly:
+  #   podman-compose -f docker-compose.ghcr.yml --profile seed up seed
+  seed:
+    image: ghcr.io/dalfiannur/task-management/backend:${TAG:-latest}
+    container_name: taskmgmt-ghcr-seed
+    profiles: [seed]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-sedjiwa_tasks_rs}
+      SEED_ADMIN_PHONE: ${SEED_ADMIN_PHONE:-}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
+      SEED_ADMIN_NAME: ${SEED_ADMIN_NAME:-Admin}
+    # Checked in the container, not with compose's `:?`, because compose
+    # interpolates every service in the file — including ones behind an
+    # inactive profile — so a `:?` here would break `up` for everyone who never
+    # asked for the seed. `$$` keeps the expansion for the container's shell.
+    #
+    # The guard matters: seed_admin falls back to a well-known dev phone and
+    # password when these are unset, which is fine on a laptop and is an open
+    # door anywhere else.
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        : "$${SEED_ADMIN_PHONE:?set SEED_ADMIN_PHONE in .env to use the seed profile}"
+        : "$${SEED_ADMIN_PASSWORD:?set SEED_ADMIN_PASSWORD in .env to use the seed profile}"
+        exec seed_admin
+    restart: "no"
+    networks: [taskmgmt]
+
+  frontend:
+    image: ghcr.io/dalfiannur/task-management/frontend:${TAG:-latest}
+    container_name: taskmgmt-ghcr-frontend
+    depends_on: [backend-rs]
+    ports:
+      - "${APP_PORT:-3011}:80"
+    restart: unless-stopped
+    networks: [taskmgmt]
