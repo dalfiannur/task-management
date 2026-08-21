@@ -92,7 +92,7 @@ function LabelRow({ label }: { label: Label }) {
       <Button
         variant="ghost"
         size="icon"
-        className="h-7 w-7 opacity-0 group-hover:opacity-100"
+        className="h-7 w-7 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
         onClick={() => setEditing(true)}
         aria-label="Edit label"
       >
@@ -101,7 +101,7 @@ function LabelRow({ label }: { label: Label }) {
       <Button
         variant="ghost"
         size="icon"
-        className="h-7 w-7 opacity-0 group-hover:opacity-100"
+        className="h-7 w-7 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
         onClick={() =>
           del.mutate(
             { id: label.id },

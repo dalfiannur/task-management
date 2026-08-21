@@ -152,7 +152,7 @@ export function TaskRow({
             <Button
               variant="ghost"
               size="icon"
-              className="h-7 w-7 opacity-0 group-hover:opacity-100"
+              className="h-7 w-7 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
               onClick={(e) => e.stopPropagation()}
               aria-label="Delete task"
             >
@@ -177,7 +177,7 @@ export function TaskRow({
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7 opacity-0 group-hover:opacity-100"
+          className="h-7 w-7 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
           onClick={onDelete}
           aria-label="Delete task"
         >
