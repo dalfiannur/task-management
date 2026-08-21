@@ -43,6 +43,12 @@ RUN apt-get update \
         zlib1g \
         libzstd1 \
         libbrotli1 \
+        # For container healthchecks. The service speaks Connect, so a probe is
+        # a POST with a JSON body — there is no GET endpoint to curl and no
+        # shell builtin that will do it: this base image ships dash, which has
+        # no /dev/tcp. Without wget the healthcheck can only ever fail, and any
+        # compose that waits on `service_healthy` never starts what follows.
+        wget \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --system --create-home --uid 10001 app
 
