@@ -481,3 +481,116 @@ async fn list_users_filter_and_page_size_ceiling() {
     .await;
     assert_eq!(st, StatusCode::BAD_REQUEST, "unspecified status is refused");
 }
+
+/// Setup must stay shut on an instance that already has accounts. This is the
+/// direction that matters: an open first-run endpoint on a populated instance
+/// would hand adminhood to anyone who knew the URL.
+#[tokio::test]
+async fn setup_is_closed_once_any_user_exists() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    // Guarantee at least one account exists, whatever else the shared database
+    // holds by now.
+    let _ = seed_admin(&store, &format!("admin-{}", uniq())).await;
+
+    let (st, v) = call(&router, &format!("{AUTH}/SetupStatus"), None, json!({})).await;
+    assert_eq!(st, StatusCode::OK);
+    assert_ne!(v["needed"], json!(true), "setup must not be offered");
+
+    let (st, v) = call(
+        &router,
+        &format!("{AUTH}/SetupFirstAdmin"),
+        None,
+        json!({
+            "phone": format!("0899{}", uniq()),
+            "password": "sekret123",
+            "displayName": "Impostor",
+        }),
+    )
+    .await;
+    assert_ne!(
+        st,
+        StatusCode::OK,
+        "SetupFirstAdmin must refuse once users exist, not merely be hidden by the UI"
+    );
+    // Pin the Connect code rather than the HTTP status: this transport maps
+    // failed_precondition to 400, not the 412 the Connect spec suggests, so the
+    // status says more about the library than about the handler.
+    assert_eq!(
+        v["code"],
+        json!("failed_precondition"),
+        "refusal must be 'already set up', not a validation complaint: {v}"
+    );
+}
+
+/// The happy path needs a database with no users at all, which the shared flow
+/// database never is — other tests seed accounts, in parallel. So it runs only
+/// against its own empty database, named by `SETUP_TEST_DATABASE_URL`, and
+/// skips otherwise.
+///
+///   podman run -d --name setup-test-pg -e POSTGRES_PASSWORD=postgres \
+///     -e POSTGRES_DB=sedjiwa_setup_test -p 5435:5432 postgres:17-alpine
+///   SETUP_TEST_DATABASE_URL=postgres://postgres:postgres@localhost:5435/sedjiwa_setup_test
+#[tokio::test]
+async fn setup_creates_the_first_admin_and_signs_it_in() {
+    let Some(url) = std::env::var("SETUP_TEST_DATABASE_URL").ok() else {
+        eprintln!("skip: SETUP_TEST_DATABASE_URL not set");
+        return;
+    };
+    let store = Arc::new(Store::connect(&url, domain::register_all).await.unwrap());
+    let jwt = Arc::new(JwtConfig {
+        secret: SECRET.into(),
+        ttl_secs: 3_600,
+    });
+    let router = transport::auth_router(store.clone(), jwt)
+        .merge(transport::user_router(store.clone()))
+        .layer(from_fn(auth_mw));
+
+    let (st, v) = call(&router, &format!("{AUTH}/SetupStatus"), None, json!({})).await;
+    assert_eq!(st, StatusCode::OK);
+    assert_eq!(v["needed"], json!(true), "an empty instance needs setup");
+
+    let phone = format!("0800{}", uniq());
+    let (st, v) = call(
+        &router,
+        &format!("{AUTH}/SetupFirstAdmin"),
+        None,
+        json!({ "phone": phone, "password": "sekret123", "displayName": "Founder" }),
+    )
+    .await;
+    assert_eq!(st, StatusCode::OK, "setup on an empty instance: {v}");
+    let token = v["token"].as_str().unwrap().to_string();
+    assert!(!token.is_empty(), "setup must sign the new admin in");
+    assert_eq!(v["user"]["isAdmin"], json!(true));
+    assert_eq!(v["user"]["status"], json!("ACTIVE"), "active, not pending");
+
+    // The token is usable and carries admin rights, not just the flag on the
+    // returned message.
+    let (st, v) = call(&router, &format!("{AUTH}/Me"), Some(&token), json!({})).await;
+    assert_eq!(st, StatusCode::OK);
+    assert_eq!(v["phone"], json!(phone));
+    let (st, _) = call(
+        &router,
+        &format!("{DIR}/ListUsers"),
+        Some(&token),
+        json!({}),
+    )
+    .await;
+    assert_eq!(st, StatusCode::OK, "the new admin can reach admin-only RPCs");
+
+    // And the door shuts behind it.
+    let (st, v) = call(&router, &format!("{AUTH}/SetupStatus"), None, json!({})).await;
+    assert_eq!(st, StatusCode::OK);
+    assert_ne!(v["needed"], json!(true), "setup must close after the first admin");
+    let (st, v) = call(
+        &router,
+        &format!("{AUTH}/SetupFirstAdmin"),
+        None,
+        json!({ "phone": format!("0877{}", uniq()), "password": "sekret123", "displayName": "Second" }),
+    )
+    .await;
+    assert_ne!(st, StatusCode::OK, "only ever once");
+    assert_eq!(v["code"], json!("failed_precondition"), "{v}");
+}

@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthedRouteImport } from './routes/_authed'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as RegisterRouteImport } from './routes/register'
+import { Route as SetupRouteImport } from './routes/setup'
 import { Route as AuthedDashboardRouteImport } from './routes/_authed/dashboard'
 import { Route as AuthedMyTasksRouteImport } from './routes/_authed/my-tasks'
 import { Route as AuthedAdminUsersRouteImport } from './routes/_authed/admin/users'
@@ -43,6 +44,11 @@ const LoginRoute = LoginRouteImport.update({
 const RegisterRoute = RegisterRouteImport.update({
   id: '/register',
   path: '/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SetupRoute = SetupRouteImport.update({
+  id: '/setup',
+  path: '/setup',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthedDashboardRoute = AuthedDashboardRouteImport.update({
@@ -117,6 +123,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/setup': typeof SetupRoute
   '/dashboard': typeof AuthedDashboardRoute
   '/my-tasks': typeof AuthedMyTasksRoute
   '/admin/users': typeof AuthedAdminUsersRoute
@@ -134,6 +141,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/setup': typeof SetupRoute
   '/dashboard': typeof AuthedDashboardRoute
   '/my-tasks': typeof AuthedMyTasksRoute
   '/admin/users': typeof AuthedAdminUsersRoute
@@ -152,6 +160,7 @@ export interface FileRoutesById {
   '/_authed': typeof AuthedRouteWithChildren
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/setup': typeof SetupRoute
   '/_authed/dashboard': typeof AuthedDashboardRoute
   '/_authed/my-tasks': typeof AuthedMyTasksRoute
   '/_authed/admin/users': typeof AuthedAdminUsersRoute
@@ -171,6 +180,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/register'
+    | '/setup'
     | '/dashboard'
     | '/my-tasks'
     | '/admin/users'
@@ -188,6 +198,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/register'
+    | '/setup'
     | '/dashboard'
     | '/my-tasks'
     | '/admin/users'
@@ -205,6 +216,7 @@ export interface FileRouteTypes {
     | '/_authed'
     | '/login'
     | '/register'
+    | '/setup'
     | '/_authed/dashboard'
     | '/_authed/my-tasks'
     | '/_authed/admin/users'
@@ -224,6 +236,7 @@ export interface RootRouteChildren {
   AuthedRoute: typeof AuthedRouteWithChildren
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
+  SetupRoute: typeof SetupRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -254,6 +267,13 @@ declare module '@tanstack/react-router' {
       path: '/register'
       fullPath: '/register'
       preLoaderRoute: typeof RegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/setup': {
+      id: '/setup'
+      path: '/setup'
+      fullPath: '/setup'
+      preLoaderRoute: typeof SetupRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authed/dashboard': {
@@ -393,6 +413,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthedRoute: AuthedRouteWithChildren,
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
+  SetupRoute: SetupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

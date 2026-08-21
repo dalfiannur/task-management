@@ -5,6 +5,7 @@
 import { useMutation, useQuery } from "@connectrpc/connect-query";
 import { useSetAtom } from "jotai";
 import { AuthService } from "@/lib/gen/users_pb";
+import { client } from "@/lib/connect";
 import { queryClient } from "@/lib/query";
 import { EMPTY_SESSION } from "../types";
 import { sessionAtom } from "../atoms/session";
@@ -44,4 +45,34 @@ export function useLogout() {
     setSession(EMPTY_SESSION);
     queryClient.clear();
   };
+}
+
+/**
+ * Whether this instance still has no accounts, and so may run first-run setup.
+ *
+ * Called from route loaders rather than from React, so it uses the raw client:
+ * `/setup` and `/login` each need the answer before they decide whether to
+ * render or bounce, and a hook would only produce that answer after a render.
+ */
+export async function fetchSetupNeeded(): Promise<boolean> {
+  const { needed } = await client(AuthService).setupStatus({});
+  return needed;
+}
+
+/**
+ * Create the one Active admin on an empty instance and sign in as it.
+ *
+ * Stores the session exactly as `useLogin` does — the server returns the same
+ * LoginResponse, because the outcome is the same: an authenticated admin.
+ */
+export function useSetupFirstAdmin() {
+  const setSession = useSetAtom(sessionAtom);
+  return useMutation(AuthService.method.setupFirstAdmin, {
+    onSuccess(res) {
+      setSession({
+        token: res.token,
+        user: res.user ? mapUser(res.user) : null,
+      });
+    },
+  });
 }

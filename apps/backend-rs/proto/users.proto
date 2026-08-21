@@ -5,6 +5,14 @@ package sedjiwa.tasks.auth.v1;
 // approval → active. Login mints an HS256 JWT verified by the Connect interceptor.
 
 service AuthService {
+  // First-run only. SetupStatus says whether this instance has no users at
+  // all; SetupFirstAdmin creates the one Active admin and signs it in. Both
+  // are public because there is nobody to authenticate as yet — the server
+  // re-checks the same emptiness before creating, so the window closes for
+  // good once any account exists.
+  rpc SetupStatus(SetupStatusRequest) returns (SetupStatusResponse);
+  rpc SetupFirstAdmin(SetupFirstAdminRequest) returns (LoginResponse);
+
   rpc Register(RegisterRequest) returns (User);       // public → status Pending
   rpc Login(LoginRequest) returns (LoginResponse);    // public
   rpc Me(MeRequest) returns (User);                   // authenticated
@@ -59,6 +67,16 @@ message LoginResponse {
   string token = 1;
   User user = 2;
 }
+message SetupStatusRequest {}
+message SetupStatusResponse {
+  bool needed = 1; // true only while the instance has no users at all
+}
+message SetupFirstAdminRequest {
+  string phone = 1;
+  string password = 2;
+  string display_name = 3;
+}
+
 message MeRequest {}
 message UpdateMyProfileRequest {
   optional string display_name = 1;

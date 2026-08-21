@@ -11,7 +11,15 @@ export {
   wireAuthTransport,
 } from "./atoms/session";
 export { mapUser } from "./api/mappers";
-export { useMe, useLogin, useRegister, useLogout } from "./api/hooks";
+export {
+  useMe,
+  useLogin,
+  useRegister,
+  useLogout,
+  useSetupFirstAdmin,
+  fetchSetupNeeded,
+} from "./api/hooks";
 export { AppShell } from "./components/app-shell";
 export { LoginForm } from "./components/login-form";
 export { RegisterForm } from "./components/register-form";
+export { SetupForm } from "./components/setup-form";

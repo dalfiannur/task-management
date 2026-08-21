@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file users.proto.
  */
 export const file_users: GenFile = /*@__PURE__*/
-  fileDesc("Cgt1c2Vycy5wcm90bxIVc2Vkaml3YS50YXNrcy5hdXRoLnYxIuEBCgRVc2VyEgoKAmlkGAEgASgJEg0KBXBob25lGAIgASgJEhQKDGRpc3BsYXlfbmFtZRgDIAEoCRINCgVlbWFpbBgEIAEoCRISCgphdmF0YXJfdXJsGAUgASgJEjEKBnN0YXR1cxgGIAEoDjIhLnNlZGppd2EudGFza3MuYXV0aC52MS5Vc2VyU3RhdHVzEhAKCGlzX2FkbWluGAcgASgIEhIKCmNyZWF0ZWRfYXQYCCABKAkSGgoNbGFzdF9sb2dpbl9hdBgJIAEoCUgAiAEBQhAKDl9sYXN0X2xvZ2luX2F0IkgKD1JlZ2lzdGVyUmVxdWVzdBINCgVwaG9uZRgBIAEoCRIQCghwYXNzd29yZBgCIAEoCRIUCgxkaXNwbGF5X25hbWUYAyABKAkiLwoMTG9naW5SZXF1ZXN0Eg0KBXBob25lGAEgASgJEhAKCHBhc3N3b3JkGAIgASgJIkkKDUxvZ2luUmVzcG9uc2USDQoFdG9rZW4YASABKAkSKQoEdXNlchgCIAEoCzIbLnNlZGppd2EudGFza3MuYXV0aC52MS5Vc2VyIgsKCU1lUmVxdWVzdCKKAQoWVXBkYXRlTXlQcm9maWxlUmVxdWVzdBIZCgxkaXNwbGF5X25hbWUYASABKAlIAIgBARIXCgphdmF0YXJfdXJsGAIgASgJSAGIAQESEgoFZW1haWwYAyABKAlIAogBAUIPCg1fZGlzcGxheV9uYW1lQg0KC19hdmF0YXJfdXJsQggKBl9lbWFpbCJJChdDaGFuZ2VNeVBhc3N3b3JkUmVxdWVzdBIYChBjdXJyZW50X3Bhc3N3b3JkGAEgASgJEhQKDG5ld19wYXNzd29yZBgCIAEoCSImChhDaGFuZ2VNeVBhc3N3b3JkUmVzcG9uc2USCgoCb2sYASABKAgiKgoSU2VhcmNoVXNlcnNSZXF1ZXN0Eg4KAXEYASABKAlIAIgBAUIECgJfcSIcCg5HZXRVc2VyUmVxdWVzdBIKCgJpZBgBIAEoCSJ2ChBMaXN0VXNlcnNSZXF1ZXN0EjYKBnN0YXR1cxgBIAEoDjIhLnNlZGppd2EudGFza3MuYXV0aC52MS5Vc2VyU3RhdHVzSACIAQESDAoEcGFnZRgCIAEoDRIRCglwYWdlX3NpemUYAyABKA1CCQoHX3N0YXR1cyI/ChFMaXN0VXNlcnNSZXNwb25zZRIqCgV1c2VycxgBIAMoCzIbLnNlZGppd2EudGFza3MuYXV0aC52MS5Vc2VyIlIKFUxpc3RVc2Vyc1BhZ2VSZXNwb25zZRIqCgV1c2VycxgBIAMoCzIbLnNlZGppd2EudGFza3MuYXV0aC52MS5Vc2VyEg0KBXRvdGFsGAIgASgNIlwKEUNyZWF0ZVVzZXJSZXF1ZXN0Eg0KBXBob25lGAEgASgJEhAKCHBhc3N3b3JkGAIgASgJEhQKDGRpc3BsYXlfbmFtZRgDIAEoCRIQCghpc19hZG1pbhgEIAEoCCKRAQoRVXBkYXRlVXNlclJlcXVlc3QSCgoCaWQYASABKAkSGQoMZGlzcGxheV9uYW1lGAIgASgJSACIAQESEgoFZW1haWwYAyABKAlIAYgBARIXCgphdmF0YXJfdXJsGAQgASgJSAKIAQFCDwoNX2Rpc3BsYXlfbmFtZUIICgZfZW1haWxCDQoLX2F2YXRhcl91cmwiGwoNVXNlcklkUmVxdWVzdBIKCgJpZBgBIAEoCSIvCg9TZXRBZG1pblJlcXVlc3QSCgoCaWQYASABKAkSEAoIaXNfYWRtaW4YAiABKAgiOAoUUmVzZXRQYXNzd29yZFJlcXVlc3QSCgoCaWQYASABKAkSFAoMbmV3X3Bhc3N3b3JkGAIgASgJIhgKCk9rUmVzcG9uc2USCgoCb2sYASABKAgqUQoKVXNlclN0YXR1cxIbChdVU0VSX1NUQVRVU19VTlNQRUNJRklFRBAAEgsKB1BFTkRJTkcQARIKCgZBQ1RJVkUQAhINCglTVVNQRU5ERUQQAzLLAwoLQXV0aFNlcnZpY2USTwoIUmVnaXN0ZXISJi5zZWRqaXdhLnRhc2tzLmF1dGgudjEuUmVnaXN0ZXJSZXF1ZXN0Ghsuc2Vkaml3YS50YXNrcy5hdXRoLnYxLlVzZXISUgoFTG9naW4SIy5zZWRqaXdhLnRhc2tzLmF1dGgudjEuTG9naW5SZXF1ZXN0GiQuc2Vkaml3YS50YXNrcy5hdXRoLnYxLkxvZ2luUmVzcG9uc2USQwoCTWUSIC5zZWRqaXdhLnRhc2tzLmF1dGgudjEuTWVSZXF1ZXN0Ghsuc2Vkaml3YS50YXNrcy5hdXRoLnYxLlVzZXISXQoPVXBkYXRlTXlQcm9maWxlEi0uc2Vkaml3YS50YXNrcy5hdXRoLnYxLlVwZGF0ZU15UHJvZmlsZVJlcXVlc3QaGy5zZWRqaXdhLnRhc2tzLmF1dGgudjEuVXNlchJzChBDaGFuZ2VNeVBhc3N3b3JkEi4uc2Vkaml3YS50YXNrcy5hdXRoLnYxLkNoYW5nZU15UGFzc3dvcmRSZXF1ZXN0Gi8uc2Vkaml3YS50YXNrcy5hdXRoLnYxLkNoYW5nZU15UGFzc3dvcmRSZXNwb25zZTKFBwoUVXNlckRpcmVjdG9yeVNlcnZpY2USYgoLU2VhcmNoVXNlcnMSKS5zZWRqaXdhLnRhc2tzLmF1dGgudjEuU2VhcmNoVXNlcnNSZXF1ZXN0Giguc2Vkaml3YS50YXNrcy5hdXRoLnYxLkxpc3RVc2Vyc1Jlc3BvbnNlEk0KB0dldFVzZXISJS5zZWRqaXdhLnRhc2tzLmF1dGgudjEuR2V0VXNlclJlcXVlc3QaGy5zZWRqaXdhLnRhc2tzLmF1dGgudjEuVXNlchJiCglMaXN0VXNlcnMSJy5zZWRqaXdhLnRhc2tzLmF1dGgudjEuTGlzdFVzZXJzUmVxdWVzdBosLnNlZGppd2EudGFza3MuYXV0aC52MS5MaXN0VXNlcnNQYWdlUmVzcG9uc2USUwoKQ3JlYXRlVXNlchIoLnNlZGppd2EudGFza3MuYXV0aC52MS5DcmVhdGVVc2VyUmVxdWVzdBobLnNlZGppd2EudGFza3MuYXV0aC52MS5Vc2VyElMKClVwZGF0ZVVzZXISKC5zZWRqaXdhLnRhc2tzLmF1dGgudjEuVXBkYXRlVXNlclJlcXVlc3QaGy5zZWRqaXdhLnRhc2tzLmF1dGgudjEuVXNlchJRCgxBY3RpdmF0ZVVzZXISJC5zZWRqaXdhLnRhc2tzLmF1dGgudjEuVXNlcklkUmVxdWVzdBobLnNlZGppd2EudGFza3MuYXV0aC52MS5Vc2VyElAKC1N1c3BlbmRVc2VyEiQuc2Vkaml3YS50YXNrcy5hdXRoLnYxLlVzZXJJZFJlcXVlc3QaGy5zZWRqaXdhLnRhc2tzLmF1dGgudjEuVXNlchJPCghTZXRBZG1pbhImLnNlZGppd2EudGFza3MuYXV0aC52MS5TZXRBZG1pblJlcXVlc3QaGy5zZWRqaXdhLnRhc2tzLmF1dGgudjEuVXNlchJfCg1SZXNldFBhc3N3b3JkEisuc2Vkaml3YS50YXNrcy5hdXRoLnYxLlJlc2V0UGFzc3dvcmRSZXF1ZXN0GiEuc2Vkaml3YS50YXNrcy5hdXRoLnYxLk9rUmVzcG9uc2USVQoKRGVsZXRlVXNlchIkLnNlZGppd2EudGFza3MuYXV0aC52MS5Vc2VySWRSZXF1ZXN0GiEuc2Vkaml3YS50YXNrcy5hdXRoLnYxLk9rUmVzcG9uc2ViBnByb3RvMw");
+  fileDesc("Cgt1c2Vycy5wcm90bxIVc2Vkaml3YS50YXNrcy5hdXRoLnYxIuEBCgRVc2VyEgoKAmlkGAEgASgJEg0KBXBob25lGAIgASgJEhQKDGRpc3BsYXlfbmFtZRgDIAEoCRINCgVlbWFpbBgEIAEoCRISCgphdmF0YXJfdXJsGAUgASgJEjEKBnN0YXR1cxgGIAEoDjIhLnNlZGppd2EudGFza3MuYXV0aC52MS5Vc2VyU3RhdHVzEhAKCGlzX2FkbWluGAcgASgIEhIKCmNyZWF0ZWRfYXQYCCABKAkSGgoNbGFzdF9sb2dpbl9hdBgJIAEoCUgAiAEBQhAKDl9sYXN0X2xvZ2luX2F0IkgKD1JlZ2lzdGVyUmVxdWVzdBINCgVwaG9uZRgBIAEoCRIQCghwYXNzd29yZBgCIAEoCRIUCgxkaXNwbGF5X25hbWUYAyABKAkiLwoMTG9naW5SZXF1ZXN0Eg0KBXBob25lGAEgASgJEhAKCHBhc3N3b3JkGAIgASgJIkkKDUxvZ2luUmVzcG9uc2USDQoFdG9rZW4YASABKAkSKQoEdXNlchgCIAEoCzIbLnNlZGppd2EudGFza3MuYXV0aC52MS5Vc2VyIhQKElNldHVwU3RhdHVzUmVxdWVzdCIlChNTZXR1cFN0YXR1c1Jlc3BvbnNlEg4KBm5lZWRlZBgBIAEoCCJPChZTZXR1cEZpcnN0QWRtaW5SZXF1ZXN0Eg0KBXBob25lGAEgASgJEhAKCHBhc3N3b3JkGAIgASgJEhQKDGRpc3BsYXlfbmFtZRgDIAEoCSILCglNZVJlcXVlc3QiigEKFlVwZGF0ZU15UHJvZmlsZVJlcXVlc3QSGQoMZGlzcGxheV9uYW1lGAEgASgJSACIAQESFwoKYXZhdGFyX3VybBgCIAEoCUgBiAEBEhIKBWVtYWlsGAMgASgJSAKIAQFCDwoNX2Rpc3BsYXlfbmFtZUINCgtfYXZhdGFyX3VybEIICgZfZW1haWwiSQoXQ2hhbmdlTXlQYXNzd29yZFJlcXVlc3QSGAoQY3VycmVudF9wYXNzd29yZBgBIAEoCRIUCgxuZXdfcGFzc3dvcmQYAiABKAkiJgoYQ2hhbmdlTXlQYXNzd29yZFJlc3BvbnNlEgoKAm9rGAEgASgIIioKElNlYXJjaFVzZXJzUmVxdWVzdBIOCgFxGAEgASgJSACIAQFCBAoCX3EiHAoOR2V0VXNlclJlcXVlc3QSCgoCaWQYASABKAkidgoQTGlzdFVzZXJzUmVxdWVzdBI2CgZzdGF0dXMYASABKA4yIS5zZWRqaXdhLnRhc2tzLmF1dGgudjEuVXNlclN0YXR1c0gAiAEBEgwKBHBhZ2UYAiABKA0SEQoJcGFnZV9zaXplGAMgASgNQgkKB19zdGF0dXMiPwoRTGlzdFVzZXJzUmVzcG9uc2USKgoFdXNlcnMYASADKAsyGy5zZWRqaXdhLnRhc2tzLmF1dGgudjEuVXNlciJSChVMaXN0VXNlcnNQYWdlUmVzcG9uc2USKgoFdXNlcnMYASADKAsyGy5zZWRqaXdhLnRhc2tzLmF1dGgudjEuVXNlchINCgV0b3RhbBgCIAEoDSJcChFDcmVhdGVVc2VyUmVxdWVzdBINCgVwaG9uZRgBIAEoCRIQCghwYXNzd29yZBgCIAEoCRIUCgxkaXNwbGF5X25hbWUYAyABKAkSEAoIaXNfYWRtaW4YBCABKAgikQEKEVVwZGF0ZVVzZXJSZXF1ZXN0EgoKAmlkGAEgASgJEhkKDGRpc3BsYXlfbmFtZRgCIAEoCUgAiAEBEhIKBWVtYWlsGAMgASgJSAGIAQESFwoKYXZhdGFyX3VybBgEIAEoCUgCiAEBQg8KDV9kaXNwbGF5X25hbWVCCAoGX2VtYWlsQg0KC19hdmF0YXJfdXJsIhsKDVVzZXJJZFJlcXVlc3QSCgoCaWQYASABKAkiLwoPU2V0QWRtaW5SZXF1ZXN0EgoKAmlkGAEgASgJEhAKCGlzX2FkbWluGAIgASgIIjgKFFJlc2V0UGFzc3dvcmRSZXF1ZXN0EgoKAmlkGAEgASgJEhQKDG5ld19wYXNzd29yZBgCIAEoCSIYCgpPa1Jlc3BvbnNlEgoKAm9rGAEgASgIKlEKClVzZXJTdGF0dXMSGwoXVVNFUl9TVEFUVVNfVU5TUEVDSUZJRUQQABILCgdQRU5ESU5HEAESCgoGQUNUSVZFEAISDQoJU1VTUEVOREVEEAMymQUKC0F1dGhTZXJ2aWNlEmQKC1NldHVwU3RhdHVzEikuc2Vkaml3YS50YXNrcy5hdXRoLnYxLlNldHVwU3RhdHVzUmVxdWVzdBoqLnNlZGppd2EudGFza3MuYXV0aC52MS5TZXR1cFN0YXR1c1Jlc3BvbnNlEmYKD1NldHVwRmlyc3RBZG1pbhItLnNlZGppd2EudGFza3MuYXV0aC52MS5TZXR1cEZpcnN0QWRtaW5SZXF1ZXN0GiQuc2Vkaml3YS50YXNrcy5hdXRoLnYxLkxvZ2luUmVzcG9uc2USTwoIUmVnaXN0ZXISJi5zZWRqaXdhLnRhc2tzLmF1dGgudjEuUmVnaXN0ZXJSZXF1ZXN0Ghsuc2Vkaml3YS50YXNrcy5hdXRoLnYxLlVzZXISUgoFTG9naW4SIy5zZWRqaXdhLnRhc2tzLmF1dGgudjEuTG9naW5SZXF1ZXN0GiQuc2Vkaml3YS50YXNrcy5hdXRoLnYxLkxvZ2luUmVzcG9uc2USQwoCTWUSIC5zZWRqaXdhLnRhc2tzLmF1dGgudjEuTWVSZXF1ZXN0Ghsuc2Vkaml3YS50YXNrcy5hdXRoLnYxLlVzZXISXQoPVXBkYXRlTXlQcm9maWxlEi0uc2Vkaml3YS50YXNrcy5hdXRoLnYxLlVwZGF0ZU15UHJvZmlsZVJlcXVlc3QaGy5zZWRqaXdhLnRhc2tzLmF1dGgudjEuVXNlchJzChBDaGFuZ2VNeVBhc3N3b3JkEi4uc2Vkaml3YS50YXNrcy5hdXRoLnYxLkNoYW5nZU15UGFzc3dvcmRSZXF1ZXN0Gi8uc2Vkaml3YS50YXNrcy5hdXRoLnYxLkNoYW5nZU15UGFzc3dvcmRSZXNwb25zZTKFBwoUVXNlckRpcmVjdG9yeVNlcnZpY2USYgoLU2VhcmNoVXNlcnMSKS5zZWRqaXdhLnRhc2tzLmF1dGgudjEuU2VhcmNoVXNlcnNSZXF1ZXN0Giguc2Vkaml3YS50YXNrcy5hdXRoLnYxLkxpc3RVc2Vyc1Jlc3BvbnNlEk0KB0dldFVzZXISJS5zZWRqaXdhLnRhc2tzLmF1dGgudjEuR2V0VXNlclJlcXVlc3QaGy5zZWRqaXdhLnRhc2tzLmF1dGgudjEuVXNlchJiCglMaXN0VXNlcnMSJy5zZWRqaXdhLnRhc2tzLmF1dGgudjEuTGlzdFVzZXJzUmVxdWVzdBosLnNlZGppd2EudGFza3MuYXV0aC52MS5MaXN0VXNlcnNQYWdlUmVzcG9uc2USUwoKQ3JlYXRlVXNlchIoLnNlZGppd2EudGFza3MuYXV0aC52MS5DcmVhdGVVc2VyUmVxdWVzdBobLnNlZGppd2EudGFza3MuYXV0aC52MS5Vc2VyElMKClVwZGF0ZVVzZXISKC5zZWRqaXdhLnRhc2tzLmF1dGgudjEuVXBkYXRlVXNlclJlcXVlc3QaGy5zZWRqaXdhLnRhc2tzLmF1dGgudjEuVXNlchJRCgxBY3RpdmF0ZVVzZXISJC5zZWRqaXdhLnRhc2tzLmF1dGgudjEuVXNlcklkUmVxdWVzdBobLnNlZGppd2EudGFza3MuYXV0aC52MS5Vc2VyElAKC1N1c3BlbmRVc2VyEiQuc2Vkaml3YS50YXNrcy5hdXRoLnYxLlVzZXJJZFJlcXVlc3QaGy5zZWRqaXdhLnRhc2tzLmF1dGgudjEuVXNlchJPCghTZXRBZG1pbhImLnNlZGppd2EudGFza3MuYXV0aC52MS5TZXRBZG1pblJlcXVlc3QaGy5zZWRqaXdhLnRhc2tzLmF1dGgudjEuVXNlchJfCg1SZXNldFBhc3N3b3JkEisuc2Vkaml3YS50YXNrcy5hdXRoLnYxLlJlc2V0UGFzc3dvcmRSZXF1ZXN0GiEuc2Vkaml3YS50YXNrcy5hdXRoLnYxLk9rUmVzcG9uc2USVQoKRGVsZXRlVXNlchIkLnNlZGppd2EudGFza3MuYXV0aC52MS5Vc2VySWRSZXF1ZXN0GiEuc2Vkaml3YS50YXNrcy5hdXRoLnYxLk9rUmVzcG9uc2ViBnByb3RvMw");
 
 /**
  * @generated from message sedjiwa.tasks.auth.v1.User
@@ -141,6 +141,65 @@ export const LoginResponseSchema: GenMessage<LoginResponse> = /*@__PURE__*/
   messageDesc(file_users, 3);
 
 /**
+ * @generated from message sedjiwa.tasks.auth.v1.SetupStatusRequest
+ */
+export type SetupStatusRequest = Message<"sedjiwa.tasks.auth.v1.SetupStatusRequest"> & {
+};
+
+/**
+ * Describes the message sedjiwa.tasks.auth.v1.SetupStatusRequest.
+ * Use `create(SetupStatusRequestSchema)` to create a new message.
+ */
+export const SetupStatusRequestSchema: GenMessage<SetupStatusRequest> = /*@__PURE__*/
+  messageDesc(file_users, 4);
+
+/**
+ * @generated from message sedjiwa.tasks.auth.v1.SetupStatusResponse
+ */
+export type SetupStatusResponse = Message<"sedjiwa.tasks.auth.v1.SetupStatusResponse"> & {
+  /**
+   * true only while the instance has no users at all
+   *
+   * @generated from field: bool needed = 1;
+   */
+  needed: boolean;
+};
+
+/**
+ * Describes the message sedjiwa.tasks.auth.v1.SetupStatusResponse.
+ * Use `create(SetupStatusResponseSchema)` to create a new message.
+ */
+export const SetupStatusResponseSchema: GenMessage<SetupStatusResponse> = /*@__PURE__*/
+  messageDesc(file_users, 5);
+
+/**
+ * @generated from message sedjiwa.tasks.auth.v1.SetupFirstAdminRequest
+ */
+export type SetupFirstAdminRequest = Message<"sedjiwa.tasks.auth.v1.SetupFirstAdminRequest"> & {
+  /**
+   * @generated from field: string phone = 1;
+   */
+  phone: string;
+
+  /**
+   * @generated from field: string password = 2;
+   */
+  password: string;
+
+  /**
+   * @generated from field: string display_name = 3;
+   */
+  displayName: string;
+};
+
+/**
+ * Describes the message sedjiwa.tasks.auth.v1.SetupFirstAdminRequest.
+ * Use `create(SetupFirstAdminRequestSchema)` to create a new message.
+ */
+export const SetupFirstAdminRequestSchema: GenMessage<SetupFirstAdminRequest> = /*@__PURE__*/
+  messageDesc(file_users, 6);
+
+/**
  * @generated from message sedjiwa.tasks.auth.v1.MeRequest
  */
 export type MeRequest = Message<"sedjiwa.tasks.auth.v1.MeRequest"> & {
@@ -151,7 +210,7 @@ export type MeRequest = Message<"sedjiwa.tasks.auth.v1.MeRequest"> & {
  * Use `create(MeRequestSchema)` to create a new message.
  */
 export const MeRequestSchema: GenMessage<MeRequest> = /*@__PURE__*/
-  messageDesc(file_users, 4);
+  messageDesc(file_users, 7);
 
 /**
  * @generated from message sedjiwa.tasks.auth.v1.UpdateMyProfileRequest
@@ -178,7 +237,7 @@ export type UpdateMyProfileRequest = Message<"sedjiwa.tasks.auth.v1.UpdateMyProf
  * Use `create(UpdateMyProfileRequestSchema)` to create a new message.
  */
 export const UpdateMyProfileRequestSchema: GenMessage<UpdateMyProfileRequest> = /*@__PURE__*/
-  messageDesc(file_users, 5);
+  messageDesc(file_users, 8);
 
 /**
  * @generated from message sedjiwa.tasks.auth.v1.ChangeMyPasswordRequest
@@ -200,7 +259,7 @@ export type ChangeMyPasswordRequest = Message<"sedjiwa.tasks.auth.v1.ChangeMyPas
  * Use `create(ChangeMyPasswordRequestSchema)` to create a new message.
  */
 export const ChangeMyPasswordRequestSchema: GenMessage<ChangeMyPasswordRequest> = /*@__PURE__*/
-  messageDesc(file_users, 6);
+  messageDesc(file_users, 9);
 
 /**
  * @generated from message sedjiwa.tasks.auth.v1.ChangeMyPasswordResponse
@@ -217,7 +276,7 @@ export type ChangeMyPasswordResponse = Message<"sedjiwa.tasks.auth.v1.ChangeMyPa
  * Use `create(ChangeMyPasswordResponseSchema)` to create a new message.
  */
 export const ChangeMyPasswordResponseSchema: GenMessage<ChangeMyPasswordResponse> = /*@__PURE__*/
-  messageDesc(file_users, 7);
+  messageDesc(file_users, 10);
 
 /**
  * @generated from message sedjiwa.tasks.auth.v1.SearchUsersRequest
@@ -236,7 +295,7 @@ export type SearchUsersRequest = Message<"sedjiwa.tasks.auth.v1.SearchUsersReque
  * Use `create(SearchUsersRequestSchema)` to create a new message.
  */
 export const SearchUsersRequestSchema: GenMessage<SearchUsersRequest> = /*@__PURE__*/
-  messageDesc(file_users, 8);
+  messageDesc(file_users, 11);
 
 /**
  * @generated from message sedjiwa.tasks.auth.v1.GetUserRequest
@@ -253,7 +312,7 @@ export type GetUserRequest = Message<"sedjiwa.tasks.auth.v1.GetUserRequest"> & {
  * Use `create(GetUserRequestSchema)` to create a new message.
  */
 export const GetUserRequestSchema: GenMessage<GetUserRequest> = /*@__PURE__*/
-  messageDesc(file_users, 9);
+  messageDesc(file_users, 12);
 
 /**
  * @generated from message sedjiwa.tasks.auth.v1.ListUsersRequest
@@ -284,7 +343,7 @@ export type ListUsersRequest = Message<"sedjiwa.tasks.auth.v1.ListUsersRequest">
  * Use `create(ListUsersRequestSchema)` to create a new message.
  */
 export const ListUsersRequestSchema: GenMessage<ListUsersRequest> = /*@__PURE__*/
-  messageDesc(file_users, 10);
+  messageDesc(file_users, 13);
 
 /**
  * @generated from message sedjiwa.tasks.auth.v1.ListUsersResponse
@@ -301,7 +360,7 @@ export type ListUsersResponse = Message<"sedjiwa.tasks.auth.v1.ListUsersResponse
  * Use `create(ListUsersResponseSchema)` to create a new message.
  */
 export const ListUsersResponseSchema: GenMessage<ListUsersResponse> = /*@__PURE__*/
-  messageDesc(file_users, 11);
+  messageDesc(file_users, 14);
 
 /**
  * ListUsers is paged, so it answers with its own message rather than sharing
@@ -329,7 +388,7 @@ export type ListUsersPageResponse = Message<"sedjiwa.tasks.auth.v1.ListUsersPage
  * Use `create(ListUsersPageResponseSchema)` to create a new message.
  */
 export const ListUsersPageResponseSchema: GenMessage<ListUsersPageResponse> = /*@__PURE__*/
-  messageDesc(file_users, 12);
+  messageDesc(file_users, 15);
 
 /**
  * @generated from message sedjiwa.tasks.auth.v1.CreateUserRequest
@@ -361,7 +420,7 @@ export type CreateUserRequest = Message<"sedjiwa.tasks.auth.v1.CreateUserRequest
  * Use `create(CreateUserRequestSchema)` to create a new message.
  */
 export const CreateUserRequestSchema: GenMessage<CreateUserRequest> = /*@__PURE__*/
-  messageDesc(file_users, 13);
+  messageDesc(file_users, 16);
 
 /**
  * @generated from message sedjiwa.tasks.auth.v1.UpdateUserRequest
@@ -393,7 +452,7 @@ export type UpdateUserRequest = Message<"sedjiwa.tasks.auth.v1.UpdateUserRequest
  * Use `create(UpdateUserRequestSchema)` to create a new message.
  */
 export const UpdateUserRequestSchema: GenMessage<UpdateUserRequest> = /*@__PURE__*/
-  messageDesc(file_users, 14);
+  messageDesc(file_users, 17);
 
 /**
  * @generated from message sedjiwa.tasks.auth.v1.UserIdRequest
@@ -410,7 +469,7 @@ export type UserIdRequest = Message<"sedjiwa.tasks.auth.v1.UserIdRequest"> & {
  * Use `create(UserIdRequestSchema)` to create a new message.
  */
 export const UserIdRequestSchema: GenMessage<UserIdRequest> = /*@__PURE__*/
-  messageDesc(file_users, 15);
+  messageDesc(file_users, 18);
 
 /**
  * @generated from message sedjiwa.tasks.auth.v1.SetAdminRequest
@@ -432,7 +491,7 @@ export type SetAdminRequest = Message<"sedjiwa.tasks.auth.v1.SetAdminRequest"> &
  * Use `create(SetAdminRequestSchema)` to create a new message.
  */
 export const SetAdminRequestSchema: GenMessage<SetAdminRequest> = /*@__PURE__*/
-  messageDesc(file_users, 16);
+  messageDesc(file_users, 19);
 
 /**
  * @generated from message sedjiwa.tasks.auth.v1.ResetPasswordRequest
@@ -454,7 +513,7 @@ export type ResetPasswordRequest = Message<"sedjiwa.tasks.auth.v1.ResetPasswordR
  * Use `create(ResetPasswordRequestSchema)` to create a new message.
  */
 export const ResetPasswordRequestSchema: GenMessage<ResetPasswordRequest> = /*@__PURE__*/
-  messageDesc(file_users, 17);
+  messageDesc(file_users, 20);
 
 /**
  * @generated from message sedjiwa.tasks.auth.v1.OkResponse
@@ -471,7 +530,7 @@ export type OkResponse = Message<"sedjiwa.tasks.auth.v1.OkResponse"> & {
  * Use `create(OkResponseSchema)` to create a new message.
  */
 export const OkResponseSchema: GenMessage<OkResponse> = /*@__PURE__*/
-  messageDesc(file_users, 18);
+  messageDesc(file_users, 21);
 
 /**
  * @generated from enum sedjiwa.tasks.auth.v1.UserStatus
@@ -508,6 +567,28 @@ export const UserStatusSchema: GenEnum<UserStatus> = /*@__PURE__*/
  * @generated from service sedjiwa.tasks.auth.v1.AuthService
  */
 export const AuthService: GenService<{
+  /**
+   * First-run only. SetupStatus says whether this instance has no users at
+   * all; SetupFirstAdmin creates the one Active admin and signs it in. Both
+   * are public because there is nobody to authenticate as yet — the server
+   * re-checks the same emptiness before creating, so the window closes for
+   * good once any account exists.
+   *
+   * @generated from rpc sedjiwa.tasks.auth.v1.AuthService.SetupStatus
+   */
+  setupStatus: {
+    methodKind: "unary";
+    input: typeof SetupStatusRequestSchema;
+    output: typeof SetupStatusResponseSchema;
+  },
+  /**
+   * @generated from rpc sedjiwa.tasks.auth.v1.AuthService.SetupFirstAdmin
+   */
+  setupFirstAdmin: {
+    methodKind: "unary";
+    input: typeof SetupFirstAdminRequestSchema;
+    output: typeof LoginResponseSchema;
+  },
   /**
    * public → status Pending
    *
