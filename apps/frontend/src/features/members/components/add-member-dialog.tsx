@@ -87,7 +87,7 @@ export function AddMemberDialog({
                   onClick={() => addMember(u.id)}
                   className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors [transition-duration:var(--duration-fast)] hover:bg-surface-hover disabled:opacity-50"
                 >
-                  <Avatar className="h-8 w-8">
+                  <Avatar>
                     {u.avatarUrl && <AvatarImage src={u.avatarUrl} />}
                     <AvatarFallback>{getInitials(u.displayName)}</AvatarFallback>
                   </Avatar>

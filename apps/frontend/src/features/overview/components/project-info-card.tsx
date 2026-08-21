@@ -62,9 +62,9 @@ export function ProjectInfoCard({
       <div className="divide-y divide-border-subtle">
         <Row label="Owner">
           <span className="flex items-center justify-end gap-2">
-            <Avatar className="h-6 w-6">
+            <Avatar size="sm">
               {owner?.avatarUrl && <AvatarImage src={owner.avatarUrl} />}
-              <AvatarFallback className="text-xs">
+              <AvatarFallback>
                 {getInitials(ownerName)}
               </AvatarFallback>
             </Avatar>
@@ -94,11 +94,12 @@ export function ProjectInfoCard({
               return (
                 <Avatar
                   key={id}
-                  className="-ml-2 h-6 w-6 ring-2 ring-surface-raised first:ml-0"
+                  size="sm"
+                  className="-ml-1 ring-2 ring-surface-raised first:ml-0"
                   title={name}
                 >
                   {u?.avatarUrl && <AvatarImage src={u.avatarUrl} alt="" />}
-                  <AvatarFallback className="text-xs" aria-hidden="true">
+                  <AvatarFallback aria-hidden="true">
                     {getInitials(name)}
                   </AvatarFallback>
                   <span className="sr-only">{name}</span>

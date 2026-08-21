@@ -44,9 +44,9 @@ export function ProjectCard({
             </p>
           )}
           <div className="flex items-center gap-2 text-sm text-text-muted">
-            <Avatar className="h-6 w-6">
+            <Avatar size="sm">
               {owner?.avatarUrl && <AvatarImage src={owner.avatarUrl} />}
-              <AvatarFallback className="text-xs">
+              <AvatarFallback>
                 {getInitials(ownerName)}
               </AvatarFallback>
             </Avatar>

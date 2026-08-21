@@ -49,9 +49,9 @@ export function AssigneePicker({
                     onClick={() => toggle(id)}
                     className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors [transition-duration:var(--duration-fast)] hover:bg-surface-hover"
                   >
-                    <Avatar className="h-6 w-6">
+                    <Avatar size="sm">
                       {u?.avatarUrl && <AvatarImage src={u.avatarUrl} />}
-                      <AvatarFallback className="text-xs">
+                      <AvatarFallback>
                         {getInitials(name)}
                       </AvatarFallback>
                     </Avatar>
@@ -87,7 +87,7 @@ export function AssigneeAvatars({
   const shown = ids.slice(0, max);
   const extra = ids.length - shown.length;
   return (
-    <div className="flex -space-x-1.5">
+    <div className="flex -space-x-1">
       {shown.map((id) => {
         const u = userMap[id];
         const name = u?.displayName ?? id;

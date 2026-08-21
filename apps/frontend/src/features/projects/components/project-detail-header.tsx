@@ -82,9 +82,9 @@ export function ProjectDetailHeader({ project }: { project: Project }) {
         )}
         <div className="flex items-center gap-3 text-sm text-text-muted">
           <span className="flex items-center gap-2">
-            <Avatar className="h-6 w-6">
+            <Avatar size="sm">
               {owner?.avatarUrl && <AvatarImage src={owner.avatarUrl} />}
-              <AvatarFallback className="text-xs">
+              <AvatarFallback>
                 {getInitials(ownerName)}
               </AvatarFallback>
             </Avatar>

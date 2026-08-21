@@ -2,14 +2,16 @@
    Popover Content
    ============================================ */
 
+/* Lebar dan padding TIDAK di sini — keduanya utility default di popover.tsx
+   (`w-72 p-3`). CSS Module tidak berlapis, jadi selama keduanya diset dari
+   sini, `<PopoverContent className="w-64 p-1">` di call site mati diam-diam
+   dan setiap popover di app terkunci 288px. */
 .content {
   z-index: 50;
-  width: 18rem; /* w-72 */
   border-radius: var(--radius-lg);
   border: 1px solid var(--border-strong);
   background: var(--surface-overlay);
   color: var(--text);
-  padding: 0.75rem;
   box-shadow: var(--shadow-3);
   outline: none;
   transform-origin: var(--radix-popover-content-transform-origin);

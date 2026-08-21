@@ -4,6 +4,19 @@ import { Avatar as AvatarPrimitive } from "radix-ui"
 import { cn } from "@/lib/utils"
 import styles from "./avatar.module.css"
 
+/**
+ * Ukuran hidup sebagai utility, bukan sebagai aturan di avatar.module.css.
+ * CSS Module tidak berlapis dan karena itu mengalahkan @layer utilities —
+ * selama ukuran diset dari modul, `className="h-6 w-6"` di call site mati
+ * tanpa peringatan. Sebagai utility, tailwind-merge menyelesaikannya seperti
+ * yang orang harapkan: className call site menang.
+ */
+const SIZE_CLASS = {
+  default: "size-8 text-sm",
+  sm: "size-6 text-xs",
+  lg: "size-9 text-sm",
+} as const
+
 function Avatar({
   className,
   size = "default",
@@ -15,7 +28,7 @@ function Avatar({
     <AvatarPrimitive.Root
       data-slot="avatar"
       data-size={size}
-      className={cn(styles.avatar, className)}
+      className={cn(styles.avatar, SIZE_CLASS[size], className)}
       {...props}
     />
   )

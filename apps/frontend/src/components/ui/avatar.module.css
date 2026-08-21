@@ -2,25 +2,18 @@
    Avatar Root
    ============================================ */
 
+/* Ukuran (dan ukuran teks fallback) TIDAK di sini — ia hidup sebagai utility
+   default di avatar.tsx. CSS Module tidak berlapis, jadi apa pun yang ditulis
+   di file ini mengalahkan @layer utilities dan membuat className dari call
+   site mati diam-diam. Yang tinggal di sini adalah hal yang memang tidak
+   boleh ditimpa dari luar: bentuk, warna, dan clipping. */
 .avatar {
   position: relative;
   display: flex;
-  width: 2rem;
-  height: 2rem;
   flex-shrink: 0;
   overflow: hidden;
   border-radius: 9999px;
   user-select: none;
-}
-
-.avatar[data-size="sm"] {
-  width: 1.5rem;
-  height: 1.5rem;
-}
-
-.avatar[data-size="lg"] {
-  width: 2.25rem;
-  height: 2.25rem;
 }
 
 /* ============================================
@@ -46,14 +39,8 @@
   border-radius: 9999px;
   background-color: var(--surface-sunken);
   color: var(--text-muted);
-  font-size: 0.875rem;
-  line-height: 1.25rem;
-}
-
-/* When parent avatar has data-size="sm", reduce text size */
-[data-size="sm"] > .fallback {
-  font-size: 0.875rem;
-  line-height: 1rem;
+  /* font-size sengaja tidak diset: inisial mewarisi ukuran teks dari root,
+     yang ditentukan oleh prop `size` (atau ditimpa dari call site). */
 }
 
 /* ============================================

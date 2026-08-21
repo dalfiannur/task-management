@@ -28,7 +28,7 @@ function PopoverContent({
         data-slot="popover-content"
         align={align}
         sideOffset={sideOffset}
-        className={cn(styles.content, className)}
+        className={cn(styles.content, "w-72 p-3", className)}
         {...props}
       />
     </PopoverPrimitive.Portal>

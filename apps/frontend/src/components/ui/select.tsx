@@ -35,7 +35,7 @@ function SelectTrigger({
     <SelectPrimitive.Trigger
       data-slot="select-trigger"
       data-size={size}
-      className={cn(styles.trigger, className)}
+      className={cn(styles.trigger, "w-fit", className)}
       {...props}
     >
       {children}

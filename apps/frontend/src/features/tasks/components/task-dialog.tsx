@@ -1,9 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RichTextEditor } from "@/components/shared/rich-text-editor";
 import {
@@ -21,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DatePickerField } from "@/components/shared/date-picker-field";
+import { cn } from "@/lib/utils";
 import type { AppUser } from "@/features/auth";
 import { LabelCombobox } from "@/features/labels";
 import { CommentThread } from "@/features/comments";
@@ -39,6 +38,30 @@ function isoToDate(v?: string): Date | undefined {
 }
 function dateToIso(d: Date | undefined): string | undefined {
   return d ? format(d, "yyyy-MM-dd") : undefined;
+}
+
+/**
+ * One labelled control in the properties sidebar. The caption is a `<span>`
+ * rather than a `<Label>` because none of these controls is a native form
+ * element with an id to point `htmlFor` at (they are Radix triggers), so the
+ * name is attached with `role="group" + aria-labelledby` instead.
+ */
+function Property({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  const id = useId();
+  return (
+    <div className="space-y-2" role="group" aria-labelledby={id}>
+      <span id={id} className="text-label block">
+        {label}
+      </span>
+      {children}
+    </div>
+  );
 }
 
 interface Props {
@@ -94,6 +117,11 @@ export function TaskDialog({
   // path must stay unreachable through this whole window, not just visually
   // — see onSubmit and the loading branch below.
   const loading = editing && !task;
+  // The submit button lives in the sticky footer, outside the <form> — bound
+  // back to it by id. Generated per instance because the create dialog and
+  // the URL-driven edit dialog can be mounted at the same time, and a
+  // duplicated id would point one footer at the other dialog's form.
+  const formId = useId();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -132,6 +160,10 @@ export function TaskDialog({
   const dependencyCandidates = task
     ? tasks.filter((t) => t.id !== task.id && t.parentId !== task.id)
     : [];
+  // Subtasks, dependencies and comments all hang off a saved task, so in
+  // create mode the left column is just the form and the sidebar only needs
+  // to span one grid row.
+  const hasDetails = editing && !!task;
 
   function onDependencyChange(blockedByIds: string[]) {
     if (!task) return;
@@ -191,154 +223,212 @@ export function TaskDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] max-w-xl overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{editing ? "Edit task" : "New task"}</DialogTitle>
+      {/* Padding moves off the content box and onto each band, so the header
+          and footer rules span the full width and the middle band is the only
+          thing that scrolls. */}
+      <DialogContent className="flex max-h-[85vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl">
+        <DialogHeader className="shrink-0 border-b border-border-subtle px-6 py-4">
+          {/* Demoted to an eyebrow: the task's own title is the heading of
+              this dialog now, so this line only names the mode. */}
+          <DialogTitle className="text-xs leading-[1.6] font-semibold tracking-[0.08em] text-text-subtle uppercase">
+            {editing ? "Edit task" : "New task"}
+          </DialogTitle>
         </DialogHeader>
+
         {loading ? (
           // Edit intent is already known here — only the data isn't in yet.
           // Rendering the real (empty) form in this window is what let a
           // deep link submit as a create; a placeholder with no submit
           // control removes that path entirely rather than just disabling it.
-          <div className="space-y-4 py-1" aria-busy="true" aria-label="Loading task">
-            <Skeleton className="h-9 w-2/3 rounded-lg" />
-            <Skeleton className="h-24 w-full rounded-lg" />
-            <div className="grid grid-cols-2 gap-4">
-              <Skeleton className="h-9 rounded-lg" />
-              <Skeleton className="h-9 rounded-lg" />
+          <div
+            className="min-h-0 flex-1 overflow-y-auto p-6"
+            aria-busy="true"
+            aria-label="Loading task"
+          >
+            <div className="grid gap-6 sm:grid-cols-[minmax(0,1fr)_16rem]">
+              <div className="space-y-4">
+                <Skeleton className="h-8 w-2/3 rounded-lg" />
+                <Skeleton className="h-32 w-full rounded-lg" />
+              </div>
+              <div className="space-y-4 sm:border-l sm:border-border-subtle sm:pl-6">
+                <Skeleton className="h-8 w-32 rounded-lg" />
+                <Skeleton className="h-8 w-28 rounded-lg" />
+                <Skeleton className="h-8 w-36 rounded-lg" />
+                <Skeleton className="h-8 w-24 rounded-lg" />
+              </div>
             </div>
-            <Skeleton className="h-9 w-40 rounded-lg" />
           </div>
         ) : (
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="title">Title</Label>
-            <Input
-              id="title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              autoFocus
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <RichTextEditor
-              value={description}
-              onChange={setDescription}
-              placeholder="Describe the task…"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Status</Label>
-              <Select
-                value={status}
-                onValueChange={(v) => setStatus(v as TaskStatus)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TASK_STATUSES.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {TASK_STATUS_CONFIG[s].label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Priority</Label>
-              <Select
-                value={priority}
-                onValueChange={(v) => setPriority(v as TaskPriority)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {TASK_PRIORITIES.map((p) => (
-                    <SelectItem key={p} value={p}>
-                      {TASK_PRIORITY_CONFIG[p].label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-text-muted">Start</span>
-              <DatePickerField value={startDate} onChange={setStartDate} />
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-text-muted">Due</span>
-              <DatePickerField
-                value={dueDate}
-                onChange={setDueDate}
-                minDate={startDate}
-              />
-            </div>
-            <AssigneePicker
-              memberIds={memberIds}
-              userMap={userMap}
-              value={assigneeIds}
-              onChange={setAssigneeIds}
-            />
-            <LabelCombobox
-              projectId={projectId}
-              value={labelIds}
-              onChange={setLabelIds}
-            />
-          </div>
-          <DialogFooter>
-            <Button type="submit" disabled={pending || !title.trim()}>
-              {pending ? "Saving…" : editing ? "Save" : "Create"}
-            </Button>
-          </DialogFooter>
-        </form>
-        )}
-        {editing && task && (
           <>
-            <div className="my-2 space-y-4 border-t border-border-subtle pt-4">
-              {task.parentId ? (
-                // The one-level rule made visible: a subtask never gets its
-                // own "add subtask" UI (the backend would reject it) — just
-                // a way back to the task that owns it. `parentTask` can be
-                // momentarily missing from `tasks` (e.g. the parent hasn't
-                // loaded yet); still honor the "no subtask UI on a subtask"
-                // rule rather than falling through to SubtaskSection.
-                parentTask ? (
-                  <button
-                    type="button"
-                    onClick={() => onOpenTask(parentTask.id)}
-                    className="text-sm text-brand-text hover:underline"
-                  >
-                    ← Subtask of “{parentTask.title}”
-                  </button>
-                ) : (
-                  <p className="text-sm text-text-muted">This is a subtask.</p>
-                )
-              ) : (
-                <SubtaskSection
-                  parent={task}
-                  children={subtasks}
-                  onOpenTask={onOpenTask}
-                />
-              )}
-              <DependencyPicker
-                task={task}
-                candidates={dependencyCandidates}
-                onChange={onDependencyChange}
-              />
+            <div className="scrollbar-slim min-h-0 flex-1 overflow-y-auto">
+              <div className="grid gap-6 p-6 sm:grid-cols-[minmax(0,1fr)_16rem]">
+                {/* Left column, row 1 — the editable body of the task. */}
+                <form
+                  id={formId}
+                  onSubmit={onSubmit}
+                  className="space-y-4 sm:col-start-1 sm:row-start-1"
+                >
+                  {/* Borderless on purpose: this is the dialog's real heading,
+                      so it is styled as one and reveals its input chrome only
+                      on focus (the base-layer focus ring). */}
+                  <input
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    aria-label="Task title"
+                    placeholder="Task title"
+                    autoFocus
+                    required
+                    className="w-full bg-transparent text-xl font-semibold text-text placeholder:text-text-subtle"
+                  />
+                  <div className="space-y-2" role="group" aria-labelledby={`${formId}-desc`}>
+                    <span id={`${formId}-desc`} className="text-label block">
+                      Description
+                    </span>
+                    <RichTextEditor
+                      value={description}
+                      onChange={setDescription}
+                      placeholder="Describe the task…"
+                    />
+                  </div>
+                </form>
+
+                {/* Right column — properties. Spans both rows when the left
+                    column has a details block, so the rule runs the full
+                    height of the content rather than stopping mid-way. */}
+                <aside
+                  className={cn(
+                    "space-y-4 sm:col-start-2 sm:row-start-1 sm:border-l sm:border-border-subtle sm:pl-6",
+                    hasDetails && "sm:row-span-2",
+                  )}
+                >
+                  <Property label="Status">
+                    <Select
+                      value={status}
+                      onValueChange={(v) => setStatus(v as TaskStatus)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TASK_STATUSES.map((s) => (
+                          <SelectItem key={s} value={s}>
+                            {TASK_STATUS_CONFIG[s].label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Property>
+                  <Property label="Priority">
+                    <Select
+                      value={priority}
+                      onValueChange={(v) => setPriority(v as TaskPriority)}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TASK_PRIORITIES.map((p) => (
+                          <SelectItem key={p} value={p}>
+                            {TASK_PRIORITY_CONFIG[p].label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Property>
+                  <Property label="Start date">
+                    <DatePickerField value={startDate} onChange={setStartDate} />
+                  </Property>
+                  <Property label="Due date">
+                    <DatePickerField
+                      value={dueDate}
+                      onChange={setDueDate}
+                      minDate={startDate}
+                    />
+                  </Property>
+                  <Property label="Assignees">
+                    <AssigneePicker
+                      memberIds={memberIds}
+                      userMap={userMap}
+                      value={assigneeIds}
+                      onChange={setAssigneeIds}
+                    />
+                  </Property>
+                  <Property label="Labels">
+                    <LabelCombobox
+                      projectId={projectId}
+                      value={labelIds}
+                      onChange={setLabelIds}
+                    />
+                  </Property>
+                </aside>
+
+                {/* Left column, row 2 — everything that saves itself and so
+                    sits outside the form: relations and the comment thread. */}
+                {hasDetails && task && (
+                  <div className="space-y-6 sm:col-start-1 sm:row-start-2">
+                    <div className="space-y-4 border-t border-border-subtle pt-6">
+                      {task.parentId ? (
+                        // The one-level rule made visible: a subtask never gets
+                        // its own "add subtask" UI (the backend would reject
+                        // it) — just a way back to the task that owns it.
+                        // `parentTask` can be momentarily missing from `tasks`
+                        // (e.g. the parent hasn't loaded yet); still honor the
+                        // "no subtask UI on a subtask" rule rather than falling
+                        // through to SubtaskSection.
+                        parentTask ? (
+                          <button
+                            type="button"
+                            onClick={() => onOpenTask(parentTask.id)}
+                            className="text-sm text-brand-text hover:underline"
+                          >
+                            ← Subtask of “{parentTask.title}”
+                          </button>
+                        ) : (
+                          <p className="text-sm text-text-muted">
+                            This is a subtask.
+                          </p>
+                        )
+                      ) : (
+                        <SubtaskSection
+                          parent={task}
+                          children={subtasks}
+                          onOpenTask={onOpenTask}
+                        />
+                      )}
+                      <DependencyPicker
+                        task={task}
+                        candidates={dependencyCandidates}
+                        onChange={onDependencyChange}
+                      />
+                    </div>
+                    <div className="border-t border-border-subtle pt-6">
+                      <CommentThread
+                        taskId={task.id}
+                        projectId={projectId}
+                        highlightCommentId={highlightCommentId}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-            <div className="my-2 border-t border-border-subtle" />
-            <CommentThread
-              taskId={task.id}
-              projectId={projectId}
-              highlightCommentId={highlightCommentId}
-            />
+
+            <DialogFooter className="shrink-0 border-t border-border-subtle px-6 py-4">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => onOpenChange(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                form={formId}
+                disabled={pending || !title.trim()}
+              >
+                {pending ? "Saving…" : editing ? "Save" : "Create"}
+              </Button>
+            </DialogFooter>
           </>
         )}
       </DialogContent>

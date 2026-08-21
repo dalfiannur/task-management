@@ -122,7 +122,7 @@ export function MembersTab({ projectId }: { projectId: string }) {
               key={m.userId}
               className="flex items-center gap-3 border-b border-border-subtle px-4 py-3 last:border-b-0"
             >
-              <Avatar className="h-9 w-9">
+              <Avatar size="lg">
                 {u?.avatarUrl && <AvatarImage src={u.avatarUrl} />}
                 <AvatarFallback>{getInitials(name)}</AvatarFallback>
               </Avatar>
