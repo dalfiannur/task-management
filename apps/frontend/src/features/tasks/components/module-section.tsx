@@ -27,6 +27,7 @@ import { buildHierarchy, subtaskProgress } from "../task-graph";
 import { TaskRow } from "./task-row";
 
 export function ModuleSection({
+  projectId,
   module,
   tasks,
   canManage,
@@ -40,6 +41,8 @@ export function ModuleSection({
   isFirst,
   isLast,
 }: {
+  /** The project whose task list the optimistic quick-add writes into. */
+  projectId: string;
   module: Module;
   tasks: Task[];
   canManage: boolean;
@@ -54,7 +57,7 @@ export function ModuleSection({
   isFirst: boolean;
   isLast: boolean;
 }) {
-  const create = useCreateTask();
+  const create = useCreateTask(projectId);
   const del = useDeleteModule();
   const [quick, setQuick] = useState("");
   const { setNodeRef } = useDroppable({ id: `mod:${module.id}` });
@@ -75,13 +78,11 @@ export function ModuleSection({
     e.preventDefault();
     const title = quick.trim();
     if (!title) return;
-    create.mutate(
-      { moduleId: module.id, title, assigneeIds: [], labelIds: [] },
-      {
-        onSuccess: () => setQuick(""),
-        onError: (err) => toast.error(err.message || "Failed to add task"),
-      },
-    );
+    // Cleared up front, not on success — the row is already on screen, so
+    // the field is free for the next task.
+    setQuick("");
+    // Failure is reported (and the placeholder row removed) by useCreateTask.
+    create.mutate({ moduleId: module.id, title, assigneeIds: [], labelIds: [] });
   }
 
   function deleteModule() {

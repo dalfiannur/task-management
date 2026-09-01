@@ -111,7 +111,7 @@ export function TaskDialog({
   tasks,
   onOpenTask,
 }: Props) {
-  const create = useCreateTask();
+  const create = useCreateTask(projectId);
   const update = useUpdateTask();
   const editing = editingProp ?? !!task;
   // Edit intent confirmed, but the object hasn't arrived yet. The create
@@ -205,20 +205,21 @@ export function TaskDialog({
         { onSuccess: () => onOpenChange(false), onError },
       );
     } else {
-      create.mutate(
-        {
-          moduleId,
-          title: title.trim(),
-          description: description || undefined,
-          status: statusToProto(status),
-          priority: priorityToProto(priority),
-          startDate: dateToIso(startDate),
-          dueDate: dateToIso(dueDate),
-          assigneeIds,
-          labelIds,
-        },
-        { onSuccess: () => onOpenChange(false), onError },
-      );
+      // Closed straight away: useCreateTask puts the row in the list
+      // optimistically, and reports (and rolls back) a failure itself — so
+      // there's nothing left for this dialog to wait on.
+      onOpenChange(false);
+      create.mutate({
+        moduleId,
+        title: title.trim(),
+        description: description || undefined,
+        status: statusToProto(status),
+        priority: priorityToProto(priority),
+        startDate: dateToIso(startDate),
+        dueDate: dateToIso(dueDate),
+        assigneeIds,
+        labelIds,
+      });
     }
   }
 
@@ -391,6 +392,7 @@ export function TaskDialog({
                         )
                       ) : (
                         <SubtaskSection
+                          projectId={projectId}
                           parent={task}
                           children={subtasks}
                           onOpenTask={onOpenTask}

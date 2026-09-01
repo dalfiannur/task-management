@@ -233,6 +233,7 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
             {modules.map((m, i) => (
               <ModuleSection
                 key={m.id}
+                projectId={projectId}
                 module={m}
                 tasks={tasksByModule[m.id] ?? []}
                 canManage={canManage}

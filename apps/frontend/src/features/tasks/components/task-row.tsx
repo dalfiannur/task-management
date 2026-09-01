@@ -20,7 +20,7 @@ import type { AppUser } from "@/features/auth";
 import { LabelChips, type Label } from "@/features/labels";
 import type { Task } from "../types";
 import { statusToProto } from "../api/mappers";
-import { useUpdateTask, useDeleteTask } from "../api/hooks";
+import { isOptimisticTaskId, useUpdateTask, useDeleteTask } from "../api/hooks";
 import { StatusBadge, PriorityLabel } from "./task-badges";
 import { AssigneeAvatars } from "./assignee-picker";
 
@@ -59,6 +59,10 @@ export function TaskRow({
     useSortable({ id: task.id });
 
   const done = task.status === "done";
+  // Optimistically inserted row: it has no server id yet, so every action
+  // that would send one (toggle, edit, delete, drag) stays inert until the
+  // real task replaces it — a round-trip later, at most.
+  const pending = isOptimisticTaskId(task.id);
 
   function toggleDone(checked: boolean) {
     update.mutate(
@@ -90,11 +94,13 @@ export function TaskRow({
         depth ? "pl-10 pr-4" : "px-4",
         "transition-colors [transition-duration:var(--duration-fast)] hover:bg-surface-hover",
         isDragging && "opacity-50",
+        pending && "opacity-60",
       )}
     >
       <button
         type="button"
-        className="cursor-grab text-text-muted/40 hover:text-text-muted"
+        disabled={pending}
+        className="cursor-grab text-text-muted/40 hover:text-text-muted disabled:cursor-default"
         {...attributes}
         {...listeners}
         aria-label="Drag task"
@@ -103,11 +109,13 @@ export function TaskRow({
       </button>
       <Checkbox
         checked={done}
+        disabled={pending}
         onCheckedChange={(c) => toggleDone(c === true)}
         onClick={(e) => e.stopPropagation()}
       />
       <button
         type="button"
+        disabled={pending}
         onClick={() => onEdit(task)}
         className="flex flex-1 items-center gap-3 text-left"
       >
@@ -152,6 +160,7 @@ export function TaskRow({
             <Button
               variant="ghost"
               size="icon"
+              disabled={pending}
               className="h-7 w-7 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
               onClick={(e) => e.stopPropagation()}
               aria-label="Delete task"
@@ -177,6 +186,7 @@ export function TaskRow({
         <Button
           variant="ghost"
           size="icon"
+          disabled={pending}
           className="h-7 w-7 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
           onClick={onDelete}
           aria-label="Delete task"

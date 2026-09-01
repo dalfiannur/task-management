@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import type { Task } from "../types";
 import { statusToProto } from "../api/mappers";
-import { useCreateTask, useUpdateTask } from "../api/hooks";
+import { isOptimisticTaskId, useCreateTask, useUpdateTask } from "../api/hooks";
 import { StatusBadge } from "./task-badges";
 
 /**
@@ -17,17 +17,20 @@ import { StatusBadge } from "./task-badges";
  * back to the parent instead; see task-dialog.tsx).
  */
 export function SubtaskSection({
+  projectId,
   parent,
   children,
   onOpenTask,
 }: {
+  /** The project whose task list the optimistic quick-add writes into. */
+  projectId: string;
   parent: Task;
   /** Already sorted by `order` — from buildHierarchy's childrenOf. */
   children: Task[];
   /** Opens a subtask in the URL-addressed dialog (`?task=`). */
   onOpenTask: (id: string) => void;
 }) {
-  const create = useCreateTask();
+  const create = useCreateTask(projectId);
   const update = useUpdateTask();
   const [quick, setQuick] = useState("");
 
@@ -35,19 +38,17 @@ export function SubtaskSection({
     e.preventDefault();
     const title = quick.trim();
     if (!title) return;
-    create.mutate(
-      {
-        moduleId: parent.moduleId,
-        parentId: parent.id,
-        title,
-        assigneeIds: [],
-        labelIds: [],
-      },
-      {
-        onSuccess: () => setQuick(""),
-        onError: (err) => toast.error(err.message || "Failed to add subtask"),
-      },
-    );
+    // Cleared up front, not on success — the row is already on screen, so
+    // the field is free for the next subtask.
+    setQuick("");
+    // Failure is reported (and the placeholder row removed) by useCreateTask.
+    create.mutate({
+      moduleId: parent.moduleId,
+      parentId: parent.id,
+      title,
+      assigneeIds: [],
+      labelIds: [],
+    });
   }
 
   function toggleDone(subtask: Task, checked: boolean) {
@@ -72,18 +73,23 @@ export function SubtaskSection({
         <ul className="divide-y divide-border-subtle rounded-lg border border-border-subtle">
           {children.map((c) => {
             const done = c.status === "done";
+            // Optimistic row — no server id to update or open yet.
+            const pending = isOptimisticTaskId(c.id);
             return (
               <li key={c.id} className="flex items-center gap-2 px-3 py-2">
                 <Checkbox
                   checked={done}
+                  disabled={pending}
                   onCheckedChange={(checked) => toggleDone(c, checked === true)}
                 />
                 <button
                   type="button"
+                  disabled={pending}
                   onClick={() => onOpenTask(c.id)}
                   className={cn(
                     "flex-1 truncate text-left text-sm",
                     done && "text-text-muted line-through",
+                    pending && "opacity-60",
                   )}
                 >
                   {c.title}
