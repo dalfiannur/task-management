@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
-import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,7 +30,7 @@ export function SubtaskSection({
   onOpenTask: (id: string) => void;
 }) {
   const create = useCreateTask(projectId);
-  const update = useUpdateTask();
+  const update = useUpdateTask(projectId);
   const [quick, setQuick] = useState("");
 
   function addSubtask(e: React.FormEvent) {
@@ -52,10 +51,11 @@ export function SubtaskSection({
   }
 
   function toggleDone(subtask: Task, checked: boolean) {
-    update.mutate(
-      { id: subtask.id, status: statusToProto(checked ? "done" : "todo") },
-      { onError: (err) => toast.error(err.message || "Failed to update") },
-    );
+    // Failure is reported (and the row reverted) by useUpdateTask.
+    update.mutate({
+      id: subtask.id,
+      status: statusToProto(checked ? "done" : "todo"),
+    });
   }
 
   return (

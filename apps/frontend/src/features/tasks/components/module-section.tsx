@@ -168,6 +168,7 @@ export function ModuleSection({
           {roots.map((task) => (
             <Fragment key={task.id}>
               <TaskRow
+                projectId={projectId}
                 task={task}
                 userMap={userMap}
                 labelMap={labelMap}
@@ -179,6 +180,7 @@ export function ModuleSection({
               {(childrenOf[task.id] ?? []).map((child) => (
                 <TaskRow
                   key={child.id}
+                  projectId={projectId}
                   task={child}
                   userMap={userMap}
                   labelMap={labelMap}

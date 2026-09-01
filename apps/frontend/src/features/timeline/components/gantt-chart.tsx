@@ -6,7 +6,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import {
@@ -54,7 +53,7 @@ interface Row {
 export function GanttChart({ projectId }: { projectId: string }) {
   const { modules, isLoading: ml } = useModules(projectId);
   const { tasks, isLoading: tl } = useTasks(projectId);
-  const update = useUpdateTask();
+  const update = useUpdateTask(projectId);
   const [zoom, setZoom] = useState<Zoom>("day");
 
   // Viewers reach this tab only as members/admins (GetProject/ListTasks gate),
@@ -166,17 +165,11 @@ export function GanttChart({ projectId }: { projectId: string }) {
   }, [measure, rows.length]);
 
   function reschedule(taskId: string, patch: ReschedulePatch) {
-    update.mutate(
-      { id: taskId, ...patch },
-      { onError: (e) => toast.error(e.message || "Reschedule failed") },
-    );
+    update.mutate({ id: taskId, ...patch });
   }
   function schedule(taskId: string, date: Date) {
     const iso = toIso(date);
-    update.mutate(
-      { id: taskId, startDate: iso, dueDate: iso },
-      { onError: (e) => toast.error(e.message || "Schedule failed") },
-    );
+    update.mutate({ id: taskId, startDate: iso, dueDate: iso });
   }
 
   if (ml || tl) {

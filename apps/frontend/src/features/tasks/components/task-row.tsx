@@ -25,6 +25,7 @@ import { StatusBadge, PriorityLabel } from "./task-badges";
 import { AssigneeAvatars } from "./assignee-picker";
 
 export function TaskRow({
+  projectId,
   task,
   userMap,
   labelMap,
@@ -34,6 +35,8 @@ export function TaskRow({
   blocked,
   subtaskCount = 0,
 }: {
+  /** The project whose task list an optimistic edit writes into. */
+  projectId: string;
   task: Task;
   userMap: Record<string, AppUser>;
   labelMap: Record<string, Label>;
@@ -53,7 +56,7 @@ export function TaskRow({
    */
   subtaskCount?: number;
 }) {
-  const update = useUpdateTask();
+  const update = useUpdateTask(projectId);
   const del = useDeleteTask();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: task.id });
@@ -65,10 +68,11 @@ export function TaskRow({
   const pending = isOptimisticTaskId(task.id);
 
   function toggleDone(checked: boolean) {
-    update.mutate(
-      { id: task.id, status: statusToProto(checked ? "done" : "todo") },
-      { onError: (e) => toast.error(e.message || "Failed to update") },
-    );
+    // Failure is reported (and the row reverted) by useUpdateTask.
+    update.mutate({
+      id: task.id,
+      status: statusToProto(checked ? "done" : "todo"),
+    });
   }
 
   function onDelete(e: React.MouseEvent) {

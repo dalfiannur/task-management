@@ -1,6 +1,6 @@
 import { useEffect, useId, useState } from "react";
-import { format } from "date-fns";
 import { toast } from "sonner";
+import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RichTextEditor } from "@/components/shared/rich-text-editor";
@@ -112,7 +112,7 @@ export function TaskDialog({
   onOpenTask,
 }: Props) {
   const create = useCreateTask(projectId);
-  const update = useUpdateTask();
+  const update = useUpdateTask(projectId);
   const editing = editingProp ?? !!task;
   // Edit intent confirmed, but the object hasn't arrived yet. The create
   // path must stay unreachable through this whole window, not just visually
@@ -168,21 +168,21 @@ export function TaskDialog({
 
   function onDependencyChange(blockedByIds: string[]) {
     if (!task) return;
-    update.mutate(
-      { id: task.id, blockedByIds: { values: blockedByIds } },
-      {
-        onError: (err) =>
-          toast.error(err.message || "Failed to update dependencies"),
-      },
-    );
+    update.mutate({ id: task.id, blockedByIds: { values: blockedByIds } });
   }
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
-    const onError = (err: { message: string }) =>
-      toast.error(err.message || "Failed to save task");
-
+    const start = dateToIso(startDate);
+    const due = dateToIso(dueDate);
+    // Mirrors the backend's dates_ok. Checked here because the dialog now
+    // closes on submit: a rejection arriving after that would leave the user
+    // holding a toast with no form to correct.
+    if (start && due && start > due) {
+      toast.error("Start date must be on or before the due date");
+      return;
+    }
     if (editing) {
       // Still loading (or, defensively, closed out from under us) — there is
       // nothing to submit yet. The form isn't rendered while `loading` is
@@ -190,20 +190,20 @@ export function TaskDialog({
       // primary defense: it's what stops `editing` ever falling through to
       // the create branch below.
       if (!task) return;
-      update.mutate(
-        {
-          id: task.id,
-          title: title.trim(),
-          description,
-          status: statusToProto(status),
-          priority: priorityToProto(priority),
-          startDate: dateToIso(startDate),
-          dueDate: dateToIso(dueDate),
-          assigneeIds: { values: assigneeIds },
-          labelIds: { values: labelIds },
-        },
-        { onSuccess: () => onOpenChange(false), onError },
-      );
+      // Closed on submit for the same reason as create: the edit is already
+      // on screen, and useUpdateTask reports (and reverts) a failure itself.
+      onOpenChange(false);
+      update.mutate({
+        id: task.id,
+        title: title.trim(),
+        description,
+        status: statusToProto(status),
+        priority: priorityToProto(priority),
+        startDate: start,
+        dueDate: due,
+        assigneeIds: { values: assigneeIds },
+        labelIds: { values: labelIds },
+      });
     } else {
       // Closed straight away: useCreateTask puts the row in the list
       // optimistically, and reports (and rolls back) a failure itself — so
@@ -215,8 +215,8 @@ export function TaskDialog({
         description: description || undefined,
         status: statusToProto(status),
         priority: priorityToProto(priority),
-        startDate: dateToIso(startDate),
-        dueDate: dateToIso(dueDate),
+        startDate: start,
+        dueDate: due,
         assigneeIds,
         labelIds,
       });

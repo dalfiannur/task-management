@@ -1,7 +1,7 @@
 // Modules + Tasks RPC hooks (connect-query over ModuleService/TaskService).
 // Reads map proto→flat; writes invalidate the relevant service key.
 
-import { create } from "@bufbuild/protobuf";
+import { clone, create } from "@bufbuild/protobuf";
 import type { MessageInitShape } from "@bufbuild/protobuf";
 import { useAtomValue } from "jotai";
 import { toast } from "sonner";
@@ -19,6 +19,7 @@ import {
   TaskSchema,
   TaskService,
   type CreateTaskRequestSchema,
+  type UpdateTaskRequestSchema,
   type Task as PbTask,
 } from "@/lib/gen/work_pb";
 import { currentUserAtom } from "@/features/auth";
@@ -96,6 +97,19 @@ export function useTask(id: string | undefined) {
   return { ...result, task };
 }
 
+/* ------------------------ Optimistic writes ------------------------- */
+
+/** The exact cache key `useTasks(projectId)` reads, so a write can patch it. */
+function useTaskListKey(projectId: string) {
+  const transport = useTransport();
+  return createConnectQueryKey({
+    schema: TaskService.method.listTasks,
+    transport,
+    input: { projectId },
+    cardinality: "finite",
+  });
+}
+
 /* ------------------------- Optimistic create ------------------------- */
 
 // A placeholder row carries a client-minted id, so nothing that needs a real
@@ -168,14 +182,8 @@ function optimisticTask(
  * can't undo each other.
  */
 export function useCreateTask(projectId: string) {
-  const transport = useTransport();
   const me = useAtomValue(currentUserAtom);
-  const listKey = createConnectQueryKey({
-    schema: TaskService.method.listTasks,
-    transport,
-    input: { projectId },
-    cardinality: "finite",
-  });
+  const listKey = useTaskListKey(projectId);
 
   return useMutation(TaskService.method.createTask, {
     onMutate: async (input) => {
@@ -225,9 +233,85 @@ export function useCreateTask(projectId: string) {
   });
 }
 
-export function useUpdateTask() {
+/* ------------------------- Optimistic update ------------------------- */
+
+/**
+ * Apply an UpdateTaskRequest to a cached task the way the server does:
+ * an absent field leaves its value alone, an empty date string clears it, a
+ * present `StringList` wrapper replaces the whole list (an empty one included),
+ * and `completedAt` follows the transition into and out of Done.
+ */
+function applyUpdate(
+  task: PbTask,
+  input: MessageInitShape<typeof UpdateTaskRequestSchema>,
+): PbTask {
+  const next = clone(TaskSchema, task);
+  if (input.title !== undefined) next.title = input.title.trim();
+  if (input.description !== undefined) next.description = input.description;
+  if (input.status !== undefined) next.status = input.status;
+  if (input.priority !== undefined) next.priority = input.priority;
+  // Dates: "" clears, a value sets, absent keeps.
+  if (input.startDate !== undefined) next.startDate = input.startDate || undefined;
+  if (input.dueDate !== undefined) next.dueDate = input.dueDate || undefined;
+  if (input.assigneeIds) next.assigneeIds = [...(input.assigneeIds.values ?? [])];
+  if (input.labelIds) next.labelIds = [...(input.labelIds.values ?? [])];
+  if (input.blockedByIds) next.blockedByIds = [...(input.blockedByIds.values ?? [])];
+  // parentIdSet: absent = unchanged, empty = detach, one = that parent.
+  if (input.parentIdSet) next.parentId = input.parentIdSet.values?.[0] || undefined;
+
+  const now = new Date().toISOString();
+  next.completedAt =
+    next.status === PbStatus.DONE
+      ? // Already done before this edit? Keep the original completion time.
+        task.status === PbStatus.DONE
+        ? task.completedAt
+        : now
+      : undefined;
+  next.updatedAt = now;
+  return next;
+}
+
+/**
+ * UpdateTask applied to this project's ListTasks cache before the round-trip,
+ * so a checkbox, a drag on the timeline or a saved dialog lands immediately.
+ * On failure the one task is restored to the value it held before the edit —
+ * the rest of the list is left alone, so a second edit in flight survives.
+ */
+export function useUpdateTask(projectId: string) {
+  const listKey = useTaskListKey(projectId);
+
+  function patch(id: string, next: (task: PbTask) => PbTask) {
+    queryClient.setQueryData(listKey, (old) =>
+      old
+        ? create(ListTasksResponseSchema, {
+            tasks: old.tasks.map((t) => (t.id === id ? next(t) : t)),
+          })
+        : old,
+    );
+  }
+
   return useMutation(TaskService.method.updateTask, {
-    onSuccess: invalidateTasks,
+    onMutate: async (input) => {
+      const id = input.id;
+      if (!id) return { before: undefined };
+      await queryClient.cancelQueries({ queryKey: listKey });
+      const before = queryClient
+        .getQueryData(listKey)
+        ?.tasks.find((t) => t.id === id);
+      if (!before) return { before: undefined };
+      patch(id, (t) => applyUpdate(t, input));
+      return { before };
+    },
+    onSuccess: (task) => patch(task.id, () => task),
+    onError: (err, _input, ctx) => {
+      // Owned by the hook, not the caller: the edit dialog closes on submit,
+      // and a callback passed to `mutate` from an unmounted component never
+      // runs — the same reason create reports its own failures.
+      toast.error(err.message || "Failed to update task");
+      const before = ctx?.before;
+      if (before) patch(before.id, () => before);
+    },
+    onSettled: invalidateTasks,
   });
 }
 export function useDeleteTask() {
