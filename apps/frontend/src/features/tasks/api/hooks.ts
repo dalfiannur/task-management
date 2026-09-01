@@ -1,5 +1,6 @@
 // Modules + Tasks RPC hooks (connect-query over ModuleService/TaskService).
-// Reads map proto→flat; writes invalidate the relevant service key.
+// Reads map proto→flat. Create/Update patch the task caches from the response
+// (no list refetch); the writes that reshape a list still invalidate.
 
 import { clone, create } from "@bufbuild/protobuf";
 import type { MessageInitShape } from "@bufbuild/protobuf";
@@ -99,15 +100,30 @@ export function useTask(id: string | undefined) {
 
 /* ------------------------ Optimistic writes ------------------------- */
 
-/** The exact cache key `useTasks(projectId)` reads, so a write can patch it. */
-function useTaskListKey(projectId: string) {
+/**
+ * The exact cache keys the task reads use, so a write can patch them instead
+ * of refetching. CreateTask/UpdateTask return the saved row in full and touch
+ * no other task on the server, so the response *is* the new cache value —
+ * writing it in leaves nothing for a ListTasks round-trip to correct.
+ */
+function useTaskKeys(projectId: string) {
   const transport = useTransport();
-  return createConnectQueryKey({
+  const listKey = createConnectQueryKey({
     schema: TaskService.method.listTasks,
     transport,
     input: { projectId },
     cardinality: "finite",
   });
+  // The deep-link fallback in `useTask` caches per id; keep it in step so a
+  // dialog opened cold doesn't keep showing the pre-edit task.
+  const taskKey = (id: string) =>
+    createConnectQueryKey({
+      schema: TaskService.method.getTask,
+      transport,
+      input: { id },
+      cardinality: "finite",
+    });
+  return { listKey, taskKey };
 }
 
 /* ------------------------- Optimistic create ------------------------- */
@@ -183,18 +199,19 @@ function optimisticTask(
  */
 export function useCreateTask(projectId: string) {
   const me = useAtomValue(currentUserAtom);
-  const listKey = useTaskListKey(projectId);
+  const { listKey, taskKey } = useTaskKeys(projectId);
 
   return useMutation(TaskService.method.createTask, {
     onMutate: async (input) => {
       // An in-flight ListTasks refetch would land without the new row and
-      // wipe the insert — cancel it; onSettled refetches anyway.
+      // wipe the insert — cancel it; a query with no cached list refetches on
+      // mount and picks the row up from the server instead.
       await queryClient.cancelQueries({ queryKey: listKey });
-      const optimistic = optimisticTask(
-        input,
-        queryClient.getQueryData(listKey)?.tasks ?? [],
-        me?.id ?? "",
-      );
+      const cached = queryClient.getQueryData(listKey);
+      // Nothing to insert into: seeding a one-row "list" here would be a
+      // wrong answer for the next reader of this key.
+      if (!cached) return { tempId: undefined };
+      const optimistic = optimisticTask(input, cached.tasks, me?.id ?? "");
       queryClient.setQueryData(listKey, (old) =>
         create(ListTasksResponseSchema, {
           tasks: [...(old?.tasks ?? []), optimistic],
@@ -207,29 +224,30 @@ export function useCreateTask(projectId: string) {
       // order) before anything can act on the placeholder.
       queryClient.setQueryData(listKey, (old) => {
         if (!old) return old;
-        const swapped = old.tasks.some((t) => t.id === ctx.tempId);
+        const swapped = !!ctx.tempId && old.tasks.some((t) => t.id === ctx.tempId);
         return create(ListTasksResponseSchema, {
           tasks: swapped
             ? old.tasks.map((t) => (t.id === ctx.tempId ? task : t))
             : [...old.tasks, task],
         });
       });
+      queryClient.setQueryData(taskKey(task.id), task);
     },
     onError: (err, _input, ctx) => {
       // The failure toast belongs to the hook, not the caller: the create
       // form (the task dialog) closes as soon as the row appears, and a
       // callback passed to `mutate` from an unmounted component never runs.
       toast.error(err.message || "Failed to create task");
-      if (!ctx) return;
+      const tempId = ctx?.tempId;
+      if (!tempId) return;
       queryClient.setQueryData(listKey, (old) =>
         old
           ? create(ListTasksResponseSchema, {
-              tasks: old.tasks.filter((t) => t.id !== ctx.tempId),
+              tasks: old.tasks.filter((t) => t.id !== tempId),
             })
           : old,
       );
     },
-    onSettled: invalidateTasks,
   });
 }
 
@@ -278,7 +296,7 @@ function applyUpdate(
  * the rest of the list is left alone, so a second edit in flight survives.
  */
 export function useUpdateTask(projectId: string) {
-  const listKey = useTaskListKey(projectId);
+  const { listKey, taskKey } = useTaskKeys(projectId);
 
   function patch(id: string, next: (task: PbTask) => PbTask) {
     queryClient.setQueryData(listKey, (old) =>
@@ -288,16 +306,24 @@ export function useUpdateTask(projectId: string) {
           })
         : old,
     );
+    // Only when the deep-link fallback actually holds this task — writing a
+    // row into an empty GetTask entry would answer a fetch nobody made.
+    queryClient.setQueryData(taskKey(id), (old) => (old ? next(old) : old));
   }
 
   return useMutation(TaskService.method.updateTask, {
     onMutate: async (input) => {
       const id = input.id;
       if (!id) return { before: undefined };
-      await queryClient.cancelQueries({ queryKey: listKey });
-      const before = queryClient
-        .getQueryData(listKey)
-        ?.tasks.find((t) => t.id === id);
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: listKey }),
+        queryClient.cancelQueries({ queryKey: taskKey(id) }),
+      ]);
+      // A task opened by a cold deep link lives only in the GetTask cache;
+      // edit it from there so that dialog is optimistic too.
+      const before =
+        queryClient.getQueryData(listKey)?.tasks.find((t) => t.id === id) ??
+        queryClient.getQueryData(taskKey(id));
       if (!before) return { before: undefined };
       patch(id, (t) => applyUpdate(t, input));
       return { before };
@@ -311,7 +337,6 @@ export function useUpdateTask(projectId: string) {
       const before = ctx?.before;
       if (before) patch(before.id, () => before);
     },
-    onSettled: invalidateTasks,
   });
 }
 export function useDeleteTask() {
