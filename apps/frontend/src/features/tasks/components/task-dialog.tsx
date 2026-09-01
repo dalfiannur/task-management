@@ -1,4 +1,4 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -133,18 +133,31 @@ export function TaskDialog({
   const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [labelIds, setLabelIds] = useState<string[]>([]);
 
-  // Reset the form whenever the dialog opens (for create or a specific task).
+  // Seed the form when the dialog opens, and when it changes which task it
+  // addresses — never merely because the task *object* changed. Anything that
+  // rewrites this project's task cache while the dialog is open hands down a
+  // new `task` (a subtask added, a dependency picked, an edit landing from
+  // another tab); keying the reset on the object identity would let any of
+  // those wipe a half-typed title or description.
+  //
+  // Read through a ref so the latest values are seeded without the effect
+  // depending on them. `task?.id` covers the deep-link case too: the id goes
+  // from undefined to real when the fetch lands, which is exactly when the
+  // waiting form should be filled in.
+  const taskRef = useRef(task);
+  taskRef.current = task;
   useEffect(() => {
     if (!open) return;
-    setTitle(task?.title ?? "");
-    setDescription(task?.description ?? "");
-    setStatus(task?.status ?? "todo");
-    setPriority(task?.priority ?? "none");
-    setStartDate(isoToDate(task?.startDate));
-    setDueDate(isoToDate(task?.dueDate));
-    setAssigneeIds(task?.assigneeIds ?? []);
-    setLabelIds(task?.labelIds ?? []);
-  }, [open, task]);
+    const t = taskRef.current;
+    setTitle(t?.title ?? "");
+    setDescription(t?.description ?? "");
+    setStatus(t?.status ?? "todo");
+    setPriority(t?.priority ?? "none");
+    setStartDate(isoToDate(t?.startDate));
+    setDueDate(isoToDate(t?.dueDate));
+    setAssigneeIds(t?.assigneeIds ?? []);
+    setLabelIds(t?.labelIds ?? []);
+  }, [open, task?.id]);
 
   const pending = create.isPending || update.isPending;
 

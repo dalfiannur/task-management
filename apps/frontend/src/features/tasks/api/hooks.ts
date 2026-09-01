@@ -2,6 +2,7 @@
 // Reads map proto→flat. Create/Update patch the task caches from the response
 // (no list refetch); the writes that reshape a list still invalidate.
 
+import { useMemo } from "react";
 import { clone, create } from "@bufbuild/protobuf";
 import type { MessageInitShape } from "@bufbuild/protobuf";
 import { useAtomValue } from "jotai";
@@ -82,7 +83,14 @@ export function useTasks(projectId: string) {
     { projectId },
     { enabled: !!projectId },
   );
-  const tasks: Task[] = (result.data?.tasks ?? []).map(mapTask);
+  // Memoised on the cached response, not recomputed per render: `mapTask`
+  // mints new objects, and a consumer that keys an effect on a task it picked
+  // out of this list would otherwise see a "new" task on every unrelated
+  // re-render of its parent (see the reset effect in task-dialog).
+  const tasks: Task[] = useMemo(
+    () => (result.data?.tasks ?? []).map(mapTask),
+    [result.data],
+  );
   return { ...result, tasks };
 }
 
@@ -94,7 +102,10 @@ export function useTask(id: string | undefined) {
     { id: id ?? "" },
     { enabled: !!id, retry: false },
   );
-  const task: Task | undefined = result.data ? mapTask(result.data) : undefined;
+  const task: Task | undefined = useMemo(
+    () => (result.data ? mapTask(result.data) : undefined),
+    [result.data],
+  );
   return { ...result, task };
 }
 
