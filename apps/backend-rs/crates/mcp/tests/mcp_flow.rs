@@ -869,6 +869,53 @@ async fn list_projects_only_shows_projects_the_user_can_see() {
 }
 
 #[tokio::test]
+async fn list_projects_limit_is_passed_to_the_core_fn_not_just_taken_client_side() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let member = seed_active_user(&store).await;
+    // 13 is deliberately more than `list_projects_core`'s own default page
+    // size of 12: that boundary is exactly what let a client-side `.take()`
+    // over `ListProjectsRequest::default()` hide behind — 12 results always
+    // looked plausible unless a caller asked for more than 12.
+    let mut project_ids = Vec::new();
+    for _ in 0..13 {
+        let (project_id, _module_id) = seed_project_and_module(&store, &member).await;
+        project_ids.push(project_id);
+    }
+    let token = issue_token(&store, &member).await;
+
+    let (is_error, all) =
+        tools_call(&router, &token, "list_projects", json!({ "limit": 15 })).await;
+    assert!(!is_error, "{all:?}");
+    assert_eq!(all["count"], 13, "{all:?}");
+    assert_eq!(all["projects"].as_array().unwrap().len(), 13);
+    for id in &project_ids {
+        assert!(
+            all["projects"].as_array().unwrap().iter().any(|p| p["id"] == id.as_str()),
+            "missing {id} from {all:?}"
+        );
+    }
+
+    let (is_error, one) =
+        tools_call(&router, &token, "list_projects", json!({ "limit": 1 })).await;
+    assert!(!is_error, "{one:?}");
+    assert_eq!(one["count"], 1, "{one:?}");
+    assert_eq!(one["projects"].as_array().unwrap().len(), 1);
+
+    // `limit: 0` collides with the core fn's own "use my default" sentinel —
+    // exactly the value that made the bug possible — so it must be refused
+    // by `limit_arg` before a request is ever built, same as `list_tasks`.
+    let (_, body) = rpc(
+        &router,
+        Some(&token),
+        json!({ "jsonrpc": "2.0", "id": 40, "method": "tools/call",
+                "params": { "name": "list_projects", "arguments": { "limit": 0 } } }),
+    )
+    .await;
+    assert_eq!(body["error"]["code"], -32602, "{body:?}");
+    assert!(body.get("result").is_none());
+}
+
+#[tokio::test]
 async fn get_project_returns_details_for_a_member() {
     let Some((router, store)) = router_and_store().await else { return skipped() };
     let member = seed_active_user(&store).await;
