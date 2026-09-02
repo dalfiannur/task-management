@@ -491,6 +491,154 @@ async fn create_then_get_a_task_through_mcp() {
     assert_eq!(payload["status"], "todo");
 }
 
+#[tokio::test]
+async fn list_tasks_resolves_project_from_module_id_alone() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    let (_project_id, module_id) = seed_project_and_module(&store, &user).await;
+
+    for title in ["one", "two"] {
+        let (_, created) = rpc(
+            &router,
+            Some(&token),
+            json!({ "jsonrpc": "2.0", "id": 20, "method": "tools/call",
+                    "params": { "name": "create_task",
+                                "arguments": { "module_id": module_id, "title": title } } }),
+        )
+        .await;
+        assert_eq!(created["result"]["isError"], false, "{created:?}");
+    }
+
+    // Only `module_id` — `list_tasks` must resolve `project_id` itself
+    // through `transport::api::module_project` rather than needing it passed in.
+    let (_, listed) = rpc(
+        &router,
+        Some(&token),
+        json!({ "jsonrpc": "2.0", "id": 21, "method": "tools/call",
+                "params": { "name": "list_tasks", "arguments": { "module_id": module_id } } }),
+    )
+    .await;
+    assert_eq!(listed["result"]["isError"], false, "{listed:?}");
+    let payload: Value =
+        serde_json::from_str(listed["result"]["content"][0]["text"].as_str().unwrap()).unwrap();
+    assert_eq!(payload["count"], 2);
+    assert_eq!(payload["tasks"].as_array().unwrap().len(), 2);
+}
+
+#[tokio::test]
+async fn list_tasks_without_project_or_module_is_bad_args() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+
+    let (_, body) = rpc(
+        &router,
+        Some(&token),
+        json!({ "jsonrpc": "2.0", "id": 22, "method": "tools/call",
+                "params": { "name": "list_tasks", "arguments": {} } }),
+    )
+    .await;
+    // The caller's bug — a malformed request, not a business rule the model
+    // could retry differently — so a JSON-RPC protocol error, not an
+    // `isError` tool result.
+    assert_eq!(body["error"]["code"], -32602, "{body:?}");
+    assert!(body.get("result").is_none());
+}
+
+#[tokio::test]
+async fn list_tasks_status_filter() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    let (_project_id, module_id) = seed_project_and_module(&store, &user).await;
+
+    let mut task_ids = Vec::new();
+    for title in ["stays todo", "goes done"] {
+        let (_, created) = rpc(
+            &router,
+            Some(&token),
+            json!({ "jsonrpc": "2.0", "id": 23, "method": "tools/call",
+                    "params": { "name": "create_task",
+                                "arguments": { "module_id": module_id, "title": title } } }),
+        )
+        .await;
+        let payload: Value =
+            serde_json::from_str(created["result"]["content"][0]["text"].as_str().unwrap())
+                .unwrap();
+        task_ids.push(payload["id"].as_str().unwrap().to_string());
+    }
+
+    let (_, updated) = rpc(
+        &router,
+        Some(&token),
+        json!({ "jsonrpc": "2.0", "id": 24, "method": "tools/call",
+                "params": { "name": "update_task",
+                            "arguments": { "task_id": task_ids[1], "status": "done" } } }),
+    )
+    .await;
+    assert_eq!(updated["result"]["isError"], false, "{updated:?}");
+
+    let (_, listed) = rpc(
+        &router,
+        Some(&token),
+        json!({ "jsonrpc": "2.0", "id": 25, "method": "tools/call",
+                "params": { "name": "list_tasks",
+                            "arguments": { "module_id": module_id, "status": "done" } } }),
+    )
+    .await;
+    let payload: Value =
+        serde_json::from_str(listed["result"]["content"][0]["text"].as_str().unwrap()).unwrap();
+    let tasks = payload["tasks"].as_array().unwrap();
+    assert_eq!(tasks.len(), 1, "{payload:?}");
+    assert_eq!(tasks[0]["id"], task_ids[1]);
+    assert_eq!(tasks[0]["status"], "done");
+}
+
+#[tokio::test]
+async fn list_tasks_limit_caps_and_rejects_zero() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    let (_project_id, module_id) = seed_project_and_module(&store, &user).await;
+
+    for title in ["one", "two"] {
+        let (_, created) = rpc(
+            &router,
+            Some(&token),
+            json!({ "jsonrpc": "2.0", "id": 26, "method": "tools/call",
+                    "params": { "name": "create_task",
+                                "arguments": { "module_id": module_id, "title": title } } }),
+        )
+        .await;
+        assert_eq!(created["result"]["isError"], false, "{created:?}");
+    }
+
+    let (_, capped) = rpc(
+        &router,
+        Some(&token),
+        json!({ "jsonrpc": "2.0", "id": 27, "method": "tools/call",
+                "params": { "name": "list_tasks",
+                            "arguments": { "module_id": module_id, "limit": 1 } } }),
+    )
+    .await;
+    let payload: Value =
+        serde_json::from_str(capped["result"]["content"][0]["text"].as_str().unwrap()).unwrap();
+    assert_eq!(payload["count"], 1, "{payload:?}");
+    assert_eq!(payload["tasks"].as_array().unwrap().len(), 1);
+
+    // `limit: 0` is a caller bug — refused, not silently clamped up to 1.
+    let (_, bad) = rpc(
+        &router,
+        Some(&token),
+        json!({ "jsonrpc": "2.0", "id": 28, "method": "tools/call",
+                "params": { "name": "list_tasks",
+                            "arguments": { "module_id": module_id, "limit": 0 } } }),
+    )
+    .await;
+    assert_eq!(bad["error"]["code"], -32602, "{bad:?}");
+}
+
 /// A project (owned by `user`, with `user` as a member) + one module inside
 /// it. Seeded directly through components rather than RPC.
 ///
