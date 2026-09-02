@@ -2173,9 +2173,11 @@ pub mod tasks;
 use std::sync::Arc;
 
 use auth::AuthUser;
-use connectrpc_axum::ConnectError;
+use connectrpc_axum::{Code, ConnectError};
 use persistence::Store;
 use serde_json::{json, Value};
+use std::future::Future;
+use std::pin::Pin;
 use transport::Notifier;
 
 /// What a tool needs in order to run.
@@ -2192,20 +2194,48 @@ pub enum ToolError {
     Business(String),
     /// The arguments themselves are malformed → a JSON-RPC protocol error.
     BadArgs(String),
+    /// The tool could not run at all. Rephrasing the call will not help, and
+    /// the detail belongs in our logs rather than in a third-party AI client:
+    /// these messages are raw database and IO errors.
+    Internal(String),
 }
 
 impl From<ConnectError> for ToolError {
     fn from(e: ConnectError) -> Self {
         // `message()` is the sentence the handler wrote for a human; the code
         // is used only when the handler didn't include a message.
-        ToolError::Business(e.message().unwrap_or(e.code().as_str()).to_string())
+        let text = e.message().unwrap_or(e.code().as_str()).to_string();
+        // Folding an infrastructure fault in with the business codes hands a
+        // model a raw database error and invites it to "read the reason and
+        // retry correctly" — which is not something it can do about a dropped
+        // connection, and that text is not ours to give a third-party client.
+        match e.code() {
+            Code::Internal | Code::Unavailable | Code::Unknown | Code::DataLoss => {
+                ToolError::Internal(text)
+            }
+            _ => ToolError::Business(text),
+        }
     }
 }
 
+/// A tool's handler, boxed so `ToolMeta` can hold one in a `const`.
+pub type Handler = for<'a> fn(
+    &'a Ctx,
+    &'a Value,
+) -> Pin<Box<dyn Future<Output = Result<Value, ToolError>> + Send + 'a>>;
+
+/// Everything the protocol needs both to advertise a tool and to run it.
+///
+/// The handler lives here rather than in a separate dispatch table on purpose.
+/// Two hand-maintained lists keyed by tool name eventually disagree, and the
+/// failure is silent in both directions: a tool advertised but not dispatchable
+/// fails every call with "unknown tool", and one dispatchable but unlisted is
+/// callable yet undiscoverable. With a single list neither is expressible.
 pub struct ToolMeta {
     pub name: &'static str,
     pub description: &'static str,
     pub schema: fn() -> Value,
+    pub handler: Handler,
 }
 
 pub const TOOLS: &[ToolMeta] = &[
@@ -2236,23 +2266,12 @@ pub fn tool_list() -> Value {
     })
 }
 
-/// Run a single tool. `Err(BadArgs)` means a protocol error; `Err(Business)`
-/// is wrapped by the caller into an `isError` tool result.
+/// Run one tool. `BadArgs` becomes a JSON-RPC error, `Business` an `isError`
+/// tool result, and `Internal` is logged and answered generically.
 pub async fn dispatch(ctx: &Ctx, name: &str, args: &Value) -> Result<Value, ToolError> {
-    match name {
-        "list_tasks" => tasks::list_tasks(ctx, args).await,
-        "get_task" => tasks::get_task(ctx, args).await,
-        "create_task" => tasks::create_task(ctx, args).await,
-        "update_task" => tasks::update_task(ctx, args).await,
-        "move_task" => tasks::move_task(ctx, args).await,
-        "list_projects" => projects::list_projects(ctx, args).await,
-        "get_project" => projects::get_project(ctx, args).await,
-        "list_modules" => projects::list_modules(ctx, args).await,
-        "search" => discovery::search(ctx, args).await,
-        "my_tasks" => discovery::my_tasks(ctx, args).await,
-        "list_comments" => comments::list_comments(ctx, args).await,
-        "add_comment" => comments::add_comment(ctx, args).await,
-        other => Err(ToolError::BadArgs(format!("unknown tool: {other}"))),
+    match TOOLS.iter().find(|t| t.name == name) {
+        Some(tool) => (tool.handler)(ctx, args).await,
+        None => Err(ToolError::BadArgs(format!("unknown tool: {name}"))),
     }
 }
 
@@ -2261,7 +2280,10 @@ pub async fn dispatch(ctx: &Ctx, name: &str, args: &Value) -> Result<Value, Tool
 /// the model.
 pub fn ok_content(value: Value) -> Value {
     json!({
-        "content": [{ "type": "text", "text": serde_json::to_string_pretty(&value).unwrap_or_default() }],
+        // Compact, not pretty: the caps above exist to protect the client's
+        // context window, and indentation spends tokens on the largest
+        // payloads for something no model needs in order to parse JSON.
+        "content": [{ "type": "text", "text": serde_json::to_string(&value).unwrap_or_default() }],
         "isError": false
     })
 }
@@ -2286,13 +2308,26 @@ pub fn opt_str(args: &Value, key: &str) -> Option<String> {
         .map(str::to_string)
 }
 
-pub fn opt_str_list(args: &Value, key: &str) -> Option<Vec<String>> {
-    args.get(key).and_then(Value::as_array).map(|a| {
-        a.iter()
-            .filter_map(Value::as_str)
-            .map(str::to_string)
-            .collect()
-    })
+/// Absent means "not supplied". A wrong-typed value is refused rather than read
+/// as absent: id arrays are the argument a client is most likely to get wrong,
+/// and silently dropping a bad element would assign a task to fewer people than
+/// the model asked for and then report success.
+pub fn opt_str_list(args: &Value, key: &str) -> Result<Option<Vec<String>>, ToolError> {
+    match args.get(key) {
+        None | Some(Value::Null) => Ok(None),
+        Some(Value::Array(items)) => items
+            .iter()
+            .map(|v| {
+                v.as_str().map(str::to_string).ok_or_else(|| {
+                    ToolError::BadArgs(format!("every element of `{key}` must be a string"))
+                })
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .map(Some),
+        Some(_) => Err(ToolError::BadArgs(format!(
+            "`{key}` must be an array of strings"
+        ))),
+    }
 }
 
 /// A capped `limit`: default 50, maximum 200. This bound is what keeps a
@@ -2300,11 +2335,23 @@ pub fn opt_str_list(args: &Value, key: &str) -> Option<Vec<String>> {
 pub const DEFAULT_LIMIT: usize = 50;
 pub const MAX_LIMIT: usize = 200;
 
-pub fn limit_arg(args: &Value) -> usize {
-    args.get("limit")
-        .and_then(Value::as_u64)
-        .map(|n| (n as usize).clamp(1, MAX_LIMIT))
-        .unwrap_or(DEFAULT_LIMIT)
+/// Absent means "use the default". Present-but-unusable is a caller bug and is
+/// refused rather than silently clamped: quietly turning `limit: 0` into 1, or
+/// `limit: -5` into 50, teaches the model nothing about why it did not get what
+/// it asked for.
+pub fn limit_arg(args: &Value) -> Result<usize, ToolError> {
+    match args.get("limit") {
+        None | Some(Value::Null) => Ok(DEFAULT_LIMIT),
+        Some(v) => v
+            .as_u64()
+            .filter(|n| (1..=MAX_LIMIT as u64).contains(n))
+            .map(|n| n as usize)
+            .ok_or_else(|| {
+                ToolError::BadArgs(format!(
+                    "`limit` must be a whole number between 1 and {MAX_LIMIT}"
+                ))
+            }),
+    }
 }
 
 /// Long descriptions are truncated before being sent to the model.
@@ -2349,11 +2396,21 @@ Di `crates/mcp/src/lib.rs`, tambahkan `mod tools;` dan lengkapi `match` di `hand
                 Err(tools::ToolError::BadArgs(m)) => {
                     error(rpc.id.clone(), INVALID_PARAMS, &m)
                 }
+                // The detail goes to the log, not to the client: it is a raw
+                // database or IO error, and the model can do nothing with it.
+                Err(tools::ToolError::Internal(m)) => {
+                    tracing::error!(tool = name, error = %m, "mcp: tool failed");
+                    error(
+                        rpc.id.clone(),
+                        INTERNAL_ERROR,
+                        "the tool could not be completed",
+                    )
+                }
             }
         }
 ```
 
-Impor `INVALID_PARAMS` dari `protocol`.
+Impor `INVALID_PARAMS` dan `INTERNAL_ERROR` dari `protocol`.
 
 - [ ] **Step 4: Buat empat modul tool sebagai stub**
 
@@ -2371,6 +2428,7 @@ pub const LIST_TASKS: ToolMeta = ToolMeta {
     name: "list_tasks",
     description: "List tasks in a project or module.",
     schema: || json!({ "type": "object", "properties": {} }),
+    handler: |ctx, args| Box::pin(list_tasks(ctx, args)),
 };
 
 pub async fn list_tasks(_ctx: &Ctx, _args: &Value) -> Result<Value, ToolError> {
@@ -2486,6 +2544,7 @@ pub const LIST_TASKS: ToolMeta = ToolMeta {
             "limit": { "type": "integer", "minimum": 1, "maximum": 200 }
         }
     }),
+    handler: |ctx, args| Box::pin(list_tasks(ctx, args)),
 };
 
 pub async fn list_tasks(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
@@ -2509,7 +2568,7 @@ pub async fn list_tasks(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
         .iter()
         .filter(|t| status.as_deref().is_none_or(|s| status_label(t.status) == s))
         .filter(|t| assignee.as_deref().is_none_or(|a| t.assignee_ids.iter().any(|x| x == a)))
-        .take(limit_arg(args))
+        .take(limit_arg(args)?)
         .map(flatten)
         .collect();
     Ok(json!({ "tasks": rows, "count": rows.len() }))
@@ -2529,6 +2588,7 @@ pub const GET_TASK: ToolMeta = ToolMeta {
         "properties": { "task_id": { "type": "string" } },
         "required": ["task_id"]
     }),
+    handler: |ctx, args| Box::pin(get_task(ctx, args)),
 };
 
 pub async fn get_task(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
@@ -2552,6 +2612,7 @@ pub const CREATE_TASK: ToolMeta = ToolMeta {
         },
         "required": ["module_id", "title"]
     }),
+    handler: |ctx, args| Box::pin(create_task(ctx, args)),
 };
 
 pub async fn create_task(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
@@ -2563,7 +2624,7 @@ pub async fn create_task(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
         priority: priority_value(opt_str(args, "priority").as_deref()),
         start_date: opt_str(args, "start_date"),
         due_date: opt_str(args, "due_date"),
-        assignee_ids: opt_str_list(args, "assignee_ids").unwrap_or_default(),
+        assignee_ids: opt_str_list(args, "assignee_ids")?.unwrap_or_default(),
         label_ids: Vec::new(),
         parent_id: opt_str(args, "parent_id"),
     };
@@ -2588,6 +2649,7 @@ pub const UPDATE_TASK: ToolMeta = ToolMeta {
         },
         "required": ["task_id"]
     }),
+    handler: |ctx, args| Box::pin(update_task(ctx, args)),
 };
 
 pub const MOVE_TASK: ToolMeta = ToolMeta {
@@ -2598,6 +2660,7 @@ pub const MOVE_TASK: ToolMeta = ToolMeta {
         "properties": { "task_id": { "type": "string" }, "module_id": { "type": "string" } },
         "required": ["task_id", "module_id"]
     }),
+    handler: |ctx, args| Box::pin(move_task(ctx, args)),
 };
 ```
 
@@ -2732,6 +2795,7 @@ pub const LIST_PROJECTS: ToolMeta = ToolMeta {
         "type": "object",
         "properties": { "limit": { "type": "integer", "minimum": 1, "maximum": 200 } }
     }),
+    handler: |ctx, args| Box::pin(list_projects(ctx, args)),
 };
 
 pub async fn list_projects(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
@@ -2740,7 +2804,7 @@ pub async fn list_projects(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> 
     let rows: Vec<Value> = resp
         .projects
         .iter()
-        .take(limit_arg(args))
+        .take(limit_arg(args)?)
         .map(|p| json!({ "id": p.id, "name": p.name, "status": p.status }))
         .collect();
     Ok(json!({ "projects": rows, "count": rows.len() }))
@@ -2754,6 +2818,7 @@ pub const GET_PROJECT: ToolMeta = ToolMeta {
         "properties": { "project_id": { "type": "string" } },
         "required": ["project_id"]
     }),
+    handler: |ctx, args| Box::pin(get_project(ctx, args)),
 };
 
 pub async fn get_project(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
@@ -2776,6 +2841,7 @@ pub const LIST_MODULES: ToolMeta = ToolMeta {
         "properties": { "project_id": { "type": "string" } },
         "required": ["project_id"]
     }),
+    handler: |ctx, args| Box::pin(list_modules(ctx, args)),
 };
 
 pub async fn list_modules(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
@@ -2874,6 +2940,7 @@ pub const SEARCH: ToolMeta = ToolMeta {
         },
         "required": ["query"]
     }),
+    handler: |ctx, args| Box::pin(search(ctx, args)),
 };
 
 pub async fn search(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
@@ -2885,7 +2952,7 @@ pub async fn search(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
     let rows: Vec<Value> = resp
         .results
         .iter()
-        .take(limit_arg(args))
+        .take(limit_arg(args)?)
         .map(|r| json!({
             "kind": r.kind,
             "id": r.entity_id,
@@ -2918,6 +2985,7 @@ pub const MY_TASKS: ToolMeta = ToolMeta {
             "limit": { "type": "integer", "minimum": 1, "maximum": 200 }
         }
     }),
+    handler: |ctx, args| Box::pin(my_tasks(ctx, args)),
 };
 
 pub async fn my_tasks(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
@@ -2946,7 +3014,7 @@ pub async fn my_tasks(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
         .iter()
         .filter_map(|m| m.task.as_ref().map(|t| (m, t)))
         .filter(|(_, t)| want.as_deref().is_none_or(|s| super::tasks::status_label(t.status) == s))
-        .take(limit_arg(args))
+        .take(limit_arg(args)?)
         .map(|(m, t)| {
             let mut row = super::tasks::flatten(t);
             row["project_id"] = json!(m.project_id);
@@ -3026,13 +3094,14 @@ pub const LIST_COMMENTS: ToolMeta = ToolMeta {
         },
         "required": ["task_id"]
     }),
+    handler: |ctx, args| Box::pin(list_comments(ctx, args)),
 };
 
 pub async fn list_comments(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
     let req = comment_pb::ListCommentsRequest {
         task_id: str_arg(args, "task_id")?,
         page: 1,
-        page_size: limit_arg(args) as u32,
+        page_size: limit_arg(args)? as u32,
     };
     let resp = list_comments_core(&ctx.store, &ctx.auth, req).await?;
     let rows: Vec<Value> = resp
@@ -3059,6 +3128,7 @@ pub const ADD_COMMENT: ToolMeta = ToolMeta {
         },
         "required": ["task_id", "content"]
     }),
+    handler: |ctx, args| Box::pin(add_comment(ctx, args)),
 };
 
 pub async fn add_comment(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
