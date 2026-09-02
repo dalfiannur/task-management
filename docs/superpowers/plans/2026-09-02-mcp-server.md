@@ -3242,6 +3242,26 @@ Expected: `401`.
 
 Hentikan servernya dengan mencari pid-nya lebih dulu (`jobs -p`, lalu `kill <pid>`) — jangan `pkill -f` dengan pola yang juga cocok dengan perintah yang sedang diketik.
 
+- [ ] **Step 3b: Paku layering-nya dengan test**
+
+Verifikasi manual di atas hanya berlaku sekali. Tambahkan `#[cfg(test)] mod tests`
+di dalam `router.rs` (crate `app` adalah binary tanpa target `[lib]`, jadi
+`build_router` tidak bisa dicapai dari `tests/`), yang membangun router asli lalu
+menegaskan **POST `/mcp` tanpa header `Content-Type` tetap 200**.
+
+Pemilihan assertion ini penting dan tidak intuitif. Yang tampak jelas — "JWT sah
+tanpa PAT harus ditolak" — **lulus baik bug-nya ada maupun tidak**, karena
+`handle_post` tidak pernah membaca extension `AuthUser`: ia selalu mem-parse ulang
+header mentahnya sendiri, dan menolak JWT karena bentuknya bukan token. Membungkus
+MCP dengan `auth_layer` karena itu tidak mengubah status code apa pun.
+
+Pembedanya ada di `ConnectLayer`: ia menjawab **415** untuk Content-Type yang tak
+dikenal, sebelum request mencapai handler. `handle_post` tidak peduli Content-Type.
+Jadi begitu `/mcp` kembali ter-nest di dalam rantai layer, test ini gagal 415-vs-200.
+
+Buktikan test-nya bergigi: pindahkan `.nest()` ke dalam rantai, lihat gagal,
+pulihkan.
+
 - [ ] **Step 4: Jalankan seluruh test workspace dan commit**
 
 Run: `DATABASE_URL=$DATABASE_URL cargo test --workspace`
