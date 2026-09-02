@@ -20,7 +20,8 @@ use serde_json::Value;
 use transport::Notifier;
 
 use protocol::{
-    error, initialize_result, result, Rpc, INVALID_REQUEST, METHOD_NOT_FOUND, PARSE_ERROR,
+    error, initialize_result, result, Rpc, INTERNAL_ERROR, INVALID_REQUEST, METHOD_NOT_FOUND,
+    PARSE_ERROR,
 };
 
 /// Bad or missing credentials answer at the HTTP layer, not as a JSON-RPC error:
@@ -86,7 +87,16 @@ async fn handle_post(
             .and_then(|v| v.to_str().ok());
         match pat::authenticate(&state.store, header).await {
             Ok(u) => Some(u),
-            Err(_) => return unauthorized(rpc.id),
+            Err(pat::AuthFailure::Unauthorized) => return unauthorized(rpc.id),
+            // Not the caller's credentials, so do not tell them it was.
+            Err(pat::AuthFailure::Unavailable) => {
+                return Json(error(
+                    rpc.id,
+                    INTERNAL_ERROR,
+                    "the server could not verify credentials",
+                ))
+                .into_response()
+            }
         }
     } else {
         None

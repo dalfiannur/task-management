@@ -18,6 +18,10 @@ pub const PARSE_ERROR: i64 = -32700;
 pub const INVALID_REQUEST: i64 = -32600;
 pub const METHOD_NOT_FOUND: i64 = -32601;
 pub const INVALID_PARAMS: i64 = -32602;
+/// The server, not the request, is at fault — e.g. credential verification
+/// couldn't run because the database is unreachable. Distinct from the 401 a
+/// bad credential gets: this must never imply the caller's token was wrong.
+pub const INTERNAL_ERROR: i64 = -32603;
 
 #[derive(Debug, Deserialize)]
 pub struct Rpc {

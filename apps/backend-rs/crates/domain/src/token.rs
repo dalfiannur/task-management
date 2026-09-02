@@ -81,6 +81,35 @@ pub fn looks_like_token(s: &str) -> bool {
         && s[TOKEN_PREFIX.len()..].bytes().all(|b| b.is_ascii_hexdigit())
 }
 
+/// Pin `dt` to whole-second precision and format it RFC3339.
+///
+/// `Rfc3339` only writes a fractional-second part when the nanoseconds aren't
+/// zero, and trims trailing zeros when they aren't — so the string width
+/// varies with whatever nanosecond happened to land in `dt`. [`is_expired`]
+/// compares these strings lexicographically, and that comparison only tracks
+/// time order when every side is formatted at the same precision. Pinning
+/// here is what makes that precondition actually hold, for "now" and for any
+/// other instant a caller needs pinned the same way (e.g. `mcp::pat::touch`'s
+/// one-hour-ago usage-throttle cutoff, which is not "now" but needs the exact
+/// same guarantee before it's compared against a stored `last_used_at`).
+pub fn pinned_rfc3339(dt: time::OffsetDateTime) -> String {
+    use time::format_description::well_known::Rfc3339;
+    dt.replace_nanosecond(0)
+        .unwrap_or(dt)
+        .format(&Rfc3339)
+        .unwrap_or_default()
+}
+
+/// The current instant, pinned to whole-second precision — see
+/// [`pinned_rfc3339`] for why. This one function used to be copy-pasted at
+/// every call site that needed a comparable "now" (the PAT verification path
+/// and `AccessTokenService`); three copies of the same precision fix were
+/// three chances for one of them to drift, so it lives here, next to the rule
+/// it exists to satisfy.
+pub fn now_iso() -> String {
+    pinned_rfc3339(time::OffsetDateTime::now_utc())
+}
+
 /// Past `expires_at` already? `None` = never expires.
 ///
 /// Compares RFC3339 UTC strings lexicographically. This lexical order matches
@@ -89,11 +118,11 @@ pub fn looks_like_token(s: &str) -> bool {
 /// zero and trims trailing zeros when it isn't, so the string width varies and
 /// can flip the lexical order within the same second (e.g. "...T10:00:00Z" >
 /// "...T10:00:00.5Z" lexically, even though 10:00:00.0 is earlier than
-/// 10:00:00.5). That's why callers pin the timestamp to a whole second
-/// (`replace_nanosecond(0)`) before formatting, so this same-precision
-/// precondition actually holds. `task::dates_ok` compares plain `YYYY-MM-DD`
-/// dates with no time-of-day and no variable-width component, so the analogy is
-/// weaker there — this case doesn't arise for it.
+/// 10:00:00.5). That's why callers pin the timestamp with [`now_iso`] (or
+/// [`pinned_rfc3339`] for a non-"now" instant) before formatting, so this
+/// same-precision precondition actually holds. `task::dates_ok` compares
+/// plain `YYYY-MM-DD` dates with no time-of-day and no variable-width
+/// component, so the analogy is weaker there — this case doesn't arise for it.
 pub fn is_expired(expires_at: Option<&str>, now: &str) -> bool {
     match expires_at {
         None => false,

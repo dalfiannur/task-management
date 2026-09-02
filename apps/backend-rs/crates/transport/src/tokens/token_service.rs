@@ -9,8 +9,8 @@ use auth::AuthUser;
 use axum::Extension;
 use connectrpc_axum::{ConnectError, ConnectRequest, ConnectResponse};
 use domain::token::{
-    generate_token, hash_token, is_expired, preview_of, TokenInfo, TokenOwner, TokenSecret,
-    TokenUsage,
+    generate_token, hash_token, is_expired, now_iso, preview_of, TokenInfo, TokenOwner,
+    TokenSecret, TokenUsage,
 };
 use persistence::Store;
 
@@ -27,21 +27,6 @@ fn require_auth(user: Option<Extension<AuthUser>>) -> Result<AuthUser, ConnectEr
         .ok_or_else(|| ConnectError::new_unauthenticated("authentication required"))
 }
 
-/// Whole seconds, deliberately. `Rfc3339` only writes a fractional-second part
-/// when the nanoseconds aren't zero, and trims trailing zeros when they aren't
-/// — so the string width varies. `domain::token::is_expired` compares these
-/// strings lexicographically, and that comparison only tracks time order when
-/// every side is at the same precision. Pinning the precision here is what
-/// makes that precondition actually hold.
-fn now_iso() -> String {
-    use time::format_description::well_known::Rfc3339;
-    let now = time::OffsetDateTime::now_utc();
-    now.replace_nanosecond(0)
-        .unwrap_or(now)
-        .format(&Rfc3339)
-        .unwrap_or_default()
-}
-
 /// A deliberate upper bound. `OffsetDateTime + Duration` **panics** when the
 /// result falls outside the representable range, and `expires_in_days` arrives
 /// raw from the client as a `uint32` — without this bound a single request with
@@ -50,13 +35,13 @@ pub(crate) const MAX_EXPIRY_DAYS: u32 = 3650; // 10 years
 
 /// `expires_in_days` → `expires_at` RFC3339. 0 = never expires.
 fn expiry_from_days(days: u32) -> Option<String> {
-    use time::format_description::well_known::Rfc3339;
     if days == 0 {
         return None;
     }
     let at = time::OffsetDateTime::now_utc() + time::Duration::days(days as i64);
-    // Precision pinned the same way as `now_iso` — see the reasoning there.
-    at.replace_nanosecond(0).unwrap_or(at).format(&Rfc3339).ok()
+    // Same precision fix as `now_iso`, applied to a non-"now" instant — see
+    // `domain::token::pinned_rfc3339`.
+    Some(domain::token::pinned_rfc3339(at))
 }
 
 fn to_proto(t: &TokenRecord, now: &str) -> pb::AccessToken {

@@ -8,6 +8,12 @@
 //!
 //! Re-exports are grouped one block per domain module — the list grows with
 //! the domain surface, not by accretion.
+//!
+//! One exception to "same functions the Connect handlers call": `find_by_hash`
+//! and `auth_user_for` back no Connect handler at all. They exist so `mcp`'s
+//! own PAT verification (`pat.rs`) can resolve a credential the same way the
+//! rest of this crate resolves one, on a security-relevant seam where reusing
+//! the real lookup — not a hand-rolled copy — is the point.
 
 pub use crate::projects::project_service::{get_project_core, list_projects_core};
 pub use crate::work::module_service::list_modules_core;
@@ -19,5 +25,6 @@ pub use crate::search::search_service::search_core;
 pub use crate::dashboard::mytasks_service::{
     list_assigned_to_me_core, list_created_by_me_core, list_involving_me_core,
 };
+// Not core fns: the PAT path resolves its own credential (see the module doc).
 pub use crate::tokens::record::{find_by_hash, TokenRecord};
 pub use crate::users::record::auth_user_for;
