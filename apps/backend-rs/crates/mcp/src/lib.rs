@@ -5,6 +5,7 @@
 //! Mounted at `/mcp` on the server; public at `/api/tasks-rs/mcp` (the proxy
 //! strips the `/api/tasks-rs` prefix, same as for Connect routes).
 
+mod pat;
 mod protocol;
 
 use std::sync::Arc;
@@ -21,6 +22,18 @@ use transport::Notifier;
 use protocol::{
     error, initialize_result, result, Rpc, INVALID_REQUEST, METHOD_NOT_FOUND, PARSE_ERROR,
 };
+
+/// Bad or missing credentials answer at the HTTP layer, not as a JSON-RPC error:
+/// a client needs to tell "my token is wrong" apart from "my request was wrong",
+/// and only the former is worth re-prompting the user about.
+fn unauthorized(id: Option<Value>) -> Response {
+    (
+        StatusCode::UNAUTHORIZED,
+        [("WWW-Authenticate", "Bearer realm=\"sedjiwa-tasks-mcp\"")],
+        Json(error(id, -32001, "invalid or missing access token")),
+    )
+        .into_response()
+}
 
 #[derive(Clone)]
 pub struct McpState {
@@ -43,7 +56,8 @@ async fn handle_get() -> Response {
 }
 
 async fn handle_post(
-    Extension(_state): Extension<McpState>,
+    Extension(state): Extension<McpState>,
+    headers: axum::http::HeaderMap,
     body: axum::body::Bytes,
 ) -> Response {
     // Two stages, because these are two different client bugs: a body that is not
@@ -60,6 +74,24 @@ async fn handle_post(
 
     // A notification (no `id`) is never answered — the spec calls for an empty 202.
     let is_notification = rpc.id.is_none();
+
+    // `initialize`/`ping` are deliberately open: a client must be able to
+    // finish the handshake and display the server's name before the user
+    // pastes in a token.
+    let needs_auth = !matches!(rpc.method.as_str(), "initialize" | "ping")
+        && !rpc.method.starts_with("notifications/");
+    let auth = if needs_auth {
+        let header = headers
+            .get(axum::http::header::AUTHORIZATION)
+            .and_then(|v| v.to_str().ok());
+        match pat::authenticate(&state.store, header).await {
+            Ok(u) => Some(u),
+            Err(_) => return unauthorized(rpc.id),
+        }
+    } else {
+        None
+    };
+    let _ = &auth; // used starting from Task 9
 
     let response: Value = match rpc.method.as_str() {
         "initialize" => result(rpc.id.clone(), initialize_result(&rpc.params)),

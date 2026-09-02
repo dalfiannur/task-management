@@ -40,6 +40,64 @@ fn skipped() {
     eprintln!("SKIP {name}: DATABASE_URL is not set, this test asserted nothing");
 }
 
+fn uniq() -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos().to_string()
+}
+
+/// Insert an active user and a real PAT owned by them directly through the
+/// storage layer (bypassing the Connect services), and return the plaintext
+/// token. Now that the MCP endpoint requires auth for every non-handshake
+/// method, `unknown_method_is_a_jsonrpc_error` needs a real credential to
+/// reach method dispatch at all — a missing/bad token would short-circuit to
+/// 401 before the method is even looked at.
+async fn seed_authed_user(store: &persistence::Store) -> String {
+    let now = "2026-01-01T00:00:00Z".to_string();
+    let uid = store
+        .create((
+            domain::user::UserPhone {
+                value: format!("+1555{}", uniq()),
+                verified: true,
+            },
+            domain::user::UserPassword {
+                hash: "unused-in-this-test".into(),
+                changed_at: now.clone(),
+            },
+            domain::user::UserProfile {
+                display_name: "MCP Test User".into(),
+                avatar_url: String::new(),
+                email: String::new(),
+            },
+            domain::user::UserStatusComponent {
+                status: domain::user::UserStatus::Active.as_str().to_string(),
+                created_at: now.clone(),
+                last_login_at: None,
+            },
+        ))
+        .await
+        .unwrap();
+
+    let plaintext = domain::token::generate_token();
+    store
+        .create((
+            domain::token::TokenSecret {
+                hash: domain::token::hash_token(&plaintext),
+                preview: domain::token::preview_of(&plaintext),
+            },
+            domain::token::TokenOwner {
+                user_id: uid.to_string(),
+            },
+            domain::token::TokenInfo {
+                name: "mcp-flow-test".into(),
+                created_at: now,
+                expires_at: None,
+            },
+        ))
+        .await
+        .unwrap();
+    plaintext
+}
+
 async fn rpc(router: &Router, bearer: Option<&str>, body: Value) -> (StatusCode, Value) {
     let mut b = Request::builder()
         .method("POST")
@@ -112,10 +170,13 @@ async fn notification_gets_202_and_no_body() {
 
 #[tokio::test]
 async fn unknown_method_is_a_jsonrpc_error() {
-    let Some(router) = router().await else { return skipped() };
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    // A non-handshake method needs a valid token to even reach dispatch, so
+    // this exercises method-not-found under a real credential.
+    let token = seed_authed_user(&store).await;
     let (st, body) = rpc(
         &router,
-        None,
+        Some(&token),
         json!({ "jsonrpc": "2.0", "id": 9, "method": "does/not/exist" }),
     )
     .await;
@@ -156,4 +217,35 @@ async fn get_is_not_supported() {
     let req = Request::builder().method("GET").uri("/mcp").body(Body::empty()).unwrap();
     let resp = router.oneshot(req).await.unwrap();
     assert_eq!(resp.status(), StatusCode::METHOD_NOT_ALLOWED);
+}
+
+#[tokio::test]
+async fn tools_list_without_token_is_401() {
+    let Some(router) = router().await else { return skipped() };
+    let req = Request::builder()
+        .method("POST")
+        .uri("/mcp")
+        .header(CONTENT_TYPE, "application/json")
+        .body(Body::from(
+            json!({ "jsonrpc": "2.0", "id": 2, "method": "tools/list" }).to_string(),
+        ))
+        .unwrap();
+    let resp = router.oneshot(req).await.unwrap();
+    // Bad credentials are distinguished from a bad request: 401 +
+    // WWW-Authenticate, not a JSON-RPC error, so the client knows it's a
+    // token problem.
+    assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+    assert!(resp.headers().get("www-authenticate").is_some());
+}
+
+#[tokio::test]
+async fn garbage_token_is_401() {
+    let Some(router) = router().await else { return skipped() };
+    let (st, _) = rpc(
+        &router,
+        Some("not-a-real-token"),
+        json!({ "jsonrpc": "2.0", "id": 3, "method": "tools/list" }),
+    )
+    .await;
+    assert_eq!(st, StatusCode::UNAUTHORIZED);
 }

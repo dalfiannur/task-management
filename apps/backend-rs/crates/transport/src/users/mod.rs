@@ -4,7 +4,7 @@
 
 mod auth_service;
 mod directory_service;
-mod record;
+pub(crate) mod record;
 
 pub use auth_service::auth_router;
 pub use directory_service::user_router;

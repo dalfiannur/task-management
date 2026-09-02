@@ -1,6 +1,7 @@
 //! Flatten user ECS components ↔ the `User` proto, plus store lookups.
 
 use arke::{Entity, World};
+use auth::AuthUser;
 use domain::user::{
     AdminMark, UserPassword, UserPhone, UserProfile, UserStatus, UserStatusComponent,
 };
@@ -150,4 +151,26 @@ pub(crate) async fn find_by_phone(store: &Store, phone: &str) -> anyhow::Result<
         .await?
         .into_iter()
         .find(|u| u.phone == phone))
+}
+
+/// The `AuthUser` a Connect handler would see for this user — used by the PAT
+/// path, which carries the owner's id but not their permissions.
+///
+/// Permissions are read fresh each time rather than frozen into the token:
+/// that's what makes a token automatically lose its rights the moment the
+/// user is suspended or has their admin status revoked.
+pub async fn auth_user_for(store: &Store, user_id: &str) -> anyhow::Result<Option<AuthUser>> {
+    let Ok(pid) = user_id.parse::<i64>() else {
+        return Ok(None);
+    };
+    let Some(u) = load_user(store, pid).await? else {
+        return Ok(None);
+    };
+    if u.status != UserStatus::Active {
+        return Ok(None);
+    }
+    Ok(Some(AuthUser {
+        id: user_id.to_string(),
+        permissions: if u.is_admin { vec!["*".to_string()] } else { vec![] },
+    }))
 }

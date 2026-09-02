@@ -19,3 +19,5 @@ pub use crate::search::search_service::search_core;
 pub use crate::dashboard::mytasks_service::{
     list_assigned_to_me_core, list_created_by_me_core, list_involving_me_core,
 };
+pub use crate::tokens::record::{find_by_hash, TokenRecord};
+pub use crate::users::record::auth_user_for;
