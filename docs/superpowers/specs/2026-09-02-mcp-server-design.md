@@ -53,8 +53,9 @@ notifikasi, dan search indexing — MCP dan UI tidak mungkin berbeda perilaku.
 ### 3. PAT dikurung di endpoint MCP saja
 
 `auth_layer` global tetap **JWT-only** persis seperti sekarang. Crate `mcp`
-memverifikasi Bearer-nya sendiri. Kalau PAT bocor, blast radius-nya terbatas pada tool
-surface MCP, bukan seluruh Connect API.
+memverifikasi Bearer-nya sendiri dan **hanya menerima PAT** — JWT sesi browser ditolak di
+endpoint MCP, PAT ditolak di seluruh Connect API. Dua jalur kredensial itu tidak pernah
+bersinggungan, sehingga kalau PAT bocor blast radius-nya terbatas pada tool surface MCP.
 
 ### 4. Protokol ditulis tangan, bukan lewat SDK
 
@@ -116,6 +117,10 @@ activity record, notifikasi, dan search index otomatis ikut.
 menghapus kerjaan orang secara diam-diam, sementara `update_task` ke status batal/selesai
 sudah menutup hampir semua kebutuhan nyata.
 
+Filter `list_tasks` dipatok pada: `project_id`, `module_id`, `assignee_id`, `status`,
+dan `limit` — semuanya opsional kecuali salah satu dari `project_id` atau `module_id`
+harus ada, supaya tidak ada tool call yang memindai seluruh basis data.
+
 **Bentuk respons dijaga hemat konteks:** list default `limit` 50 (maks 200), field
 `description` dipotong pada 2.000 karakter dengan penanda, dan id selalu disertakan agar
 model bisa melanjutkan ke `get_task`.
@@ -136,7 +141,11 @@ Tiga jalur yang dibedakan:
 selalu diambil dari JWT; admin pun tidak bisa melihat token milik orang lain):
 
 - `CreateToken(name, expires_in_days)` → `{ token: string, meta: AccessToken }`
-  — plaintext hanya ada di respons ini, tidak pernah bisa dibaca lagi
+  — plaintext hanya ada di respons ini, tidak pernah bisa dibaca lagi.
+  `expires_in_days = 0` berarti **tanpa kedaluwarsa** (`expires_at` kosong); nilai
+  negatif ditolak `invalid_argument`. Token yang sudah lewat `expires_at` ditolak saat
+  verifikasi tetapi **tidak** dihapus otomatis — ia tetap tampil di daftar dengan
+  penanda kedaluwarsa sampai user me-revoke-nya.
 - `ListTokens()` → `[AccessToken { id, name, preview, created_at, expires_at, last_used_at }]`
 - `RevokeToken(id)` → `OkResponse`
 

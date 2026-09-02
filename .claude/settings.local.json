@@ -69,5 +69,8 @@
       "Bash(bun run:*)",
       "Bash(find:*)"
     ]
+  },
+  "worktree": {
+    "baseRef": "head"
   }
 }
