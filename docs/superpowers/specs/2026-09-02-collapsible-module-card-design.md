@@ -63,6 +63,14 @@ module — daftar task **dan** form quick-add — di dalam `Collapsible`.
 - **Chevron sebagai trigger, di paling kiri sebelum nama** — bukan di gerombolan
   tombol kelola di kanan. Melipat bukan tindakan mengelola dan tersedia untuk
   semua orang, bukan hanya yang punya `canManage`.
+- **Chevron-nya harus dibedakan dari dua chevron yang sudah ada di header itu.**
+  `ChevronUp`/`ChevronDown` di kanan sudah dipakai untuk mengurutkan module, jadi
+  trigger lipat memakai `ChevronRight` yang berputar 90° saat terbuka
+  (`transition-transform` digerakkan oleh `data-state`), bukan chevron atas/bawah
+  lain yang akan terbaca sebagai kendali urutan ketiga.
+- **Keadaan `Collapsible` dikendalikan atom**, bukan state internal Radix —
+  `open` dan `onOpenChange` dijahit ke atom, supaya satu-satunya sumber kebenaran
+  adalah nilai yang tersimpan.
 
 ### Persistensi
 
