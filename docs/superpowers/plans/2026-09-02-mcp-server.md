@@ -3402,6 +3402,18 @@ git commit -m "feat(tokens): add access token client hooks"
 - Create: `apps/frontend/src/features/tokens/components/token-table.tsx`, `.../create-token-dialog.tsx`, `.../connect-panel.tsx`, `.../tokens-page.tsx`
 - Modify: `apps/frontend/src/features/tokens/index.ts`
 
+> **Peringatan soal markup di bawah.** Cuplikan-cuplikan ini ditulis dengan kelas
+> shadcn generik (`text-muted-foreground`, `bg-muted`) yang **tidak ada di tema
+> proyek ini** — `src/index.css` hanya mengekspos token semantiknya sendiri
+> (`text-text-muted`, `bg-surface-sunken`, `bg-surface-raised`, `border-border`,
+> `text-danger`). Muat skill `ui-design` lebih dulu dan pakai token yang benar-benar
+> ada. Beberapa hal lain juga sudah punya konvensi di aplikasi ini yang tidak
+> tercermin di bawah: empty state memakai komponen `EmptyState` bersama dengan
+> `actionSlot`, bukan satu baris "belum ada data"; loading memakai `Skeleton`
+> berbentuk tabel, bukan teks "Loading…"; daftar duduk di dalam kartu
+> (`rounded-xl bg-surface-raised shadow-2`); dan setiap daftar data menangani
+> `isError`. Ikuti aplikasinya, bukan cuplikan ini.
+
 - [ ] **Step 1: Tabel token**
 
 `src/features/tokens/components/token-table.tsx`:
