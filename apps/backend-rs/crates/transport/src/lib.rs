@@ -15,6 +15,7 @@
 
 include!(concat!(env!("OUT_DIR"), "/generated.rs"));
 
+pub mod api;
 mod activity;
 mod comments;
 mod dashboard;

@@ -83,6 +83,18 @@ async fn next_order_in_module(store: &Store, module_id: &str) -> Result<i32, Con
 
 /// Single task by id — the read a deep-linked dialog needs when no list has
 /// been loaded. Member-gated through the task's module → project.
+pub async fn get_task_core(
+    store: &Store,
+    auth: &AuthUser,
+    r: pb::GetTaskRequest,
+) -> Result<pb::Task, ConnectError> {
+    let pid = parse_pid(&r.id)?;
+    let t = require_task(store, pid).await?;
+    let (_, project_id) = module_project(store, &t.module_id).await?;
+    require_member(store, &project_id, auth).await?;
+    Ok(to_proto(&t))
+}
+
 async fn get_task(
     Extension(store): StoreExt,
     user: Option<Extension<AuthUser>>,
@@ -90,11 +102,28 @@ async fn get_task(
 ) -> Result<ConnectResponse<pb::Task>, ConnectError> {
     let auth = require_auth(user)?;
     let ConnectRequest(r) = req;
-    let pid = parse_pid(&r.id)?;
-    let t = require_task(&store, pid).await?;
-    let (_, project_id) = module_project(&store, &t.module_id).await?;
-    require_member(&store, &project_id, &auth).await?;
-    Ok(ConnectResponse::new(to_proto(&t)))
+    Ok(ConnectResponse::new(get_task_core(&store, &auth, r).await?))
+}
+
+pub async fn list_tasks_core(
+    store: &Store,
+    auth: &AuthUser,
+    r: pb::ListTasksRequest,
+) -> Result<pb::ListTasksResponse, ConnectError> {
+    require_member(store, &r.project_id, auth).await?;
+    let module_ids: HashSet<String> = modules_for_project(store, &r.project_id)
+        .await
+        .map_err(internal)?
+        .into_iter()
+        .map(|m| m.pid.to_string())
+        .collect();
+    let mut tasks = tasks_for_modules(store, module_ids).await.map_err(internal)?;
+    if let Some(mid) = r.module_id.filter(|s| !s.is_empty()) {
+        tasks.retain(|t| t.module_id == mid);
+    }
+    Ok(pb::ListTasksResponse {
+        tasks: tasks.iter().map(to_proto).collect(),
+    })
 }
 
 async fn list_tasks(
@@ -104,38 +133,23 @@ async fn list_tasks(
 ) -> Result<ConnectResponse<pb::ListTasksResponse>, ConnectError> {
     let auth = require_auth(user)?;
     let ConnectRequest(r) = req;
-    require_member(&store, &r.project_id, &auth).await?;
-    let module_ids: HashSet<String> = modules_for_project(&store, &r.project_id)
-        .await
-        .map_err(internal)?
-        .into_iter()
-        .map(|m| m.pid.to_string())
-        .collect();
-    let mut tasks = tasks_for_modules(&store, module_ids).await.map_err(internal)?;
-    if let Some(mid) = r.module_id.filter(|s| !s.is_empty()) {
-        tasks.retain(|t| t.module_id == mid);
-    }
-    Ok(ConnectResponse::new(pb::ListTasksResponse {
-        tasks: tasks.iter().map(to_proto).collect(),
-    }))
+    Ok(ConnectResponse::new(list_tasks_core(&store, &auth, r).await?))
 }
 
-async fn create_task(
-    Extension(store): StoreExt,
-    notifier: Option<Extension<Arc<Notifier>>>,
-    user: Option<Extension<AuthUser>>,
-    req: ConnectRequest<pb::CreateTaskRequest>,
-) -> Result<ConnectResponse<pb::Task>, ConnectError> {
-    let auth = require_auth(user)?;
-    let ConnectRequest(r) = req;
-    let (_mpid, project_id) = module_project(&store, &r.module_id).await?;
-    require_member(&store, &project_id, &auth).await?;
+pub async fn create_task_core(
+    store: &Store,
+    notifier: Option<&Arc<Notifier>>,
+    auth: &AuthUser,
+    r: pb::CreateTaskRequest,
+) -> Result<pb::Task, ConnectError> {
+    let (_mpid, project_id) = module_project(store, &r.module_id).await?;
+    require_member(store, &project_id, auth).await?;
 
     let title = r.title.trim();
     if !title_ok(title) {
         return Err(ConnectError::new_invalid_argument("title is required"));
     }
-    validate_assignees(&store, &project_id, &r.assignee_ids).await?;
+    validate_assignees(store, &project_id, &r.assignee_ids).await?;
     let assignees = r.assignee_ids.clone();
 
     let status = TaskStatus::from_proto(r.status).unwrap_or(TaskStatus::Todo);
@@ -151,12 +165,12 @@ async fn create_task(
     // ignored rather than trusted, so the invariant cannot be bypassed.
     let (module_id, parent_id) = match r.parent_id.as_deref().filter(|s| !s.is_empty()) {
         Some(p) => (
-            validate_parent(&store, &project_id, p, 0).await?,
+            validate_parent(store, &project_id, p, 0).await?,
             Some(p.to_string()),
         ),
         None => (r.module_id.clone(), None),
     };
-    let order = next_order_in_module(&store, &module_id).await?;
+    let order = next_order_in_module(store, &module_id).await?;
     let now = now_iso();
     let completed_at = (status == TaskStatus::Done).then(|| now.clone());
     let description_for_index = domain::sanitize::clean_html(&r.description.unwrap_or_default());
@@ -200,12 +214,12 @@ async fn create_task(
             .map_err(internal)?;
     }
     // Notify each assignee (emit no-ops on self-assignment).
-    if let Some(Extension(n)) = notifier {
+    if let Some(n) = notifier {
         let refs = NotifRefs::task(&project_id, &pid.to_string());
         for a in &assignees {
             emit(
-                &store,
-                &n,
+                store,
+                n,
                 a,
                 NotificationType::TaskAssigned,
                 &auth.id,
@@ -216,7 +230,7 @@ async fn create_task(
         }
     }
     record(
-        &store,
+        store,
         &project_id,
         &auth.id,
         EntityType::Task,
@@ -227,7 +241,7 @@ async fn create_task(
     )
     .await;
     index(
-        &store,
+        store,
         task_doc(
             &pid.to_string(),
             &project_id,
@@ -238,22 +252,34 @@ async fn create_task(
         ),
     )
     .await;
-    let t = require_task(&store, pid).await?;
-    Ok(ConnectResponse::new(to_proto(&t)))
+    let t = require_task(store, pid).await?;
+    Ok(to_proto(&t))
 }
 
-async fn update_task(
+async fn create_task(
     Extension(store): StoreExt,
     notifier: Option<Extension<Arc<Notifier>>>,
     user: Option<Extension<AuthUser>>,
-    req: ConnectRequest<pb::UpdateTaskRequest>,
+    req: ConnectRequest<pb::CreateTaskRequest>,
 ) -> Result<ConnectResponse<pb::Task>, ConnectError> {
     let auth = require_auth(user)?;
     let ConnectRequest(r) = req;
+    let n = notifier.as_ref().map(|Extension(n)| n);
+    Ok(ConnectResponse::new(
+        create_task_core(&store, n, &auth, r).await?,
+    ))
+}
+
+pub async fn update_task_core(
+    store: &Store,
+    notifier: Option<&Arc<Notifier>>,
+    auth: &AuthUser,
+    r: pb::UpdateTaskRequest,
+) -> Result<pb::Task, ConnectError> {
     let pid = parse_pid(&r.id)?;
-    let t = require_task(&store, pid).await?;
-    let (_mpid, project_id) = module_project(&store, &t.module_id).await?;
-    require_member(&store, &project_id, &auth).await?;
+    let t = require_task(store, pid).await?;
+    let (_mpid, project_id) = module_project(store, &t.module_id).await?;
+    require_member(store, &project_id, auth).await?;
 
     // Patch scalar fields.
     let title = match r.title {
@@ -293,7 +319,7 @@ async fn update_task(
         Some(list) => list.values,
         None => t.assignee_ids.clone(),
     };
-    validate_assignees(&store, &project_id, &assignees).await?;
+    validate_assignees(store, &project_id, &assignees).await?;
     let labels = match r.label_ids {
         Some(list) => list.values,
         None => t.label_ids.clone(),
@@ -301,7 +327,7 @@ async fn update_task(
 
     // Dependencies: present wrapper = replace, absent = unchanged.
     let blocked_by = match r.blocked_by_ids {
-        Some(list) => validate_blocked_by(&store, &project_id, pid, &list.values).await?,
+        Some(list) => validate_blocked_by(store, &project_id, pid, &list.values).await?,
         None => t.blocked_by_ids.clone(),
     };
     // Re-parenting: absent = unchanged, empty = detach, one = set.
@@ -310,7 +336,7 @@ async fn update_task(
         Some(list) if list.values.is_empty() => Some(None),
         Some(list) if list.values.len() == 1 => {
             let p = list.values[0].clone();
-            validate_parent(&store, &project_id, &p, pid).await?;
+            validate_parent(store, &project_id, &p, pid).await?;
             Some(Some(p))
         }
         Some(_) => {
@@ -409,12 +435,12 @@ async fn update_task(
         .await
         .map_err(internal)?;
     // Notify only newly-added assignees.
-    if let Some(Extension(n)) = notifier {
+    if let Some(n) = notifier {
         let refs = NotifRefs::task(&project_id, &pid.to_string());
         for a in new_assignees.iter().filter(|a| !t.assignee_ids.contains(a)) {
             emit(
-                &store,
-                &n,
+                store,
+                n,
                 a,
                 NotificationType::TaskAssigned,
                 &auth.id,
@@ -425,7 +451,7 @@ async fn update_task(
         }
     }
     record(
-        &store,
+        store,
         &project_id,
         &auth.id,
         EntityType::Task,
@@ -435,9 +461,9 @@ async fn update_task(
         changes,
     )
     .await;
-    let t = require_task(&store, pid).await?;
+    let t = require_task(store, pid).await?;
     index(
-        &store,
+        store,
         task_doc(
             &pid.to_string(),
             &project_id,
@@ -448,7 +474,21 @@ async fn update_task(
         ),
     )
     .await;
-    Ok(ConnectResponse::new(to_proto(&t)))
+    Ok(to_proto(&t))
+}
+
+async fn update_task(
+    Extension(store): StoreExt,
+    notifier: Option<Extension<Arc<Notifier>>>,
+    user: Option<Extension<AuthUser>>,
+    req: ConnectRequest<pb::UpdateTaskRequest>,
+) -> Result<ConnectResponse<pb::Task>, ConnectError> {
+    let auth = require_auth(user)?;
+    let ConnectRequest(r) = req;
+    let n = notifier.as_ref().map(|Extension(n)| n);
+    Ok(ConnectResponse::new(
+        update_task_core(&store, n, &auth, r).await?,
+    ))
 }
 
 async fn delete_task(
@@ -493,19 +533,17 @@ async fn delete_task(
     Ok(ConnectResponse::new(pb::DeleteTaskResponse { ok: true }))
 }
 
-async fn move_task(
-    Extension(store): StoreExt,
-    user: Option<Extension<AuthUser>>,
-    req: ConnectRequest<pb::MoveTaskRequest>,
-) -> Result<ConnectResponse<pb::Task>, ConnectError> {
-    let auth = require_auth(user)?;
-    let ConnectRequest(r) = req;
+pub async fn move_task_core(
+    store: &Store,
+    auth: &AuthUser,
+    r: pb::MoveTaskRequest,
+) -> Result<pb::Task, ConnectError> {
     let pid = parse_pid(&r.id)?;
-    let t = require_task(&store, pid).await?;
-    let (_old_mpid, old_project) = module_project(&store, &t.module_id).await?;
-    require_member(&store, &old_project, &auth).await?;
+    let t = require_task(store, pid).await?;
+    let (_old_mpid, old_project) = module_project(store, &t.module_id).await?;
+    require_member(store, &old_project, auth).await?;
     // Destination module must be in the same project.
-    let (_dest_mpid, dest_project) = module_project(&store, &r.module_id).await?;
+    let (_dest_mpid, dest_project) = module_project(store, &r.module_id).await?;
     if dest_project != old_project {
         return Err(ConnectError::new_invalid_argument(
             "destination module is in a different project",
@@ -542,7 +580,7 @@ async fn move_task(
         .map_err(internal)?;
     // A subtask always lives in its parent's module; moving the parent moves
     // the children rather than leaving them behind in the old module.
-    for spid in subtask_pids(&store, &pid.to_string()).await.map_err(internal)? {
+    for spid in subtask_pids(store, &pid.to_string()).await.map_err(internal)? {
         let mid = r.module_id.clone();
         store
             .update(spid, move |w, e| {
@@ -552,7 +590,7 @@ async fn move_task(
             .await
             .map_err(internal)?;
     }
-    let t = require_task(&store, pid).await?;
+    let t = require_task(store, pid).await?;
     // `unwrap_or_default()` here would turn a `None` (module deleted out from
     // under this move — a narrow race) into `Some("")`. An empty string is
     // not `NULL`, so it would fail the `project_id IS NULL OR project_id =
@@ -561,12 +599,12 @@ async fn move_task(
     // the index, until someone runs `reindex`. Skipping the call on `None`
     // just leaves the document stale — the honest outcome, since the index
     // is already allowed to lag and `reindex` repairs it.
-    if let Some(moved_project) = super::task_project_id(&store, &pid.to_string())
+    if let Some(moved_project) = super::task_project_id(store, &pid.to_string())
         .await
         .map_err(internal)?
     {
         index(
-            &store,
+            store,
             task_doc(
                 &pid.to_string(),
                 &moved_project,
@@ -578,7 +616,17 @@ async fn move_task(
         )
         .await;
     }
-    Ok(ConnectResponse::new(to_proto(&t)))
+    Ok(to_proto(&t))
+}
+
+async fn move_task(
+    Extension(store): StoreExt,
+    user: Option<Extension<AuthUser>>,
+    req: ConnectRequest<pb::MoveTaskRequest>,
+) -> Result<ConnectResponse<pb::Task>, ConnectError> {
+    let auth = require_auth(user)?;
+    let ConnectRequest(r) = req;
+    Ok(ConnectResponse::new(move_task_core(&store, &auth, r).await?))
 }
 
 /// TaskService router; injects the Store as a request extension.

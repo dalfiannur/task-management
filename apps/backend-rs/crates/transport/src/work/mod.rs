@@ -7,7 +7,7 @@
 mod module_service;
 pub(crate) mod record;
 pub(crate) mod task_record;
-mod task_service;
+pub(crate) mod task_service;
 
 pub use module_service::module_router;
 pub use task_service::task_router;
