@@ -41,6 +41,7 @@ pub fn build_router(
     transport::health_router(store.clone())
         .merge(transport::auth_router(store.clone(), jwt))
         .merge(transport::user_router(store.clone()))
+        .merge(transport::token_router(store.clone()))
         .merge(transport::project_router(store.clone()))
         .merge(transport::module_router(store.clone()))
         .merge(transport::task_router(store.clone()))

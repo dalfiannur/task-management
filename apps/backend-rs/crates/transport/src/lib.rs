@@ -25,6 +25,7 @@ mod notifications;
 mod pages;
 mod projects;
 mod search;
+mod tokens;
 mod users;
 mod work;
 pub use activity::activity_router;
@@ -37,6 +38,7 @@ pub use media::media_router;
 pub use pages::page_router;
 pub use projects::project_router;
 pub use search::search_router;
+pub use tokens::token_router;
 pub use users::{auth_router, user_router, JwtConfig};
 pub use work::{module_router, task_router};
 
