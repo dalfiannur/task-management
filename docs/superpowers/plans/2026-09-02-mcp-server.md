@@ -1020,8 +1020,17 @@ Di `crates/transport/src/lib.rs`, tambahkan `pub mod api;` di dekat deklarasi mo
 Run: `cargo test -p transport --test work_flow`
 Expected: PASS dengan jumlah test sama seperti Step 1, tanpa satu pun baris test disunting.
 
-Run: `cargo clippy -p transport --all-targets -- -D warnings`
-Expected: bersih.
+Run: `cargo clippy -p transport --all-targets`
+Expected: tidak ada peringatan baru dari pekerjaanmu.
+
+**Dua peringatan `dead_code` yang diketahui.** Sampai Task 8 mem-wire jalur PAT,
+`tokens::record::find_by_hash` memang belum punya pemanggil, dan `export/model.rs`
+punya `storage_key` yang sudah menganggur sejak sebelum rencana ini. Keduanya membuat
+`-D warnings` gagal. Itu bukan temuan — yang harus dipastikan adalah **tidak ada
+peringatan ketiga** yang muncul dari pekerjaanmu. Jalankan tanpa `-D warnings` dan
+bandingkan daftarnya. Jangan membungkam keduanya dengan `#[allow]`: peringatan
+`find_by_hash` adalah penanda bahwa Task 8 belum selesai, dan hilangnya peringatan itu
+nanti adalah buktinya sudah tersambung.
 
 - [ ] **Step 5: Commit**
 
@@ -1127,8 +1136,17 @@ Tambahkan re-export-nya di `crates/transport/src/api.rs`, mengikuti jalur modul 
 Run: `cargo test -p transport`
 Expected: PASS untuk seluruh test transport, jumlahnya sama seperti sebelum Phase 2 dimulai.
 
-Run: `cargo clippy --workspace --all-targets -- -D warnings`
-Expected: bersih.
+Run: `cargo clippy --workspace --all-targets`
+Expected: tidak ada peringatan baru dari pekerjaanmu.
+
+**Dua peringatan `dead_code` yang diketahui.** Sampai Task 8 mem-wire jalur PAT,
+`tokens::record::find_by_hash` memang belum punya pemanggil, dan `export/model.rs`
+punya `storage_key` yang sudah menganggur sejak sebelum rencana ini. Keduanya membuat
+`-D warnings` gagal. Itu bukan temuan — yang harus dipastikan adalah **tidak ada
+peringatan ketiga** yang muncul dari pekerjaanmu. Jalankan tanpa `-D warnings` dan
+bandingkan daftarnya. Jangan membungkam keduanya dengan `#[allow]`: peringatan
+`find_by_hash` adalah penanda bahwa Task 8 belum selesai, dan hilangnya peringatan itu
+nanti adalah buktinya sudah tersambung.
 
 - [ ] **Step 5: Commit**
 
@@ -1710,6 +1728,11 @@ async fn handle_post(
 
 Run: `DATABASE_URL=$DATABASE_URL cargo test -p mcp`
 Expected: PASS, 9 test.
+
+Sekalian jalankan `cargo clippy -p transport --all-targets` dan pastikan peringatan
+`find_by_hash is never used` **sudah hilang**. Sejak Task 3 peringatan itu menandai
+jalur PAT yang belum tersambung; lenyapnya adalah bukti mekanis bahwa `pat.rs` benar-benar
+memanggilnya, bukan sekadar mengimpornya.
 
 - [ ] **Step 6: Commit**
 
