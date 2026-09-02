@@ -899,7 +899,7 @@ Sesudah:
 
 ```rust
 /// Core: satu task by id, member-gated lewat module → project.
-pub(crate) async fn get_task_core(
+pub async fn get_task_core(
     store: &Store,
     auth: &AuthUser,
     r: pb::GetTaskRequest,
@@ -943,14 +943,14 @@ Di `task_service.rs`, terapkan aturan mekanis di atas pada `get_task`, `list_tas
 Dua di antaranya juga mengambil `Notifier`, jadi core fn-nya menerimanya sebagai parameter biasa — MCP wajib meneruskannya agar task yang dibuat lewat AI tetap memberi notifikasi ke assignee-nya:
 
 ```rust
-pub(crate) async fn create_task_core(
+pub async fn create_task_core(
     store: &Store,
     notifier: Option<&Arc<Notifier>>,
     auth: &AuthUser,
     r: pb::CreateTaskRequest,
 ) -> Result<pb::Task, ConnectError> { /* badan create_task, tanpa baris extractor */ }
 
-pub(crate) async fn update_task_core(
+pub async fn update_task_core(
     store: &Store,
     notifier: Option<&Arc<Notifier>>,
     auth: &AuthUser,
@@ -981,15 +981,21 @@ async fn create_task(
 Signature dua sisanya:
 
 ```rust
-pub(crate) async fn list_tasks_core(store: &Store, auth: &AuthUser, r: pb::ListTasksRequest)
+pub async fn list_tasks_core(store: &Store, auth: &AuthUser, r: pb::ListTasksRequest)
     -> Result<pb::ListTasksResponse, ConnectError>;
-pub(crate) async fn move_task_core(store: &Store, auth: &AuthUser, r: pb::MoveTaskRequest)
+pub async fn move_task_core(store: &Store, auth: &AuthUser, r: pb::MoveTaskRequest)
     -> Result<pb::Task, ConnectError>;
 ```
 
 - [ ] **Step 3: Buka modulnya dan buat permukaan `api`**
 
 Di `crates/transport/src/work/mod.rs`, ubah `mod task_service;` menjadi `pub(crate) mod task_service;`.
+
+Perhatikan visibilitas: setiap `_core` dideklarasikan `pub`, bukan `pub(crate)`.
+Modulnya tetap `pub(crate)`, tetapi `api.rs` me-*re-export* fungsi-fungsi itu secara
+publik, dan `pub use` atas item `pub(crate)` adalah error kompilasi (E0365). Item `pub`
+di dalam modul privat tidak bocor ke luar crate kecuali lewat re-export itu, jadi
+permukaan publiknya tetap persis yang `api.rs` sebutkan.
 
 Buat `apps/backend-rs/crates/transport/src/api.rs`:
 
@@ -1043,11 +1049,11 @@ Expected: PASS. Catat jumlah test-nya.
 Terapkan aturan mekanis yang sama pada `list_projects` dan `get_project` di modul `projects`, serta `list_modules` di `work/module_service.rs`. Signature targetnya:
 
 ```rust
-pub(crate) async fn list_projects_core(store: &Store, auth: &AuthUser, r: pb::ListProjectsRequest)
+pub async fn list_projects_core(store: &Store, auth: &AuthUser, r: pb::ListProjectsRequest)
     -> Result<pb::ListProjectsResponse, ConnectError>;
-pub(crate) async fn get_project_core(store: &Store, auth: &AuthUser, r: pb::GetProjectRequest)
+pub async fn get_project_core(store: &Store, auth: &AuthUser, r: pb::GetProjectRequest)
     -> Result<pb::Project, ConnectError>;
-pub(crate) async fn list_modules_core(store: &Store, auth: &AuthUser, r: pb::ListModulesRequest)
+pub async fn list_modules_core(store: &Store, auth: &AuthUser, r: pb::ListModulesRequest)
     -> Result<pb::ListModulesResponse, ConnectError>;
 ```
 
@@ -1096,17 +1102,17 @@ Expected: PASS. Catat jumlah test-nya.
 Aturan mekanis yang sama. `create_comment` juga memegang `Notifier` (mention → notifikasi), jadi ia mengikuti bentuk `create_task_core`:
 
 ```rust
-pub(crate) async fn list_comments_core(store: &Store, auth: &AuthUser, r: pb::ListCommentsRequest)
+pub async fn list_comments_core(store: &Store, auth: &AuthUser, r: pb::ListCommentsRequest)
     -> Result<pb::ListCommentsResponse, ConnectError>;
-pub(crate) async fn create_comment_core(
+pub async fn create_comment_core(
     store: &Store,
     notifier: Option<&Arc<Notifier>>,
     auth: &AuthUser,
     r: pb::CreateCommentRequest,
 ) -> Result<pb::Comment, ConnectError>;
-pub(crate) async fn search_core(store: &Store, auth: &AuthUser, r: pb::SearchRequest)
+pub async fn search_core(store: &Store, auth: &AuthUser, r: pb::SearchRequest)
     -> Result<pb::SearchResponse, ConnectError>;
-pub(crate) async fn my_tasks_core(store: &Store, auth: &AuthUser, r: pb::MyTasksRequest)
+pub async fn my_tasks_core(store: &Store, auth: &AuthUser, r: pb::MyTasksRequest)
     -> Result<pb::MyTasksResponse, ConnectError>;
 ```
 
