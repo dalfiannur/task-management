@@ -7,6 +7,7 @@
 
 mod pat;
 mod protocol;
+mod tools;
 
 use std::sync::Arc;
 
@@ -20,8 +21,8 @@ use serde_json::Value;
 use transport::Notifier;
 
 use protocol::{
-    error, initialize_result, result, Rpc, INTERNAL_ERROR, INVALID_REQUEST, METHOD_NOT_FOUND,
-    PARSE_ERROR,
+    error, initialize_result, result, Rpc, INTERNAL_ERROR, INVALID_PARAMS, INVALID_REQUEST,
+    METHOD_NOT_FOUND, PARSE_ERROR,
 };
 
 /// Bad or missing credentials answer at the HTTP layer, not as a JSON-RPC error:
@@ -101,13 +102,39 @@ async fn handle_post(
     } else {
         None
     };
-    let _ = &auth; // used starting from Task 9
 
     let response: Value = match rpc.method.as_str() {
         "initialize" => result(rpc.id.clone(), initialize_result(&rpc.params)),
         "ping" => result(rpc.id.clone(), serde_json::json!({})),
         m if m.starts_with("notifications/") => {
             return StatusCode::ACCEPTED.into_response();
+        }
+        "tools/list" => result(rpc.id.clone(), tools::tool_list()),
+        "tools/call" => {
+            let name = rpc.params.get("name").and_then(Value::as_str).unwrap_or_default();
+            let args = rpc.params.get("arguments").cloned().unwrap_or(Value::Object(Default::default()));
+            let ctx = tools::Ctx {
+                store: state.store.clone(),
+                notifier: state.notifier.clone(),
+                // Not `.expect()`: that would tie a panic on a live request path to
+                // `needs_auth`'s exclusion list staying correct by convention. If the
+                // two ever drift, answer honestly instead of dying.
+                auth: match auth {
+                    Some(u) => u,
+                    None => {
+                        return unauthorized(rpc.id);
+                    }
+                },
+            };
+            match tools::dispatch(&ctx, name, &args).await {
+                Ok(v) => result(rpc.id.clone(), tools::ok_content(v)),
+                Err(tools::ToolError::Business(m)) => {
+                    result(rpc.id.clone(), tools::error_content(&m))
+                }
+                Err(tools::ToolError::BadArgs(m)) => {
+                    error(rpc.id.clone(), INVALID_PARAMS, &m)
+                }
+            }
         }
         other => error(rpc.id.clone(), METHOD_NOT_FOUND, &format!("unknown method: {other}")),
     };

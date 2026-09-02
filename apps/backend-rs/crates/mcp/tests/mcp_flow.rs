@@ -347,3 +347,108 @@ async fn every_rejection_is_indistinguishable() {
         assert_eq!(other, first, "rejection {i} is distinguishable from the first");
     }
 }
+
+/// Issue a PAT for a user directly through the store — its RPC path is
+/// already tested separately in `transport::tokens_flow`.
+async fn issue_token(store: &persistence::Store, user_id: &str) -> String {
+    use domain::token::{generate_token, hash_token, preview_of, TokenInfo, TokenOwner, TokenSecret, TokenUsage};
+    let t = generate_token();
+    store
+        .create((
+            TokenSecret { hash: hash_token(&t), preview: preview_of(&t) },
+            TokenOwner { user_id: user_id.to_string() },
+            TokenInfo {
+                name: "test".into(),
+                created_at: "2026-01-01T00:00:00Z".into(),
+                expires_at: None,
+            },
+            TokenUsage { last_used_at: None },
+        ))
+        .await
+        .unwrap();
+    t
+}
+
+/// A minimal active user — `auth_user_for` rejects anything that isn't `active`.
+async fn seed_active_user(store: &persistence::Store) -> String {
+    use domain::user::{UserPassword, UserPhone, UserProfile, UserStatusComponent};
+    let uniq = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let pid = store
+        .create((
+            UserPhone { value: format!("62{uniq}"), verified: true },
+            UserPassword { hash: "x".into(), changed_at: "2026-01-01T00:00:00Z".into() },
+            UserProfile {
+                display_name: "MCP Tester".into(),
+                avatar_url: String::new(),
+                email: String::new(),
+            },
+            UserStatusComponent {
+                status: "active".into(),
+                created_at: "2026-01-01T00:00:00Z".into(),
+                last_login_at: None,
+            },
+        ))
+        .await
+        .unwrap();
+    pid.to_string()
+}
+
+#[tokio::test]
+async fn tools_list_returns_the_registry() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+
+    let (st, body) = rpc(
+        &router,
+        Some(&token),
+        json!({ "jsonrpc": "2.0", "id": 4, "method": "tools/list" }),
+    )
+    .await;
+    assert_eq!(st, StatusCode::OK, "{body:?}");
+    let tools = body["result"]["tools"].as_array().unwrap();
+    assert_eq!(tools.len(), 12);
+    let names: Vec<&str> = tools.iter().map(|t| t["name"].as_str().unwrap()).collect();
+    assert!(names.contains(&"create_task"));
+    assert!(!names.contains(&"delete_task"), "delete sengaja tidak diekspos");
+    for t in tools {
+        assert!(t["description"].as_str().is_some_and(|d| !d.is_empty()));
+        assert_eq!(t["inputSchema"]["type"], "object");
+    }
+}
+
+#[tokio::test]
+async fn calling_an_unknown_tool_is_invalid_params() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    let (_, body) = rpc(
+        &router,
+        Some(&token),
+        json!({ "jsonrpc": "2.0", "id": 5, "method": "tools/call",
+                "params": { "name": "nope", "arguments": {} } }),
+    )
+    .await;
+    assert_eq!(body["error"]["code"], -32602);
+}
+
+#[tokio::test]
+async fn business_failure_is_an_error_result_not_a_protocol_error() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    let (st, body) = rpc(
+        &router,
+        Some(&token),
+        json!({ "jsonrpc": "2.0", "id": 6, "method": "tools/call",
+                "params": { "name": "get_task", "arguments": { "task_id": "999999999" } } }),
+    )
+    .await;
+    assert_eq!(st, StatusCode::OK);
+    assert!(body.get("error").is_none(), "bukan error protokol");
+    assert_eq!(body["result"]["isError"], true);
+    assert!(body["result"]["content"][0]["text"].as_str().is_some());
+}
