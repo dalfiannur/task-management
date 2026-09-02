@@ -1747,6 +1747,11 @@ async fn handle_post(
 Run: `DATABASE_URL=$DATABASE_URL cargo test -p mcp`
 Expected: PASS, 9 test.
 
+`crates/mcp` juga menyumbang satu peringatan `dead_code` yang diketahui sejak Task 7:
+`INVALID_PARAMS` belum punya pemakai sampai Task 9 memakainya untuk argumen tool yang
+salah bentuk. Sama seperti `find_by_hash`, jangan dibungkam dengan `#[allow]` — biarkan
+ia hilang sendiri saat pemakainya lahir.
+
 Sekalian jalankan `cargo clippy -p transport --all-targets` dan pastikan peringatan
 `find_by_hash is never used` **sudah hilang**. Sejak Task 3 peringatan itu menandai
 jalur PAT yang belum tersambung; lenyapnya adalah bukti mekanis bahwa `pat.rs` benar-benar
