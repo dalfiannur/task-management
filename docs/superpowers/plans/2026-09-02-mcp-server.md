@@ -2623,16 +2623,20 @@ pub async fn search(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
 
 pub const MY_TASKS: ToolMeta = ToolMeta {
     name: "my_tasks",
-    description: "Tasks involving this user across every project. `scope` picks which \
-                  relationship: assigned to them (the default, and the answer to \
-                  'what should I work on'), created by them, or either.",
+    description: "Tasks this user is connected to, across every project. `scope` picks \
+                  the connection: `assigned` (the default, and the answer to 'what \
+                  should I work on'), `created` for tasks they opened, or `involving` \
+                  for tasks they commented on or were mentioned in. `involving` is \
+                  about discussion, not ownership — it does not include tasks merely \
+                  assigned to them.",
     schema: || json!({
         "type": "object",
         "properties": {
             "scope": {
                 "type": "string",
                 "enum": ["assigned", "created", "involving"],
-                "description": "Default: assigned"
+                "description": "assigned (default) | created | involving \
+                                (commented on or mentioned in)"
             },
             "status": { "type": "string", "enum": ["todo", "in_progress", "done", "blocked"] },
             "limit": { "type": "integer", "minimum": 1, "maximum": 200 }
