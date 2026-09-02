@@ -580,14 +580,23 @@ fn read(world: &World, e: Entity, pid: i64) -> Option<TokenRecord> {
 }
 
 /// Token milik satu user, terbaru dulu.
+///
+/// Filter di SQL, bukan di Rust. `query(None, ..)` akan menghidrasi setiap token
+/// milik *semua* user sebelum filter kepemilikan sempat jalan — dan menghidrasi
+/// satu pid berharga satu query keberadaan plus satu query per tipe komponen
+/// terdaftar. Pelajaran itu sudah dibayar sekali dan dicatat lengkap dengan
+/// angkanya di `activity::record::activity_for_project`; `TokenOwner.user_id`
+/// sudah diindeks persis untuk query ini.
 pub async fn tokens_for_owner(store: &Store, user_id: &str) -> anyhow::Result<Vec<TokenRecord>> {
-    let owner = user_id.to_string();
+    if !crate::sql::safe_sql_id(user_id) {
+        return Ok(Vec::new());
+    }
+    let pred = format!("user_id = '{user_id}'");
     let mut v = store
-        .query::<TokenOwner, TokenRecord>(None, move |world, pairs| {
+        .query::<TokenOwner, TokenRecord>(Some(&pred), |world, pairs| {
             pairs
                 .iter()
                 .filter_map(|(pid, e)| read(world, *e, *pid))
-                .filter(|t| t.user_id == owner)
                 .collect()
         })
         .await?;
@@ -674,6 +683,12 @@ fn now_iso() -> String {
         .unwrap_or_default()
 }
 
+/// Batas atas yang disengaja. `OffsetDateTime + Duration` **panic** ketika
+/// hasilnya keluar dari rentang yang bisa diwakili, sementara `expires_in_days`
+/// datang mentah dari client sebagai `uint32` — tanpa batas ini satu request
+/// dengan angka besar menjatuhkan handler alih-alih dibalas `invalid_argument`.
+pub(crate) const MAX_EXPIRY_DAYS: u32 = 3650; // 10 tahun
+
 /// `expires_in_days` → `expires_at` RFC3339. 0 = tanpa kedaluwarsa.
 fn expiry_from_days(days: u32) -> Option<String> {
     use time::format_description::well_known::Rfc3339;
@@ -708,6 +723,11 @@ async fn create_token(
     if name.is_empty() || name.chars().count() > 64 {
         return Err(ConnectError::new_invalid_argument(
             "name is required (max 64 characters)",
+        ));
+    }
+    if r.expires_in_days > MAX_EXPIRY_DAYS {
+        return Err(ConnectError::new_invalid_argument(
+            "expires_in_days must be 3650 or less",
         ));
     }
     let plaintext = generate_token();
@@ -787,6 +807,32 @@ pub fn token_router(store: Arc<Store>) -> axum::Router<()> {
         .layer(Extension(store))
 }
 ```
+
+`safe_sql_id` saat ini fungsi privat di `crates/transport/src/activity/record.rs`.
+Karena `tokens/record.rs` jadi pemakai keduanya, **pindahkan — jangan salin** — ke
+modul bersama `apps/backend-rs/crates/transport/src/sql.rs`:
+
+```rust
+//! Penjaga untuk nilai yang ikut masuk ke predikat SQL `Store::query`.
+//!
+//! `predicate` milik `Store::query` adalah SQL mentah yang dipercaya, bukan
+//! parameter terikat. Setiap id yang berasal dari luar harus lewat gerbang ini
+//! sebelum diinterpolasi.
+
+/// Id yang aman diinterpolasi: tidak kosong, maksimal 64 karakter, dan hanya
+/// alfanumerik ASCII, `_`, atau `-`.
+pub(crate) fn safe_sql_id(v: &str) -> bool {
+    !v.is_empty()
+        && v.len() <= 64
+        && v.bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')
+}
+```
+
+Tambahkan `mod sql;` di `crates/transport/src/lib.rs`, hapus definisi lama di
+`activity/record.rs`, dan arahkan pemakaiannya ke `crate::sql::safe_sql_id`. Test
+activity yang ada harus tetap hijau tanpa disunting — itu buktinya pemindahan ini
+tidak mengubah perilaku.
 
 Buat `apps/backend-rs/crates/transport/src/tokens/mod.rs`:
 
