@@ -1,0 +1,45 @@
+syntax = "proto3";
+package sedjiwa.tasks.token.v1;
+
+// Personal access token untuk endpoint MCP. Seluruh RPC bersifat self-scoped:
+// pemilik selalu diambil dari JWT pemanggil, sehingga admin sekalipun tidak
+// bisa membaca atau mencabut token milik orang lain.
+
+service AccessTokenService {
+  rpc CreateToken(CreateTokenRequest) returns (CreateTokenResponse);
+  rpc ListTokens(ListTokensRequest) returns (ListTokensResponse);
+  rpc RevokeToken(RevokeTokenRequest) returns (RevokeTokenResponse);
+}
+
+// Metadata token. Plaintext tidak pernah muncul di sini.
+message AccessToken {
+  string id = 1;
+  string name = 2;
+  string preview = 3; // 4 karakter terakhir, untuk membedakan baris di UI
+  string created_at = 4;
+  optional string expires_at = 5;   // absen = tidak pernah kedaluwarsa
+  optional string last_used_at = 6; // absen = belum pernah dipakai
+  bool expired = 7;                 // dihitung server terhadap jam sekarang
+}
+
+message CreateTokenRequest {
+  string name = 1;
+  uint32 expires_in_days = 2; // 0 = tanpa kedaluwarsa
+}
+// `token` hanya ada di respons ini dan tidak pernah bisa dibaca lagi.
+message CreateTokenResponse {
+  string token = 1;
+  AccessToken meta = 2;
+}
+
+message ListTokensRequest {}
+message ListTokensResponse {
+  repeated AccessToken tokens = 1;
+}
+
+message RevokeTokenRequest {
+  string id = 1;
+}
+message RevokeTokenResponse {
+  bool ok = 1;
+}
