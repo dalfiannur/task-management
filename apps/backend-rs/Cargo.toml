@@ -22,6 +22,8 @@ prost = "0.14" # must match connectrpc-axum's prost (generated code uses ::prost
 pbjson = "0.9" # generated Connect JSON serde for numeric fields uses ::pbjson
 jsonwebtoken = "9"
 argon2 = { version = "0.5", features = ["std"] }
+sha2 = "0.10"
+rand = "0.8"
 dotenvy = "0.15"
 # Relative, not absolute: `../../../` from this manifest is the directory that
 # holds both checkouts, so this resolves to the same rust-ecs an absolute path

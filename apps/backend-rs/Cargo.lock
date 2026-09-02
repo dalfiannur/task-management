@@ -540,7 +540,9 @@ dependencies = [
  "ammonia",
  "arke",
  "arke-postgres",
+ "rand",
  "serde",
+ "sha2",
 ]
 
 [[package]]

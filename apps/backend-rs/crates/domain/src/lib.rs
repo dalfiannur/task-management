@@ -16,6 +16,7 @@ pub mod page;
 pub mod project;
 pub mod sanitize;
 pub mod task;
+pub mod token;
 pub mod user;
 
 /// Register every persisted component on a fresh `PgStore`. Shared by the server
@@ -65,6 +66,11 @@ pub fn register_all(pg: &mut arke_postgres::PgStore) {
     // Activity.
     pg.register::<activity::ActivityInfo>();
     pg.register::<activity::ActivityChanges>();
+    // Access tokens (PAT untuk MCP).
+    pg.register::<token::TokenSecret>();
+    pg.register::<token::TokenOwner>();
+    pg.register::<token::TokenInfo>();
+    pg.register::<token::TokenUsage>();
 }
 
 /// Skeleton entity: a single timestamp, used only to prove Arke↔Postgres round-trips.
