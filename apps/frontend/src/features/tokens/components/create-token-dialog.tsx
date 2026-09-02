@@ -46,6 +46,10 @@ async function copyToClipboard(text: string) {
   }
 }
 
+function formatExpiry(expiresAt: string | null) {
+  return expiresAt ? `Expires ${new Date(expiresAt).toLocaleDateString()}` : "Never expires";
+}
+
 export function CreateTokenDialog() {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -74,7 +78,25 @@ export function CreateTokenDialog() {
       <DialogTrigger asChild>
         <Button>Create token</Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent
+        // Once the plaintext is showing, Escape / outside-click / the ✕ are
+        // the single riskiest interaction in this feature: they're the
+        // reflex response to "save this now", and unlike every other
+        // dismissal in this app they'd destroy something unrecoverable. The
+        // token itself survives (revoking is the only way to invalidate it),
+        // but the user's one chance to read it does not. So during the
+        // `created` stage the explicit Close button is the only way out;
+        // the form stage stays normally dismissible — there's nothing to
+        // lose there, and trapping someone in a form they opened by
+        // accident would be its own annoyance.
+        showCloseButton={!created}
+        onEscapeKeyDown={(e) => {
+          if (created) e.preventDefault();
+        }}
+        onPointerDownOutside={(e) => {
+          if (created) e.preventDefault();
+        }}
+      >
         {created ? (
           <>
             <DialogHeader>
@@ -83,6 +105,11 @@ export function CreateTokenDialog() {
                 Save it now — this token won't be shown again.
               </DialogDescription>
             </DialogHeader>
+            {/* Confirms this is the token just requested, not some other
+                row — the plaintext alone doesn't say whose it is. */}
+            <p className="text-sm text-text-muted">
+              {created.token.name} · {formatExpiry(created.token.expiresAt)}
+            </p>
             <div className="flex items-center gap-2">
               <code className="flex-1 select-all break-all rounded-md border border-border bg-surface-sunken p-3 font-mono text-xs text-text">
                 {created.plaintext}
