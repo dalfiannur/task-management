@@ -658,9 +658,18 @@ fn require_auth(user: Option<Extension<AuthUser>>) -> Result<AuthUser, ConnectEr
         .ok_or_else(|| ConnectError::new_unauthenticated("authentication required"))
 }
 
+/// Detik bulat, sengaja. `Rfc3339` menulis pecahan detik hanya bila nanodetiknya
+/// bukan nol, dan memotong nol di belakangnya — sehingga lebar string berubah-ubah.
+/// `domain::token::is_expired` membandingkan string ini secara leksikografis, dan
+/// perbandingan itu baru sepadan dengan urutan waktu kalau semua sisi berpresisi
+/// sama. Memaku presisi di sini yang membuat prasyarat itu benar-benar berlaku.
 fn now_iso() -> String {
     use time::format_description::well_known::Rfc3339;
-    time::OffsetDateTime::now_utc().format(&Rfc3339).unwrap_or_default()
+    let now = time::OffsetDateTime::now_utc();
+    now.replace_nanosecond(0)
+        .unwrap_or(now)
+        .format(&Rfc3339)
+        .unwrap_or_default()
 }
 
 /// `expires_in_days` → `expires_at` RFC3339. 0 = tanpa kedaluwarsa.
@@ -670,7 +679,8 @@ fn expiry_from_days(days: u32) -> Option<String> {
         return None;
     }
     let at = time::OffsetDateTime::now_utc() + time::Duration::days(days as i64);
-    at.format(&Rfc3339).ok()
+    // Presisi dipaku sama dengan `now_iso` — lihat alasannya di sana.
+    at.replace_nanosecond(0).unwrap_or(at).format(&Rfc3339).ok()
 }
 
 fn to_proto(t: &TokenRecord, now: &str) -> pb::AccessToken {
@@ -1510,9 +1520,18 @@ use transport::api::{auth_user_for, find_by_hash, TokenRecord};
 #[derive(Debug)]
 pub struct Unauthorized;
 
+/// Detik bulat, sengaja. `Rfc3339` menulis pecahan detik hanya bila nanodetiknya
+/// bukan nol, dan memotong nol di belakangnya — sehingga lebar string berubah-ubah.
+/// `domain::token::is_expired` membandingkan string ini secara leksikografis, dan
+/// perbandingan itu baru sepadan dengan urutan waktu kalau semua sisi berpresisi
+/// sama. Memaku presisi di sini yang membuat prasyarat itu benar-benar berlaku.
 fn now_iso() -> String {
     use time::format_description::well_known::Rfc3339;
-    time::OffsetDateTime::now_utc().format(&Rfc3339).unwrap_or_default()
+    let now = time::OffsetDateTime::now_utc();
+    now.replace_nanosecond(0)
+        .unwrap_or(now)
+        .format(&Rfc3339)
+        .unwrap_or_default()
 }
 
 /// Header `Authorization` → user portal, atau `Unauthorized`.
@@ -1552,7 +1571,10 @@ pub async fn authenticate(store: &Store, header: Option<&str>) -> Result<AuthUse
 /// stempel waktu yang dibaca manusia sesekali.
 async fn touch(store: &Store, rec: &TokenRecord, now: &str) {
     use time::format_description::well_known::Rfc3339;
-    let cutoff = (time::OffsetDateTime::now_utc() - time::Duration::hours(1))
+    let at = time::OffsetDateTime::now_utc() - time::Duration::hours(1);
+    let cutoff = at
+        .replace_nanosecond(0)
+        .unwrap_or(at)
         .format(&Rfc3339)
         .unwrap_or_default();
     let fresh = rec
