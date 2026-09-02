@@ -1,6 +1,16 @@
 // A two-stage dialog. The second stage exists because the plaintext is sent
 // by the server only once: auto-closing the dialog after success would throw
 // away the user's only chance to copy it.
+//
+// Controlled from the parent (`open`/`onOpenChange`) rather than owning a
+// `DialogTrigger` itself: the page has two entry points for "Create token"
+// (the header button, always mounted, and the empty state's button, mounted
+// only while the token list is empty). A self-contained instance per trigger
+// used to mean the empty-state instance — and the `created` reveal stage
+// living inside it — got unmounted the instant its own successful creation
+// made the list non-empty, discarding the plaintext before the user could
+// see it. One shared, always-mounted instance can't be pulled out from under
+// itself like that.
 
 import { useState } from "react";
 import { Copy } from "lucide-react";
@@ -8,12 +18,12 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -50,8 +60,13 @@ function formatExpiry(expiresAt: string | null) {
   return expiresAt ? `Expires ${new Date(expiresAt).toLocaleDateString()}` : "Never expires";
 }
 
-export function CreateTokenDialog() {
-  const [open, setOpen] = useState(false);
+export function CreateTokenDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
   const [name, setName] = useState("");
   const [days, setDays] = useState("90");
   const create = useCreateToken();
@@ -71,13 +86,10 @@ export function CreateTokenDialog() {
     <Dialog
       open={open}
       onOpenChange={(o) => {
-        setOpen(o);
+        onOpenChange(o);
         if (!o) reset();
       }}
     >
-      <DialogTrigger asChild>
-        <Button>Create token</Button>
-      </DialogTrigger>
       <DialogContent
         // Once the plaintext is showing, Escape / outside-click / the ✕ are
         // the single riskiest interaction in this feature: they're the
@@ -128,7 +140,15 @@ export function CreateTokenDialog() {
               </Button>
             </div>
             <DialogFooter>
-              <Button onClick={() => setOpen(false)}>Close</Button>
+              {/* Routed through Radix's own close (not a bare onClick calling
+                  onOpenChange directly) so this actually fires the Dialog's
+                  controlled onOpenChange handler above — and with it the
+                  `reset()` that clears the mutation. Skipping that left the
+                  just-revoked token's plaintext to reappear, stale, the next
+                  time this dialog opened. */}
+              <DialogClose asChild>
+                <Button>Close</Button>
+              </DialogClose>
             </DialogFooter>
           </>
         ) : (

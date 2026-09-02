@@ -28,7 +28,6 @@ import {
 import { EmptyState } from "@/components/shared/empty-state";
 import { useRevokeToken, useTokens } from "../api/hooks";
 import type { AccessToken } from "../types";
-import { CreateTokenDialog } from "./create-token-dialog";
 
 function when(iso: string | null, fallback: string) {
   return iso ? new Date(iso).toLocaleDateString() : fallback;
@@ -78,7 +77,7 @@ function RevokeTokenAction({ token }: { token: AccessToken }) {
   );
 }
 
-export function TokenTable() {
+export function TokenTable({ onCreateToken }: { onCreateToken: () => void }) {
   const { tokens, isLoading, isError, error } = useTokens();
 
   if (isLoading) {
@@ -111,7 +110,7 @@ export function TokenTable() {
         icon={KeyRound}
         title="No tokens yet"
         body="A personal access token lets an AI client — Claude Desktop, Claude Code, ChatGPT — act as you in the portal."
-        actionSlot={<CreateTokenDialog />}
+        actionSlot={<Button onClick={onCreateToken}>Create token</Button>}
       />
     );
   }
