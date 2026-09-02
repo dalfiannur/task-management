@@ -29,6 +29,7 @@ pub use crate::work::task_service::{
 };
 pub use crate::sedjiwa::tasks::work::v1 as work_pb;
 pub use crate::comments::comment_service::{create_comment_core, list_comments_core};
+pub use crate::sedjiwa::tasks::comment::v1 as comment_pb;
 pub use crate::search::search_service::search_core;
 pub use crate::sedjiwa::tasks::search::v1 as search_pb;
 pub use crate::dashboard::mytasks_service::{

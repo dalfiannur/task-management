@@ -180,15 +180,23 @@ pub const MAX_LIMIT: usize = 200;
 /// `limit: -5` into 50, teaches the model nothing about why it did not get what
 /// it asked for.
 pub fn limit_arg(args: &Value) -> Result<usize, ToolError> {
+    limit_arg_capped(args, MAX_LIMIT)
+}
+
+/// Like [`limit_arg`], but for a tool whose core fn imposes a lower ceiling of
+/// its own. Advertising the bound in `inputSchema` is not enough: `tools/call`
+/// does not validate arguments against the schema, so a client that ignores it
+/// must still be refused here rather than silently truncated downstream.
+pub fn limit_arg_capped(args: &Value, max: usize) -> Result<usize, ToolError> {
     match args.get("limit") {
-        None | Some(Value::Null) => Ok(DEFAULT_LIMIT),
+        None | Some(Value::Null) => Ok(DEFAULT_LIMIT.min(max)),
         Some(v) => v
             .as_u64()
-            .filter(|n| (1..=MAX_LIMIT as u64).contains(n))
+            .filter(|n| (1..=max as u64).contains(n))
             .map(|n| n as usize)
             .ok_or_else(|| {
                 ToolError::BadArgs(format!(
-                    "`limit` must be a whole number between 1 and {MAX_LIMIT}"
+                    "`limit` must be a whole number between 1 and {max}"
                 ))
             }),
     }

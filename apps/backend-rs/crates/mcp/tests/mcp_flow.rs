@@ -1068,6 +1068,71 @@ async fn search_limit_is_passed_to_the_core_fn_not_just_taken_client_side() {
 }
 
 #[tokio::test]
+async fn search_limit_above_the_servers_own_cap_is_refused() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+
+    // `search`'s `inputSchema` advertises `maximum: 50`, but `tools/call`
+    // never validates arguments against that schema — nothing does. The
+    // handler itself has to refuse a `limit` above the cap via
+    // `limit_arg_capped`; without that, a client that ignores the schema (or
+    // a model that miscounts) would sail past the shared `limit_arg`'s
+    // `1..=200` range with `limit: 75`, reach `search_core`, and get back at
+    // most 50 results with no signal that it was ever truncated.
+    let (_, body) = rpc(
+        &router,
+        Some(&token),
+        json!({ "jsonrpc": "2.0", "id": 51, "method": "tools/call",
+                "params": { "name": "search", "arguments": { "query": "anything", "limit": 75 } } }),
+    )
+    .await;
+    assert_eq!(body["error"]["code"], -32602, "{body:?}");
+    assert!(body.get("result").is_none());
+}
+
+#[tokio::test]
+async fn search_result_for_a_comment_carries_its_parent_task_id() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    let (_project_id, module_id) = seed_project_and_module(&store, &user).await;
+
+    let (err, task) = tools_call(&router, &token, "create_task",
+        json!({ "module_id": module_id, "title": "tugas dengan komentar" })).await;
+    assert!(!err, "{task:?}");
+    let task_id = task["id"].as_str().unwrap().to_string();
+
+    // `add_comment` isn't an MCP tool yet (Task 13), so the comment is seeded
+    // through the same `create_comment_core` the future tool will call —
+    // this is the real indexing path (`search_core`'s dedicated comment→task
+    // lookup), not a hand-rolled substitute for it.
+    let auth = transport::api::auth_user_for(&store, &user).await.unwrap().unwrap();
+    transport::api::create_comment_core(
+        &store,
+        None,
+        &auth,
+        transport::api::comment_pb::CreateCommentRequest {
+            task_id: task_id.clone(),
+            content: "membahas kadal raksasa".into(),
+            mentioned_user_ids: vec![],
+        },
+    )
+    .await
+    .unwrap();
+
+    let (err, found) =
+        tools_call(&router, &token, "search", json!({ "query": "kadal" })).await;
+    assert!(!err, "{found:?}");
+    let results = found["results"].as_array().unwrap();
+    let hit = results.iter().find(|r| r["kind"] == "comment").unwrap();
+    // A comment hit's own `title` is empty — `task_id` is what actually
+    // makes the result actionable, and it must be the parent task's id, not
+    // dropped or left null.
+    assert_eq!(hit["task_id"], task_id.as_str(), "{hit:?}");
+}
+
+#[tokio::test]
 async fn my_tasks_returns_only_assigned_work() {
     let Some((router, store)) = router_and_store().await else { return skipped() };
     let user = seed_active_user(&store).await;

@@ -8,7 +8,7 @@ use transport::api::{
     search_core, search_pb,
 };
 
-use super::{limit_arg, opt_str, str_arg, truncate, Ctx, ToolError, ToolMeta};
+use super::{limit_arg, limit_arg_capped, opt_str, str_arg, truncate, Ctx, ToolError, ToolMeta};
 
 /// Proto `SearchKind` code → model-readable label, the search analogue of
 /// `tasks::status_label`. `SearchResult.kind` is a wire enum; every other
@@ -24,23 +24,32 @@ fn kind_label(v: i32) -> &'static str {
     }
 }
 
+/// Mirrors `search_service::MAX_LIMIT` (private to `transport`, so this is a
+/// hardcoded copy, not a shared constant). `search_core` clamps to this
+/// silently, with no signal to the caller — so this tool has to refuse a
+/// larger `limit` itself (see [`limit_arg_capped`]) rather than merely
+/// advertise the bound in `inputSchema`. `tools/call` never validates
+/// arguments against that schema, so a client that ignores it — or a model
+/// that miscounts — must still be stopped here.
+const SEARCH_LIMIT_CAP: usize = 50;
+
 pub const SEARCH: ToolMeta = ToolMeta {
     name: "search",
     description: "Search tasks, projects, pages, and comments by keyword. \
                   Use this when the user refers to something by name rather than id.",
-    // `maximum: 50`, not the 200 `list_projects`/`my_tasks` use — those two
-    // schemas can honestly say 200 because their core fns impose no cap of
-    // their own and use whatever limit they're given. `search_core` is the
-    // odd one out: it hard-caps at `MAX_LIMIT = 50` with no escape hatch, so
-    // a schema advertising 200 would validate a request the server silently
-    // truncates without any signal back to the caller. Keep this at 50 even
-    // though the other two schemas' 200 looks inconsistent — it isn't; each
-    // states what its own core fn will actually do.
+    // `maximum: SEARCH_LIMIT_CAP` (50), not the 200 `list_projects`/`my_tasks`
+    // use — those two schemas can honestly say 200 because their core fns
+    // impose no cap of their own and use whatever limit they're given.
+    // `search_core` is the odd one out: it hard-caps at 50 with no escape
+    // hatch. This schema value is advisory only — `tools/call` doesn't
+    // validate against it — so `search`'s handler enforces the same bound
+    // itself via `limit_arg_capped`; this number and that one must be kept
+    // in sync by hand, since `inputSchema` is JSON, not Rust.
     schema: || json!({
         "type": "object",
         "properties": {
             "query": { "type": "string" },
-            "limit": { "type": "integer", "minimum": 1, "maximum": 50 }
+            "limit": { "type": "integer", "minimum": 1, "maximum": SEARCH_LIMIT_CAP }
         },
         "required": ["query"]
     }),
@@ -51,14 +60,23 @@ pub async fn search(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
     // `SearchRequest.q`, not `.query` — the tool argument name and the proto
     // field name differ. And `limit` is a real field on the request, not
     // something this tool trims client-side: `search_core` reinterprets `0`
-    // as its own default of 20 and hard-caps whatever it's given at 50, so
-    // passing the parsed limit down is what makes "give me up to N" actually
-    // reach the query instead of being silently re-truncated after the fact.
+    // as its own default of 20 and hard-caps whatever it's given at
+    // `SEARCH_LIMIT_CAP`, so passing the parsed limit down is what makes
+    // "give me up to N" actually reach the query instead of being silently
+    // re-truncated after the fact. `limit_arg_capped` (not `limit_arg`)
+    // refuses anything above that cap itself — see `SEARCH_LIMIT_CAP`'s doc
+    // comment for why the schema's own `maximum` isn't enough on its own.
+    //
+    // `SearchRequest.kinds`/`.assignee_ids` would let a model narrow a search
+    // to just tasks, or to one assignee's tasks. Left empty (unfiltered) as a
+    // deliberate scope cut for a twelve-tool budget — a model that wants only
+    // tasks currently has to filter `kind == "task"` out of the results
+    // itself, the same way `list_modules` deliberately has no `limit`.
     let req = search_pb::SearchRequest {
         q: str_arg(args, "query")?,
         kinds: Vec::new(),
         assignee_ids: Vec::new(),
-        limit: limit_arg(args)? as u32,
+        limit: limit_arg_capped(args, SEARCH_LIMIT_CAP)? as u32,
     };
     let resp = search_core(&ctx.store, &ctx.auth, req).await?;
     let rows: Vec<Value> = resp
@@ -73,6 +91,19 @@ pub async fn search(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
             "snippet": truncate(&r.snippet),
             "project_id": r.project_id,
             "project_name": r.project_name,
+            // A comment hit's own `title` is empty, so `task_id` — the
+            // comment's parent task, resolved by `search_core` via a
+            // dedicated lookup — is the only thing that makes a `kind:
+            // "comment"` result actionable at all; dropping it would leave
+            // the model with an id it can do nothing with. `parent_id`/
+            // `parent_title` are the same idea for a subtask hit: they orient
+            // which task the subtask belongs to, since the subtask's own
+            // title can't convey that by itself. Both `None` for every other
+            // kind, and that's fine — a flat schema beats a shape that
+            // changes per `kind`.
+            "task_id": r.task_id,
+            "parent_id": r.parent_id,
+            "parent_title": r.parent_title,
         }))
         .collect();
     let count = rows.len();
