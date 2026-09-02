@@ -134,6 +134,16 @@ async fn handle_post(
                 Err(tools::ToolError::BadArgs(m)) => {
                     error(rpc.id.clone(), INVALID_PARAMS, &m)
                 }
+                // The detail goes to the log, not to the client: it is a raw
+                // database or IO error, and the model can do nothing with it.
+                Err(tools::ToolError::Internal(m)) => {
+                    tracing::error!(tool = name, error = %m, "mcp: tool failed");
+                    error(
+                        rpc.id.clone(),
+                        INTERNAL_ERROR,
+                        "the tool could not be completed",
+                    )
+                }
             }
         }
         other => error(rpc.id.clone(), METHOD_NOT_FOUND, &format!("unknown method: {other}")),

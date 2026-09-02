@@ -11,6 +11,7 @@ pub const LIST_TASKS: ToolMeta = ToolMeta {
     name: "list_tasks",
     description: "List tasks in a project or module.",
     schema: || json!({ "type": "object", "properties": {} }),
+    handler: |ctx, args| Box::pin(list_tasks(ctx, args)),
 };
 
 pub async fn list_tasks(_ctx: &Ctx, _args: &Value) -> Result<Value, ToolError> {
@@ -21,6 +22,7 @@ pub const GET_TASK: ToolMeta = ToolMeta {
     name: "get_task",
     description: "Get a single task by id.",
     schema: || json!({ "type": "object", "properties": {} }),
+    handler: |ctx, args| Box::pin(get_task(ctx, args)),
 };
 
 pub async fn get_task(_ctx: &Ctx, _args: &Value) -> Result<Value, ToolError> {
@@ -31,6 +33,7 @@ pub const CREATE_TASK: ToolMeta = ToolMeta {
     name: "create_task",
     description: "Create a new task.",
     schema: || json!({ "type": "object", "properties": {} }),
+    handler: |ctx, args| Box::pin(create_task(ctx, args)),
 };
 
 pub async fn create_task(_ctx: &Ctx, _args: &Value) -> Result<Value, ToolError> {
@@ -41,6 +44,7 @@ pub const UPDATE_TASK: ToolMeta = ToolMeta {
     name: "update_task",
     description: "Update fields on an existing task.",
     schema: || json!({ "type": "object", "properties": {} }),
+    handler: |ctx, args| Box::pin(update_task(ctx, args)),
 };
 
 pub async fn update_task(_ctx: &Ctx, _args: &Value) -> Result<Value, ToolError> {
@@ -51,6 +55,7 @@ pub const MOVE_TASK: ToolMeta = ToolMeta {
     name: "move_task",
     description: "Move a task to a different status or module.",
     schema: || json!({ "type": "object", "properties": {} }),
+    handler: |ctx, args| Box::pin(move_task(ctx, args)),
 };
 
 pub async fn move_task(_ctx: &Ctx, _args: &Value) -> Result<Value, ToolError> {

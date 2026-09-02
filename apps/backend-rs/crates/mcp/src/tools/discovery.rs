@@ -10,6 +10,7 @@ pub const SEARCH: ToolMeta = ToolMeta {
     name: "search",
     description: "Search tasks, projects, and comments by text.",
     schema: || json!({ "type": "object", "properties": {} }),
+    handler: |ctx, args| Box::pin(search(ctx, args)),
 };
 
 pub async fn search(_ctx: &Ctx, _args: &Value) -> Result<Value, ToolError> {
@@ -20,6 +21,7 @@ pub const MY_TASKS: ToolMeta = ToolMeta {
     name: "my_tasks",
     description: "List tasks assigned to, created by, or involving the caller.",
     schema: || json!({ "type": "object", "properties": {} }),
+    handler: |ctx, args| Box::pin(my_tasks(ctx, args)),
 };
 
 pub async fn my_tasks(_ctx: &Ctx, _args: &Value) -> Result<Value, ToolError> {

@@ -10,6 +10,7 @@ pub const LIST_COMMENTS: ToolMeta = ToolMeta {
     name: "list_comments",
     description: "List comments on a task.",
     schema: || json!({ "type": "object", "properties": {} }),
+    handler: |ctx, args| Box::pin(list_comments(ctx, args)),
 };
 
 pub async fn list_comments(_ctx: &Ctx, _args: &Value) -> Result<Value, ToolError> {
@@ -20,6 +21,7 @@ pub const ADD_COMMENT: ToolMeta = ToolMeta {
     name: "add_comment",
     description: "Add a comment to a task.",
     schema: || json!({ "type": "object", "properties": {} }),
+    handler: |ctx, args| Box::pin(add_comment(ctx, args)),
 };
 
 pub async fn add_comment(_ctx: &Ctx, _args: &Value) -> Result<Value, ToolError> {
