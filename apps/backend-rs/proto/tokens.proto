@@ -1,11 +1,11 @@
 syntax = "proto3";
 package sedjiwa.tasks.token.v1;
 
-// Personal access token untuk endpoint MCP. Seluruh RPC bersifat self-scoped:
-// pemilik selalu diambil dari JWT pemanggil, sehingga admin sekalipun tidak
-// bisa membaca atau mencabut token milik orang lain. Plaintext token hanya
-// pernah ada satu kali, di respons CreateToken; `AccessToken` sengaja tidak
-// membawanya, jadi tidak ada RPC di sini yang bisa menampilkannya lagi.
+// Personal access token for the MCP endpoint. Every RPC is self-scoped: the
+// owner is always taken from the caller's JWT, so even an admin cannot read
+// or revoke someone else's token. The plaintext token exists only once, in
+// the CreateToken response; `AccessToken` deliberately doesn't carry it, so
+// no RPC here can ever show it again.
 
 service AccessTokenService {
   rpc CreateToken(CreateTokenRequest) returns (CreateTokenResponse);
@@ -13,22 +13,22 @@ service AccessTokenService {
   rpc RevokeToken(RevokeTokenRequest) returns (RevokeTokenResponse);
 }
 
-// Metadata token. Plaintext tidak pernah muncul di sini.
+// Token metadata. The plaintext never appears here.
 message AccessToken {
   string id = 1;
   string name = 2;
-  string preview = 3; // 4 karakter terakhir, untuk membedakan baris di UI
+  string preview = 3; // last 4 characters, to tell rows apart in the UI
   string created_at = 4;
-  optional string expires_at = 5;   // absen = tidak pernah kedaluwarsa
-  optional string last_used_at = 6; // absen = belum pernah dipakai
-  bool expired = 7;                 // dihitung server terhadap jam sekarang
+  optional string expires_at = 5;   // absent = never expires
+  optional string last_used_at = 6; // absent = never used
+  bool expired = 7;                 // computed by the server against the current time
 }
 
 message CreateTokenRequest {
   string name = 1;
-  uint32 expires_in_days = 2; // 0 = tanpa kedaluwarsa
+  uint32 expires_in_days = 2; // 0 = never expires
 }
-// `token` hanya ada di respons ini dan tidak pernah bisa dibaca lagi.
+// `token` exists only in this response and can never be read again.
 message CreateTokenResponse {
   string token = 1;
   AccessToken access_token = 2;

@@ -295,11 +295,11 @@ Buat `apps/backend-rs/proto/tokens.proto`:
 syntax = "proto3";
 package sedjiwa.tasks.token.v1;
 
-// Personal access token untuk endpoint MCP. Seluruh RPC bersifat self-scoped:
-// pemilik selalu diambil dari JWT pemanggil, sehingga admin sekalipun tidak
-// bisa membaca atau mencabut token milik orang lain. Plaintext token hanya
-// pernah ada satu kali, di respons CreateToken; `AccessToken` sengaja tidak
-// membawanya, jadi tidak ada RPC di sini yang bisa menampilkannya lagi.
+// Personal access token for the MCP endpoint. Every RPC is self-scoped: the
+// owner is always taken from the caller's JWT, so even an admin cannot read
+// or revoke someone else's token. The plaintext token exists only once, in
+// the CreateToken response; `AccessToken` deliberately doesn't carry it, so
+// no RPC here can ever show it again.
 
 service AccessTokenService {
   rpc CreateToken(CreateTokenRequest) returns (CreateTokenResponse);
@@ -307,22 +307,22 @@ service AccessTokenService {
   rpc RevokeToken(RevokeTokenRequest) returns (RevokeTokenResponse);
 }
 
-// Metadata token. Plaintext tidak pernah muncul di sini.
+// Token metadata. The plaintext never appears here.
 message AccessToken {
   string id = 1;
   string name = 2;
-  string preview = 3; // 4 karakter terakhir, untuk membedakan baris di UI
+  string preview = 3; // last 4 characters, to tell rows apart in the UI
   string created_at = 4;
-  optional string expires_at = 5;   // absen = tidak pernah kedaluwarsa
-  optional string last_used_at = 6; // absen = belum pernah dipakai
-  bool expired = 7;                 // dihitung server terhadap jam sekarang
+  optional string expires_at = 5;   // absent = never expires
+  optional string last_used_at = 6; // absent = never used
+  bool expired = 7;                 // computed by the server against the current time
 }
 
 message CreateTokenRequest {
   string name = 1;
-  uint32 expires_in_days = 2; // 0 = tanpa kedaluwarsa
+  uint32 expires_in_days = 2; // 0 = never expires
 }
-// `token` hanya ada di respons ini dan tidak pernah bisa dibaca lagi.
+// `token` exists only in this response and can never be read again.
 message CreateTokenResponse {
   string token = 1;
   AccessToken access_token = 2;
@@ -2040,7 +2040,7 @@ pub fn truncate(s: &str) -> String {
         return s.to_string();
     }
     let head: String = s.chars().take(MAX_DESCRIPTION).collect();
-    format!("{head}… [dipotong; buka task di portal untuk teks lengkap]")
+    format!("{head}… [truncated; open the task in the portal for the full text]")
 }
 ```
 
@@ -2086,7 +2086,7 @@ use super::{Ctx, ToolError, ToolMeta};
 
 pub const LIST_TASKS: ToolMeta = ToolMeta {
     name: "list_tasks",
-    description: "Daftar task dalam sebuah project atau module.",
+    description: "List tasks in a project or module.",
     schema: || json!({ "type": "object", "properties": {} }),
 };
 
@@ -2190,9 +2190,9 @@ Lanjutkan file yang sama:
 ```rust
 pub const LIST_TASKS: ToolMeta = ToolMeta {
     name: "list_tasks",
-    description: "Daftar task dalam sebuah project atau module. Salah satu dari \
-                  project_id atau module_id wajib diisi. Pakai list_projects lebih \
-                  dulu bila belum tahu id-nya.",
+    description: "List tasks in a project or module. Either project_id or \
+                  module_id is required. Use list_projects first if you don't \
+                  know the id yet.",
     schema: || json!({
         "type": "object",
         "properties": {
@@ -2240,7 +2240,7 @@ Tulis empat sisanya dengan pola yang sama:
 ```rust
 pub const GET_TASK: ToolMeta = ToolMeta {
     name: "get_task",
-    description: "Ambil satu task lengkap dengan deskripsi, assignee, tanggal, dan status.",
+    description: "Fetch a single task with its description, assignees, dates, and status.",
     schema: || json!({
         "type": "object",
         "properties": { "task_id": { "type": "string" } },
@@ -2255,7 +2255,7 @@ pub async fn get_task(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
 
 pub const CREATE_TASK: ToolMeta = ToolMeta {
     name: "create_task",
-    description: "Buat task baru di sebuah module. Assignee wajib anggota project.",
+    description: "Create a new task in a module. Assignees must be project members.",
     schema: || json!({
         "type": "object",
         "properties": {
@@ -2290,7 +2290,7 @@ pub async fn create_task(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
 
 pub const UPDATE_TASK: ToolMeta = ToolMeta {
     name: "update_task",
-    description: "Ubah sebagian field sebuah task. Field yang tidak dikirim dibiarkan apa adanya.",
+    description: "Update a subset of a task's fields. Fields not sent are left as-is.",
     schema: || json!({
         "type": "object",
         "properties": {
@@ -2309,7 +2309,7 @@ pub const UPDATE_TASK: ToolMeta = ToolMeta {
 
 pub const MOVE_TASK: ToolMeta = ToolMeta {
     name: "move_task",
-    description: "Pindahkan task ke module lain dalam project yang sama.",
+    description: "Move a task to another module in the same project.",
     schema: || json!({
         "type": "object",
         "properties": { "task_id": { "type": "string" }, "module_id": { "type": "string" } },
@@ -2444,7 +2444,7 @@ use super::{limit_arg, str_arg, truncate, Ctx, ToolError, ToolMeta};
 
 pub const LIST_PROJECTS: ToolMeta = ToolMeta {
     name: "list_projects",
-    description: "Daftar project yang bisa diakses user. Mulai dari sini bila belum tahu id project.",
+    description: "List projects the user can access. Start here if you don't know the project id.",
     schema: || json!({
         "type": "object",
         "properties": { "limit": { "type": "integer", "minimum": 1, "maximum": 200 } }
@@ -2465,7 +2465,7 @@ pub async fn list_projects(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> 
 
 pub const GET_PROJECT: ToolMeta = ToolMeta {
     name: "get_project",
-    description: "Detail satu project: deskripsi, status, tanggal, dan pemiliknya.",
+    description: "Details for a single project: description, status, dates, and owner.",
     schema: || json!({
         "type": "object",
         "properties": { "project_id": { "type": "string" } },
@@ -2487,7 +2487,7 @@ pub async fn get_project(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
 
 pub const LIST_MODULES: ToolMeta = ToolMeta {
     name: "list_modules",
-    description: "Module (kelompok task) di sebuah project. `create_task` butuh module_id, bukan project_id.",
+    description: "Modules (task groups) in a project. `create_task` needs module_id, not project_id.",
     schema: || json!({
         "type": "object",
         "properties": { "project_id": { "type": "string" } },
@@ -2578,8 +2578,8 @@ use super::{limit_arg, str_arg, truncate, Ctx, ToolError, ToolMeta};
 
 pub const SEARCH: ToolMeta = ToolMeta {
     name: "search",
-    description: "Cari task, project, halaman, dan komentar dengan kata kunci. \
-                  Pakai ini kalau user menyebut sesuatu dengan nama, bukan id.",
+    description: "Search tasks, projects, pages, and comments by keyword. \
+                  Use this when the user refers to something by name rather than id.",
     schema: || json!({
         "type": "object",
         "properties": {
@@ -2613,8 +2613,8 @@ pub async fn search(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
 
 pub const MY_TASKS: ToolMeta = ToolMeta {
     name: "my_tasks",
-    description: "Task yang ditugaskan ke user ini di seluruh project. Jawaban untuk \
-                  'apa yang harus saya kerjakan'.",
+    description: "Tasks assigned to this user across every project. The answer to \
+                  'what should I work on'.",
     schema: || json!({
         "type": "object",
         "properties": {
@@ -2696,7 +2696,7 @@ use super::{limit_arg, str_arg, truncate, Ctx, ToolError, ToolMeta};
 
 pub const LIST_COMMENTS: ToolMeta = ToolMeta {
     name: "list_comments",
-    description: "Diskusi pada sebuah task, terlama dulu.",
+    description: "Discussion on a task, oldest first.",
     schema: || json!({
         "type": "object",
         "properties": {
@@ -2729,7 +2729,7 @@ pub async fn list_comments(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> 
 
 pub const ADD_COMMENT: ToolMeta = ToolMeta {
     name: "add_comment",
-    description: "Tulis komentar pada sebuah task, atas nama user pemilik token.",
+    description: "Post a comment on a task, on behalf of the token's owner.",
     schema: || json!({
         "type": "object",
         "properties": {
@@ -3012,13 +3012,13 @@ export function TokenTable() {
   const revoke = useRevokeToken();
   const [pending, setPending] = useState<AccessToken | null>(null);
 
-  if (isLoading) return <p className="text-sm text-muted-foreground">Memuat…</p>;
+  if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
   if (tokens.length === 0) {
     return (
       <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed p-8 text-center">
         <KeyRound className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
         <p className="text-sm text-muted-foreground">
-          Belum ada token. Buat satu untuk menyambungkan AI client.
+          No tokens yet. Create one to connect an AI client.
         </p>
       </div>
     );
@@ -3029,11 +3029,11 @@ export function TokenTable() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Nama</TableHead>
+            <TableHead>Name</TableHead>
             <TableHead>Token</TableHead>
-            <TableHead>Dibuat</TableHead>
-            <TableHead>Kedaluwarsa</TableHead>
-            <TableHead>Terakhir dipakai</TableHead>
+            <TableHead>Created</TableHead>
+            <TableHead>Expires</TableHead>
+            <TableHead>Last used</TableHead>
             <TableHead className="w-0" />
           </TableRow>
         </TableHeader>
@@ -3044,17 +3044,17 @@ export function TokenTable() {
                 {t.name}
                 {t.expired && (
                   <Badge variant="secondary" className="ml-2">
-                    Kedaluwarsa
+                    Expired
                   </Badge>
                 )}
               </TableCell>
               <TableCell className="font-mono text-muted-foreground">…{t.preview}</TableCell>
               <TableCell>{when(t.createdAt, "—")}</TableCell>
-              <TableCell>{when(t.expiresAt, "Tidak kedaluwarsa")}</TableCell>
-              <TableCell>{when(t.lastUsedAt, "Belum pernah")}</TableCell>
+              <TableCell>{when(t.expiresAt, "Never expires")}</TableCell>
+              <TableCell>{when(t.lastUsedAt, "Never")}</TableCell>
               <TableCell>
                 <Button variant="ghost" size="sm" onClick={() => setPending(t)}>
-                  Cabut
+                  Revoke
                 </Button>
               </TableCell>
             </TableRow>
@@ -3065,21 +3065,21 @@ export function TokenTable() {
       <AlertDialog open={!!pending} onOpenChange={(o) => !o && setPending(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Cabut token ini?</AlertDialogTitle>
+            <AlertDialogTitle>Revoke this token?</AlertDialogTitle>
             <AlertDialogDescription>
-              AI client yang memakai token ini akan langsung kehilangan akses.
-              Tindakan ini tidak bisa dibatalkan.
+              Any AI client using this token loses access immediately.
+              This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (pending) revoke.mutate({ id: pending.id });
                 setPending(null);
               }}
             >
-              Cabut
+              Revoke
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -3123,10 +3123,10 @@ import { toast } from "sonner";
 import { useCreateToken } from "../api/hooks";
 
 const EXPIRY_OPTIONS = [
-  { value: "30", label: "30 hari" },
-  { value: "90", label: "90 hari" },
-  { value: "365", label: "1 tahun" },
-  { value: "0", label: "Tidak kedaluwarsa" },
+  { value: "30", label: "30 days" },
+  { value: "90", label: "90 days" },
+  { value: "365", label: "1 year" },
+  { value: "0", label: "Never expires" },
 ];
 
 export function CreateTokenDialog() {
@@ -3151,15 +3151,15 @@ export function CreateTokenDialog() {
       }}
     >
       <DialogTrigger asChild>
-        <Button>Buat token</Button>
+        <Button>Create token</Button>
       </DialogTrigger>
       <DialogContent>
         {issued ? (
           <>
             <DialogHeader>
-              <DialogTitle>Token dibuat</DialogTitle>
+              <DialogTitle>Token created</DialogTitle>
               <DialogDescription>
-                Simpan sekarang — token ini tidak akan ditampilkan lagi.
+                Save it now — this token won't be shown again.
               </DialogDescription>
             </DialogHeader>
             <div className="flex items-center gap-2">
@@ -3169,40 +3169,40 @@ export function CreateTokenDialog() {
               <Button
                 variant="outline"
                 size="icon"
-                aria-label="Salin token"
+                aria-label="Copy token"
                 onClick={() => {
                   void navigator.clipboard.writeText(issued);
-                  toast.success("Token disalin");
+                  toast.success("Token copied");
                 }}
               >
                 <Copy className="h-4 w-4" aria-hidden="true" />
               </Button>
             </div>
             <DialogFooter>
-              <Button onClick={() => setOpen(false)}>Tutup</Button>
+              <Button onClick={() => setOpen(false)}>Close</Button>
             </DialogFooter>
           </>
         ) : (
           <>
             <DialogHeader>
-              <DialogTitle>Buat access token</DialogTitle>
+              <DialogTitle>Create access token</DialogTitle>
               <DialogDescription>
-                Token ini memberi AI client akses sebagai Anda.
+                This token gives an AI client access as you.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="token-name">Nama</Label>
+                <Label htmlFor="token-name">Name</Label>
                 <Input
                   id="token-name"
                   value={name}
                   maxLength={64}
-                  placeholder="Laptop kerja"
+                  placeholder="Work laptop"
                   onChange={(e) => setName(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="token-expiry">Masa berlaku</Label>
+                <Label htmlFor="token-expiry">Expiry</Label>
                 <Select value={days} onValueChange={setDays}>
                   <SelectTrigger id="token-expiry">
                     <SelectValue />
@@ -3230,7 +3230,7 @@ export function CreateTokenDialog() {
                   );
                 }}
               >
-                Buat
+                Create
               </Button>
             </DialogFooter>
           </>
@@ -3262,7 +3262,7 @@ export function ConnectPanel() {
         "sedjiwa-tasks": {
           type: "http",
           url: endpoint,
-          headers: { Authorization: "Bearer <token-anda>" },
+          headers: { Authorization: "Bearer <your-token>" },
         },
       },
     },
@@ -3273,12 +3273,12 @@ export function ConnectPanel() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Cara menyambungkan</CardTitle>
+        <CardTitle>How to connect</CardTitle>
         <CardDescription>
-          Tempelkan konfigurasi ini di AI client Anda, ganti
-          <code className="mx-1 font-mono">&lt;token-anda&gt;</code>
-          dengan token yang dibuat di bawah. Siapa pun yang memegang token itu
-          bisa bertindak sebagai Anda di portal.
+          Paste this configuration into your AI client, replacing
+          <code className="mx-1 font-mono">&lt;your-token&gt;</code>
+          with a token created below. Whoever holds that token can act as
+          you in the portal.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -3290,10 +3290,10 @@ export function ConnectPanel() {
           <Button
             variant="outline"
             size="icon"
-            aria-label="Salin konfigurasi"
+            aria-label="Copy configuration"
             onClick={() => {
               void navigator.clipboard.writeText(snippet);
-              toast.success("Konfigurasi disalin");
+              toast.success("Configuration copied");
             }}
           >
             <Copy className="h-4 w-4" aria-hidden="true" />
@@ -3321,7 +3321,7 @@ export function TokensPage() {
         <div>
           <h1 className="text-xl font-semibold">Access tokens</h1>
           <p className="text-sm text-muted-foreground">
-            Personal access token untuk menyambungkan AI client ke akun Anda.
+            Personal access tokens for connecting an AI client to your account.
           </p>
         </div>
         <CreateTokenDialog />
