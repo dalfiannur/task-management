@@ -5,9 +5,17 @@
 //! validation, activity recording, notifications, and search indexing all come
 //! along for the ride. Duplicating those rules on the MCP side is the fastest
 //! way to make AI and UI behavior silently diverge.
+//!
+//! Re-exports are grouped one block per domain module — the list grows with
+//! the domain surface, not by accretion.
 
 pub use crate::projects::project_service::{get_project_core, list_projects_core};
 pub use crate::work::module_service::list_modules_core;
 pub use crate::work::task_service::{
     create_task_core, get_task_core, list_tasks_core, move_task_core, update_task_core,
+};
+pub use crate::comments::comment_service::{create_comment_core, list_comments_core};
+pub use crate::search::search_service::search_core;
+pub use crate::dashboard::mytasks_service::{
+    list_assigned_to_me_core, list_created_by_me_core, list_involving_me_core,
 };

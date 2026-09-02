@@ -4,7 +4,7 @@
 
 mod context;
 mod dashboard_service;
-mod mytasks_service;
+pub(crate) mod mytasks_service;
 mod project_overview;
 
 pub use dashboard_service::dashboard_router;

@@ -69,17 +69,15 @@ async fn filter_mentions(
         .collect())
 }
 
-async fn list_comments(
-    Extension(store): StoreExt,
-    user: Option<Extension<AuthUser>>,
-    req: ConnectRequest<pb::ListCommentsRequest>,
-) -> Result<ConnectResponse<pb::ListCommentsResponse>, ConnectError> {
-    let auth = require_auth(user)?;
-    let ConnectRequest(r) = req;
-    let project_id = task_project(&store, &r.task_id).await?;
-    require_member(&store, &project_id, &auth).await?;
+pub async fn list_comments_core(
+    store: &Store,
+    auth: &AuthUser,
+    r: pb::ListCommentsRequest,
+) -> Result<pb::ListCommentsResponse, ConnectError> {
+    let project_id = task_project(store, &r.task_id).await?;
+    require_member(store, &project_id, auth).await?;
 
-    let all = comments_for_task(&store, &r.task_id)
+    let all = comments_for_task(store, &r.task_id)
         .await
         .map_err(internal)?;
     let total = all.len() as u32;
@@ -96,28 +94,35 @@ async fn list_comments(
         .take(page_size as usize)
         .map(|c| to_proto(&c))
         .collect();
-    Ok(ConnectResponse::new(pb::ListCommentsResponse {
-        comments,
-        total,
-    }))
+    Ok(pb::ListCommentsResponse { comments, total })
 }
 
-async fn create_comment(
+async fn list_comments(
     Extension(store): StoreExt,
-    notifier: Option<Extension<Arc<Notifier>>>,
     user: Option<Extension<AuthUser>>,
-    req: ConnectRequest<pb::CreateCommentRequest>,
-) -> Result<ConnectResponse<pb::Comment>, ConnectError> {
+    req: ConnectRequest<pb::ListCommentsRequest>,
+) -> Result<ConnectResponse<pb::ListCommentsResponse>, ConnectError> {
     let auth = require_auth(user)?;
     let ConnectRequest(r) = req;
-    let project_id = task_project(&store, &r.task_id).await?;
-    require_member(&store, &project_id, &auth).await?;
+    Ok(ConnectResponse::new(
+        list_comments_core(&store, &auth, r).await?,
+    ))
+}
+
+pub async fn create_comment_core(
+    store: &Store,
+    notifier: Option<&Arc<Notifier>>,
+    auth: &AuthUser,
+    r: pb::CreateCommentRequest,
+) -> Result<pb::Comment, ConnectError> {
+    let project_id = task_project(store, &r.task_id).await?;
+    require_member(store, &project_id, auth).await?;
     let trimmed = r.content.trim();
     if !content_ok(trimmed) {
         return Err(ConnectError::new_invalid_argument("content is required"));
     }
     let content = domain::sanitize::clean_html(trimmed);
-    let mentions = filter_mentions(&store, &project_id, r.mentioned_user_ids).await?;
+    let mentions = filter_mentions(store, &project_id, r.mentioned_user_ids).await?;
     let now = now_iso();
     let pid = store
         .create((CommentInfo {
@@ -131,12 +136,12 @@ async fn create_comment(
         .await
         .map_err(internal)?;
     // Notify each mentioned member (emit no-ops on self-mention).
-    if let Some(Extension(n)) = notifier {
+    if let Some(n) = notifier {
         let refs = NotifRefs::comment(&project_id, &r.task_id, &pid.to_string());
         for m in &mentions {
             emit(
-                &store,
-                &n,
+                store,
+                n,
                 m,
                 NotificationType::Mention,
                 &auth.id,
@@ -146,9 +151,23 @@ async fn create_comment(
             .await;
         }
     }
-    let c = require_comment(&store, pid).await?;
-    index(&store, comment_doc(&pid.to_string(), &project_id, &c.content)).await;
-    Ok(ConnectResponse::new(to_proto(&c)))
+    let c = require_comment(store, pid).await?;
+    index(store, comment_doc(&pid.to_string(), &project_id, &c.content)).await;
+    Ok(to_proto(&c))
+}
+
+async fn create_comment(
+    Extension(store): StoreExt,
+    notifier: Option<Extension<Arc<Notifier>>>,
+    user: Option<Extension<AuthUser>>,
+    req: ConnectRequest<pb::CreateCommentRequest>,
+) -> Result<ConnectResponse<pb::Comment>, ConnectError> {
+    let auth = require_auth(user)?;
+    let ConnectRequest(r) = req;
+    let n = notifier.as_ref().map(|Extension(n)| n);
+    Ok(ConnectResponse::new(
+        create_comment_core(&store, n, &auth, r).await?,
+    ))
 }
 
 async fn update_comment(

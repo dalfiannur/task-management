@@ -45,28 +45,21 @@ fn str_to_kind(s: &str) -> pb::SearchKind {
     }
 }
 
-async fn search(
-    Extension(store): Extension<Arc<Store>>,
-    user: Option<Extension<AuthUser>>,
-    req: ConnectRequest<pb::SearchRequest>,
-) -> Result<ConnectResponse<pb::SearchResponse>, ConnectError> {
-    let auth = user
-        .map(|Extension(u)| u)
-        .ok_or_else(|| ConnectError::new_unauthenticated("authentication required"))?;
-    let ConnectRequest(r) = req;
-
+pub async fn search_core(
+    store: &Store,
+    auth: &AuthUser,
+    r: pb::SearchRequest,
+) -> Result<pb::SearchResponse, ConnectError> {
     let q = r.q.trim().to_string();
     if q.is_empty() {
-        return Ok(ConnectResponse::new(pb::SearchResponse { results: vec![] }));
+        return Ok(pb::SearchResponse { results: vec![] });
     }
 
     let is_admin = auth.is_admin();
     let project_ids = if is_admin {
         vec![]
     } else {
-        member_project_ids(&store, &auth.id)
-            .await
-            .map_err(internal)?
+        member_project_ids(store, &auth.id).await.map_err(internal)?
     };
     let kinds: Vec<String> = r
         .kinds
@@ -86,7 +79,7 @@ async fn search(
 
     // Project names are resolved here, not stored, so a renamed project never
     // shows a stale name in a result subtitle.
-    let names: HashMap<String, String> = load_all_projects(&store)
+    let names: HashMap<String, String> = load_all_projects(store)
         .await
         .map_err(internal)?
         .into_iter()
@@ -99,7 +92,7 @@ async fn search(
         // Bounded by `limit`, so this is at most 50 lookups on the widest page.
         let task_id = if row.kind == kind::COMMENT {
             match row.entity_id.parse::<i64>().ok() {
-                Some(p) => load_comment(&store, p)
+                Some(p) => load_comment(store, p)
                     .await
                     .map_err(internal)?
                     .map(|c| c.task_id),
@@ -126,7 +119,19 @@ async fn search(
         });
     }
 
-    Ok(ConnectResponse::new(pb::SearchResponse { results }))
+    Ok(pb::SearchResponse { results })
+}
+
+async fn search(
+    Extension(store): Extension<Arc<Store>>,
+    user: Option<Extension<AuthUser>>,
+    req: ConnectRequest<pb::SearchRequest>,
+) -> Result<ConnectResponse<pb::SearchResponse>, ConnectError> {
+    let auth = user
+        .map(|Extension(u)| u)
+        .ok_or_else(|| ConnectError::new_unauthenticated("authentication required"))?;
+    let ConnectRequest(r) = req;
+    Ok(ConnectResponse::new(search_core(&store, &auth, r).await?))
 }
 
 /// SearchService router; injects the Store as a request extension.

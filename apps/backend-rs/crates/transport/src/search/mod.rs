@@ -2,7 +2,7 @@
 //! `SearchService`. See docs/…/2026-08-12-search-and-task-permalink-design.md.
 
 mod indexer;
-mod search_service;
+pub(crate) mod search_service;
 
 pub use search_service::search_router;
 

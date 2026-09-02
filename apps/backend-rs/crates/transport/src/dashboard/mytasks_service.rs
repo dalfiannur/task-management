@@ -46,6 +46,20 @@ fn respond(ctx: &Context, tasks: Vec<&TaskRecord>, r: &pb::MyTasksRequest) -> pb
     pb::MyTasksResponse { items, total }
 }
 
+pub async fn list_assigned_to_me_core(
+    store: &Store,
+    auth: &AuthUser,
+    r: pb::MyTasksRequest,
+) -> Result<pb::MyTasksResponse, ConnectError> {
+    let ctx = Context::load(store, auth).await.map_err(internal)?;
+    let tasks = ctx
+        .scoped_tasks()
+        .into_iter()
+        .filter(|t| t.assignee_ids.iter().any(|a| a == &auth.id))
+        .collect();
+    Ok(respond(&ctx, tasks, &r))
+}
+
 async fn list_assigned_to_me(
     Extension(store): StoreExt,
     user: Option<Extension<AuthUser>>,
@@ -53,13 +67,23 @@ async fn list_assigned_to_me(
 ) -> Result<ConnectResponse<pb::MyTasksResponse>, ConnectError> {
     let auth = require_auth(user)?;
     let ConnectRequest(r) = req;
-    let ctx = Context::load(&store, &auth).await.map_err(internal)?;
+    Ok(ConnectResponse::new(
+        list_assigned_to_me_core(&store, &auth, r).await?,
+    ))
+}
+
+pub async fn list_created_by_me_core(
+    store: &Store,
+    auth: &AuthUser,
+    r: pb::MyTasksRequest,
+) -> Result<pb::MyTasksResponse, ConnectError> {
+    let ctx = Context::load(store, auth).await.map_err(internal)?;
     let tasks = ctx
         .scoped_tasks()
         .into_iter()
-        .filter(|t| t.assignee_ids.iter().any(|a| a == &auth.id))
+        .filter(|t| t.created_by == auth.id)
         .collect();
-    Ok(ConnectResponse::new(respond(&ctx, tasks, &r)))
+    Ok(respond(&ctx, tasks, &r))
 }
 
 async fn list_created_by_me(
@@ -69,22 +93,16 @@ async fn list_created_by_me(
 ) -> Result<ConnectResponse<pb::MyTasksResponse>, ConnectError> {
     let auth = require_auth(user)?;
     let ConnectRequest(r) = req;
-    let ctx = Context::load(&store, &auth).await.map_err(internal)?;
-    let tasks = ctx
-        .scoped_tasks()
-        .into_iter()
-        .filter(|t| t.created_by == auth.id)
-        .collect();
-    Ok(ConnectResponse::new(respond(&ctx, tasks, &r)))
+    Ok(ConnectResponse::new(
+        list_created_by_me_core(&store, &auth, r).await?,
+    ))
 }
 
-async fn list_involving_me(
-    Extension(store): StoreExt,
-    user: Option<Extension<AuthUser>>,
-    req: ConnectRequest<pb::MyTasksRequest>,
-) -> Result<ConnectResponse<pb::MyTasksResponse>, ConnectError> {
-    let auth = require_auth(user)?;
-    let ConnectRequest(r) = req;
+pub async fn list_involving_me_core(
+    store: &Store,
+    auth: &AuthUser,
+    r: pb::MyTasksRequest,
+) -> Result<pb::MyTasksResponse, ConnectError> {
     // Task ids where I authored a comment or was mentioned.
     let me = auth.id.clone();
     let involved: HashSet<String> = store
@@ -100,13 +118,25 @@ async fn list_involving_me(
         .map_err(internal)?
         .into_iter()
         .collect();
-    let ctx = Context::load(&store, &auth).await.map_err(internal)?;
+    let ctx = Context::load(store, auth).await.map_err(internal)?;
     let tasks = ctx
         .scoped_tasks()
         .into_iter()
         .filter(|t| involved.contains(&t.pid.to_string()))
         .collect();
-    Ok(ConnectResponse::new(respond(&ctx, tasks, &r)))
+    Ok(respond(&ctx, tasks, &r))
+}
+
+async fn list_involving_me(
+    Extension(store): StoreExt,
+    user: Option<Extension<AuthUser>>,
+    req: ConnectRequest<pb::MyTasksRequest>,
+) -> Result<ConnectResponse<pb::MyTasksResponse>, ConnectError> {
+    let auth = require_auth(user)?;
+    let ConnectRequest(r) = req;
+    Ok(ConnectResponse::new(
+        list_involving_me_core(&store, &auth, r).await?,
+    ))
 }
 
 /// MyTasksService router; injects the Store as a request extension.

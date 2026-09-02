@@ -2,7 +2,7 @@
 //! task. See docs/…/comments-flow-design.md.
 //! Deferred: mention→notification emit (Notifications flow not built — no-op).
 
-mod comment_service;
+pub(crate) mod comment_service;
 pub(crate) mod record;
 
 pub use comment_service::comment_router;
