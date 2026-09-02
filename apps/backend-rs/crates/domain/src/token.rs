@@ -67,11 +67,13 @@ pub fn preview_of(token: &str) -> String {
     token.chars().skip(n.saturating_sub(4)).collect()
 }
 
-/// Bentuknya mustahil diterbitkan oleh kita → tolak sebelum menyentuh database.
+/// Bentuknya mustahil diterbitkan oleh kita → tolak input yang jelas bukan
+/// token sebelum sempat menghitung hash dan melakukan round-trip ke database.
 ///
-/// Ini juga yang membuat `hash_token` aman dipakai membangun predikat SQL:
-/// nilainya selalu digest hex 64 karakter hasil hitungan kita sendiri, tidak
-/// pernah teks mentah dari user.
+/// `hash_token` aman dipakai membangun predikat SQL bukan karena gate ini:
+/// keluarannya selalu digest hex 64 karakter untuk input apa pun, jadi aman
+/// secara struktural dengan sendirinya. Tujuan gate ini berbeda dan tetap
+/// berlaku sendiri — menolak input yang jelas salah bentuk lebih awal.
 pub fn looks_like_token(s: &str) -> bool {
     s.len() == TOKEN_PREFIX.len() + 64
         && s.starts_with(TOKEN_PREFIX)
@@ -80,9 +82,17 @@ pub fn looks_like_token(s: &str) -> bool {
 
 /// Sudah lewat `expires_at`? `None` = tanpa kedaluwarsa.
 ///
-/// Membandingkan string RFC3339 UTC secara leksikografis — urutan leksikalnya
-/// sama dengan urutan waktu selama kedua sisi diformat oleh `now_iso()` di
-/// transport. Pola yang sama dipakai `task::dates_ok`.
+/// Membandingkan string RFC3339 UTC secara leksikografis. Urutan leksikal ini
+/// SAMA dengan urutan waktu hanya jika kedua sisi diformat pada presisi tetap
+/// yang sama: RFC3339 dari crate `time` membuang bagian pecahan detik saat nol
+/// dan memangkas nol di belakang saat tidak, sehingga lebar stringnya
+/// berubah-ubah dan bisa membalik urutan leksikal dalam detik yang sama
+/// (mis. "...T10:00:00Z" > "...T10:00:00.5Z" secara leksikal, padahal
+/// 10:00:00.0 lebih awal dari 10:00:00.5). Karena itu pemanggil mem-pin
+/// timestamp ke detik bulat (`replace_nanosecond(0)`) sebelum memformat,
+/// supaya prasyarat presisi-sama ini benar-benar terpenuhi. `task::dates_ok`
+/// membandingkan tanggal `YYYY-MM-DD` polos tanpa jam dan tanpa komponen
+/// lebar-variabel, jadi analoginya lebih lemah — kasus ini tidak muncul di sana.
 pub fn is_expired(expires_at: Option<&str>, now: &str) -> bool {
     match expires_at {
         None => false,
