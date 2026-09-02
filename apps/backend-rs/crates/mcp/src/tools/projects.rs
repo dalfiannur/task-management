@@ -55,7 +55,7 @@ pub async fn list_projects(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> 
         .map(|p| json!({ "id": p.id, "name": p.name, "status": status_label(p.status) }))
         .collect();
     let count = rows.len();
-    Ok(json!({ "projects": rows, "count": count }))
+    Ok(json!({ "projects": rows, "count": count, "total": resp.total }))
 }
 
 pub const GET_PROJECT: ToolMeta = ToolMeta {

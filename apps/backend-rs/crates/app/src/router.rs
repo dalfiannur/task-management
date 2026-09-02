@@ -37,8 +37,9 @@ pub fn build_router(
         .allow_methods(Any)
         .allow_origin(AllowOrigin::list(origins));
 
-    // Merge all service routers, then apply JWT extraction + CORS over the whole API.
-    transport::health_router(store.clone())
+    // Merge all Connect service routers, then apply JWT extraction + the
+    // Connect protocol layer over just that part of the API.
+    let connect_api = transport::health_router(store.clone())
         .merge(transport::auth_router(store.clone(), jwt))
         .merge(transport::user_router(store.clone()))
         .merge(transport::token_router(store.clone()))
@@ -54,13 +55,20 @@ pub fn build_router(
         .merge(transport::mytasks_router(store.clone()))
         .merge(transport::search_router(store.clone()))
         .merge(transport::export_router(store.clone()))
-        .merge(transport::notification_router(store, notifier.clone()))
+        .merge(transport::notification_router(store.clone(), notifier.clone()))
         // Innermost: protocol detection + Connect Context (required for
         // server-streaming, e.g. StreamNotifications; unary otherwise falls
         // back to header detection). Wraps the handler's response directly.
         .layer(ConnectLayer::new())
         // Global: mutating handlers extract the Notifier to emit.
-        .layer(Extension(notifier))
-        .layer(axum::middleware::from_fn_with_state(secret, auth_layer))
+        .layer(Extension(notifier.clone()))
+        .layer(axum::middleware::from_fn_with_state(secret, auth_layer));
+
+    // MCP has its own credential path (PAT), so it's deliberately nested in
+    // after the Connect stack's layers above, not before: it must not be
+    // wrapped in `ConnectLayer` and must not go through the JWT `auth_layer`.
+    // CORS still applies to the whole API.
+    connect_api
+        .nest("/mcp", mcp::mcp_router(store, notifier))
         .layer(cors)
 }

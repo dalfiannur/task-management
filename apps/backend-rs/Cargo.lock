@@ -46,6 +46,7 @@ dependencies = [
  "domain",
  "dotenvy",
  "jsonwebtoken",
+ "mcp",
  "persistence",
  "serde",
  "serde_json",

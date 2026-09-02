@@ -20,6 +20,7 @@ domain = { path = "../domain" }
 persistence = { path = "../persistence" }
 transport = { path = "../transport" }
 storage = { path = "../storage" }
+mcp = { path = "../mcp" }
 
 [dev-dependencies]
 jsonwebtoken = { workspace = true }
