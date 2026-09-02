@@ -1785,10 +1785,160 @@ async fn handle_post(
 }
 ```
 
+- [ ] **Step 4b: Pagari properti keamanannya dengan test**
+
+Tiga jaminan di task ini — token kedaluwarsa ditolak, token milik user non-aktif
+ditolak, dan semua penolakan tampak identik — tidak dijaga test apa pun kalau hanya
+dua test di Step 1 yang ditulis. Jaminan yang tak dijaga test hanyalah jaminan sampai
+seseorang menyunting file itu.
+
+Generalkan dulu helper penyemainya di `crates/mcp/tests/mcp_flow.rs` supaya bisa
+mengatur status user dan masa berlaku token, lalu tulis ulang `seed_authed_user`
+di atasnya:
+
+```rust
+/// Seed a user plus one token for it. Returns (user pid, token pid, plaintext).
+async fn seed_user_with_token(
+    store: &persistence::Store,
+    status: domain::user::UserStatus,
+    expires_at: Option<String>,
+) -> (i64, i64, String) {
+    let now = "2026-01-01T00:00:00Z".to_string();
+    let uid = store
+        .create((
+            domain::user::UserPhone { value: format!("+1555{}", uniq()), verified: true },
+            domain::user::UserPassword {
+                hash: "unused-in-this-test".into(),
+                changed_at: now.clone(),
+            },
+            domain::user::UserProfile {
+                display_name: "MCP Test User".into(),
+                avatar_url: String::new(),
+                email: String::new(),
+            },
+            domain::user::UserStatusComponent {
+                status: status.as_str().to_string(),
+                created_at: now.clone(),
+                last_login_at: None,
+            },
+        ))
+        .await
+        .unwrap();
+    let plaintext = domain::token::generate_token();
+    let tid = store
+        .create((
+            domain::token::TokenSecret {
+                hash: domain::token::hash_token(&plaintext),
+                preview: domain::token::preview_of(&plaintext),
+            },
+            domain::token::TokenOwner { user_id: uid.to_string() },
+            domain::token::TokenInfo {
+                name: "mcp-flow-test".into(),
+                created_at: now,
+                expires_at,
+            },
+            domain::token::TokenUsage { last_used_at: None },
+        ))
+        .await
+        .unwrap();
+    (uid, tid, plaintext)
+}
+
+async fn seed_authed_user(store: &persistence::Store) -> String {
+    seed_user_with_token(store, domain::user::UserStatus::Active, None).await.2
+}
+```
+
+Lalu test-nya. Yang terakhir menguji properti keamanannya secara langsung, bukan
+tiap kasus satu per satu:
+
+```rust
+#[tokio::test]
+async fn expired_token_is_refused() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let (_, _, token) = seed_user_with_token(
+        &store,
+        domain::user::UserStatus::Active,
+        Some("2020-01-01T00:00:00Z".into()),
+    )
+    .await;
+    let (st, _) = rpc(&router, Some(&token), json!({
+        "jsonrpc": "2.0", "id": 1, "method": "tools/list"
+    }))
+    .await;
+    assert_eq!(st, StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn suspended_users_token_is_refused() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    // The token itself is perfectly valid. What changed is the user behind it —
+    // which is exactly why permissions are read fresh instead of baked into the
+    // token at issue time.
+    let (_, _, token) =
+        seed_user_with_token(&store, domain::user::UserStatus::Suspended, None).await;
+    let (st, _) = rpc(&router, Some(&token), json!({
+        "jsonrpc": "2.0", "id": 1, "method": "tools/list"
+    }))
+    .await;
+    assert_eq!(st, StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn revoked_token_is_refused() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let (_, tid, token) =
+        seed_user_with_token(&store, domain::user::UserStatus::Active, None).await;
+    store.delete(tid).await.unwrap();
+    let (st, _) = rpc(&router, Some(&token), json!({
+        "jsonrpc": "2.0", "id": 1, "method": "tools/list"
+    }))
+    .await;
+    assert_eq!(st, StatusCode::UNAUTHORIZED);
+}
+
+/// Every way of failing must look the same from outside. A response that says
+/// "expired" where another says "unknown" tells someone guessing that their
+/// guess was nearly right.
+#[tokio::test]
+async fn every_rejection_is_indistinguishable() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let (_, tid, revoked) =
+        seed_user_with_token(&store, domain::user::UserStatus::Active, None).await;
+    store.delete(tid).await.unwrap();
+    let (_, _, expired) = seed_user_with_token(
+        &store,
+        domain::user::UserStatus::Active,
+        Some("2020-01-01T00:00:00Z".into()),
+    )
+    .await;
+    let (_, _, suspended) =
+        seed_user_with_token(&store, domain::user::UserStatus::Suspended, None).await;
+
+    let req = json!({ "jsonrpc": "2.0", "id": 1, "method": "tools/list" });
+    let mut seen = Vec::new();
+    for bearer in [
+        None,
+        Some("not-a-token"),
+        Some("sjw_pat_0000000000000000000000000000000000000000000000000000000000000000"),
+        Some(revoked.as_str()),
+        Some(expired.as_str()),
+        Some(suspended.as_str()),
+    ] {
+        seen.push(rpc(&router, bearer, req.clone()).await);
+    }
+    let first = &seen[0];
+    assert_eq!(first.0, StatusCode::UNAUTHORIZED);
+    for (i, other) in seen.iter().enumerate().skip(1) {
+        assert_eq!(other, first, "rejection {i} is distinguishable from the first");
+    }
+}
+```
+
 - [ ] **Step 5: Jalankan test, pastikan lulus**
 
 Run: `DATABASE_URL=$DATABASE_URL cargo test -p mcp`
-Expected: PASS, 9 test.
+Expected: PASS, 13 test.
 
 `crates/mcp` juga menyumbang satu peringatan `dead_code` yang diketahui sejak Task 7:
 `INVALID_PARAMS` belum punya pemakai sampai Task 9 memakainya untuk argumen tool yang
