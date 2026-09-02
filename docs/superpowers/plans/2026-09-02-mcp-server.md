@@ -86,6 +86,7 @@ Di `apps/backend-rs/crates/domain/Cargo.toml`, dalam `[dependencies]`, tambahkan
 ```toml
 sha2 = { workspace = true }
 rand = { workspace = true }
+time = { workspace = true }
 ```
 
 - [ ] **Step 2: Tulis test yang gagal**
@@ -244,6 +245,22 @@ pub fn looks_like_token(s: &str) -> bool {
 /// Compares RFC3339 UTC strings lexicographically — that lexical order matches
 /// time order as long as both sides are formatted by transport's `now_iso()`.
 /// `task::dates_ok` uses the same pattern.
+/// The clock every token timestamp is written with.
+///
+/// Pinned to whole seconds, and it lives here rather than in each caller because
+/// [`is_expired`] is what depends on the pinning: `time`'s RFC3339 formatter omits
+/// the fractional part when nanoseconds are zero and truncates trailing zeros
+/// otherwise, so mixed precision can invert a comparison inside a single second.
+/// Three copies of that reasoning are three chances for one to drift.
+pub fn now_iso() -> String {
+    use time::format_description::well_known::Rfc3339;
+    let now = time::OffsetDateTime::now_utc();
+    now.replace_nanosecond(0)
+        .unwrap_or(now)
+        .format(&Rfc3339)
+        .unwrap_or_default()
+}
+
 pub fn is_expired(expires_at: Option<&str>, now: &str) -> bool {
     match expires_at {
         None => false,
@@ -1012,6 +1029,12 @@ Buat `apps/backend-rs/crates/transport/src/api.rs`:
 //! member-gating, validation, activity recording, notifications, and search
 //! indexing all come along for the ride. Duplicating those rules on the MCP
 //! side is the fastest way to make AI and UI behavior silently diverge.
+//!
+//! Two exports break that rule, deliberately: `find_by_hash` and `auth_user_for`
+//! back no Connect handler at all. They exist because the MCP endpoint
+//! authenticates with a personal access token rather than the JWT `auth_layer`
+//! gives every other route, so it has to resolve a credential to a user itself.
+//! They are listed apart from the core fns below for that reason.
 
 pub use crate::work::task_service::{
     create_task_core, get_task_core, list_tasks_core, move_task_core, update_task_core,
@@ -1373,6 +1396,7 @@ pub const PARSE_ERROR: i64 = -32700;
 pub const INVALID_REQUEST: i64 = -32600;
 pub const METHOD_NOT_FOUND: i64 = -32601;
 pub const INVALID_PARAMS: i64 = -32602;
+pub const INTERNAL_ERROR: i64 = -32603;
 
 #[derive(Debug, Deserialize)]
 pub struct Rpc {
@@ -1605,6 +1629,7 @@ Sesuaikan nama field `u.status` / `u.is_admin` dengan `UserRecord` yang sebenarn
 Di `crates/transport/src/api.rs`, tambahkan:
 
 ```rust
+// Not core fns: the PAT path resolves its own credential (see the module doc).
 pub use crate::tokens::record::{find_by_hash, TokenRecord};
 pub use crate::users::record::auth_user_for;
 ```
@@ -1628,10 +1653,20 @@ use domain::token::{hash_token, is_expired, looks_like_token};
 use persistence::Store;
 use transport::api::{auth_user_for, find_by_hash, TokenRecord};
 
-/// Deliberately a single variant: distinguishing "token doesn't exist" from
-/// "token expired" in the response would tell a guesser which one is closer.
+/// Why a request was refused.
+///
+/// Every *credential* failure collapses into one variant on purpose: telling a
+/// guesser their token was expired rather than unknown tells them the guess was
+/// nearly right. Infrastructure failure is separate, because it is not the
+/// caller's fault — answering 401 sends a user off to reissue a token that was
+/// never the problem, and an outage dressed as a wave of 401s is something an
+/// operator would struggle to recognise. Nothing an attacker controls selects
+/// between the two variants, so the split leaks nothing.
 #[derive(Debug)]
-pub struct Unauthorized;
+pub enum AuthFailure {
+    Unauthorized,
+    Unavailable,
+}
 
 /// Whole seconds, deliberately. `Rfc3339` only writes a fractional-second part
 /// when the nanoseconds aren't zero, and trims trailing zeros when they aren't
@@ -1649,36 +1684,66 @@ fn now_iso() -> String {
 }
 
 /// `Authorization` header → the portal user, or `Unauthorized`.
-pub async fn authenticate(store: &Store, header: Option<&str>) -> Result<AuthUser, Unauthorized> {
-    let raw = header.ok_or(Unauthorized)?;
-    let token = raw
+/// The client learns only that it was refused. The log records which branch
+/// fired, because "someone is hammering us with garbage" and "a real user's
+/// token expired last week" need different responses from an operator, and this
+/// function is the only place that still knows the difference.
+pub async fn authenticate(store: &Store, header: Option<&str>) -> Result<AuthUser, AuthFailure> {
+    let Some(raw) = header else {
+        tracing::debug!("mcp: request carried no Authorization header");
+        return Err(AuthFailure::Unauthorized);
+    };
+    let Some(token) = raw
         .strip_prefix("Bearer ")
         .or_else(|| raw.strip_prefix("bearer "))
-        .ok_or(Unauthorized)?
-        .trim();
-    // Screen the shape first: a string we could never have issued never
-    // reaches the database, and that's also what makes the digest safe to use
-    // in building the SQL predicate in `find_by_hash`.
+        .map(str::trim)
+    else {
+        tracing::debug!("mcp: Authorization header is not a Bearer credential");
+        return Err(AuthFailure::Unauthorized);
+    };
+    // Screen the shape first: a string we could never have issued never reaches
+    // the database, and that is also what makes the digest safe to interpolate
+    // into `find_by_hash`'s SQL predicate.
     if !looks_like_token(token) {
-        return Err(Unauthorized);
+        tracing::debug!("mcp: bearer credential is not shaped like a token");
+        return Err(AuthFailure::Unauthorized);
     }
-    let rec: TokenRecord = find_by_hash(store, &hash_token(token))
-        .await
-        .map_err(|_| Unauthorized)?
-        .ok_or(Unauthorized)?;
+    let found = find_by_hash(store, &hash_token(token)).await.map_err(|e| {
+        tracing::error!(error = %e, "mcp: token lookup failed");
+        AuthFailure::Unavailable
+    })?;
+    let Some(rec) = found else {
+        tracing::debug!("mcp: no token matches that digest");
+        return Err(AuthFailure::Unauthorized);
+    };
+    // Expiry before owner resolution: a dead token is not worth a second
+    // round-trip to load the user it used to belong to.
     let now = now_iso();
     if is_expired(rec.expires_at.as_deref(), &now) {
-        return Err(Unauthorized);
+        tracing::debug!(token = rec.pid, "mcp: token has expired");
+        return Err(AuthFailure::Unauthorized);
     }
-    let user = auth_user_for(store, &rec.user_id)
-        .await
-        .map_err(|_| Unauthorized)?
-        .ok_or(Unauthorized)?;
+    let owner = auth_user_for(store, &rec.user_id).await.map_err(|e| {
+        tracing::error!(error = %e, "mcp: owner lookup failed");
+        AuthFailure::Unavailable
+    })?;
+    let Some(user) = owner else {
+        tracing::warn!(token = rec.pid, "mcp: token outlived its owner or the owner is not active");
+        return Err(AuthFailure::Unauthorized);
+    };
+    // Only after both checks pass: a refused attempt is not usage.
     touch(store, &rec, &now).await;
     Ok(user)
 }
 
-/// Record usage, but at most once an hour.
+/// Record usage, but skip the write if it was already recorded within the hour.
+///
+/// This is a throttle, not a lock. Concurrent calls each read the same stale
+/// timestamp and each decide to write, so a burst from one conversation can still
+/// produce a handful of writes — it bounds the steady state, not the burst.
+/// That is deliberate: the value is a timestamp a human glances at occasionally,
+/// and paying for an atomic conditional update to spare it a few redundant writes
+/// would cost more than it saves.
 ///
 /// Without this throttle, every tool call — and a single AI conversation can
 /// trigger a dozen — would write a database row just to refresh a timestamp
@@ -1769,7 +1834,12 @@ async fn handle_post(
             .and_then(|v| v.to_str().ok());
         match pat::authenticate(&state.store, header).await {
             Ok(u) => Some(u),
-            Err(_) => return unauthorized(rpc.id),
+            Err(pat::AuthFailure::Unauthorized) => return unauthorized(rpc.id),
+            // Not the caller's credentials, so do not tell them it was.
+            Err(pat::AuthFailure::Unavailable) => {
+                return Json(error(rpc.id, INTERNAL_ERROR, "the server could not verify credentials"))
+                    .into_response()
+            }
         }
     } else {
         None
