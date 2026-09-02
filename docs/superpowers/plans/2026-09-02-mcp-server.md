@@ -472,7 +472,9 @@ async fn create_list_revoke_round_trip() {
     assert_eq!(st, StatusCode::OK, "{revoked:?}");
 
     let (_, after) = call(&router, &format!("{TOKENS}/ListTokens"), Some(&jwt), json!({})).await;
-    assert!(after["tokens"].as_array().unwrap().is_empty());
+    // Proto3 JSON menghilangkan repeated field yang kosong, bukan mengirim `[]`,
+    // jadi "tidak ada key" dan "list kosong" adalah hal yang sama di sini.
+    assert!(after["tokens"].as_array().is_none_or(|a| a.is_empty()));
 }
 
 #[tokio::test]
@@ -495,9 +497,7 @@ async fn tokens_are_isolated_between_users() {
     let (_, listed) = call(&router, &format!("{TOKENS}/ListTokens"), Some(&token(&other)), json!({})).await;
     assert!(listed["tokens"]
         .as_array()
-        .unwrap()
-        .iter()
-        .all(|t| t["id"] != id.as_str()));
+        .is_none_or(|a| a.iter().all(|t| t["id"] != id.as_str())));
 
     // …dan tidak bisa mencabutnya.
     let (st, _) = call(
@@ -547,7 +547,7 @@ Buat `apps/backend-rs/crates/transport/src/tokens/record.rs`:
 //! Pembacaan PAT dari store. Satu `TokenRecord` pipih agar handler dan crate
 //! `mcp` tidak perlu menyentuh komponen ECS satu per satu.
 
-use arke::prelude::*;
+use arke::{Entity, World};
 use domain::token::{TokenInfo, TokenOwner, TokenSecret, TokenUsage};
 use persistence::Store;
 
