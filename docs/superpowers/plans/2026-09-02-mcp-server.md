@@ -1126,7 +1126,14 @@ pub async fn create_comment_core(
 ) -> Result<pb::Comment, ConnectError>;
 pub async fn search_core(store: &Store, auth: &AuthUser, r: pb::SearchRequest)
     -> Result<pb::SearchResponse, ConnectError>;
-pub async fn my_tasks_core(store: &Store, auth: &AuthUser, r: pb::MyTasksRequest)
+// MyTasksService is three RPCs sharing one request/response pair, so this is
+// three extractions, not one. Do not collapse them — each applies a different
+// filter, and a single core fn would have to guess which.
+pub async fn list_assigned_to_me_core(store: &Store, auth: &AuthUser, r: pb::MyTasksRequest)
+    -> Result<pb::MyTasksResponse, ConnectError>;
+pub async fn list_created_by_me_core(store: &Store, auth: &AuthUser, r: pb::MyTasksRequest)
+    -> Result<pb::MyTasksResponse, ConnectError>;
+pub async fn list_involving_me_core(store: &Store, auth: &AuthUser, r: pb::MyTasksRequest)
     -> Result<pb::MyTasksResponse, ConnectError>;
 ```
 
@@ -2572,7 +2579,10 @@ git commit -m "feat(mcp): add project and module tools"
 //! filter inside their core fn.
 
 use serde_json::{json, Value};
-use transport::api::{dashboard_pb, my_tasks_core, search_core, search_pb};
+use transport::api::{
+    dashboard_pb, list_assigned_to_me_core, list_created_by_me_core, list_involving_me_core,
+    search_core, search_pb,
+};
 
 use super::{limit_arg, str_arg, truncate, Ctx, ToolError, ToolMeta};
 
@@ -2613,11 +2623,17 @@ pub async fn search(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
 
 pub const MY_TASKS: ToolMeta = ToolMeta {
     name: "my_tasks",
-    description: "Tasks assigned to this user across every project. The answer to \
-                  'what should I work on'.",
+    description: "Tasks involving this user across every project. `scope` picks which \
+                  relationship: assigned to them (the default, and the answer to \
+                  'what should I work on'), created by them, or either.",
     schema: || json!({
         "type": "object",
         "properties": {
+            "scope": {
+                "type": "string",
+                "enum": ["assigned", "created", "involving"],
+                "description": "Default: assigned"
+            },
             "status": { "type": "string", "enum": ["todo", "in_progress", "done", "blocked"] },
             "limit": { "type": "integer", "minimum": 1, "maximum": 200 }
         }
@@ -2625,20 +2641,45 @@ pub const MY_TASKS: ToolMeta = ToolMeta {
 };
 
 pub async fn my_tasks(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
-    let resp = my_tasks_core(&ctx.store, &ctx.auth, dashboard_pb::MyTasksRequest::default()).await?;
+    // MyTasksService is three RPCs, not one, and they differ only in which
+    // relationship to the user they filter on. Exposing three near-identical
+    // tools would spend the model's attention on a distinction one enum argument
+    // already makes; `assigned` is the default because it answers the question
+    // people actually ask.
+    let req = dashboard_pb::MyTasksRequest::default();
+    let resp = match super::opt_str(args, "scope").as_deref().unwrap_or("assigned") {
+        "assigned" => list_assigned_to_me_core(&ctx.store, &ctx.auth, req).await?,
+        "created" => list_created_by_me_core(&ctx.store, &ctx.auth, req).await?,
+        "involving" => list_involving_me_core(&ctx.store, &ctx.auth, req).await?,
+        other => {
+            return Err(ToolError::BadArgs(format!(
+                "unknown scope `{other}`: expected assigned, created, or involving"
+            )))
+        }
+    };
     let want = super::opt_str(args, "status");
+    // `MyTasksResponse` is `{ items: [MyTask], total }`, and each `MyTask` wraps a
+    // `Task` with the project and module names — context the model would
+    // otherwise need a second call to `get_project` to recover.
     let rows: Vec<Value> = resp
-        .tasks
+        .items
         .iter()
-        .filter(|t| want.as_deref().is_none_or(|s| super::tasks::status_label(t.status) == s))
+        .filter_map(|m| m.task.as_ref().map(|t| (m, t)))
+        .filter(|(_, t)| want.as_deref().is_none_or(|s| super::tasks::status_label(t.status) == s))
         .take(limit_arg(args))
-        .map(super::tasks::flatten)
+        .map(|(m, t)| {
+            let mut row = super::tasks::flatten(t);
+            row["project_id"] = json!(m.project_id);
+            row["project_name"] = json!(m.project_name);
+            row["module_name"] = json!(m.module_name);
+            row
+        })
         .collect();
-    Ok(json!({ "tasks": rows, "count": rows.len() }))
+    Ok(json!({ "tasks": rows, "count": rows.len(), "total": resp.total }))
 }
 ```
 
-Agar `my_tasks` bisa memakainya, ubah `flatten` dan `status_label` di `tools/tasks.rs` menjadi `pub(crate)`. Samakan nama field hasil pencarian (`r.kind`, `r.entity_id`, `r.snippet`) dengan `proto/search.proto`, dan bentuk `MyTasksResponse` dengan `proto/dashboard.proto` — bila `my_tasks` mengembalikan pengelompokan (misal per due-date) alih-alih satu daftar datar, ratakan di sini dan simpan kelompoknya sebagai field `bucket` pada tiap baris.
+Agar `my_tasks` bisa memakainya, ubah `flatten` dan `status_label` di `tools/tasks.rs` menjadi `pub(crate)`. Samakan nama field hasil pencarian (`r.kind`, `r.entity_id`, `r.snippet`) dengan `proto/search.proto`. Bentuk `MyTasksResponse` sudah dipastikan saat Task 6 dan tidak perlu ditebak lagi: `{ items: [MyTask], total: u32 }`, dengan `MyTask { task, project_id, project_name, module_name }` — daftar datar, bukan pengelompokan. `task` bertipe `Option`, jadi baris tanpa task dilewati, bukan di-`unwrap`.
 
 - [ ] **Step 2: Uji dan commit**
 
