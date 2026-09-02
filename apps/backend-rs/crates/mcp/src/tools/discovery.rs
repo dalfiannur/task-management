@@ -28,11 +28,19 @@ pub const SEARCH: ToolMeta = ToolMeta {
     name: "search",
     description: "Search tasks, projects, pages, and comments by keyword. \
                   Use this when the user refers to something by name rather than id.",
+    // `maximum: 50`, not the 200 `list_projects`/`my_tasks` use — those two
+    // schemas can honestly say 200 because their core fns impose no cap of
+    // their own and use whatever limit they're given. `search_core` is the
+    // odd one out: it hard-caps at `MAX_LIMIT = 50` with no escape hatch, so
+    // a schema advertising 200 would validate a request the server silently
+    // truncates without any signal back to the caller. Keep this at 50 even
+    // though the other two schemas' 200 looks inconsistent — it isn't; each
+    // states what its own core fn will actually do.
     schema: || json!({
         "type": "object",
         "properties": {
             "query": { "type": "string" },
-            "limit": { "type": "integer", "minimum": 1, "maximum": 200 }
+            "limit": { "type": "integer", "minimum": 1, "maximum": 50 }
         },
         "required": ["query"]
     }),
