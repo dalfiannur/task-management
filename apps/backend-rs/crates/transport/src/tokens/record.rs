@@ -1,5 +1,5 @@
-//! Pembacaan PAT dari store. Satu `TokenRecord` pipih agar handler dan crate
-//! `mcp` tidak perlu menyentuh komponen ECS satu per satu.
+//! Reading PATs from the store. A single flat `TokenRecord` so handlers and the
+//! `mcp` crate don't have to touch ECS components one by one.
 
 use arke::{Entity, World};
 use domain::token::{TokenInfo, TokenOwner, TokenSecret, TokenUsage};
@@ -33,14 +33,14 @@ fn read(world: &World, e: Entity, pid: i64) -> Option<TokenRecord> {
     })
 }
 
-/// Token milik satu user, terbaru dulu.
+/// One user's tokens, newest first.
 ///
-/// Filter di SQL, bukan di Rust. `query(None, ..)` akan menghidrasi setiap token
-/// milik *semua* user sebelum filter kepemilikan sempat jalan — dan menghidrasi
-/// satu pid berharga satu query keberadaan plus satu query per tipe komponen
-/// terdaftar. Pelajaran itu sudah dibayar sekali dan dicatat lengkap dengan
-/// angkanya di `activity::record::activity_for_project`; `TokenOwner.user_id`
-/// sudah diindeks persis untuk query ini.
+/// Filter in SQL, not in Rust. `query(None, ..)` would hydrate every token
+/// belonging to *every* user before the ownership filter ever runs — and
+/// hydrating one pid costs one existence query plus one query per registered
+/// component type. That lesson was already paid for once and written up in
+/// full, numbers included, at `activity::record::activity_for_project`;
+/// `TokenOwner.user_id` is indexed exactly for this query.
 pub async fn tokens_for_owner(store: &Store, user_id: &str) -> anyhow::Result<Vec<TokenRecord>> {
     if !crate::sql::safe_sql_id(user_id) {
         return Ok(Vec::new());
@@ -71,11 +71,11 @@ pub async fn load_token(store: &Store, pid: i64) -> anyhow::Result<Option<TokenR
     Ok(v.pop())
 }
 
-/// Lookup by digest — jalur panas setiap tool call MCP.
+/// Lookup by digest — the hot path for every MCP tool call.
 ///
-/// Interpolasi ke predikat SQL aman di sini: `hash` selalu digest hex 64
-/// karakter hasil `domain::token::hash_token`, bukan teks mentah dari user
-/// (pemanggil wajib menyaring lewat `looks_like_token` lebih dulu).
+/// Interpolating into the SQL predicate is safe here: `hash` is always a
+/// 64-character hex digest produced by `domain::token::hash_token`, never raw
+/// user text (callers must screen through `looks_like_token` first).
 pub async fn find_by_hash(store: &Store, hash: &str) -> anyhow::Result<Option<TokenRecord>> {
     let pred = format!("hash = '{hash}'");
     let mut v = store

@@ -1,5 +1,5 @@
-//! End-to-end AccessTokenService lewat router Connect asli + Postgres.
-//! Dilewati kecuali `DATABASE_URL` diset. Id unik agar rerun tetap terisolasi.
+//! End-to-end AccessTokenService through the real Connect router + Postgres.
+//! Skipped unless `DATABASE_URL` is set. Ids are unique so reruns stay isolated.
 
 use std::sync::Arc;
 
@@ -85,7 +85,7 @@ async fn create_list_revoke_round_trip() {
     assert_eq!(st, StatusCode::OK);
     let rows = listed["tokens"].as_array().unwrap();
     assert_eq!(rows.len(), 1);
-    // Plaintext tidak pernah muncul lagi setelah pembuatan.
+    // The plaintext never appears again after creation.
     assert!(rows[0].get("token").is_none());
 
     let (st, revoked) = call(
@@ -119,15 +119,15 @@ async fn tokens_are_isolated_between_users() {
     let id = created["accessToken"]["id"].as_str().unwrap().to_string();
     assert!(created["accessToken"]["expiresAt"].is_string());
 
-    // User lain tidak melihatnya… (`other` belum pernah membuat token, jadi
-    // daftar kosongnya bahkan tidak membawa kunci `tokens` — lihat komentar
-    // di `create_list_revoke_round_trip`.)
+    // The other user doesn't see it… (`other` has never created a token, so
+    // proto3 JSON omits the empty `tokens` key entirely — see the comment in
+    // `create_list_revoke_round_trip`.)
     let (_, listed) = call(&router, &format!("{TOKENS}/ListTokens"), Some(&token(&other)), json!({})).await;
     assert!(listed["tokens"]
         .as_array()
         .is_none_or(|a| a.iter().all(|t| t["id"] != id.as_str())));
 
-    // …dan tidak bisa mencabutnya.
+    // …and can't revoke it.
     let (st, _) = call(
         &router,
         &format!("{TOKENS}/RevokeToken"),
@@ -156,8 +156,8 @@ async fn empty_name_is_rejected() {
         json!({ "name": "", "expiresInDays": 0 }),
     )
     .await;
-    // Nama kosong ditolak; `expires_in_days` bertipe uint32 sehingga nilai
-    // negatif sudah mustahil sampai ke sini lewat proto.
+    // An empty name is rejected; `expires_in_days` is a uint32, so a negative
+    // value can never reach here through proto.
     assert_eq!(st, StatusCode::BAD_REQUEST);
 }
 

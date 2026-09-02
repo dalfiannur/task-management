@@ -66,7 +66,7 @@ pub fn register_all(pg: &mut arke_postgres::PgStore) {
     // Activity.
     pg.register::<activity::ActivityInfo>();
     pg.register::<activity::ActivityChanges>();
-    // Access tokens (PAT untuk MCP).
+    // Access tokens (PAT for MCP).
     pg.register::<token::TokenSecret>();
     pg.register::<token::TokenOwner>();
     pg.register::<token::TokenInfo>();

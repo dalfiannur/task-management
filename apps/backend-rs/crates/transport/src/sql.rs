@@ -1,11 +1,11 @@
-//! Penjaga untuk nilai yang ikut masuk ke predikat SQL `Store::query`.
+//! Guard for values that go into a `Store::query` SQL predicate.
 //!
-//! `predicate` milik `Store::query` adalah SQL mentah yang dipercaya, bukan
-//! parameter terikat. Setiap id yang berasal dari luar harus lewat gerbang ini
-//! sebelum diinterpolasi.
+//! `Store::query`'s `predicate` is trusted raw SQL, not a bound parameter. Every
+//! id that originates outside this crate must pass through this gate before
+//! being interpolated.
 
-/// Id yang aman diinterpolasi: tidak kosong, maksimal 64 karakter, dan hanya
-/// alfanumerik ASCII, `_`, atau `-`.
+/// An id safe to interpolate: non-empty, at most 64 characters, and only ASCII
+/// alphanumerics, `_`, or `-`.
 pub(crate) fn safe_sql_id(v: &str) -> bool {
     !v.is_empty()
         && v.len() <= 64

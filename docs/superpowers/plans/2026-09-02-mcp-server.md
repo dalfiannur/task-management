@@ -10,6 +10,8 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-02-mcp-server-design.md`
 
+**Konvensi bahasa:** komentar di dalam blok kode (```rust dan ```typescript) ditulis dalam bahasa Inggris, mengikuti konvensi source code yang sudah ada — teks penjelasan rencana ini sendiri tetap bahasa Indonesia.
+
 ---
 
 ## File Structure
@@ -120,14 +122,14 @@ mod tests {
     #[test]
     fn preview_is_last_four_chars() {
         assert_eq!(preview_of("sjw_pat_00ff1a2b"), "1a2b");
-        assert_eq!(preview_of("ab"), "ab"); // lebih pendek dari 4 → apa adanya
+        assert_eq!(preview_of("ab"), "ab"); // shorter than 4 → returned as-is
     }
 
     #[test]
     fn garbage_is_not_a_token() {
         assert!(!looks_like_token("hello"));
         assert!(!looks_like_token(&"sjw_pat_".repeat(9)));
-        // Benar panjangnya, tapi ada karakter non-hex.
+        // Right length, but has a non-hex character.
         let bad = format!("{TOKEN_PREFIX}{}", "z".repeat(64));
         assert!(!looks_like_token(&bad));
     }
@@ -157,20 +159,20 @@ Expected: FAIL kompilasi — `cannot find function generate_token in this scope`
 Sisipkan di atas blok `#[cfg(test)]` pada `crates/domain/src/token.rs`:
 
 ```rust
-//! Personal access token (PAT) untuk endpoint MCP: komponen ECS + aturan murni.
+//! Personal access token (PAT) for the MCP endpoint: ECS components + pure rules.
 //!
-//! Design note: rahasia disimpan sebagai digest **SHA-256, bukan Argon2**. Sebuah
-//! PAT membawa entropi 256 bit sehingga tidak brute-force-able seperti password
-//! manusia, sementara Argon2 akan menambah ~50-100 ms pada *setiap* tool call MCP.
-//! Hashing password tetap di `user::UserPassword`.
+//! Design note: the secret is stored as a **SHA-256 digest, not Argon2**. A PAT
+//! carries 256 bits of entropy so it isn't brute-force-able like a human
+//! password, while Argon2 would add ~50-100 ms to *every* MCP tool call.
+//! Password hashing stays on `user::UserPassword`.
 
 use arke_postgres::PgComponent;
 
-/// Awalan setiap token yang kita terbitkan, supaya string yang bocor mudah di-grep.
+/// Prefix of every token we issue, so a leaked string is easy to grep for.
 pub const TOKEN_PREFIX: &str = "sjw_pat_";
 
-/// Rahasia opaque, hanya disimpan sebagai digest. `preview` adalah 4 karakter
-/// terakhir plaintext — satu-satunya bagian yang boleh ditampilkan lagi oleh UI.
+/// Opaque secret, stored only as a digest. `preview` is the plaintext's last 4
+/// characters — the only part the UI is ever allowed to show again.
 #[derive(PgComponent, Debug, Clone)]
 pub struct TokenSecret {
     #[pg(index, unique)]
@@ -178,7 +180,7 @@ pub struct TokenSecret {
     pub preview: String,
 }
 
-/// Pemilik token. Diindeks karena setiap pembacaan daftar difilter dengannya.
+/// The token's owner. Indexed because every list read filters by it.
 #[derive(PgComponent, Debug, Clone)]
 pub struct TokenOwner {
     #[pg(index)]
@@ -189,7 +191,7 @@ pub struct TokenOwner {
 pub struct TokenInfo {
     pub name: String,
     pub created_at: String,
-    /// RFC3339. `None` = tidak pernah kedaluwarsa (`expires_in_days = 0`).
+    /// RFC3339. `None` = never expires (`expires_in_days = 0`).
     pub expires_at: Option<String>,
 }
 
@@ -206,7 +208,7 @@ fn to_hex(bytes: &[u8]) -> String {
     })
 }
 
-/// Terbitkan token baru: `sjw_pat_` + 32 byte acak dalam hex.
+/// Issue a new token: `sjw_pat_` + 32 random bytes in hex.
 pub fn generate_token() -> String {
     use rand::RngCore;
     let mut bytes = [0u8; 32];
@@ -214,34 +216,34 @@ pub fn generate_token() -> String {
     format!("{TOKEN_PREFIX}{}", to_hex(&bytes))
 }
 
-/// Digest yang disimpan. Deterministik — pencarian token adalah lookup by hash.
+/// The digest that gets stored. Deterministic — a token lookup is a lookup by hash.
 pub fn hash_token(token: &str) -> String {
     use sha2::{Digest, Sha256};
     to_hex(&Sha256::digest(token.as_bytes()))
 }
 
-/// 4 karakter terakhir — satu-satunya sisa plaintext yang boleh dilihat lagi.
+/// Last 4 characters — the only plaintext remnant ever allowed to be seen again.
 pub fn preview_of(token: &str) -> String {
     let n = token.chars().count();
     token.chars().skip(n.saturating_sub(4)).collect()
 }
 
-/// Bentuknya mustahil diterbitkan oleh kita → tolak sebelum menyentuh database.
+/// Shape we could never have issued → reject before ever touching the database.
 ///
-/// Ini juga yang membuat `hash_token` aman dipakai membangun predikat SQL:
-/// nilainya selalu digest hex 64 karakter hasil hitungan kita sendiri, tidak
-/// pernah teks mentah dari user.
+/// This is also what makes `hash_token` safe to use in building a SQL
+/// predicate: its value is always a 64-character hex digest from our own
+/// computation, never raw text from the user.
 pub fn looks_like_token(s: &str) -> bool {
     s.len() == TOKEN_PREFIX.len() + 64
         && s.starts_with(TOKEN_PREFIX)
         && s[TOKEN_PREFIX.len()..].bytes().all(|b| b.is_ascii_hexdigit())
 }
 
-/// Sudah lewat `expires_at`? `None` = tanpa kedaluwarsa.
+/// Past `expires_at` already? `None` = never expires.
 ///
-/// Membandingkan string RFC3339 UTC secara leksikografis — urutan leksikalnya
-/// sama dengan urutan waktu selama kedua sisi diformat oleh `now_iso()` di
-/// transport. Pola yang sama dipakai `task::dates_ok`.
+/// Compares RFC3339 UTC strings lexicographically — that lexical order matches
+/// time order as long as both sides are formatted by transport's `now_iso()`.
+/// `task::dates_ok` uses the same pattern.
 pub fn is_expired(expires_at: Option<&str>, now: &str) -> bool {
     match expires_at {
         None => false,
@@ -255,7 +257,7 @@ pub fn is_expired(expires_at: Option<&str>, now: &str) -> bool {
 Di `crates/domain/src/lib.rs`, tambahkan `pub mod token;` pada daftar modul (urut alfabet, setelah `pub mod task;`), lalu di ujung `register_all` — setelah blok `// Activity.` — tambahkan:
 
 ```rust
-    // Access tokens (PAT untuk MCP).
+    // Access tokens (PAT for MCP).
     pg.register::<token::TokenSecret>();
     pg.register::<token::TokenOwner>();
     pg.register::<token::TokenInfo>();
@@ -372,8 +374,8 @@ git commit -m "feat(proto): add AccessTokenService contract"
 Buat `apps/backend-rs/crates/transport/tests/tokens_flow.rs`. Pola setup-nya menyalin `comment_flow.rs` — dilewati diam-diam bila `DATABASE_URL` tidak diset, dan memakai id unik supaya rerun tetap terisolasi:
 
 ```rust
-//! End-to-end AccessTokenService lewat router Connect asli + Postgres.
-//! Dilewati kecuali `DATABASE_URL` diset. Id unik agar rerun tetap terisolasi.
+//! End-to-end AccessTokenService through the real Connect router + Postgres.
+//! Skipped unless `DATABASE_URL` is set. Ids are unique so reruns stay isolated.
 
 use std::sync::Arc;
 
@@ -459,7 +461,7 @@ async fn create_list_revoke_round_trip() {
     assert_eq!(st, StatusCode::OK);
     let rows = listed["tokens"].as_array().unwrap();
     assert_eq!(rows.len(), 1);
-    // Plaintext tidak pernah muncul lagi setelah pembuatan.
+    // The plaintext never appears again after creation.
     assert!(rows[0].get("token").is_none());
 
     let (st, revoked) = call(
@@ -472,8 +474,8 @@ async fn create_list_revoke_round_trip() {
     assert_eq!(st, StatusCode::OK, "{revoked:?}");
 
     let (_, after) = call(&router, &format!("{TOKENS}/ListTokens"), Some(&jwt), json!({})).await;
-    // Proto3 JSON menghilangkan repeated field yang kosong, bukan mengirim `[]`,
-    // jadi "tidak ada key" dan "list kosong" adalah hal yang sama di sini.
+    // proto3 JSON omits a repeated field entirely when it's empty, rather than
+    // sending `[]`, so "no key" and "empty list" are the same thing here.
     assert!(after["tokens"].as_array().is_none_or(|a| a.is_empty()));
 }
 
@@ -493,13 +495,13 @@ async fn tokens_are_isolated_between_users() {
     let id = created["accessToken"]["id"].as_str().unwrap().to_string();
     assert!(created["accessToken"]["expiresAt"].is_string());
 
-    // User lain tidak melihatnya…
+    // The other user doesn't see it…
     let (_, listed) = call(&router, &format!("{TOKENS}/ListTokens"), Some(&token(&other)), json!({})).await;
     assert!(listed["tokens"]
         .as_array()
         .is_none_or(|a| a.iter().all(|t| t["id"] != id.as_str())));
 
-    // …dan tidak bisa mencabutnya.
+    // …and can't revoke it.
     let (st, _) = call(
         &router,
         &format!("{TOKENS}/RevokeToken"),
@@ -528,8 +530,8 @@ async fn empty_name_is_rejected() {
         json!({ "name": "", "expiresInDays": 0 }),
     )
     .await;
-    // Nama kosong ditolak; `expires_in_days` bertipe uint32 sehingga nilai
-    // negatif sudah mustahil sampai ke sini lewat proto.
+    // An empty name is rejected; `expires_in_days` is a uint32, so a negative
+    // value can never reach here through proto.
     assert_eq!(st, StatusCode::BAD_REQUEST);
 }
 ```
@@ -544,8 +546,8 @@ Expected: FAIL kompilasi — `cannot find function token_router in crate transpo
 Buat `apps/backend-rs/crates/transport/src/tokens/record.rs`:
 
 ```rust
-//! Pembacaan PAT dari store. Satu `TokenRecord` pipih agar handler dan crate
-//! `mcp` tidak perlu menyentuh komponen ECS satu per satu.
+//! Reading PATs from the store. A single flat `TokenRecord` so handlers and
+//! the `mcp` crate don't have to touch ECS components one by one.
 
 use arke::{Entity, World};
 use domain::token::{TokenInfo, TokenOwner, TokenSecret, TokenUsage};
@@ -579,14 +581,14 @@ fn read(world: &World, e: Entity, pid: i64) -> Option<TokenRecord> {
     })
 }
 
-/// Token milik satu user, terbaru dulu.
+/// One user's tokens, newest first.
 ///
-/// Filter di SQL, bukan di Rust. `query(None, ..)` akan menghidrasi setiap token
-/// milik *semua* user sebelum filter kepemilikan sempat jalan — dan menghidrasi
-/// satu pid berharga satu query keberadaan plus satu query per tipe komponen
-/// terdaftar. Pelajaran itu sudah dibayar sekali dan dicatat lengkap dengan
-/// angkanya di `activity::record::activity_for_project`; `TokenOwner.user_id`
-/// sudah diindeks persis untuk query ini.
+/// Filter in SQL, not in Rust. `query(None, ..)` would hydrate every token
+/// belonging to *every* user before the ownership filter ever runs — and
+/// hydrating one pid costs one existence query plus one query per registered
+/// component type. That lesson was already paid for once and written up in
+/// full, numbers included, at `activity::record::activity_for_project`;
+/// `TokenOwner.user_id` is indexed exactly for this query.
 pub async fn tokens_for_owner(store: &Store, user_id: &str) -> anyhow::Result<Vec<TokenRecord>> {
     if !crate::sql::safe_sql_id(user_id) {
         return Ok(Vec::new());
@@ -617,11 +619,11 @@ pub async fn load_token(store: &Store, pid: i64) -> anyhow::Result<Option<TokenR
     Ok(v.pop())
 }
 
-/// Lookup by digest — jalur panas setiap tool call MCP.
+/// Lookup by digest — the hot path for every MCP tool call.
 ///
-/// Interpolasi ke predikat SQL aman di sini: `hash` selalu digest hex 64
-/// karakter hasil `domain::token::hash_token`, bukan teks mentah dari user
-/// (pemanggil wajib menyaring lewat `looks_like_token` lebih dulu).
+/// Interpolating into the SQL predicate is safe here: `hash` is always a
+/// 64-character hex digest produced by `domain::token::hash_token`, never raw
+/// user text (callers must screen through `looks_like_token` first).
 pub async fn find_by_hash(store: &Store, hash: &str) -> anyhow::Result<Option<TokenRecord>> {
     let pred = format!("hash = '{hash}'");
     let mut v = store
@@ -641,9 +643,10 @@ pub async fn find_by_hash(store: &Store, hash: &str) -> anyhow::Result<Option<To
 Buat `apps/backend-rs/crates/transport/src/tokens/token_service.rs`:
 
 ```rust
-//! AccessTokenService: terbitkan / daftar / cabut PAT. Seluruhnya self-scoped —
-//! pemilik selalu diambil dari JWT, jadi admin pun tidak bisa menyentuh token
-//! milik orang lain. Plaintext hanya ada satu kali, di respons CreateToken.
+//! AccessTokenService: issue / list / revoke PATs. Entirely self-scoped —
+//! the owner is always taken from the JWT, so even an admin can't touch
+//! someone else's token. The plaintext exists only once, in the CreateToken
+//! response.
 
 use std::sync::Arc;
 
@@ -669,11 +672,12 @@ fn require_auth(user: Option<Extension<AuthUser>>) -> Result<AuthUser, ConnectEr
         .ok_or_else(|| ConnectError::new_unauthenticated("authentication required"))
 }
 
-/// Detik bulat, sengaja. `Rfc3339` menulis pecahan detik hanya bila nanodetiknya
-/// bukan nol, dan memotong nol di belakangnya — sehingga lebar string berubah-ubah.
-/// `domain::token::is_expired` membandingkan string ini secara leksikografis, dan
-/// perbandingan itu baru sepadan dengan urutan waktu kalau semua sisi berpresisi
-/// sama. Memaku presisi di sini yang membuat prasyarat itu benar-benar berlaku.
+/// Whole seconds, deliberately. `Rfc3339` only writes a fractional-second part
+/// when the nanoseconds aren't zero, and trims trailing zeros when they aren't
+/// — so the string width varies. `domain::token::is_expired` compares these
+/// strings lexicographically, and that comparison only tracks time order when
+/// every side is at the same precision. Pinning the precision here is what
+/// makes that precondition actually hold.
 fn now_iso() -> String {
     use time::format_description::well_known::Rfc3339;
     let now = time::OffsetDateTime::now_utc();
@@ -683,20 +687,20 @@ fn now_iso() -> String {
         .unwrap_or_default()
 }
 
-/// Batas atas yang disengaja. `OffsetDateTime + Duration` **panic** ketika
-/// hasilnya keluar dari rentang yang bisa diwakili, sementara `expires_in_days`
-/// datang mentah dari client sebagai `uint32` — tanpa batas ini satu request
-/// dengan angka besar menjatuhkan handler alih-alih dibalas `invalid_argument`.
-pub(crate) const MAX_EXPIRY_DAYS: u32 = 3650; // 10 tahun
+/// A deliberate upper bound. `OffsetDateTime + Duration` **panics** when the
+/// result falls outside the representable range, and `expires_in_days` arrives
+/// raw from the client as a `uint32` — without this bound a single request with
+/// a huge number crashes the handler instead of getting an `invalid_argument`.
+pub(crate) const MAX_EXPIRY_DAYS: u32 = 3650; // 10 years
 
-/// `expires_in_days` → `expires_at` RFC3339. 0 = tanpa kedaluwarsa.
+/// `expires_in_days` → `expires_at` RFC3339. 0 = never expires.
 fn expiry_from_days(days: u32) -> Option<String> {
     use time::format_description::well_known::Rfc3339;
     if days == 0 {
         return None;
     }
     let at = time::OffsetDateTime::now_utc() + time::Duration::days(days as i64);
-    // Presisi dipaku sama dengan `now_iso` — lihat alasannya di sana.
+    // Precision pinned the same way as `now_iso` — see the reasoning there.
     at.replace_nanosecond(0).unwrap_or(at).format(&Rfc3339).ok()
 }
 
@@ -773,8 +777,9 @@ async fn list_tokens(
     }))
 }
 
-/// Cabut = hapus entity. Token milik orang lain dibalas `not_found`, bukan
-/// `permission_denied`: membedakan keduanya akan membocorkan id mana yang ada.
+/// Revoke = delete the entity. A token belonging to someone else answers
+/// `not_found`, not `permission_denied`: distinguishing the two would leak
+/// which ids exist.
 async fn revoke_token(
     Extension(store): Extension<Arc<Store>>,
     user: Option<Extension<AuthUser>>,
@@ -795,7 +800,7 @@ async fn revoke_token(
     Ok(ConnectResponse::new(pb::RevokeTokenResponse { ok: true }))
 }
 
-/// AccessTokenService router; menyuntikkan Store sebagai request extension.
+/// AccessTokenService router; injects the Store as a request extension.
 pub fn token_router(store: Arc<Store>) -> axum::Router<()> {
     type S = Extension<Arc<Store>>;
     type A = Option<Extension<AuthUser>>;
@@ -813,14 +818,14 @@ Karena `tokens/record.rs` jadi pemakai keduanya, **pindahkan — jangan salin** 
 modul bersama `apps/backend-rs/crates/transport/src/sql.rs`:
 
 ```rust
-//! Penjaga untuk nilai yang ikut masuk ke predikat SQL `Store::query`.
+//! Guard for values that go into a `Store::query` SQL predicate.
 //!
-//! `predicate` milik `Store::query` adalah SQL mentah yang dipercaya, bukan
-//! parameter terikat. Setiap id yang berasal dari luar harus lewat gerbang ini
-//! sebelum diinterpolasi.
+//! `Store::query`'s `predicate` is trusted raw SQL, not a bound parameter.
+//! Every id that originates outside this crate must pass through this gate
+//! before being interpolated.
 
-/// Id yang aman diinterpolasi: tidak kosong, maksimal 64 karakter, dan hanya
-/// alfanumerik ASCII, `_`, atau `-`.
+/// An id safe to interpolate: non-empty, at most 64 characters, and only
+/// ASCII alphanumerics, `_`, or `-`.
 pub(crate) fn safe_sql_id(v: &str) -> bool {
     !v.is_empty()
         && v.len() <= 64
@@ -837,7 +842,7 @@ tidak mengubah perilaku.
 Buat `apps/backend-rs/crates/transport/src/tokens/mod.rs`:
 
 ```rust
-//! Access tokens (PAT) untuk endpoint MCP. Lihat
+//! Access tokens (PAT) for the MCP endpoint. See
 //! docs/superpowers/specs/2026-09-02-mcp-server-design.md.
 
 pub(crate) mod record;
@@ -898,7 +903,7 @@ async fn get_task(
 Sesudah:
 
 ```rust
-/// Core: satu task by id, member-gated lewat module → project.
+/// Core: a single task by id, member-gated through module → project.
 pub async fn get_task_core(
     store: &Store,
     auth: &AuthUser,
@@ -948,7 +953,7 @@ pub async fn create_task_core(
     notifier: Option<&Arc<Notifier>>,
     auth: &AuthUser,
     r: pb::CreateTaskRequest,
-) -> Result<pb::Task, ConnectError> { /* badan create_task, tanpa baris extractor */ }
+) -> Result<pb::Task, ConnectError> { /* create_task's body, minus the extractor lines */ }
 
 pub async fn update_task_core(
     store: &Store,
@@ -1000,13 +1005,13 @@ permukaan publiknya tetap persis yang `api.rs` sebutkan.
 Buat `apps/backend-rs/crates/transport/src/api.rs`:
 
 ```rust
-//! Permukaan service in-process: fungsi yang sama persis dengan yang dipanggil
-//! handler Connect, tanpa extractor axum.
+//! In-process service surface: the exact same functions the Connect handlers
+//! call, minus the axum extractors.
 //!
-//! Ada supaya crate `mcp` bisa memakai ulang logika bisnis apa adanya —
-//! member-gating, validasi, activity record, notifikasi, dan search index ikut
-//! serta. Menduplikasi aturan itu di sisi MCP adalah cara paling cepat membuat
-//! AI dan UI berbeda perilaku secara diam-diam.
+//! Exists so the `mcp` crate can reuse the business logic as-is —
+//! member-gating, validation, activity recording, notifications, and search
+//! indexing all come along for the ride. Duplicating those rules on the MCP
+//! side is the fastest way to make AI and UI behavior silently diverge.
 
 pub use crate::work::task_service::{
     create_task_core, get_task_core, list_tasks_core, move_task_core, update_task_core,
@@ -1199,8 +1204,9 @@ Crate ini otomatis ikut workspace (`members = ["crates/*"]`).
 `apps/backend-rs/crates/mcp/tests/mcp_flow.rs`:
 
 ```rust
-//! End-to-end endpoint MCP. Handshake tidak menyentuh database, jadi bagian itu
-//! jalan tanpa `DATABASE_URL`; test yang butuh store dilewati diam-diam.
+//! End-to-end MCP endpoint. The handshake doesn't touch the database, so that
+//! part runs without `DATABASE_URL`; tests that need the store are skipped
+//! silently.
 
 use axum::body::{to_bytes, Body};
 use axum::extract::Request;
@@ -1223,7 +1229,7 @@ async fn router_and_store() -> Option<(Router, Arc<persistence::Store>)> {
     Some((router, store))
 }
 
-/// Test yang tidak menyentuh store hanya butuh router-nya.
+/// Tests that don't touch the store only need the router.
 async fn router() -> Option<Router> {
     Some(router_and_store().await?.0)
 }
@@ -1257,8 +1263,8 @@ async fn initialize_returns_capabilities() {
         }),
     )
     .await;
-    // Handshake tidak butuh kredensial — client harus bisa menemukan server
-    // sebelum user menempelkan token.
+    // The handshake needs no credentials — a client must be able to discover
+    // the server before the user pastes in a token.
     assert_eq!(st, StatusCode::OK, "{body:?}");
     assert_eq!(body["jsonrpc"], "2.0");
     assert_eq!(body["id"], 1);
@@ -1328,18 +1334,18 @@ Expected: FAIL kompilasi — crate `mcp` belum punya `mcp_router`.
 `apps/backend-rs/crates/mcp/src/protocol.rs`:
 
 ```rust
-//! Envelope JSON-RPC 2.0 untuk MCP di atas Streamable HTTP.
+//! JSON-RPC 2.0 envelope for MCP over Streamable HTTP.
 //!
-//! Stateless: tidak ada `Mcp-Session-Id`. Setiap request membawa PAT-nya
-//! sendiri, jadi tidak ada state sesi yang perlu dipegang dan instance mana pun
-//! boleh melayani request mana pun.
+//! Stateless: there's no `Mcp-Session-Id`. Every request carries its own PAT,
+//! so there's no session state to hold and any instance may serve any
+//! request.
 
 use serde::Deserialize;
 use serde_json::{json, Value};
 
-/// Versi spec MCP yang kita layani, terbaru dulu. Bila client meminta salah
-/// satu di antaranya kita balas persis yang diminta; selain itu kita balas yang
-/// pertama dan client memutuskan apakah masih mau lanjut.
+/// MCP spec versions we serve, newest first. If the client requests one of
+/// these we answer with exactly that one; otherwise we answer with the first
+/// and the client decides whether it still wants to proceed.
 pub const SUPPORTED_VERSIONS: [&str; 2] = ["2025-06-18", "2025-03-26"];
 
 pub const PARSE_ERROR: i64 = -32700;
@@ -1363,8 +1369,8 @@ pub fn error(id: Option<Value>, code: i64, message: &str) -> Value {
     json!({ "jsonrpc": "2.0", "id": id, "error": { "code": code, "message": message } })
 }
 
-/// Balasan `initialize`. Kita hanya mengiklankan `tools` — v1 tidak punya
-/// `resources`, `prompts`, maupun pesan server-initiated.
+/// The `initialize` reply. We only advertise `tools` — v1 has no `resources`,
+/// `prompts`, or server-initiated messages.
 pub fn initialize_result(params: &Value) -> Value {
     let requested = params
         .get("protocolVersion")
@@ -1405,11 +1411,12 @@ mod tests {
 `apps/backend-rs/crates/mcp/src/lib.rs`:
 
 ```rust
-//! Endpoint MCP: satu route Streamable HTTP yang mengekspos tool portal ke AI
-//! client milik user, diautentikasi dengan personal access token.
+//! MCP endpoint: a single Streamable HTTP route that exposes the portal's
+//! tools to a user's own AI client, authenticated with a personal access
+//! token.
 //!
-//! Dipasang di `/mcp` pada server; publik lewat `/api/tasks-rs/mcp` (proxy
-//! membuang prefix `/api/tasks-rs`, sama seperti untuk route Connect).
+//! Mounted at `/mcp` on the server; public at `/api/tasks-rs/mcp` (the proxy
+//! strips the `/api/tasks-rs` prefix, same as for Connect routes).
 
 mod protocol;
 
@@ -1432,16 +1439,16 @@ pub struct McpState {
     pub notifier: Arc<Notifier>,
 }
 
-/// Router endpoint MCP. Pasang dengan `Router::new().nest("/mcp", mcp_router(..))`.
+/// MCP endpoint router. Mount with `Router::new().nest("/mcp", mcp_router(..))`.
 pub fn mcp_router(store: Arc<Store>, notifier: Arc<Notifier>) -> axum::Router<()> {
     axum::Router::new()
         .route("/", post(handle_post).get(handle_get))
         .layer(Extension(McpState { store, notifier }))
 }
 
-/// GET dipakai spec untuk membuka stream SSE server→client. v1 tidak punya
-/// pesan server-initiated, jadi menolaknya lebih jujur daripada membuka stream
-/// yang tidak akan pernah mengirim apa pun.
+/// GET is used by the spec to open a server→client SSE stream. v1 has no
+/// server-initiated messages, so refusing it is more honest than opening a
+/// stream that will never send anything.
 async fn handle_get() -> Response {
     StatusCode::METHOD_NOT_ALLOWED.into_response()
 }
@@ -1454,7 +1461,7 @@ async fn handle_post(
         return Json(error(None, PARSE_ERROR, "invalid JSON-RPC request")).into_response();
     };
 
-    // Notifikasi (tanpa `id`) tidak pernah dibalas — spec meminta 202 kosong.
+    // A notification (no `id`) is never answered — the spec calls for an empty 202.
     let is_notification = rpc.id.is_none();
 
     let response: Value = match rpc.method.as_str() {
@@ -1510,8 +1517,9 @@ async fn tools_list_without_token_is_401() {
         ))
         .unwrap();
     let resp = router.oneshot(req).await.unwrap();
-    // Kredensial salah dibedakan dari permintaan salah: 401 + WWW-Authenticate,
-    // bukan error JSON-RPC, supaya client tahu ini soal token.
+    // Bad credentials are distinguished from a bad request: 401 +
+    // WWW-Authenticate, not a JSON-RPC error, so the client knows it's a
+    // token problem.
     assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
     assert!(resp.headers().get("www-authenticate").is_some());
 }
@@ -1537,12 +1545,12 @@ Expected: FAIL — `tools/list` masih dibalas `-32601` dengan status 200.
 Di `crates/transport/src/users/record.rs`, tambahkan:
 
 ```rust
-/// `AuthUser` yang akan dilihat handler Connect untuk user ini — dipakai jalur
-/// PAT, yang membawa id pemilik tetapi bukan permission-nya.
+/// The `AuthUser` a Connect handler would see for this user — used by the PAT
+/// path, which carries the owner's id but not their permissions.
 ///
-/// Permission dibaca ulang setiap kali, bukan dibekukan ke dalam token: itulah
-/// yang membuat token otomatis kehilangan hak begitu user di-suspend atau
-/// dicabut status adminnya.
+/// Permissions are read fresh each time rather than frozen into the token:
+/// that's what makes a token automatically lose its rights the moment the
+/// user is suspended or has their admin status revoked.
 pub async fn auth_user_for(store: &Store, user_id: &str) -> anyhow::Result<Option<AuthUser>> {
     let Ok(pid) = user_id.parse::<i64>() else {
         return Ok(None);
@@ -1576,27 +1584,29 @@ Pastikan `mod users` / `mod tokens` mengekspos `pub(crate) mod record;` dan item
 `apps/backend-rs/crates/mcp/src/pat.rs`:
 
 ```rust
-//! Verifikasi personal access token untuk endpoint MCP.
+//! Verifying personal access tokens for the MCP endpoint.
 //!
-//! Jalur ini sengaja terpisah dari `auth_layer` milik aplikasi: JWT sesi browser
-//! tidak berlaku di sini, dan PAT tidak berlaku di Connect API. Dua kredensial
-//! itu tidak pernah bersinggungan, jadi PAT yang bocor hanya membuka tool MCP.
+//! This path is deliberately separate from the application's `auth_layer`:
+//! the browser session JWT doesn't work here, and a PAT doesn't work against
+//! the Connect API. The two credentials never cross paths, so a leaked PAT
+//! only opens up the MCP tools.
 
 use auth::AuthUser;
 use domain::token::{hash_token, is_expired, looks_like_token};
 use persistence::Store;
 use transport::api::{auth_user_for, find_by_hash, TokenRecord};
 
-/// Sengaja satu varian saja: membedakan "token tidak ada" dari "token
-/// kedaluwarsa" di respons akan memberi tahu penebak mana yang hampir benar.
+/// Deliberately a single variant: distinguishing "token doesn't exist" from
+/// "token expired" in the response would tell a guesser which one is closer.
 #[derive(Debug)]
 pub struct Unauthorized;
 
-/// Detik bulat, sengaja. `Rfc3339` menulis pecahan detik hanya bila nanodetiknya
-/// bukan nol, dan memotong nol di belakangnya — sehingga lebar string berubah-ubah.
-/// `domain::token::is_expired` membandingkan string ini secara leksikografis, dan
-/// perbandingan itu baru sepadan dengan urutan waktu kalau semua sisi berpresisi
-/// sama. Memaku presisi di sini yang membuat prasyarat itu benar-benar berlaku.
+/// Whole seconds, deliberately. `Rfc3339` only writes a fractional-second part
+/// when the nanoseconds aren't zero, and trims trailing zeros when they aren't
+/// — so the string width varies. `domain::token::is_expired` compares these
+/// strings lexicographically, and that comparison only tracks time order when
+/// every side is at the same precision. Pinning the precision here is what
+/// makes that precondition actually hold.
 fn now_iso() -> String {
     use time::format_description::well_known::Rfc3339;
     let now = time::OffsetDateTime::now_utc();
@@ -1606,7 +1616,7 @@ fn now_iso() -> String {
         .unwrap_or_default()
 }
 
-/// Header `Authorization` → user portal, atau `Unauthorized`.
+/// `Authorization` header → the portal user, or `Unauthorized`.
 pub async fn authenticate(store: &Store, header: Option<&str>) -> Result<AuthUser, Unauthorized> {
     let raw = header.ok_or(Unauthorized)?;
     let token = raw
@@ -1614,9 +1624,9 @@ pub async fn authenticate(store: &Store, header: Option<&str>) -> Result<AuthUse
         .or_else(|| raw.strip_prefix("bearer "))
         .ok_or(Unauthorized)?
         .trim();
-    // Saring bentuknya lebih dulu: string yang mustahil kita terbitkan tidak
-    // pernah sampai ke database, dan itu juga yang membuat digest aman dipakai
-    // membangun predikat SQL di `find_by_hash`.
+    // Screen the shape first: a string we could never have issued never
+    // reaches the database, and that's also what makes the digest safe to use
+    // in building the SQL predicate in `find_by_hash`.
     if !looks_like_token(token) {
         return Err(Unauthorized);
     }
@@ -1636,11 +1646,11 @@ pub async fn authenticate(store: &Store, header: Option<&str>) -> Result<AuthUse
     Ok(user)
 }
 
-/// Catat pemakaian, tapi paling sering satu jam sekali.
+/// Record usage, but at most once an hour.
 ///
-/// Tanpa throttle ini setiap tool call — dan satu percakapan AI bisa memicu
-/// belasan — akan menulis satu baris ke database hanya untuk memperbarui
-/// stempel waktu yang dibaca manusia sesekali.
+/// Without this throttle, every tool call — and a single AI conversation can
+/// trigger a dozen — would write a database row just to refresh a timestamp
+/// that a human reads only occasionally.
 async fn touch(store: &Store, rec: &TokenRecord, now: &str) {
     use time::format_description::well_known::Rfc3339;
     let at = time::OffsetDateTime::now_utc() - time::Duration::hours(1);
@@ -1670,7 +1680,7 @@ async fn touch(store: &Store, rec: &TokenRecord, now: &str) {
         })
         .await
     {
-        // Gagal mencatat pemakaian tidak boleh menggagalkan tool call-nya.
+        // Failing to record usage must not fail the tool call itself.
         tracing::warn!(error = %e, token = rec.pid, "failed to record token usage");
     }
 }
@@ -1691,8 +1701,9 @@ async fn handle_post(
     };
     let is_notification = rpc.id.is_none();
 
-    // `initialize`/`ping` sengaja terbuka: client harus bisa menyelesaikan
-    // handshake dan menampilkan nama server sebelum user menempelkan token.
+    // `initialize`/`ping` are deliberately open: a client must be able to
+    // finish the handshake and display the server's name before the user
+    // pastes in a token.
     let needs_auth = !matches!(rpc.method.as_str(), "initialize" | "ping")
         && !rpc.method.starts_with("notifications/");
     let auth = if needs_auth {
@@ -1713,9 +1724,9 @@ async fn handle_post(
     } else {
         None
     };
-    let _ = &auth; // dipakai mulai Task 9
+    let _ = &auth; // used starting from Task 9
 
-    let response: Value = match rpc.method.as_str() { /* seperti Task 7 */ };
+    let response: Value = match rpc.method.as_str() { /* same as Task 7 */ };
 
     if is_notification {
         return StatusCode::ACCEPTED.into_response();
@@ -1754,8 +1765,8 @@ git commit -m "feat(mcp): authenticate the MCP endpoint with personal access tok
 Tambahkan di `mcp_flow.rs` sebuah helper untuk menerbitkan PAT langsung ke store, lalu test-nya:
 
 ```rust
-/// Terbitkan PAT untuk seorang user langsung lewat store — jalur RPC-nya sudah
-/// diuji terpisah di `transport::tokens_flow`.
+/// Issue a PAT for a user directly through the store — its RPC path is
+/// already tested separately in `transport::tokens_flow`.
 async fn issue_token(store: &persistence::Store, user_id: &str) -> String {
     use domain::token::{generate_token, hash_token, preview_of, TokenInfo, TokenOwner, TokenSecret, TokenUsage};
     let t = generate_token();
@@ -1836,7 +1847,7 @@ async fn business_failure_is_an_error_result_not_a_protocol_error() {
 `router_and_store()` sudah ada sejak Task 7. Tambahkan helper penyemai user aktif:
 
 ```rust
-/// User aktif minimal — `auth_user_for` menolak apa pun yang bukan `active`.
+/// A minimal active user — `auth_user_for` rejects anything that isn't `active`.
 async fn seed_active_user(store: &persistence::Store) -> String {
     use domain::user::{UserPassword, UserPhone, UserProfile, UserStatusComponent};
     let uniq = std::time::SystemTime::now()
@@ -1872,12 +1883,12 @@ Expected: FAIL — `tools/list` belum ada.
 `apps/backend-rs/crates/mcp/src/tools/mod.rs`:
 
 ```rust
-//! Registry tool MCP: metadata untuk `tools/list` dan dispatch untuk
+//! MCP tool registry: metadata for `tools/list` and dispatch for
 //! `tools/call`.
 //!
-//! Setiap tool memanggil core fn yang sama dengan handler Connect
-//! (`transport::api`), jadi member-gating, validasi, activity record,
-//! notifikasi, dan search index ikut serta tanpa aturan kembar.
+//! Every tool calls the same core fn as the Connect handler (`transport::api`),
+//! so member-gating, validation, activity recording, notifications, and search
+//! indexing all come along without duplicated rules.
 
 pub mod comments;
 pub mod discovery;
@@ -1892,7 +1903,7 @@ use persistence::Store;
 use serde_json::{json, Value};
 use transport::Notifier;
 
-/// Apa yang dibutuhkan sebuah tool untuk berjalan.
+/// What a tool needs in order to run.
 pub struct Ctx {
     pub store: Arc<Store>,
     pub notifier: Arc<Notifier>,
@@ -1900,17 +1911,18 @@ pub struct Ctx {
 }
 
 pub enum ToolError {
-    /// Permintaannya sah tapi ditolak aturan bisnis → tool result `isError`,
-    /// karena model bisa membaca alasannya dan mencoba lagi dengan benar.
+    /// The request is well-formed but rejected by a business rule → tool
+    /// result `isError`, since the model can read the reason and retry
+    /// correctly.
     Business(String),
-    /// Argumennya sendiri salah bentuk → error protokol JSON-RPC.
+    /// The arguments themselves are malformed → a JSON-RPC protocol error.
     BadArgs(String),
 }
 
 impl From<ConnectError> for ToolError {
     fn from(e: ConnectError) -> Self {
-        // `message()` adalah kalimat yang ditulis handler untuk manusia; kode
-        // dipakai hanya bila handler tidak menyertakan pesan.
+        // `message()` is the sentence the handler wrote for a human; the code
+        // is used only when the handler didn't include a message.
         ToolError::Business(e.message().unwrap_or(e.code().as_str()).to_string())
     }
 }
@@ -1949,8 +1961,8 @@ pub fn tool_list() -> Value {
     })
 }
 
-/// Jalankan satu tool. `Err(BadArgs)` berarti error protokol; `Err(Business)`
-/// dibungkus pemanggil menjadi tool result ber-`isError`.
+/// Run a single tool. `Err(BadArgs)` means a protocol error; `Err(Business)`
+/// is wrapped by the caller into an `isError` tool result.
 pub async fn dispatch(ctx: &Ctx, name: &str, args: &Value) -> Result<Value, ToolError> {
     match name {
         "list_tasks" => tasks::list_tasks(ctx, args).await,
@@ -1969,9 +1981,9 @@ pub async fn dispatch(ctx: &Ctx, name: &str, args: &Value) -> Result<Value, Tool
     }
 }
 
-/// Hasil tool → `content` MCP. Kita mengirim JSON di dalam satu blok teks:
-/// setiap client menampilkan `text`, sementara struktur JSON-nya tetap terbaca
-/// model.
+/// Tool result → MCP `content`. We send JSON inside a single text block:
+/// every client renders `text`, while the JSON structure stays readable by
+/// the model.
 pub fn ok_content(value: Value) -> Value {
     json!({
         "content": [{ "type": "text", "text": serde_json::to_string_pretty(&value).unwrap_or_default() }],
@@ -1983,7 +1995,7 @@ pub fn error_content(message: &str) -> Value {
     json!({ "content": [{ "type": "text", "text": message }], "isError": true })
 }
 
-// --- Helper argumen, dipakai seluruh modul tool ---
+// --- Argument helpers, used across every tool module ---
 
 pub fn str_arg(args: &Value, key: &str) -> Result<String, ToolError> {
     args.get(key)
@@ -2008,8 +2020,8 @@ pub fn opt_str_list(args: &Value, key: &str) -> Option<Vec<String>> {
     })
 }
 
-/// `limit` yang dipatok: default 50, maksimum 200. Batas ini yang menjaga satu
-/// tool call tidak menelan seluruh konteks client.
+/// A capped `limit`: default 50, maximum 200. This bound is what keeps a
+/// single tool call from swallowing the client's entire context.
 pub const DEFAULT_LIMIT: usize = 50;
 pub const MAX_LIMIT: usize = 200;
 
@@ -2020,7 +2032,7 @@ pub fn limit_arg(args: &Value) -> usize {
         .unwrap_or(DEFAULT_LIMIT)
 }
 
-/// Deskripsi panjang dipotong sebelum dikirim ke model.
+/// Long descriptions are truncated before being sent to the model.
 pub const MAX_DESCRIPTION: usize = 2000;
 
 pub fn truncate(s: &str) -> String {
@@ -2110,9 +2122,9 @@ git commit -m "feat(mcp): add tool registry, tools/list, and tools/call dispatch
 `apps/backend-rs/crates/mcp/src/tools/tasks.rs`:
 
 ```rust
-//! Tool task. Setiap tool memanggil core fn yang sama dengan UI, lalu
-//! memipihkan hasil proto menjadi JSON ramah-model — enum jadi string, dan
-//! deskripsi panjang dipotong.
+//! Task tools. Every tool calls the same core fn as the UI, then flattens the
+//! proto result into model-friendly JSON — enums become strings, and long
+//! descriptions are truncated.
 
 use serde_json::{json, Value};
 use transport::api::{
@@ -2121,8 +2133,9 @@ use transport::api::{
 
 use super::{limit_arg, opt_str, opt_str_list, str_arg, truncate, Ctx, ToolError, ToolMeta};
 
-/// Proto Task → JSON pipih. Nama field `snake_case` supaya sama dengan nama
-/// argumen tool; model tidak perlu menerjemahkan dua konvensi.
+/// Proto Task → flat JSON. `snake_case` field names to match the tool
+/// argument names; the model doesn't need to translate between two
+/// conventions.
 pub(crate) fn flatten(t: &transport::api::work_pb::Task) -> Value {
     json!({
         "id": t.id,
@@ -2195,7 +2208,7 @@ pub const LIST_TASKS: ToolMeta = ToolMeta {
 pub async fn list_tasks(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
     let project_id = opt_str(args, "project_id");
     let module_id = opt_str(args, "module_id");
-    // Tanpa salah satunya, permintaan ini akan memindai seluruh basis data.
+    // Without one of these, this request would scan the entire database.
     if project_id.is_none() && module_id.is_none() {
         return Err(ToolError::BadArgs(
             "either `project_id` or `module_id` is required".into(),
@@ -2321,8 +2334,8 @@ async fn create_then_get_a_task_through_mcp() {
     let Some((router, store)) = router_and_store().await else { return };
     let user = seed_active_user(&store).await;
     let token = issue_token(&store, &user).await;
-    // Project + module disemai lewat core fn transport agar aturan membership
-    // yang sama berlaku; lihat helper `seed_project_and_module` di bawah.
+    // Project + module are seeded through the transport core fn so the same
+    // membership rules apply; see the `seed_project_and_module` helper below.
     let (_project_id, module_id) = seed_project_and_module(&store, &user).await;
 
     let (_, created) = rpc(
@@ -2352,12 +2365,12 @@ async fn create_then_get_a_task_through_mcp() {
     assert_eq!(payload["status"], "todo");
 }
 
-/// Project (dimiliki `user`, dengan `user` sebagai member) + satu module di
-/// dalamnya. Disemai langsung lewat komponen, bukan lewat RPC: alur pembuatan
-/// project sudah diuji di `transport::project_flow`, dan test ini hanya butuh
-/// data yang membuat pemeriksaan membership lolos.
+/// A project (owned by `user`, with `user` as a member) + one module inside
+/// it. Seeded directly through components rather than RPC: the project
+/// creation flow is already tested in `transport::project_flow`, and this
+/// test only needs data that makes the membership check pass.
 ///
-/// Mengembalikan `(project_id, module_id)`.
+/// Returns `(project_id, module_id)`.
 async fn seed_project_and_module(
     store: &persistence::Store,
     user: &str,
@@ -2420,8 +2433,9 @@ git commit -m "feat(mcp): implement the task tools"
 - [ ] **Step 1: Tulis ketiga tool**
 
 ```rust
-//! Tool navigasi: project dan module. Ini yang dipakai model untuk menemukan id
-//! sebelum menyentuh task — tanpa ini `create_task` tidak punya `module_id`.
+//! Navigation tools: project and module. These are what the model uses to
+//! find an id before touching a task — without them, `create_task` has no
+//! `module_id`.
 
 use serde_json::{json, Value};
 use transport::api::{get_project_core, list_modules_core, list_projects_core, project_pb, work_pb};
@@ -2518,7 +2532,7 @@ async fn list_projects_only_shows_projects_the_user_can_see() {
 Tambahkan helper `tools_call` yang membungkus `rpc` dan langsung mem-parse payload JSON di dalam `content[0].text`:
 
 ```rust
-/// Panggil satu tool dan kembalikan (isError, payload JSON hasil parse).
+/// Call a single tool and return (isError, the parsed JSON payload).
 async fn tools_call(router: &Router, token: &str, name: &str, arguments: Value) -> (bool, Value) {
     let (_, body) = rpc(
         router,
@@ -2553,9 +2567,9 @@ git commit -m "feat(mcp): add project and module tools"
 - [ ] **Step 1: Tulis kedua tool**
 
 ```rust
-//! Tool penemuan: pencarian lintas entity dan "apa yang jadi tanggung jawab
-//! saya". Keduanya read-only dan lintas project, jadi keduanya bergantung penuh
-//! pada filter membership di dalam core fn-nya.
+//! Discovery tools: cross-entity search and "what's on my plate". Both are
+//! read-only and cross-project, so both rely entirely on the membership
+//! filter inside their core fn.
 
 use serde_json::{json, Value};
 use transport::api::{dashboard_pb, my_tasks_core, search_core, search_pb};
@@ -2672,8 +2686,8 @@ git commit -m "feat(mcp): add search and my-tasks tools"
 - [ ] **Step 1: Tulis kedua tool**
 
 ```rust
-//! Tool komentar. `add_comment` meneruskan Notifier: komentar yang ditulis AI
-//! memicu notifikasi mention persis seperti komentar yang diketik manusia.
+//! Comment tools. `add_comment` forwards the Notifier: a comment written by
+//! the AI triggers a mention notification exactly like one typed by a human.
 
 use serde_json::{json, Value};
 use transport::api::{comment_pb, create_comment_core, list_comments_core};
@@ -2790,8 +2804,8 @@ Di `apps/backend-rs/crates/app/src/router.rs`, ganti baris terakhir rantai merge
 
 ```rust
         .merge(transport::notification_router(store.clone(), notifier.clone()))
-        // MCP punya jalur kredensialnya sendiri (PAT), jadi ia sengaja dipasang
-        // di luar `ConnectLayer` dan tidak ikut `auth_layer` JWT di bawah.
+        // MCP has its own credential path (PAT), so it's deliberately mounted
+        // outside `ConnectLayer` and doesn't go through the JWT `auth_layer` below.
         .nest("/mcp", mcp::mcp_router(store, notifier.clone()))
 ```
 
@@ -2848,11 +2862,11 @@ Expected: `src/lib/gen/tokens_pb.ts` muncul dan mengekspor `AccessTokenService`.
 `src/features/tokens/types.ts`:
 
 ```typescript
-/** Metadata PAT seperti yang ditampilkan UI. Plaintext-nya tidak pernah ada di sini. */
+/** PAT metadata as shown by the UI. The plaintext is never present here. */
 export type AccessToken = {
   id: string;
   name: string;
-  /** 4 karakter terakhir — satu-satunya sisa plaintext yang masih terlihat. */
+  /** Last 4 characters — the only plaintext remnant still visible. */
   preview: string;
   createdAt: string;
   expiresAt: string | null;
@@ -2885,8 +2899,8 @@ export function mapToken(t: AccessTokenProto): AccessToken {
 `src/features/tokens/api/hooks.ts`:
 
 ```typescript
-// Hook RPC personal access token (connect-query atas AccessTokenService).
-// Seluruhnya self-scoped di server, jadi tidak ada parameter pemilik di sini.
+// Personal access token RPC hooks (connect-query over AccessTokenService).
+// Entirely self-scoped on the server, so there's no owner parameter here.
 
 import {
   useMutation,
@@ -2961,8 +2975,8 @@ git commit -m "feat(tokens): add access token client hooks"
 `src/features/tokens/components/token-table.tsx`:
 
 ```typescript
-// Satu baris per token. Plaintext tidak pernah ada di sini — hanya `preview`,
-// 4 karakter terakhir, yang cukup untuk membedakan baris mana yang mana.
+// One row per token. The plaintext is never present here — only `preview`,
+// the last 4 characters, which is enough to tell rows apart.
 
 import { useState } from "react";
 import { KeyRound } from "lucide-react";
@@ -3080,9 +3094,9 @@ export function TokenTable() {
 `src/features/tokens/components/create-token-dialog.tsx`:
 
 ```typescript
-// Dialog dua tahap. Tahap kedua ada karena plaintext hanya dikirim sekali oleh
-// server: menutup dialog otomatis setelah sukses akan membuang satu-satunya
-// kesempatan user menyalinnya.
+// A two-stage dialog. The second stage exists because the plaintext is sent
+// by the server only once: auto-closing the dialog after success would throw
+// away the user's only chance to copy it.
 
 import { useState } from "react";
 import { Copy } from "lucide-react";
@@ -3232,8 +3246,8 @@ export function CreateTokenDialog() {
 `src/features/tokens/components/connect-panel.tsx`:
 
 ```typescript
-// Tanpa panel ini fiturnya tidak self-serve: user memegang token tetapi tidak
-// tahu ke mana menempelkannya.
+// Without this panel the feature isn't self-serve: the user holds a token but
+// doesn't know where to paste it.
 
 import { Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -3352,8 +3366,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { TokensPage } from "@/features/tokens";
 
 /**
- * Pengaturan personal access token. Tidak ada guard tambahan: `_authed` sudah
- * menuntut sesi, dan setiap RPC di halaman ini self-scoped di server.
+ * Personal access token settings. No extra guard needed: `_authed` already
+ * requires a session, and every RPC on this page is self-scoped on the server.
  */
 export const Route = createFileRoute("/_authed/settings/tokens")({
   component: TokensPage,

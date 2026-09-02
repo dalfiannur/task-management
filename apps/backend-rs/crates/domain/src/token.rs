@@ -1,17 +1,17 @@
-//! Personal access token (PAT) untuk endpoint MCP: komponen ECS + aturan murni.
+//! Personal access token (PAT) for the MCP endpoint: ECS components + pure rules.
 //!
-//! Design note: rahasia disimpan sebagai digest **SHA-256, bukan Argon2**. Sebuah
-//! PAT membawa entropi 256 bit sehingga tidak brute-force-able seperti password
-//! manusia, sementara Argon2 akan menambah ~50-100 ms pada *setiap* tool call MCP.
-//! Hashing password tetap di `user::UserPassword`.
+//! Design note: the secret is stored as a **SHA-256 digest, not Argon2**. A PAT
+//! carries 256 bits of entropy so it isn't brute-forceable like a human password,
+//! while Argon2 would add ~50-100 ms to *every* MCP tool call. Password hashing
+//! stays on `user::UserPassword`.
 
 use arke_postgres::PgComponent;
 
-/// Awalan setiap token yang kita terbitkan, supaya string yang bocor mudah di-grep.
+/// Prefix of every token we issue, so a leaked string is easy to grep for.
 pub const TOKEN_PREFIX: &str = "sjw_pat_";
 
-/// Rahasia opaque, hanya disimpan sebagai digest. `preview` adalah 4 karakter
-/// terakhir plaintext — satu-satunya bagian yang boleh ditampilkan lagi oleh UI.
+/// Opaque secret, stored only as a digest. `preview` is the plaintext's last 4
+/// characters — the only part the UI is ever allowed to show again.
 #[derive(PgComponent, Debug, Clone)]
 pub struct TokenSecret {
     #[pg(index, unique)]
@@ -19,7 +19,7 @@ pub struct TokenSecret {
     pub preview: String,
 }
 
-/// Pemilik token. Diindeks karena setiap pembacaan daftar difilter dengannya.
+/// The token's owner. Indexed because every list read filters by it.
 #[derive(PgComponent, Debug, Clone)]
 pub struct TokenOwner {
     #[pg(index)]
@@ -30,7 +30,7 @@ pub struct TokenOwner {
 pub struct TokenInfo {
     pub name: String,
     pub created_at: String,
-    /// RFC3339. `None` = tidak pernah kedaluwarsa (`expires_in_days = 0`).
+    /// RFC3339. `None` = never expires (`expires_in_days = 0`).
     pub expires_at: Option<String>,
 }
 
@@ -47,7 +47,7 @@ fn to_hex(bytes: &[u8]) -> String {
     })
 }
 
-/// Terbitkan token baru: `sjw_pat_` + 32 byte acak dalam hex.
+/// Issue a new token: `sjw_pat_` + 32 random bytes in hex.
 pub fn generate_token() -> String {
     use rand::RngCore;
     let mut bytes = [0u8; 32];
@@ -55,44 +55,45 @@ pub fn generate_token() -> String {
     format!("{TOKEN_PREFIX}{}", to_hex(&bytes))
 }
 
-/// Digest yang disimpan. Deterministik — pencarian token adalah lookup by hash.
+/// The digest that gets stored. Deterministic — a token lookup is a lookup by hash.
 pub fn hash_token(token: &str) -> String {
     use sha2::{Digest, Sha256};
     to_hex(&Sha256::digest(token.as_bytes()))
 }
 
-/// 4 karakter terakhir — satu-satunya sisa plaintext yang boleh dilihat lagi.
+/// Last 4 characters — the only plaintext remnant ever allowed to be seen again.
 pub fn preview_of(token: &str) -> String {
     let n = token.chars().count();
     token.chars().skip(n.saturating_sub(4)).collect()
 }
 
-/// Bentuknya mustahil diterbitkan oleh kita → tolak input yang jelas bukan
-/// token sebelum sempat menghitung hash dan melakukan round-trip ke database.
+/// Shape we could never have issued → reject clearly-not-a-token input before
+/// spending a hash computation and a database round-trip.
 ///
-/// `hash_token` aman dipakai membangun predikat SQL bukan karena gate ini:
-/// keluarannya selalu digest hex 64 karakter untuk input apa pun, jadi aman
-/// secara struktural dengan sendirinya. Tujuan gate ini berbeda dan tetap
-/// berlaku sendiri — menolak input yang jelas salah bentuk lebih awal.
+/// `hash_token` is safe to use in building a SQL predicate for a reason
+/// independent of this gate: its output is always a 64-character hex digest for
+/// any input, so it's structurally safe on its own. This gate serves a different
+/// purpose and stands on its own regardless — rejecting obviously malformed
+/// input earlier.
 pub fn looks_like_token(s: &str) -> bool {
     s.len() == TOKEN_PREFIX.len() + 64
         && s.starts_with(TOKEN_PREFIX)
         && s[TOKEN_PREFIX.len()..].bytes().all(|b| b.is_ascii_hexdigit())
 }
 
-/// Sudah lewat `expires_at`? `None` = tanpa kedaluwarsa.
+/// Past `expires_at` already? `None` = never expires.
 ///
-/// Membandingkan string RFC3339 UTC secara leksikografis. Urutan leksikal ini
-/// SAMA dengan urutan waktu hanya jika kedua sisi diformat pada presisi tetap
-/// yang sama: RFC3339 dari crate `time` membuang bagian pecahan detik saat nol
-/// dan memangkas nol di belakang saat tidak, sehingga lebar stringnya
-/// berubah-ubah dan bisa membalik urutan leksikal dalam detik yang sama
-/// (mis. "...T10:00:00Z" > "...T10:00:00.5Z" secara leksikal, padahal
-/// 10:00:00.0 lebih awal dari 10:00:00.5). Karena itu pemanggil mem-pin
-/// timestamp ke detik bulat (`replace_nanosecond(0)`) sebelum memformat,
-/// supaya prasyarat presisi-sama ini benar-benar terpenuhi. `task::dates_ok`
-/// membandingkan tanggal `YYYY-MM-DD` polos tanpa jam dan tanpa komponen
-/// lebar-variabel, jadi analoginya lebih lemah — kasus ini tidak muncul di sana.
+/// Compares RFC3339 UTC strings lexicographically. This lexical order matches
+/// time order ONLY when both sides are formatted at the same fixed precision:
+/// `time` crate's RFC3339 formatter omits the fractional-second part when it's
+/// zero and trims trailing zeros when it isn't, so the string width varies and
+/// can flip the lexical order within the same second (e.g. "...T10:00:00Z" >
+/// "...T10:00:00.5Z" lexically, even though 10:00:00.0 is earlier than
+/// 10:00:00.5). That's why callers pin the timestamp to a whole second
+/// (`replace_nanosecond(0)`) before formatting, so this same-precision
+/// precondition actually holds. `task::dates_ok` compares plain `YYYY-MM-DD`
+/// dates with no time-of-day and no variable-width component, so the analogy is
+/// weaker there — this case doesn't arise for it.
 pub fn is_expired(expires_at: Option<&str>, now: &str) -> bool {
     match expires_at {
         None => false,
@@ -129,14 +130,14 @@ mod tests {
     #[test]
     fn preview_is_last_four_chars() {
         assert_eq!(preview_of("sjw_pat_00ff1a2b"), "1a2b");
-        assert_eq!(preview_of("ab"), "ab"); // lebih pendek dari 4 → apa adanya
+        assert_eq!(preview_of("ab"), "ab"); // shorter than 4 → returned as-is
     }
 
     #[test]
     fn garbage_is_not_a_token() {
         assert!(!looks_like_token("hello"));
         assert!(!looks_like_token(&"sjw_pat_".repeat(9)));
-        // Benar panjangnya, tapi ada karakter non-hex.
+        // Right length, but has a non-hex character.
         let bad = format!("{TOKEN_PREFIX}{}", "z".repeat(64));
         assert!(!looks_like_token(&bad));
     }

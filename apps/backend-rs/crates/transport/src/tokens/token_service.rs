@@ -1,6 +1,7 @@
-//! AccessTokenService: terbitkan / daftar / cabut PAT. Seluruhnya self-scoped —
-//! pemilik selalu diambil dari JWT, jadi admin pun tidak bisa menyentuh token
-//! milik orang lain. Plaintext hanya ada satu kali, di respons CreateToken.
+//! AccessTokenService: issue / list / revoke PATs. Entirely self-scoped —
+//! the owner is always taken from the JWT, so even an admin can't touch
+//! someone else's token. The plaintext exists only once, in the CreateToken
+//! response.
 
 use std::sync::Arc;
 
@@ -26,11 +27,12 @@ fn require_auth(user: Option<Extension<AuthUser>>) -> Result<AuthUser, ConnectEr
         .ok_or_else(|| ConnectError::new_unauthenticated("authentication required"))
 }
 
-/// Detik bulat, sengaja. `Rfc3339` menulis pecahan detik hanya bila nanodetiknya
-/// bukan nol, dan memotong nol di belakangnya — sehingga lebar string berubah-ubah.
-/// `domain::token::is_expired` membandingkan string ini secara leksikografis, dan
-/// perbandingan itu baru sepadan dengan urutan waktu kalau semua sisi berpresisi
-/// sama. Memaku presisi di sini yang membuat prasyarat itu benar-benar berlaku.
+/// Whole seconds, deliberately. `Rfc3339` only writes a fractional-second part
+/// when the nanoseconds aren't zero, and trims trailing zeros when they aren't
+/// — so the string width varies. `domain::token::is_expired` compares these
+/// strings lexicographically, and that comparison only tracks time order when
+/// every side is at the same precision. Pinning the precision here is what
+/// makes that precondition actually hold.
 fn now_iso() -> String {
     use time::format_description::well_known::Rfc3339;
     let now = time::OffsetDateTime::now_utc();
@@ -40,20 +42,20 @@ fn now_iso() -> String {
         .unwrap_or_default()
 }
 
-/// Batas atas yang disengaja. `OffsetDateTime + Duration` **panic** ketika
-/// hasilnya keluar dari rentang yang bisa diwakili, sementara `expires_in_days`
-/// datang mentah dari client sebagai `uint32` — tanpa batas ini satu request
-/// dengan angka besar menjatuhkan handler alih-alih dibalas `invalid_argument`.
-pub(crate) const MAX_EXPIRY_DAYS: u32 = 3650; // 10 tahun
+/// A deliberate upper bound. `OffsetDateTime + Duration` **panics** when the
+/// result falls outside the representable range, and `expires_in_days` arrives
+/// raw from the client as a `uint32` — without this bound a single request with
+/// a huge number crashes the handler instead of getting an `invalid_argument`.
+pub(crate) const MAX_EXPIRY_DAYS: u32 = 3650; // 10 years
 
-/// `expires_in_days` → `expires_at` RFC3339. 0 = tanpa kedaluwarsa.
+/// `expires_in_days` → `expires_at` RFC3339. 0 = never expires.
 fn expiry_from_days(days: u32) -> Option<String> {
     use time::format_description::well_known::Rfc3339;
     if days == 0 {
         return None;
     }
     let at = time::OffsetDateTime::now_utc() + time::Duration::days(days as i64);
-    // Presisi dipaku sama dengan `now_iso` — lihat alasannya di sana.
+    // Precision pinned the same way as `now_iso` — see the reasoning there.
     at.replace_nanosecond(0).unwrap_or(at).format(&Rfc3339).ok()
 }
 
@@ -130,8 +132,9 @@ async fn list_tokens(
     }))
 }
 
-/// Cabut = hapus entity. Token milik orang lain dibalas `not_found`, bukan
-/// `permission_denied`: membedakan keduanya akan membocorkan id mana yang ada.
+/// Revoke = delete the entity. A token belonging to someone else answers
+/// `not_found`, not `permission_denied`: distinguishing the two would leak
+/// which ids exist.
 async fn revoke_token(
     Extension(store): Extension<Arc<Store>>,
     user: Option<Extension<AuthUser>>,
@@ -152,7 +155,7 @@ async fn revoke_token(
     Ok(ConnectResponse::new(pb::RevokeTokenResponse { ok: true }))
 }
 
-/// AccessTokenService router; menyuntikkan Store sebagai request extension.
+/// AccessTokenService router; injects the Store as a request extension.
 pub fn token_router(store: Arc<Store>) -> axum::Router<()> {
     type S = Extension<Arc<Store>>;
     type A = Option<Extension<AuthUser>>;
