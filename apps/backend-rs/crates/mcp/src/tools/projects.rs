@@ -13,9 +13,10 @@ use super::{limit_arg, str_arg, truncate, Ctx, ToolError, ToolMeta};
 fn status_label(v: i32) -> &'static str {
     domain::project::ProjectStatus::from_proto(v)
         .map(domain::project::ProjectStatus::as_str)
-        // `from_proto` returns `None` for UNSPECIFIED(0) — a project row
-        // always carries a real status once created, but a label is still
-        // owed to the model rather than a panic or a bare `null`.
+        // `from_proto` returns `None` for any unrecognised code, not only
+        // UNSPECIFIED(0) — a project row always carries a real status once
+        // created, but a label is still owed to the model rather than a
+        // panic or a bare `null`.
         .unwrap_or("unspecified")
 }
 
@@ -92,6 +93,12 @@ pub const LIST_MODULES: ToolMeta = ToolMeta {
     description: "List the modules (task groups/columns) inside a project. \
                   create_task needs a module_id, not a project_id — call this \
                   after list_projects to find one.",
+    // Deliberately no `limit` here, unlike every other list tool: modules are
+    // kanban columns — human-authored project structure, not a growing feed
+    // of records — so a project's module count stays naturally small and a
+    // cap would protect against a page size that never actually shows up.
+    // (Contrast `list_comments` in Task 13, which does declare one — comment
+    // threads genuinely do grow.)
     schema: || {
         json!({
             "type": "object",

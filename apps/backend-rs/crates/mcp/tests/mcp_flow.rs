@@ -135,6 +135,15 @@ async fn rpc(router: &Router, bearer: Option<&str>, body: Value) -> (StatusCode,
 /// parse because each only does it once or twice; the project/module tests
 /// below do it repeatedly enough that the boilerplate itself starts hiding
 /// what each test is actually asserting.
+///
+/// Blind spot: a JSON-RPC *protocol* error (bad args, unknown tool — no
+/// `result` at all, only `error`) reads back here as `(true, Value::Null)`,
+/// the exact same shape as a genuine business `isError` result with an
+/// unparseable payload. A test that means to assert a protocol rejection
+/// specifically must not rely on this helper's `true` — it would pass either
+/// way and silently lose the distinction. Assert `body["error"]["code"]`
+/// through the raw `rpc()` call instead (see e.g.
+/// `calling_an_unknown_tool_is_invalid_params`).
 async fn tools_call(router: &Router, token: &str, name: &str, arguments: Value) -> (bool, Value) {
     let (_, body) = rpc(
         router,
@@ -984,4 +993,251 @@ async fn list_modules_returns_a_projects_modules() {
     assert_eq!(doing["name"], "Doing");
     assert_eq!(doing["order"], 1);
     assert_eq!(doing["project_id"], project_id.as_str());
+}
+
+#[tokio::test]
+async fn search_finds_a_task_and_maps_result_fields() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    let (project_id, module_id) = seed_project_and_module(&store, &user).await;
+
+    let (err, created) = tools_call(
+        &router,
+        &token,
+        "create_task",
+        json!({ "module_id": module_id, "title": "unikorn tunggangan naga" }),
+    )
+    .await;
+    assert!(!err, "{created:?}");
+    let task_id = created["id"].as_str().unwrap().to_string();
+
+    let (err, found) =
+        tools_call(&router, &token, "search", json!({ "query": "unikorn" })).await;
+    assert!(!err, "{found:?}");
+    let results = found["results"].as_array().unwrap();
+    let hit = results.iter().find(|r| r["id"] == task_id.as_str()).unwrap();
+    // `SearchResult.kind` is a wire enum and must come back as a string label
+    // (not the raw code), and `.id`/`.project_id` are the real field names —
+    // the task file's own draft guessed `entity_id`.
+    assert_eq!(hit["kind"], "task");
+    assert_eq!(hit["title"], "unikorn tunggangan naga");
+    assert_eq!(hit["project_id"], project_id.as_str());
+}
+
+#[tokio::test]
+async fn search_limit_is_passed_to_the_core_fn_not_just_taken_client_side() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    let (_project_id, module_id) = seed_project_and_module(&store, &user).await;
+
+    // 21 is deliberately more than `search_core`'s own default of 20 (its
+    // `limit == 0` sentinel): that boundary is exactly what a client-side
+    // `.take()` over `SearchRequest::default()` (`limit: 0`) would hide
+    // behind — 20 results always looks plausible unless a caller asks for
+    // more than 20.
+    for i in 0..21 {
+        let (err, _) = tools_call(
+            &router,
+            &token,
+            "create_task",
+            json!({ "module_id": module_id, "title": format!("gajahmada-{i}") }),
+        )
+        .await;
+        assert!(!err);
+    }
+
+    let (err, all) =
+        tools_call(&router, &token, "search", json!({ "query": "gajahmada", "limit": 21 })).await;
+    assert!(!err, "{all:?}");
+    assert_eq!(all["count"], 21, "{all:?}");
+
+    // `limit: 0` collides with `search_core`'s own "use my default" sentinel
+    // — exactly the value that made the bug possible — so it must be refused
+    // by `limit_arg` before a request is ever built, same as `list_projects`.
+    let (_, body) = rpc(
+        &router,
+        Some(&token),
+        json!({ "jsonrpc": "2.0", "id": 50, "method": "tools/call",
+                "params": { "name": "search", "arguments": { "query": "gajahmada", "limit": 0 } } }),
+    )
+    .await;
+    assert_eq!(body["error"]["code"], -32602, "{body:?}");
+    assert!(body.get("result").is_none());
+}
+
+#[tokio::test]
+async fn my_tasks_returns_only_assigned_work() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    let (_project_id, module_id) = seed_project_and_module(&store, &user).await;
+
+    let (err, _) = tools_call(&router, &token, "create_task",
+        json!({ "module_id": module_id, "title": "punya saya", "assignee_ids": [user.clone()] })).await;
+    assert!(!err);
+    let (err, _) = tools_call(&router, &token, "create_task",
+        json!({ "module_id": module_id, "title": "tanpa assignee" })).await;
+    assert!(!err);
+
+    let (err, mine) = tools_call(&router, &token, "my_tasks", json!({})).await;
+    assert!(!err);
+    let titles: Vec<&str> = mine["tasks"].as_array().unwrap()
+        .iter().map(|t| t["title"].as_str().unwrap()).collect();
+    assert!(titles.contains(&"punya saya"));
+    assert!(!titles.contains(&"tanpa assignee"));
+}
+
+/// The real test that a `scope` argument routes to three genuinely different
+/// core fns instead of always calling the same one: three tasks, each
+/// connected to `worker` through exactly one relationship (assigned, created,
+/// or discussed), and each `scope` value must surface exactly its own task
+/// and no other.
+#[tokio::test]
+async fn my_tasks_scope_routes_to_three_different_core_fns() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let creator = seed_active_user(&store).await;
+    let worker = seed_active_user(&store).await;
+    let (project_id, module_id) = seed_project_and_module(&store, &creator).await;
+    // `worker` needs project membership too: create_task_core requires
+    // assignees to be project members, and `scoped_tasks()` (behind every
+    // `MyTasksService` RPC) only ever considers the caller's member projects.
+    store
+        .create((domain::project::ProjectMembership {
+            project_id: project_id.clone(),
+            user_id: worker.clone(),
+        },))
+        .await
+        .unwrap();
+
+    let creator_token = issue_token(&store, &creator).await;
+    let worker_token = issue_token(&store, &worker).await;
+
+    // Assigned-only: creator opens it, assigns worker.
+    let (err, assigned_task) = tools_call(&router, &creator_token, "create_task", json!({
+        "module_id": module_id, "title": "assigned to worker",
+        "assignee_ids": [worker.clone()]
+    })).await;
+    assert!(!err, "{assigned_task:?}");
+
+    // Created-only: worker opens it themself, assigns no one.
+    let (err, created_task) = tools_call(&router, &worker_token, "create_task", json!({
+        "module_id": module_id, "title": "created by worker"
+    })).await;
+    assert!(!err, "{created_task:?}");
+
+    // Involving-only: creator opens and owns it, worker neither assigned nor
+    // creator — only connected by commenting on it. Seeded directly as a
+    // `CommentInfo` component since `add_comment` isn't an MCP tool yet
+    // (Task 13); the shape must match what that RPC will eventually write.
+    let (err, involving_task) = tools_call(&router, &creator_token, "create_task", json!({
+        "module_id": module_id, "title": "discussed with worker"
+    })).await;
+    assert!(!err, "{involving_task:?}");
+    let involving_task_id = involving_task["id"].as_str().unwrap().to_string();
+    store
+        .create((domain::comment::CommentInfo {
+            task_id: involving_task_id.clone(),
+            author_id: worker.clone(),
+            content: "menandai diri sendiri".into(),
+            mentioned_user_ids: vec![],
+            created_at: "2026-01-01T00:00:00Z".into(),
+            updated_at: "2026-01-01T00:00:00Z".into(),
+        },))
+        .await
+        .unwrap();
+
+    let titles_for = |body: &Value| -> Vec<String> {
+        body["tasks"].as_array().unwrap()
+            .iter().map(|t| t["title"].as_str().unwrap().to_string()).collect()
+    };
+
+    let (err, assigned) =
+        tools_call(&router, &worker_token, "my_tasks", json!({ "scope": "assigned" })).await;
+    assert!(!err, "{assigned:?}");
+    let assigned_titles = titles_for(&assigned);
+    assert!(assigned_titles.contains(&"assigned to worker".to_string()), "{assigned_titles:?}");
+    assert!(!assigned_titles.contains(&"created by worker".to_string()), "{assigned_titles:?}");
+    assert!(!assigned_titles.contains(&"discussed with worker".to_string()), "{assigned_titles:?}");
+    // `MyTask` carries the project/module context alongside the task, so a
+    // second `get_project` call isn't needed to place it.
+    let hit = assigned["tasks"].as_array().unwrap()
+        .iter().find(|t| t["title"] == "assigned to worker").unwrap();
+    assert_eq!(hit["project_id"], project_id.as_str());
+    assert_eq!(hit["project_name"], "MCP test project");
+    assert_eq!(hit["module_name"], "Backlog");
+
+    let (err, created) =
+        tools_call(&router, &worker_token, "my_tasks", json!({ "scope": "created" })).await;
+    assert!(!err, "{created:?}");
+    let created_titles = titles_for(&created);
+    assert!(!created_titles.contains(&"assigned to worker".to_string()), "{created_titles:?}");
+    assert!(created_titles.contains(&"created by worker".to_string()), "{created_titles:?}");
+    assert!(!created_titles.contains(&"discussed with worker".to_string()), "{created_titles:?}");
+
+    let (err, involving) =
+        tools_call(&router, &worker_token, "my_tasks", json!({ "scope": "involving" })).await;
+    assert!(!err, "{involving:?}");
+    let involving_titles = titles_for(&involving);
+    assert!(!involving_titles.contains(&"assigned to worker".to_string()), "{involving_titles:?}");
+    // `involving` means discussion, not ownership: it must NOT pick up
+    // "created by worker" just because worker created that task — only the
+    // task worker actually commented on belongs here.
+    assert!(!involving_titles.contains(&"created by worker".to_string()), "{involving_titles:?}");
+    assert!(involving_titles.contains(&"discussed with worker".to_string()), "{involving_titles:?}");
+
+    // Sanity: an unknown scope is a caller bug, not silently "assigned" — a
+    // `BadArgs` (JSON-RPC protocol error), not a business `isError` result.
+    // Using `tools_call` here would report `(true, Value::Null)` for either
+    // shape (see its doc comment), so this asserts the real error code
+    // through the raw `rpc()` call instead.
+    let (_, body) = rpc(
+        &router,
+        Some(&worker_token),
+        json!({ "jsonrpc": "2.0", "id": 60, "method": "tools/call",
+                "params": { "name": "my_tasks", "arguments": { "scope": "bogus" } } }),
+    )
+    .await;
+    assert_eq!(body["error"]["code"], -32602, "{body:?}");
+    assert!(body.get("result").is_none());
+}
+
+#[tokio::test]
+async fn my_tasks_status_filter_is_validated_and_pushed_to_the_core_fn() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    let (_project_id, module_id) = seed_project_and_module(&store, &user).await;
+
+    let (err, todo_task) = tools_call(&router, &token, "create_task", json!({
+        "module_id": module_id, "title": "belum dikerjakan", "assignee_ids": [user.clone()]
+    })).await;
+    assert!(!err, "{todo_task:?}");
+    let (err, done_task) = tools_call(&router, &token, "create_task", json!({
+        "module_id": module_id, "title": "selesai", "assignee_ids": [user.clone()]
+    })).await;
+    assert!(!err, "{done_task:?}");
+    let (err, _) = tools_call(&router, &token, "update_task", json!({
+        "task_id": done_task["id"], "status": "done"
+    })).await;
+    assert!(!err);
+
+    let (err, filtered) =
+        tools_call(&router, &token, "my_tasks", json!({ "status": "done" })).await;
+    assert!(!err, "{filtered:?}");
+    let titles: Vec<&str> = filtered["tasks"].as_array().unwrap()
+        .iter().map(|t| t["title"].as_str().unwrap()).collect();
+    assert_eq!(titles, vec!["selesai"], "{filtered:?}");
+
+    // A typo'd status is a caller bug, refused rather than silently matching
+    // nothing (the same rule `list_tasks` enforces).
+    let (_, body) = rpc(
+        &router,
+        Some(&token),
+        json!({ "jsonrpc": "2.0", "id": 61, "method": "tools/call",
+                "params": { "name": "my_tasks", "arguments": { "status": "archived" } } }),
+    )
+    .await;
+    assert_eq!(body["error"]["code"], -32602, "{body:?}");
 }
