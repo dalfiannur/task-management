@@ -452,3 +452,86 @@ async fn business_failure_is_an_error_result_not_a_protocol_error() {
     assert_eq!(body["result"]["isError"], true);
     assert!(body["result"]["content"][0]["text"].as_str().is_some());
 }
+
+#[tokio::test]
+async fn create_then_get_a_task_through_mcp() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    // Project + module are seeded through store components directly, with the
+    // same membership row `create_project_core` would write — that RPC path
+    // is already covered by `transport::project_flow`, and this test only
+    // needs data that makes `list_tasks_core`'s membership check pass.
+    let (_project_id, module_id) = seed_project_and_module(&store, &user).await;
+
+    let (_, created) = rpc(
+        &router,
+        Some(&token),
+        json!({ "jsonrpc": "2.0", "id": 10, "method": "tools/call",
+                "params": { "name": "create_task",
+                            "arguments": { "module_id": module_id, "title": "dari MCP" } } }),
+    )
+    .await;
+    assert_eq!(created["result"]["isError"], false, "{created:?}");
+    let payload: Value =
+        serde_json::from_str(created["result"]["content"][0]["text"].as_str().unwrap()).unwrap();
+    assert_eq!(payload["title"], "dari MCP");
+    let task_id = payload["id"].as_str().unwrap().to_string();
+
+    let (_, fetched) = rpc(
+        &router,
+        Some(&token),
+        json!({ "jsonrpc": "2.0", "id": 11, "method": "tools/call",
+                "params": { "name": "get_task", "arguments": { "task_id": task_id } } }),
+    )
+    .await;
+    let payload: Value =
+        serde_json::from_str(fetched["result"]["content"][0]["text"].as_str().unwrap()).unwrap();
+    assert_eq!(payload["title"], "dari MCP");
+    assert_eq!(payload["status"], "todo");
+}
+
+/// A project (owned by `user`, with `user` as a member) + one module inside
+/// it. Seeded directly through components rather than RPC.
+///
+/// `ProjectMembership` is its own entity per (project_id, user_id) pair —
+/// creating the project does NOT make the owner a member on its own, exactly
+/// as `create_project_core` writes it (see `crates/domain/src/project.rs` and
+/// `projects/project_service.rs::create_project`).
+///
+/// Returns `(project_id, module_id)`.
+async fn seed_project_and_module(store: &persistence::Store, user: &str) -> (String, String) {
+    use domain::module::{ModuleDescription, ModuleName, ModuleOrder, ModuleProjectRef};
+    use domain::project::{
+        ProjectDates, ProjectDescription, ProjectMembership, ProjectName, ProjectOwnerId,
+        ProjectStatus, ProjectStatusComponent,
+    };
+    let project = store
+        .create((
+            ProjectName { value: "MCP test project".into() },
+            ProjectDescription { value: String::new() },
+            ProjectOwnerId { value: user.to_string() },
+            ProjectStatusComponent { value: ProjectStatus::Active.as_str().to_string() },
+            ProjectDates { start_date: None, end_date: None },
+        ))
+        .await
+        .unwrap();
+    let project_id = project.to_string();
+    store
+        .create((ProjectMembership {
+            project_id: project_id.clone(),
+            user_id: user.to_string(),
+        },))
+        .await
+        .unwrap();
+    let module = store
+        .create((
+            ModuleName { value: "Backlog".into() },
+            ModuleDescription { value: String::new() },
+            ModuleProjectRef { project_id: project_id.clone() },
+            ModuleOrder { value: 0 },
+        ))
+        .await
+        .unwrap();
+    (project_id, module.to_string())
+}

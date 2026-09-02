@@ -37,7 +37,14 @@ fn now_iso() -> String {
 }
 
 /// Resolve a module id → (module pid, project_id), or `not_found`.
-async fn module_project(store: &Store, module_id: &str) -> Result<(i64, String), ConnectError> {
+///
+/// `pub` (not `pub(crate)`) so `transport::api` can re-export it: the
+/// `list_tasks` MCP tool needs to turn a bare `module_id` into the
+/// `project_id` `ListTasksRequest` requires, and this is the same lookup
+/// every mutating handler in this file already does before its membership
+/// check — reusing it keeps that resolution in one place rather than a
+/// second copy in `mcp`.
+pub async fn module_project(store: &Store, module_id: &str) -> Result<(i64, String), ConnectError> {
     let mpid = parse_pid(module_id)?;
     let m = load_module(store, mpid)
         .await

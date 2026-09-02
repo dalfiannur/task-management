@@ -18,8 +18,15 @@
 pub use crate::projects::project_service::{get_project_core, list_projects_core};
 pub use crate::work::module_service::list_modules_core;
 pub use crate::work::task_service::{
-    create_task_core, get_task_core, list_tasks_core, move_task_core, update_task_core,
+    create_task_core, get_task_core, list_tasks_core, module_project, move_task_core,
+    update_task_core,
 };
+// `ListTasksRequest.project_id` is required, but the `list_tasks` MCP tool also
+// accepts a bare `module_id`. `module_project` is the exact lookup
+// `create_task_core`/`get_task_core`/etc. already use to derive a task's
+// project from its module — reusing it here (rather than re-querying
+// `ModuleProjectRef` locally) keeps that resolution in one place.
+pub use crate::sedjiwa::tasks::work::v1 as work_pb;
 pub use crate::comments::comment_service::{create_comment_core, list_comments_core};
 pub use crate::search::search_service::search_core;
 pub use crate::dashboard::mytasks_service::{
