@@ -760,6 +760,32 @@ async fn create_task_round_trips_priority_due_date_and_assignees() {
 }
 
 #[tokio::test]
+async fn create_task_rejects_a_misspelled_priority() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    let (_project_id, module_id) = seed_project_and_module(&store, &user).await;
+
+    let (_, body) = rpc(
+        &router,
+        Some(&token),
+        json!({ "jsonrpc": "2.0", "id": 35, "method": "tools/call",
+                "params": { "name": "create_task",
+                            "arguments": {
+                                "module_id": module_id,
+                                "title": "typo'd priority",
+                                "priority": "critial"
+                            } } }),
+    )
+    .await;
+    // Without validation, `create_task_core` would silently accept `critial`
+    // as "no priority" and create the task anyway — a typo must fail the
+    // same way it does through `update_task`, not disappear.
+    assert_eq!(body["error"]["code"], -32602, "{body:?}");
+    assert!(body.get("result").is_none());
+}
+
+#[tokio::test]
 async fn update_task_round_trips_title_description_and_priority() {
     let Some((router, store)) = router_and_store().await else { return skipped() };
     let user = seed_active_user(&store).await;

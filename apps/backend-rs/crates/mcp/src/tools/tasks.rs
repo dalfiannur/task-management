@@ -25,15 +25,27 @@ fn priority_label(v: i32) -> &'static str {
         .as_str()
 }
 
-/// The inverse of `priority_label`: a model-supplied label → the proto code.
-/// An absent or unrecognized label becomes `0` (`TASK_PRIORITY_UNSPECIFIED`),
-/// which `create_task_core` already treats as "no priority" — so this never
-/// needs to reject anything itself; `update_task_core` rejects `0` on its own
-/// (see `status_value` below for why that matters there).
-fn priority_value(s: Option<&str>) -> i32 {
-    s.and_then(domain::task::TaskPriority::parse)
-        .map(|p| p.to_proto())
-        .unwrap_or(0)
+/// The inverse of `priority_label`, validated the same way `list_tasks`'
+/// `status` filter is: absent (the argument wasn't supplied) is `Ok(None)`,
+/// and both `create_task_core`/`update_task_core` already treat that as
+/// "no priority"/"unchanged" on their own. A *present but unrecognized*
+/// label — a typo like "critial" — is rejected here instead of being
+/// smuggled through as `0` (`TASK_PRIORITY_UNSPECIFIED`): `update_task_core`
+/// happens to reject `0` on its own re-parse, but `create_task_core` treats
+/// unspecified as "no priority" and would silently create the task anyway.
+/// Validating at this boundary makes the same typo fail the same way through
+/// both tools, rather than relying on one core fn's incidental behavior.
+fn priority_arg(args: &Value) -> Result<Option<i32>, ToolError> {
+    match opt_str(args, "priority") {
+        None => Ok(None),
+        Some(s) => domain::task::TaskPriority::parse(&s)
+            .map(|p| Some(p.to_proto()))
+            .ok_or_else(|| {
+                ToolError::BadArgs(format!(
+                    "`priority` must be one of none, low, medium, high, urgent (got `{s}`)"
+                ))
+            }),
+    }
 }
 
 /// The inverse of `status_label`, for `update_task`'s optional `status` field.
@@ -182,7 +194,10 @@ pub async fn create_task(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
         // Always UNSPECIFIED: `create_task_core` defaults it to Todo, and this
         // tool doesn't expose an initial status to the model.
         status: 0,
-        priority: priority_value(opt_str(args, "priority").as_deref()),
+        // `priority_arg` already rejects a misspelled priority; `0` here only
+        // ever means "not supplied", which `create_task_core` treats as no
+        // priority.
+        priority: priority_arg(args)?.unwrap_or(0),
         start_date: opt_str(args, "start_date"),
         due_date: opt_str(args, "due_date"),
         assignee_ids: opt_str_list(args, "assignee_ids")?.unwrap_or_default(),
@@ -221,7 +236,11 @@ pub async fn update_task(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
         title: opt_str(args, "title"),
         description: opt_str(args, "description"),
         status: opt_str(args, "status").map(|s| status_value(&s)),
-        priority: opt_str(args, "priority").map(|s| priority_value(Some(&s))),
+        // Validated up front rather than left to `update_task_core`'s own
+        // re-parse: it happens to reject an invalid code, but that's a more
+        // fragile guarantee to lean on than checking at the boundary the way
+        // `status` above (and `list_tasks`' status filter) already do.
+        priority: priority_arg(args)?,
         start_date: opt_str(args, "start_date"),
         due_date: opt_str(args, "due_date"),
         assignee_ids: opt_str_list(args, "assignee_ids")?
