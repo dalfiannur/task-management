@@ -295,7 +295,9 @@ package sedjiwa.tasks.token.v1;
 
 // Personal access token untuk endpoint MCP. Seluruh RPC bersifat self-scoped:
 // pemilik selalu diambil dari JWT pemanggil, sehingga admin sekalipun tidak
-// bisa membaca atau mencabut token milik orang lain.
+// bisa membaca atau mencabut token milik orang lain. Plaintext token hanya
+// pernah ada satu kali, di respons CreateToken; `AccessToken` sengaja tidak
+// membawanya, jadi tidak ada RPC di sini yang bisa menampilkannya lagi.
 
 service AccessTokenService {
   rpc CreateToken(CreateTokenRequest) returns (CreateTokenResponse);
@@ -321,7 +323,7 @@ message CreateTokenRequest {
 // `token` hanya ada di respons ini dan tidak pernah bisa dibaca lagi.
 message CreateTokenResponse {
   string token = 1;
-  AccessToken meta = 2;
+  AccessToken access_token = 2;
 }
 
 message ListTokensRequest {}
@@ -448,10 +450,10 @@ async fn create_list_revoke_round_trip() {
     assert_eq!(st, StatusCode::OK, "{created:?}");
     let plaintext = created["token"].as_str().unwrap().to_string();
     assert!(plaintext.starts_with("sjw_pat_"));
-    assert_eq!(created["meta"]["name"], "laptop");
-    assert_eq!(created["meta"]["preview"], plaintext[plaintext.len() - 4..]);
-    assert!(created["meta"]["expiresAt"].is_null());
-    let id = created["meta"]["id"].as_str().unwrap().to_string();
+    assert_eq!(created["accessToken"]["name"], "laptop");
+    assert_eq!(created["accessToken"]["preview"], plaintext[plaintext.len() - 4..]);
+    assert!(created["accessToken"]["expiresAt"].is_null());
+    let id = created["accessToken"]["id"].as_str().unwrap().to_string();
 
     let (st, listed) = call(&router, &format!("{TOKENS}/ListTokens"), Some(&jwt), json!({})).await;
     assert_eq!(st, StatusCode::OK);
@@ -486,8 +488,8 @@ async fn tokens_are_isolated_between_users() {
         json!({ "name": "mine", "expiresInDays": 30 }),
     )
     .await;
-    let id = created["meta"]["id"].as_str().unwrap().to_string();
-    assert!(created["meta"]["expiresAt"].is_string());
+    let id = created["accessToken"]["id"].as_str().unwrap().to_string();
+    assert!(created["accessToken"]["expiresAt"].is_string());
 
     // User lain tidak melihatnya…
     let (_, listed) = call(&router, &format!("{TOKENS}/ListTokens"), Some(&token(&other)), json!({})).await;
@@ -734,7 +736,7 @@ async fn create_token(
         .ok_or_else(|| ConnectError::new_internal("token vanished after create"))?;
     Ok(ConnectResponse::new(pb::CreateTokenResponse {
         token: plaintext,
-        meta: Some(to_proto(&rec, &now)),
+        access_token: Some(to_proto(&rec, &now)),
     }))
 }
 
