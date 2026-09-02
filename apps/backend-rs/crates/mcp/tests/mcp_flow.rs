@@ -1103,23 +1103,18 @@ async fn search_result_for_a_comment_carries_its_parent_task_id() {
     assert!(!err, "{task:?}");
     let task_id = task["id"].as_str().unwrap().to_string();
 
-    // `add_comment` isn't an MCP tool yet (Task 13), so the comment is seeded
-    // through the same `create_comment_core` the future tool will call —
-    // this is the real indexing path (`search_core`'s dedicated comment→task
-    // lookup), not a hand-rolled substitute for it.
-    let auth = transport::api::auth_user_for(&store, &user).await.unwrap().unwrap();
-    transport::api::create_comment_core(
-        &store,
-        None,
-        &auth,
-        transport::api::comment_pb::CreateCommentRequest {
-            task_id: task_id.clone(),
-            content: "membahas kadal raksasa".into(),
-            mentioned_user_ids: vec![],
-        },
+    // Posted through the real `add_comment` tool (Task 13), not a hand-rolled
+    // substitute for it — this exercises the real indexing path
+    // (`search_core`'s dedicated comment→task lookup) end to end from the
+    // same MCP surface a client actually calls.
+    let (err, _) = tools_call(
+        &router,
+        &token,
+        "add_comment",
+        json!({ "task_id": task_id, "content": "membahas kadal raksasa" }),
     )
-    .await
-    .unwrap();
+    .await;
+    assert!(!err);
 
     let (err, found) =
         tools_call(&router, &token, "search", json!({ "query": "kadal" })).await;
@@ -1130,6 +1125,18 @@ async fn search_result_for_a_comment_carries_its_parent_task_id() {
     // makes the result actionable, and it must be the parent task's id, not
     // dropped or left null.
     assert_eq!(hit["task_id"], task_id.as_str(), "{hit:?}");
+
+    // The other half of the round trip discovery.rs's doc comment promises:
+    // a model that found this comment via `search` can follow `task_id`
+    // straight into `list_comments` and land on the same comment.
+    let (err, listed) =
+        tools_call(&router, &token, "list_comments", json!({ "task_id": task_id })).await;
+    assert!(!err, "{listed:?}");
+    assert!(listed["comments"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|c| c["content"] == "membahas kadal raksasa"));
 }
 
 #[tokio::test]
@@ -1305,4 +1312,181 @@ async fn my_tasks_status_filter_is_validated_and_pushed_to_the_core_fn() {
     )
     .await;
     assert_eq!(body["error"]["code"], -32602, "{body:?}");
+}
+
+#[tokio::test]
+async fn add_then_list_comments_round_trips_author_and_mentions() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let author = seed_active_user(&store).await;
+    let member = seed_active_user(&store).await;
+    let stranger = seed_active_user(&store).await;
+    let (project_id, module_id) = seed_project_and_module(&store, &author).await;
+    // `member` needs to actually be a project member for the mention to
+    // survive `create_comment_core`'s `filter_mentions` — membership is what
+    // that filter keys on, not merely "is a user that exists".
+    store
+        .create((domain::project::ProjectMembership {
+            project_id: project_id.clone(),
+            user_id: member.clone(),
+        },))
+        .await
+        .unwrap();
+    let token = issue_token(&store, &author).await;
+
+    let (_, task) = tools_call(
+        &router,
+        &token,
+        "create_task",
+        json!({ "module_id": module_id, "title": "berkomentar" }),
+    )
+    .await;
+    let task_id = task["id"].as_str().unwrap().to_string();
+
+    let (err, added) = tools_call(
+        &router,
+        &token,
+        "add_comment",
+        json!({
+            "task_id": task_id,
+            "content": "laporan dari AI",
+            // `member` is a real project member and stays; `stranger` is not
+            // and must be dropped, per `create_comment_core`'s own
+            // `filter_mentions` — this is the mapping under test.
+            "mentioned_user_ids": [member.clone(), stranger.clone()]
+        }),
+    )
+    .await;
+    assert!(!err, "{added:?}");
+    assert_eq!(added["task_id"], task_id.as_str());
+    assert_eq!(added["mentioned_user_ids"], json!([member.clone()]), "{added:?}");
+
+    let (err, listed) =
+        tools_call(&router, &token, "list_comments", json!({ "task_id": task_id })).await;
+    assert!(!err, "{listed:?}");
+    assert_eq!(listed["count"], 1, "{listed:?}");
+    assert_eq!(listed["total"], 1, "{listed:?}");
+    let row = &listed["comments"][0];
+    assert_eq!(row["content"], "laporan dari AI");
+    // `author_id` must be the token's own owner, not something the caller
+    // could supply — `create_comment_core` sets it from `auth.id`, never
+    // from the request body.
+    assert_eq!(row["author_id"], author.as_str());
+    assert_eq!(row["mentioned_user_ids"], json!([member.as_str()]));
+}
+
+#[tokio::test]
+async fn list_comments_and_add_comment_refuse_a_non_member() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let member = seed_active_user(&store).await;
+    let stranger = seed_active_user(&store).await;
+    let (_project_id, module_id) = seed_project_and_module(&store, &member).await;
+    let member_token = issue_token(&store, &member).await;
+    let stranger_token = issue_token(&store, &stranger).await;
+
+    let (_, task) = tools_call(
+        &router,
+        &member_token,
+        "create_task",
+        json!({ "module_id": module_id, "title": "khusus anggota" }),
+    )
+    .await;
+    let task_id = task["id"].as_str().unwrap().to_string();
+
+    // Both tools are member-gated through the same `require_member` the task
+    // itself uses — a business rule the model can read and stop retrying, so
+    // this must land as a tool-result `isError`, not a JSON-RPC protocol
+    // error. `tools_call`'s own doc comment warns that a protocol error and
+    // a business `isError` look identical through its `(bool, Value)`
+    // return, so the raw `rpc()` body is asserted directly instead of
+    // trusting that helper's `true` for this specific distinction.
+    let (st, body) = rpc(
+        &router,
+        Some(&stranger_token),
+        json!({ "jsonrpc": "2.0", "id": 70, "method": "tools/call",
+                "params": { "name": "list_comments", "arguments": { "task_id": task_id } } }),
+    )
+    .await;
+    assert_eq!(st, StatusCode::OK);
+    assert!(body.get("error").is_none(), "bukan error protokol: {body:?}");
+    assert_eq!(body["result"]["isError"], true, "{body:?}");
+
+    let (st, body) = rpc(
+        &router,
+        Some(&stranger_token),
+        json!({ "jsonrpc": "2.0", "id": 71, "method": "tools/call",
+                "params": { "name": "add_comment",
+                            "arguments": { "task_id": task_id, "content": "menyusup" } } }),
+    )
+    .await;
+    assert_eq!(st, StatusCode::OK);
+    assert!(body.get("error").is_none(), "bukan error protokol: {body:?}");
+    assert_eq!(body["result"]["isError"], true, "{body:?}");
+}
+
+#[tokio::test]
+async fn list_comments_limit_is_passed_to_the_core_fn_not_just_taken_client_side() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    let (_project_id, module_id) = seed_project_and_module(&store, &user).await;
+    let (_, task) = tools_call(
+        &router,
+        &token,
+        "create_task",
+        json!({ "module_id": module_id, "title": "banyak komentar" }),
+    )
+    .await;
+    let task_id = task["id"].as_str().unwrap().to_string();
+
+    // 51 is deliberately more than `list_comments_core`'s own default page
+    // size of 50 (its `page_size == 0` sentinel): that boundary is exactly
+    // what a client-side `.take()` over `ListCommentsRequest::default()`
+    // would hide behind, the same trap `list_projects`/`search` already
+    // guard against. Seeded straight through `create_comment_core` rather
+    // than 51 `add_comment` round trips through the router — this test is
+    // about `list_comments`'s request-building, not `add_comment`'s, which
+    // `add_then_list_comments_round_trips_author_and_mentions` already
+    // covers.
+    let auth = transport::api::auth_user_for(&store, &user).await.unwrap().unwrap();
+    for i in 0..51 {
+        transport::api::create_comment_core(
+            &store,
+            None,
+            &auth,
+            transport::api::comment_pb::CreateCommentRequest {
+                task_id: task_id.clone(),
+                content: format!("komentar {i}"),
+                mentioned_user_ids: vec![],
+            },
+        )
+        .await
+        .unwrap();
+    }
+
+    let (err, all) = tools_call(
+        &router,
+        &token,
+        "list_comments",
+        json!({ "task_id": task_id, "limit": 51 }),
+    )
+    .await;
+    assert!(!err, "{all:?}");
+    assert_eq!(all["count"], 51, "{all:?}");
+    assert_eq!(all["total"], 51, "{all:?}");
+    assert_eq!(all["comments"].as_array().unwrap().len(), 51);
+
+    // `limit: 0` collides with the core fn's own "use my default" sentinel —
+    // exactly the value that made the bug possible — so it must be refused
+    // by `limit_arg` before a request is ever built, same as `list_projects`
+    // and `search`.
+    let (_, body) = rpc(
+        &router,
+        Some(&token),
+        json!({ "jsonrpc": "2.0", "id": 72, "method": "tools/call",
+                "params": { "name": "list_comments",
+                            "arguments": { "task_id": task_id, "limit": 0 } } }),
+    )
+    .await;
+    assert_eq!(body["error"]["code"], -32602, "{body:?}");
+    assert!(body.get("result").is_none());
 }
