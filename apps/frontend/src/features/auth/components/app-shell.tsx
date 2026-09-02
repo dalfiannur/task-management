@@ -4,6 +4,7 @@ import { useAtomValue, useSetAtom } from "jotai";
 import {
   ChevronsUpDown,
   FolderKanban,
+  KeyRound,
   LayoutDashboard,
   ListTodo,
   LogOut,
@@ -31,6 +32,7 @@ const NAV: { to: string; label: string; icon: LucideIcon; adminOnly?: boolean }[
     { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { to: "/projects", label: "Projects", icon: FolderKanban },
     { to: "/my-tasks", label: "My tasks", icon: ListTodo },
+    { to: "/settings/tokens", label: "Access tokens", icon: KeyRound },
     // Hidden rather than disabled for non-admins: a greyed-out entry would
     // advertise a page they can never open. The route guards itself too, and
     // the server refuses the RPCs regardless.

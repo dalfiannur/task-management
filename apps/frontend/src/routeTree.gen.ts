@@ -19,6 +19,7 @@ import { Route as AuthedMyTasksRouteImport } from './routes/_authed/my-tasks'
 import { Route as AuthedAdminUsersRouteImport } from './routes/_authed/admin/users'
 import { Route as AuthedProjectsIndexRouteImport } from './routes/_authed/projects/index'
 import { Route as AuthedProjectsProjectIdRouteImport } from './routes/_authed/projects/$projectId'
+import { Route as AuthedSettingsTokensRouteImport } from './routes/_authed/settings/tokens'
 import { Route as AuthedProjectsProjectIdIndexRouteImport } from './routes/_authed/projects/$projectId/index'
 import { Route as AuthedProjectsProjectIdAllTasksRouteImport } from './routes/_authed/projects/$projectId/all-tasks'
 import { Route as AuthedProjectsProjectIdMediaRouteImport } from './routes/_authed/projects/$projectId/media'
@@ -76,6 +77,11 @@ const AuthedProjectsProjectIdRoute = AuthedProjectsProjectIdRouteImport.update({
   path: '/projects/$projectId',
   getParentRoute: () => AuthedRoute,
 } as any)
+const AuthedSettingsTokensRoute = AuthedSettingsTokensRouteImport.update({
+  id: '/settings/tokens',
+  path: '/settings/tokens',
+  getParentRoute: () => AuthedRoute,
+} as any)
 const AuthedProjectsProjectIdIndexRoute =
   AuthedProjectsProjectIdIndexRouteImport.update({
     id: '/',
@@ -128,6 +134,7 @@ export interface FileRoutesByFullPath {
   '/my-tasks': typeof AuthedMyTasksRoute
   '/admin/users': typeof AuthedAdminUsersRoute
   '/projects/$projectId': typeof AuthedProjectsProjectIdRouteWithChildren
+  '/settings/tokens': typeof AuthedSettingsTokensRoute
   '/projects/': typeof AuthedProjectsIndexRoute
   '/projects/$projectId/all-tasks': typeof AuthedProjectsProjectIdAllTasksRoute
   '/projects/$projectId/media': typeof AuthedProjectsProjectIdMediaRoute
@@ -145,6 +152,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthedDashboardRoute
   '/my-tasks': typeof AuthedMyTasksRoute
   '/admin/users': typeof AuthedAdminUsersRoute
+  '/settings/tokens': typeof AuthedSettingsTokensRoute
   '/projects': typeof AuthedProjectsIndexRoute
   '/projects/$projectId/all-tasks': typeof AuthedProjectsProjectIdAllTasksRoute
   '/projects/$projectId/media': typeof AuthedProjectsProjectIdMediaRoute
@@ -165,6 +173,7 @@ export interface FileRoutesById {
   '/_authed/my-tasks': typeof AuthedMyTasksRoute
   '/_authed/admin/users': typeof AuthedAdminUsersRoute
   '/_authed/projects/$projectId': typeof AuthedProjectsProjectIdRouteWithChildren
+  '/_authed/settings/tokens': typeof AuthedSettingsTokensRoute
   '/_authed/projects/': typeof AuthedProjectsIndexRoute
   '/_authed/projects/$projectId/all-tasks': typeof AuthedProjectsProjectIdAllTasksRoute
   '/_authed/projects/$projectId/media': typeof AuthedProjectsProjectIdMediaRoute
@@ -185,6 +194,7 @@ export interface FileRouteTypes {
     | '/my-tasks'
     | '/admin/users'
     | '/projects/$projectId'
+    | '/settings/tokens'
     | '/projects/'
     | '/projects/$projectId/all-tasks'
     | '/projects/$projectId/media'
@@ -202,6 +212,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/my-tasks'
     | '/admin/users'
+    | '/settings/tokens'
     | '/projects'
     | '/projects/$projectId/all-tasks'
     | '/projects/$projectId/media'
@@ -221,6 +232,7 @@ export interface FileRouteTypes {
     | '/_authed/my-tasks'
     | '/_authed/admin/users'
     | '/_authed/projects/$projectId'
+    | '/_authed/settings/tokens'
     | '/_authed/projects/'
     | '/_authed/projects/$projectId/all-tasks'
     | '/_authed/projects/$projectId/media'
@@ -311,6 +323,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedProjectsProjectIdRouteImport
       parentRoute: typeof AuthedRoute
     }
+    '/_authed/settings/tokens': {
+      id: '/_authed/settings/tokens'
+      path: '/settings/tokens'
+      fullPath: '/settings/tokens'
+      preLoaderRoute: typeof AuthedSettingsTokensRouteImport
+      parentRoute: typeof AuthedRoute
+    }
     '/_authed/projects/$projectId/': {
       id: '/_authed/projects/$projectId/'
       path: '/'
@@ -394,6 +413,7 @@ interface AuthedRouteChildren {
   AuthedMyTasksRoute: typeof AuthedMyTasksRoute
   AuthedAdminUsersRoute: typeof AuthedAdminUsersRoute
   AuthedProjectsProjectIdRoute: typeof AuthedProjectsProjectIdRouteWithChildren
+  AuthedSettingsTokensRoute: typeof AuthedSettingsTokensRoute
   AuthedProjectsIndexRoute: typeof AuthedProjectsIndexRoute
 }
 
@@ -402,6 +422,7 @@ const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedMyTasksRoute: AuthedMyTasksRoute,
   AuthedAdminUsersRoute: AuthedAdminUsersRoute,
   AuthedProjectsProjectIdRoute: AuthedProjectsProjectIdRouteWithChildren,
+  AuthedSettingsTokensRoute: AuthedSettingsTokensRoute,
   AuthedProjectsIndexRoute: AuthedProjectsIndexRoute,
 }
 
