@@ -106,7 +106,20 @@ pub async fn list_tasks(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
         module_id: module_id.clone(),
     };
     let resp = list_tasks_core(&ctx.store, &ctx.auth, req).await?;
-    let status = opt_str(args, "status");
+    // Unlike `create_task`/`update_task`, a bad `status` here never reaches a
+    // core fn to be rejected — it's just a filter predicate, so a typo like
+    // "archived" would otherwise silently match nothing. The model would then
+    // read that as "no such tasks" rather than "bad filter value", which is
+    // exactly the failure `limit_arg`'s doc comment refuses to allow for
+    // `limit`.
+    let status = match opt_str(args, "status") {
+        Some(s) if domain::task::TaskStatus::parse(&s).is_none() => {
+            return Err(ToolError::BadArgs(format!(
+                "`status` must be one of todo, in_progress, done, cancelled (got `{s}`)"
+            )))
+        }
+        other => other,
+    };
     let assignee = opt_str(args, "assignee_id");
     let rows: Vec<Value> = resp
         .tasks

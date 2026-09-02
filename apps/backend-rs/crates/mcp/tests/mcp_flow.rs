@@ -639,6 +639,139 @@ async fn list_tasks_limit_caps_and_rejects_zero() {
     assert_eq!(bad["error"]["code"], -32602, "{bad:?}");
 }
 
+#[tokio::test]
+async fn list_tasks_status_filter_rejects_unknown_value() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    let (_project_id, module_id) = seed_project_and_module(&store, &user).await;
+
+    let (_, body) = rpc(
+        &router,
+        Some(&token),
+        json!({ "jsonrpc": "2.0", "id": 34, "method": "tools/call",
+                "params": { "name": "list_tasks",
+                            "arguments": { "module_id": module_id, "status": "archived" } } }),
+    )
+    .await;
+    // Silently matching nothing would teach the model "no such tasks" rather
+    // than "bad filter value" — refused instead, same as a bad `limit`.
+    assert_eq!(body["error"]["code"], -32602, "{body:?}");
+    assert!(body.get("result").is_none());
+}
+
+#[tokio::test]
+async fn move_task_moves_between_modules() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    let (project_id, module_id) = seed_project_and_module(&store, &user).await;
+    let other_module_id = seed_module(&store, &project_id, "Doing").await;
+
+    let (_, created) = rpc(
+        &router,
+        Some(&token),
+        json!({ "jsonrpc": "2.0", "id": 29, "method": "tools/call",
+                "params": { "name": "create_task",
+                            "arguments": { "module_id": module_id, "title": "to be moved" } } }),
+    )
+    .await;
+    assert_eq!(created["result"]["isError"], false, "{created:?}");
+    let payload: Value =
+        serde_json::from_str(created["result"]["content"][0]["text"].as_str().unwrap()).unwrap();
+    assert_eq!(payload["module_id"], module_id);
+    let task_id = payload["id"].as_str().unwrap().to_string();
+
+    // The MCP-layer mapping under test: `task_id` → `id`, `module_id` →
+    // `module_id`. A swapped field or a typo'd key would compile and pass
+    // every other test in this file.
+    let (_, moved) = rpc(
+        &router,
+        Some(&token),
+        json!({ "jsonrpc": "2.0", "id": 30, "method": "tools/call",
+                "params": { "name": "move_task",
+                            "arguments": { "task_id": task_id, "module_id": other_module_id } } }),
+    )
+    .await;
+    assert_eq!(moved["result"]["isError"], false, "{moved:?}");
+    let payload: Value =
+        serde_json::from_str(moved["result"]["content"][0]["text"].as_str().unwrap()).unwrap();
+    assert_eq!(payload["module_id"], other_module_id);
+    assert_ne!(payload["module_id"], module_id);
+}
+
+#[tokio::test]
+async fn create_task_round_trips_priority_due_date_and_assignees() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    let (_project_id, module_id) = seed_project_and_module(&store, &user).await;
+
+    let (_, created) = rpc(
+        &router,
+        Some(&token),
+        json!({ "jsonrpc": "2.0", "id": 31, "method": "tools/call",
+                "params": { "name": "create_task",
+                            "arguments": {
+                                "module_id": module_id,
+                                "title": "with details",
+                                "priority": "high",
+                                "due_date": "2026-12-31",
+                                // `user` is the project's seeded member (see
+                                // `seed_project_and_module`), so assignment
+                                // passes `validate_assignees`.
+                                "assignee_ids": [user]
+                            } } }),
+    )
+    .await;
+    assert_eq!(created["result"]["isError"], false, "{created:?}");
+    let payload: Value =
+        serde_json::from_str(created["result"]["content"][0]["text"].as_str().unwrap()).unwrap();
+    assert_eq!(payload["priority"], "high");
+    assert_eq!(payload["due_date"], "2026-12-31");
+    assert_eq!(payload["assignee_ids"], json!([user]));
+}
+
+#[tokio::test]
+async fn update_task_round_trips_title_description_and_priority() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    let (_project_id, module_id) = seed_project_and_module(&store, &user).await;
+
+    let (_, created) = rpc(
+        &router,
+        Some(&token),
+        json!({ "jsonrpc": "2.0", "id": 32, "method": "tools/call",
+                "params": { "name": "create_task",
+                            "arguments": { "module_id": module_id, "title": "before" } } }),
+    )
+    .await;
+    let payload: Value =
+        serde_json::from_str(created["result"]["content"][0]["text"].as_str().unwrap()).unwrap();
+    let task_id = payload["id"].as_str().unwrap().to_string();
+
+    let (_, updated) = rpc(
+        &router,
+        Some(&token),
+        json!({ "jsonrpc": "2.0", "id": 33, "method": "tools/call",
+                "params": { "name": "update_task",
+                            "arguments": {
+                                "task_id": task_id,
+                                "title": "after",
+                                "description": "now with details",
+                                "priority": "urgent"
+                            } } }),
+    )
+    .await;
+    assert_eq!(updated["result"]["isError"], false, "{updated:?}");
+    let payload: Value =
+        serde_json::from_str(updated["result"]["content"][0]["text"].as_str().unwrap()).unwrap();
+    assert_eq!(payload["title"], "after");
+    assert_eq!(payload["description"], "now with details");
+    assert_eq!(payload["priority"], "urgent");
+}
+
 /// A project (owned by `user`, with `user` as a member) + one module inside
 /// it. Seeded directly through components rather than RPC.
 ///
@@ -682,4 +815,19 @@ async fn seed_project_and_module(store: &persistence::Store, user: &str) -> (Str
         .await
         .unwrap();
     (project_id, module.to_string())
+}
+
+/// A second module in an already-seeded project, for tests that need to move
+/// a task between two modules in the same project.
+async fn seed_module(store: &persistence::Store, project_id: &str, name: &str) -> String {
+    use domain::module::{ModuleName, ModuleOrder, ModuleProjectRef};
+    let module = store
+        .create((
+            ModuleName { value: name.to_string() },
+            ModuleProjectRef { project_id: project_id.to_string() },
+            ModuleOrder { value: 1 },
+        ))
+        .await
+        .unwrap();
+    module.to_string()
 }
