@@ -1211,9 +1211,13 @@ Crate ini otomatis ikut workspace (`members = ["crates/*"]`).
 `apps/backend-rs/crates/mcp/tests/mcp_flow.rs`:
 
 ```rust
-//! End-to-end MCP endpoint. The handshake doesn't touch the database, so that
-//! part runs without `DATABASE_URL`; tests that need the store are skipped
-//! silently.
+//! End-to-end MCP endpoint.
+//!
+//! Every test here needs `DATABASE_URL`, including the handshake ones: building the
+//! router needs a `Store` even though the handshake never reads it. Without the
+//! variable each test returns early, and cargo reports that as a pass — so the skip
+//! prints a marker rather than vanishing. A run that prints nothing is a run that
+//! tested something.
 
 use axum::body::{to_bytes, Body};
 use axum::extract::Request;
@@ -1241,6 +1245,14 @@ async fn router() -> Option<Router> {
     Some(router_and_store().await?.0)
 }
 
+/// Say so, loudly, when a test is about to no-op. Cargo counts an early return as a
+/// pass, so silence here is indistinguishable from success.
+fn skipped() {
+    // A test's thread carries its own name, so the marker names itself.
+    let name = std::thread::current().name().unwrap_or("test").to_string();
+    eprintln!("SKIP {name}: DATABASE_URL is not set, this test asserted nothing");
+}
+
 async fn rpc(router: &Router, bearer: Option<&str>, body: Value) -> (StatusCode, Value) {
     let mut b = Request::builder()
         .method("POST")
@@ -1258,7 +1270,7 @@ async fn rpc(router: &Router, bearer: Option<&str>, body: Value) -> (StatusCode,
 
 #[tokio::test]
 async fn initialize_returns_capabilities() {
-    let Some(router) = router().await else { return };
+    let Some(router) = router().await else { return skipped() };
     let (st, body) = rpc(
         &router,
         None,
@@ -1281,7 +1293,7 @@ async fn initialize_returns_capabilities() {
 
 #[tokio::test]
 async fn notification_gets_202_and_no_body() {
-    let Some(router) = router().await else { return };
+    let Some(router) = router().await else { return skipped() };
     let req = Request::builder()
         .method("POST")
         .uri("/mcp")
@@ -1296,7 +1308,7 @@ async fn notification_gets_202_and_no_body() {
 
 #[tokio::test]
 async fn unknown_method_is_a_jsonrpc_error() {
-    let Some(router) = router().await else { return };
+    let Some(router) = router().await else { return skipped() };
     let (st, body) = rpc(
         &router,
         None,
@@ -1309,7 +1321,7 @@ async fn unknown_method_is_a_jsonrpc_error() {
 
 #[tokio::test]
 async fn malformed_json_is_a_parse_error() {
-    let Some(router) = router().await else { return };
+    let Some(router) = router().await else { return skipped() };
     let req = Request::builder()
         .method("POST")
         .uri("/mcp")
@@ -1324,7 +1336,7 @@ async fn malformed_json_is_a_parse_error() {
 
 #[tokio::test]
 async fn get_is_not_supported() {
-    let Some(router) = router().await else { return };
+    let Some(router) = router().await else { return skipped() };
     let req = Request::builder().method("GET").uri("/mcp").body(Body::empty()).unwrap();
     let resp = router.oneshot(req).await.unwrap();
     assert_eq!(resp.status(), StatusCode::METHOD_NOT_ALLOWED);
@@ -1356,6 +1368,9 @@ use serde_json::{json, Value};
 pub const SUPPORTED_VERSIONS: [&str; 2] = ["2025-06-18", "2025-03-26"];
 
 pub const PARSE_ERROR: i64 = -32700;
+/// Well-formed JSON that is not a JSON-RPC request. Distinct from PARSE_ERROR on
+/// purpose: it tells a client its request builder is wrong, not its transport.
+pub const INVALID_REQUEST: i64 = -32600;
 pub const METHOD_NOT_FOUND: i64 = -32601;
 pub const INVALID_PARAMS: i64 = -32602;
 
@@ -1438,7 +1453,9 @@ use persistence::Store;
 use serde_json::Value;
 use transport::Notifier;
 
-use protocol::{error, initialize_result, result, Rpc, METHOD_NOT_FOUND, PARSE_ERROR};
+use protocol::{
+    error, initialize_result, result, Rpc, INVALID_REQUEST, METHOD_NOT_FOUND, PARSE_ERROR,
+};
 
 #[derive(Clone)]
 pub struct McpState {
@@ -1464,8 +1481,16 @@ async fn handle_post(
     Extension(_state): Extension<McpState>,
     body: axum::body::Bytes,
 ) -> Response {
-    let Ok(rpc) = serde_json::from_slice::<Rpc>(&body) else {
-        return Json(error(None, PARSE_ERROR, "invalid JSON-RPC request")).into_response();
+    // Two stages, because these are two different client bugs: a body that is not
+    // JSON at all, and a body that is JSON but not a JSON-RPC request. Collapsing
+    // them into one code tells a client its transport is broken when its request
+    // builder is what is actually wrong.
+    let Ok(raw) = serde_json::from_slice::<Value>(&body) else {
+        return Json(error(None, PARSE_ERROR, "request body is not valid JSON")).into_response();
+    };
+    let id = raw.get("id").cloned();
+    let Ok(rpc) = serde_json::from_value::<Rpc>(raw) else {
+        return Json(error(id, INVALID_REQUEST, "not a valid JSON-RPC request")).into_response();
     };
 
     // A notification (no `id`) is never answered — the spec calls for an empty 202.
@@ -1514,7 +1539,7 @@ Tambahkan di ujung `crates/mcp/tests/mcp_flow.rs`:
 ```rust
 #[tokio::test]
 async fn tools_list_without_token_is_401() {
-    let Some(router) = router().await else { return };
+    let Some(router) = router().await else { return skipped() };
     let req = Request::builder()
         .method("POST")
         .uri("/mcp")
@@ -1533,7 +1558,7 @@ async fn tools_list_without_token_is_401() {
 
 #[tokio::test]
 async fn garbage_token_is_401() {
-    let Some(router) = router().await else { return };
+    let Some(router) = router().await else { return skipped() };
     let (st, _) = rpc(
         &router,
         Some("not-a-real-token"),
@@ -1695,6 +1720,23 @@ async fn touch(store: &Store, rec: &TokenRecord, now: &str) {
 
 - [ ] **Step 4: Pasang di router**
 
+Tambahkan dulu satu helper di `crates/mcp/src/lib.rs`, karena Task 9 memakainya juga:
+
+```rust
+/// Bad or missing credentials answer at the HTTP layer, not as a JSON-RPC error:
+/// a client needs to tell "my token is wrong" apart from "my request was wrong",
+/// and only the former is worth re-prompting the user about.
+fn unauthorized(id: Option<Value>) -> Response {
+    (
+        StatusCode::UNAUTHORIZED,
+        [("WWW-Authenticate", "Bearer realm=\"sedjiwa-tasks-mcp\"")],
+        Json(error(id, -32001, "invalid or missing access token")),
+    )
+        .into_response()
+}
+```
+
+
 Di `crates/mcp/src/lib.rs`, tambahkan `mod pat;`, lalu ubah `handle_post` agar meminta kredensial untuk semua method **kecuali** handshake:
 
 ```rust
@@ -1703,8 +1745,16 @@ async fn handle_post(
     headers: axum::http::HeaderMap,
     body: axum::body::Bytes,
 ) -> Response {
-    let Ok(rpc) = serde_json::from_slice::<Rpc>(&body) else {
-        return Json(error(None, PARSE_ERROR, "invalid JSON-RPC request")).into_response();
+    // Two stages, because these are two different client bugs: a body that is not
+    // JSON at all, and a body that is JSON but not a JSON-RPC request. Collapsing
+    // them into one code tells a client its transport is broken when its request
+    // builder is what is actually wrong.
+    let Ok(raw) = serde_json::from_slice::<Value>(&body) else {
+        return Json(error(None, PARSE_ERROR, "request body is not valid JSON")).into_response();
+    };
+    let id = raw.get("id").cloned();
+    let Ok(rpc) = serde_json::from_value::<Rpc>(raw) else {
+        return Json(error(id, INVALID_REQUEST, "not a valid JSON-RPC request")).into_response();
     };
     let is_notification = rpc.id.is_none();
 
@@ -1719,14 +1769,7 @@ async fn handle_post(
             .and_then(|v| v.to_str().ok());
         match pat::authenticate(&state.store, header).await {
             Ok(u) => Some(u),
-            Err(_) => {
-                return (
-                    StatusCode::UNAUTHORIZED,
-                    [("WWW-Authenticate", "Bearer realm=\"sedjiwa-tasks-mcp\"")],
-                    Json(error(rpc.id, -32001, "invalid or missing access token")),
-                )
-                    .into_response()
-            }
+            Err(_) => return unauthorized(rpc.id),
         }
     } else {
         None
@@ -1800,7 +1843,7 @@ async fn issue_token(store: &persistence::Store, user_id: &str) -> String {
 
 #[tokio::test]
 async fn tools_list_returns_the_registry() {
-    let Some((router, store)) = router_and_store().await else { return };
+    let Some((router, store)) = router_and_store().await else { return skipped() };
     let user = seed_active_user(&store).await;
     let token = issue_token(&store, &user).await;
 
@@ -1824,7 +1867,7 @@ async fn tools_list_returns_the_registry() {
 
 #[tokio::test]
 async fn calling_an_unknown_tool_is_invalid_params() {
-    let Some((router, store)) = router_and_store().await else { return };
+    let Some((router, store)) = router_and_store().await else { return skipped() };
     let user = seed_active_user(&store).await;
     let token = issue_token(&store, &user).await;
     let (_, body) = rpc(
@@ -1839,7 +1882,7 @@ async fn calling_an_unknown_tool_is_invalid_params() {
 
 #[tokio::test]
 async fn business_failure_is_an_error_result_not_a_protocol_error() {
-    let Some((router, store)) = router_and_store().await else { return };
+    let Some((router, store)) = router_and_store().await else { return skipped() };
     let user = seed_active_user(&store).await;
     let token = issue_token(&store, &user).await;
     let (st, body) = rpc(
@@ -2068,7 +2111,15 @@ Di `crates/mcp/src/lib.rs`, tambahkan `mod tools;` dan lengkapi `match` di `hand
             let ctx = tools::Ctx {
                 store: state.store.clone(),
                 notifier: state.notifier.clone(),
-                auth: auth.expect("tools/call requires auth"),
+                // Not `.expect()`: that would tie a panic on a live request path to
+                // `needs_auth`'s exclusion list staying correct by convention. If the
+                // two ever drift, answer honestly instead of dying.
+                auth: match auth {
+                    Some(u) => u,
+                    None => {
+                        return unauthorized(rpc.id);
+                    }
+                },
             };
             match tools::dispatch(&ctx, name, &args).await {
                 Ok(v) => result(rpc.id.clone(), tools::ok_content(v)),
@@ -2343,7 +2394,7 @@ Tambahkan di `crates/mcp/tests/mcp_flow.rs`:
 ```rust
 #[tokio::test]
 async fn create_then_get_a_task_through_mcp() {
-    let Some((router, store)) = router_and_store().await else { return };
+    let Some((router, store)) = router_and_store().await else { return skipped() };
     let user = seed_active_user(&store).await;
     let token = issue_token(&store, &user).await;
     // Project + module are seeded through the transport core fn so the same
@@ -2528,7 +2579,7 @@ Tambahkan di `crates/mcp/tests/mcp_flow.rs`:
 ```rust
 #[tokio::test]
 async fn list_projects_only_shows_projects_the_user_can_see() {
-    let Some((router, store)) = router_and_store().await else { return };
+    let Some((router, store)) = router_and_store().await else { return skipped() };
     let member = seed_active_user(&store).await;
     let stranger = seed_active_user(&store).await;
     let (project_id, _module_id) = seed_project_and_module(&store, &member).await;
@@ -2697,7 +2748,7 @@ Tambahkan di `mcp_flow.rs`:
 ```rust
 #[tokio::test]
 async fn my_tasks_returns_only_assigned_work() {
-    let Some((router, store)) = router_and_store().await else { return };
+    let Some((router, store)) = router_and_store().await else { return skipped() };
     let user = seed_active_user(&store).await;
     let token = issue_token(&store, &user).await;
     let (_project_id, module_id) = seed_project_and_module(&store, &user).await;
@@ -2806,7 +2857,7 @@ pub async fn add_comment(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
 ```rust
 #[tokio::test]
 async fn add_then_list_comments() {
-    let Some((router, store)) = router_and_store().await else { return };
+    let Some((router, store)) = router_and_store().await else { return skipped() };
     let user = seed_active_user(&store).await;
     let token = issue_token(&store, &user).await;
     let (_p, module_id) = seed_project_and_module(&store, &user).await;
