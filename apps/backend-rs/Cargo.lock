@@ -1286,6 +1286,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "mcp"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "auth",
+ "axum",
+ "connectrpc-axum",
+ "domain",
+ "persistence",
+ "serde",
+ "serde_json",
+ "time",
+ "tokio",
+ "tower",
+ "tracing",
+ "transport",
+]
+
+[[package]]
 name = "md-5"
 version = "0.10.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
