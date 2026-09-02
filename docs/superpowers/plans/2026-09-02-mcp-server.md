@@ -3201,16 +3201,27 @@ mcp = { path = "../mcp" }
 
 - [ ] **Step 2: Pasang di router**
 
-Di `apps/backend-rs/crates/app/src/router.rs`, ganti baris terakhir rantai merge (`.merge(transport::notification_router(store, notifier.clone()))`) menjadi dua langkah agar `store` masih bisa dipakai MCP:
+Di `apps/backend-rs/crates/app/src/router.rs`, **jangan** cukup menambahkan `.nest()` di ujung rantai merge yang sudah ada. `.layer()` membungkus seluruh router tempat ia dipanggil, termasuk apa pun yang di-nest di dalamnya — jadi menambahkan MCP di sana justru menaruhnya di dalam `ConnectLayer` dan `auth_layer`, persis kebalikan dari yang dibutuhkan.
+
+Pecah rantainya: kumpulkan seluruh `.merge()` service Connect ke satu variabel, terapkan `ConnectLayer`, `Extension(notifier)`, dan `auth_layer` **hanya** ke subtree itu, lalu nest MCP di luarnya, dan terakhir `cors` untuk keduanya.
 
 ```rust
+    let connect_api = transport::health_router(store.clone())
+        // … seluruh .merge() lainnya seperti sekarang …
         .merge(transport::notification_router(store.clone(), notifier.clone()))
-        // MCP has its own credential path (PAT), so it's deliberately mounted
-        // outside `ConnectLayer` and doesn't go through the JWT `auth_layer` below.
-        .nest("/mcp", mcp::mcp_router(store, notifier.clone()))
+        .layer(ConnectLayer::new())
+        .layer(Extension(notifier.clone()))
+        .layer(axum::middleware::from_fn_with_state(secret, auth_layer));
+
+    // MCP membawa jalur kredensialnya sendiri (PAT) dan protokolnya sendiri,
+    // jadi ia sengaja duduk di luar kedua layer di atas. CORS tetap berlaku
+    // untuk keduanya.
+    connect_api
+        .nest("/mcp", mcp::mcp_router(store, notifier))
+        .layer(cors)
 ```
 
-Endpoint publiknya menjadi `/api/tasks-rs/mcp`: proxy dev di `apps/frontend/vite.config.ts` membuang prefix `/api/tasks-rs` sebelum meneruskan ke `:3010`, sama seperti untuk route Connect.
+Endpoint publiknya menjadi `/api/tasks-rs/mcp`: proxy dev di `apps/frontend/vite.config.ts` membuang prefix `/api/tasks-rs` sebelum meneruskan ke backend, sama seperti untuk route Connect.
 
 - [ ] **Step 3: Verifikasi manual**
 
