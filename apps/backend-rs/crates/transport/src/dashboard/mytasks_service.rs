@@ -46,6 +46,8 @@ fn respond(ctx: &Context, tasks: Vec<&TaskRecord>, r: &pb::MyTasksRequest) -> pb
     pb::MyTasksResponse { items, total }
 }
 
+/// Tasks the caller is an assignee on, across their member projects. Filtered
+/// by status/priority and paginated per `r`.
 pub async fn list_assigned_to_me_core(
     store: &Store,
     auth: &AuthUser,
@@ -72,6 +74,8 @@ async fn list_assigned_to_me(
     ))
 }
 
+/// Tasks the caller created, across their member projects (irrespective of
+/// current assignment). Filtered by status/priority and paginated per `r`.
 pub async fn list_created_by_me_core(
     store: &Store,
     auth: &AuthUser,
@@ -98,6 +102,11 @@ async fn list_created_by_me(
     ))
 }
 
+/// Tasks the caller is "involving" in the discussion sense: they authored a
+/// comment on the task, or were `@mentioned` in one. This does **not**
+/// include tasks merely assigned to or created by the caller — use
+/// `list_assigned_to_me_core` / `list_created_by_me_core` for those.
+/// Filtered by status/priority and paginated per `r`.
 pub async fn list_involving_me_core(
     store: &Store,
     auth: &AuthUser,

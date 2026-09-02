@@ -105,6 +105,7 @@ async fn get_task(
     Ok(ConnectResponse::new(get_task_core(&store, &auth, r).await?))
 }
 
+/// All tasks in a project (optionally narrowed to one module). Member-gated.
 pub async fn list_tasks_core(
     store: &Store,
     auth: &AuthUser,
@@ -136,6 +137,9 @@ async fn list_tasks(
     Ok(ConnectResponse::new(list_tasks_core(&store, &auth, r).await?))
 }
 
+/// Create a task in a module (or as a subtask of `parent_id`). Member-gated;
+/// validates title/dates/assignees, notifies newly-assigned members, and
+/// records activity + search index entries.
 pub async fn create_task_core(
     store: &Store,
     notifier: Option<&Arc<Notifier>>,
@@ -270,6 +274,8 @@ async fn create_task(
     ))
 }
 
+/// Patch a task's fields (only those present in `r` change). Member-gated;
+/// notifies newly-added assignees and re-indexes the task for search.
 pub async fn update_task_core(
     store: &Store,
     notifier: Option<&Arc<Notifier>>,
@@ -533,6 +539,8 @@ async fn delete_task(
     Ok(ConnectResponse::new(pb::DeleteTaskResponse { ok: true }))
 }
 
+/// Move a task (and its subtasks) to another module in the same project, and
+/// re-order it there. Member-gated on both the source and destination project.
 pub async fn move_task_core(
     store: &Store,
     auth: &AuthUser,

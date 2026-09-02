@@ -45,6 +45,8 @@ fn str_to_kind(s: &str) -> pb::SearchKind {
     }
 }
 
+/// Full-text search scoped to the caller's visible projects (admin: all).
+/// A blank `q` is not an error — it returns an empty result list.
 pub async fn search_core(
     store: &Store,
     auth: &AuthUser,

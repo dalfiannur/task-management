@@ -69,6 +69,8 @@ async fn filter_mentions(
         .collect())
 }
 
+/// Paginated comments on a task, oldest first. Member-gated through the
+/// task's project.
 pub async fn list_comments_core(
     store: &Store,
     auth: &AuthUser,
@@ -109,6 +111,8 @@ async fn list_comments(
     ))
 }
 
+/// Add a comment to a task. Member-gated; mentions are filtered to project
+/// members and notified, and the comment is indexed for search.
 pub async fn create_comment_core(
     store: &Store,
     notifier: Option<&Arc<Notifier>>,

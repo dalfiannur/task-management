@@ -34,6 +34,7 @@ async fn require_module(store: &Store, pid: i64) -> Result<ModuleRecord, Connect
         .ok_or_else(|| ConnectError::new_not_found("module not found"))
 }
 
+/// All modules in a project. Member-gated.
 pub async fn list_modules_core(
     store: &Store,
     auth: &AuthUser,
