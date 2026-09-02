@@ -127,20 +127,18 @@ async fn create_project(
 }
 
 /// Member-scoped list (admin sees all) with status/search filters + pagination.
-async fn list_projects(
-    Extension(store): Extension<Arc<Store>>,
-    user: Option<Extension<AuthUser>>,
-    req: ConnectRequest<pb::ListProjectsRequest>,
-) -> Result<ConnectResponse<pb::ListProjectsResponse>, ConnectError> {
-    let auth = require_auth(user)?;
-    let ConnectRequest(r) = req;
-    let all = load_all_projects(&store).await.map_err(internal)?;
+pub async fn list_projects_core(
+    store: &Store,
+    auth: &AuthUser,
+    r: pb::ListProjectsRequest,
+) -> Result<pb::ListProjectsResponse, ConnectError> {
+    let all = load_all_projects(store).await.map_err(internal)?;
 
     // Scope to the caller's memberships (admin: all).
     let visible: Vec<ProjectRecord> = if auth.is_admin() {
         all
     } else {
-        let mine: HashSet<String> = member_project_ids(&store, &auth.id)
+        let mine: HashSet<String> = member_project_ids(store, &auth.id)
             .await
             .map_err(internal)?
             .into_iter()
@@ -170,13 +168,39 @@ async fn list_projects(
         .take(limit as usize)
         .map(|p| to_proto(&p))
         .collect();
-    Ok(ConnectResponse::new(pb::ListProjectsResponse {
-        projects,
-        total,
-    }))
+    Ok(pb::ListProjectsResponse { projects, total })
+}
+
+async fn list_projects(
+    Extension(store): Extension<Arc<Store>>,
+    user: Option<Extension<AuthUser>>,
+    req: ConnectRequest<pb::ListProjectsRequest>,
+) -> Result<ConnectResponse<pb::ListProjectsResponse>, ConnectError> {
+    let auth = require_auth(user)?;
+    let ConnectRequest(r) = req;
+    Ok(ConnectResponse::new(
+        list_projects_core(&store, &auth, r).await?,
+    ))
 }
 
 /// Member-gated read.
+pub async fn get_project_core(
+    store: &Store,
+    auth: &AuthUser,
+    r: pb::GetProjectRequest,
+) -> Result<pb::Project, ConnectError> {
+    let pid = parse_pid(&r.id)?;
+    let p = require_project(store, pid).await?;
+    if !auth.is_admin()
+        && !is_member(store, &pid.to_string(), &auth.id)
+            .await
+            .map_err(internal)?
+    {
+        return Err(ConnectError::new_permission_denied("not a member"));
+    }
+    Ok(to_proto(&p))
+}
+
 async fn get_project(
     Extension(store): Extension<Arc<Store>>,
     user: Option<Extension<AuthUser>>,
@@ -184,16 +208,9 @@ async fn get_project(
 ) -> Result<ConnectResponse<pb::Project>, ConnectError> {
     let auth = require_auth(user)?;
     let ConnectRequest(r) = req;
-    let pid = parse_pid(&r.id)?;
-    let p = require_project(&store, pid).await?;
-    if !auth.is_admin()
-        && !is_member(&store, &pid.to_string(), &auth.id)
-            .await
-            .map_err(internal)?
-    {
-        return Err(ConnectError::new_permission_denied("not a member"));
-    }
-    Ok(ConnectResponse::new(to_proto(&p)))
+    Ok(ConnectResponse::new(
+        get_project_core(&store, &auth, r).await?,
+    ))
 }
 
 /// Owner/admin: change work status.

@@ -34,6 +34,18 @@ async fn require_module(store: &Store, pid: i64) -> Result<ModuleRecord, Connect
         .ok_or_else(|| ConnectError::new_not_found("module not found"))
 }
 
+pub async fn list_modules_core(
+    store: &Store,
+    auth: &AuthUser,
+    r: pb::ListModulesRequest,
+) -> Result<pb::ListModulesResponse, ConnectError> {
+    require_member(store, &r.project_id, auth).await?;
+    let modules = modules_for_project(store, &r.project_id)
+        .await
+        .map_err(internal)?;
+    Ok(list_response(&modules))
+}
+
 async fn list_modules(
     Extension(store): StoreExt,
     user: Option<Extension<AuthUser>>,
@@ -41,11 +53,9 @@ async fn list_modules(
 ) -> Result<ConnectResponse<pb::ListModulesResponse>, ConnectError> {
     let auth = require_auth(user)?;
     let ConnectRequest(r) = req;
-    require_member(&store, &r.project_id, &auth).await?;
-    let modules = modules_for_project(&store, &r.project_id)
-        .await
-        .map_err(internal)?;
-    Ok(ConnectResponse::new(list_response(&modules)))
+    Ok(ConnectResponse::new(
+        list_modules_core(&store, &auth, r).await?,
+    ))
 }
 
 async fn create_module(
