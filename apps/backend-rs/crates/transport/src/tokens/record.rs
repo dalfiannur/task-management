@@ -34,14 +34,23 @@ fn read(world: &World, e: Entity, pid: i64) -> Option<TokenRecord> {
 }
 
 /// Token milik satu user, terbaru dulu.
+///
+/// Filter di SQL, bukan di Rust. `query(None, ..)` akan menghidrasi setiap token
+/// milik *semua* user sebelum filter kepemilikan sempat jalan — dan menghidrasi
+/// satu pid berharga satu query keberadaan plus satu query per tipe komponen
+/// terdaftar. Pelajaran itu sudah dibayar sekali dan dicatat lengkap dengan
+/// angkanya di `activity::record::activity_for_project`; `TokenOwner.user_id`
+/// sudah diindeks persis untuk query ini.
 pub async fn tokens_for_owner(store: &Store, user_id: &str) -> anyhow::Result<Vec<TokenRecord>> {
-    let owner = user_id.to_string();
+    if !crate::sql::safe_sql_id(user_id) {
+        return Ok(Vec::new());
+    }
+    let pred = format!("user_id = '{user_id}'");
     let mut v = store
-        .query::<TokenOwner, TokenRecord>(None, move |world, pairs| {
+        .query::<TokenOwner, TokenRecord>(Some(&pred), |world, pairs| {
             pairs
                 .iter()
                 .filter_map(|(pid, e)| read(world, *e, *pid))
-                .filter(|t| t.user_id == owner)
                 .collect()
         })
         .await?;

@@ -7,24 +7,7 @@ use domain::activity::{ActivityAction, ActivityChanges, ActivityInfo, EntityType
 use persistence::{PgTable, Store};
 
 use crate::sedjiwa::tasks::activity::v1 as pb;
-
-/// True when `v` is safe to inline into a `predicate` as a quoted string.
-///
-/// `predicate` is interpolated as raw SQL and never bound, so the codebase's rule
-/// is to inline only validated values (`load_project` inlines a parsed i64). Ids
-/// here cannot all be integers — OWNERSHIP rows carry a user id such as
-/// `usrB1786485885569204744` — so this validates the charset instead of escaping
-/// quotes: a value containing `'` is rejected outright rather than escaped, so no
-/// quote can reach the statement no matter what `standard_conforming_strings` is
-/// set to. Every id stored in cmp_activityinfo (entity_id, actor_id, project_id)
-/// matches this charset; anything outside it cannot match a stored id anyway, so
-/// callers filter to empty rather than erroring.
-fn safe_sql_id(v: &str) -> bool {
-    !v.is_empty()
-        && v.len() <= 64
-        && v.bytes()
-            .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')
-}
+use crate::sql::safe_sql_id;
 
 #[derive(Debug, Clone)]
 pub(crate) struct ActivityRecord {

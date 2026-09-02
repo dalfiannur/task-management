@@ -40,6 +40,12 @@ fn now_iso() -> String {
         .unwrap_or_default()
 }
 
+/// Batas atas yang disengaja. `OffsetDateTime + Duration` **panic** ketika
+/// hasilnya keluar dari rentang yang bisa diwakili, sementara `expires_in_days`
+/// datang mentah dari client sebagai `uint32` — tanpa batas ini satu request
+/// dengan angka besar menjatuhkan handler alih-alih dibalas `invalid_argument`.
+pub(crate) const MAX_EXPIRY_DAYS: u32 = 3650; // 10 tahun
+
 /// `expires_in_days` → `expires_at` RFC3339. 0 = tanpa kedaluwarsa.
 fn expiry_from_days(days: u32) -> Option<String> {
     use time::format_description::well_known::Rfc3339;
@@ -74,6 +80,11 @@ async fn create_token(
     if name.is_empty() || name.chars().count() > 64 {
         return Err(ConnectError::new_invalid_argument(
             "name is required (max 64 characters)",
+        ));
+    }
+    if r.expires_in_days > MAX_EXPIRY_DAYS {
+        return Err(ConnectError::new_invalid_argument(
+            "expires_in_days must be 3650 or less",
         ));
     }
     let plaintext = generate_token();

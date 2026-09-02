@@ -160,3 +160,47 @@ async fn empty_name_is_rejected() {
     // negatif sudah mustahil sampai ke sini lewat proto.
     assert_eq!(st, StatusCode::BAD_REQUEST);
 }
+
+#[tokio::test]
+async fn overlong_name_is_rejected() {
+    let Some((router, _store)) = setup().await else { return };
+    let jwt = token(&format!("u-{}", uniq()));
+    let (st, _) = call(
+        &router,
+        &format!("{TOKENS}/CreateToken"),
+        Some(&jwt),
+        json!({ "name": "x".repeat(65), "expiresInDays": 0 }),
+    )
+    .await;
+    assert_eq!(st, StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn excessive_expiry_is_rejected() {
+    let Some((router, _store)) = setup().await else { return };
+    let jwt = token(&format!("u-{}", uniq()));
+    let (st, _) = call(
+        &router,
+        &format!("{TOKENS}/CreateToken"),
+        Some(&jwt),
+        // `OffsetDateTime + Duration` panics once the result leaves the
+        // representable range; this is the regression test for that bound.
+        json!({ "name": "laptop", "expiresInDays": 4_000_000_000u32 }),
+    )
+    .await;
+    assert_eq!(st, StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn revoke_with_non_numeric_id_is_not_found() {
+    let Some((router, _store)) = setup().await else { return };
+    let jwt = token(&format!("u-{}", uniq()));
+    let (st, _) = call(
+        &router,
+        &format!("{TOKENS}/RevokeToken"),
+        Some(&jwt),
+        json!({ "id": "not-a-pid" }),
+    )
+    .await;
+    assert_eq!(st, StatusCode::NOT_FOUND);
+}
