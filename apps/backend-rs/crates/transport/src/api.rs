@@ -16,6 +16,7 @@
 //! the real lookup — not a hand-rolled copy — is the point.
 
 pub use crate::projects::project_service::{get_project_core, list_projects_core};
+pub use crate::sedjiwa::tasks::project::v1 as project_pb;
 pub use crate::work::module_service::list_modules_core;
 // `ListTasksRequest.project_id` is required, but the `list_tasks` MCP tool also
 // accepts a bare `module_id`. `module_project` is the exact lookup

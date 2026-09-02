@@ -130,6 +130,24 @@ async fn rpc(router: &Router, bearer: Option<&str>, body: Value) -> (StatusCode,
     (status, serde_json::from_slice(&bytes).unwrap_or(Value::Null))
 }
 
+/// Call a single tool and return `(isError, the parsed JSON payload)`. Every
+/// existing test up to this point inlines the `rpc` + `content[0].text`
+/// parse because each only does it once or twice; the project/module tests
+/// below do it repeatedly enough that the boilerplate itself starts hiding
+/// what each test is actually asserting.
+async fn tools_call(router: &Router, token: &str, name: &str, arguments: Value) -> (bool, Value) {
+    let (_, body) = rpc(
+        router,
+        Some(token),
+        json!({ "jsonrpc": "2.0", "id": 99, "method": "tools/call",
+                "params": { "name": name, "arguments": arguments } }),
+    )
+    .await;
+    let is_error = body["result"]["isError"].as_bool().unwrap_or(true);
+    let text = body["result"]["content"][0]["text"].as_str().unwrap_or("null");
+    (is_error, serde_json::from_str(text).unwrap_or(Value::Null))
+}
+
 #[tokio::test]
 async fn initialize_returns_capabilities() {
     let Some(router) = router().await else { return skipped() };
@@ -830,4 +848,93 @@ async fn seed_module(store: &persistence::Store, project_id: &str, name: &str) -
         .await
         .unwrap();
     module.to_string()
+}
+
+#[tokio::test]
+async fn list_projects_only_shows_projects_the_user_can_see() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let member = seed_active_user(&store).await;
+    let stranger = seed_active_user(&store).await;
+    let (project_id, _module_id) = seed_project_and_module(&store, &member).await;
+
+    let member_token = issue_token(&store, &member).await;
+    let (is_error, mine) = tools_call(&router, &member_token, "list_projects", json!({})).await;
+    assert!(!is_error, "{mine:?}");
+    assert!(mine["projects"].as_array().unwrap().iter().any(|p| p["id"] == project_id.as_str()));
+
+    let stranger_token = issue_token(&store, &stranger).await;
+    let (is_error, theirs) = tools_call(&router, &stranger_token, "list_projects", json!({})).await;
+    assert!(!is_error, "{theirs:?}");
+    assert!(theirs["projects"].as_array().unwrap().iter().all(|p| p["id"] != project_id.as_str()));
+}
+
+#[tokio::test]
+async fn get_project_returns_details_for_a_member() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let member = seed_active_user(&store).await;
+    let (project_id, _module_id) = seed_project_and_module(&store, &member).await;
+    let token = issue_token(&store, &member).await;
+
+    let (is_error, payload) =
+        tools_call(&router, &token, "get_project", json!({ "project_id": project_id })).await;
+    assert!(!is_error, "{payload:?}");
+    assert_eq!(payload["id"], project_id.as_str());
+    assert_eq!(payload["name"], "MCP test project");
+    // `seed_project_and_module` writes the owner as `member` and status Active
+    // — this is the argument-to-field mapping under test: `p.status` (a wire
+    // enum) must come back as the string label, not the raw code, and
+    // `p.owner_id` must land under `owner_id`.
+    assert_eq!(payload["status"], "active");
+    assert_eq!(payload["owner_id"], member.as_str());
+}
+
+#[tokio::test]
+async fn get_project_refuses_a_non_member() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let member = seed_active_user(&store).await;
+    let stranger = seed_active_user(&store).await;
+    let (project_id, _module_id) = seed_project_and_module(&store, &member).await;
+    let stranger_token = issue_token(&store, &stranger).await;
+
+    let (is_error, payload) = tools_call(
+        &router,
+        &stranger_token,
+        "get_project",
+        json!({ "project_id": project_id }),
+    )
+    .await;
+    // `get_project_core`'s own membership check rejects this — a business
+    // rule the model could read and stop retrying, not a malformed request —
+    // so an `isError` tool result rather than a JSON-RPC protocol error.
+    assert!(is_error, "{payload:?}");
+}
+
+#[tokio::test]
+async fn list_modules_returns_a_projects_modules() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let member = seed_active_user(&store).await;
+    let (project_id, module_id) = seed_project_and_module(&store, &member).await;
+    let other_module_id = seed_module(&store, &project_id, "Doing").await;
+    let token = issue_token(&store, &member).await;
+
+    let (is_error, payload) =
+        tools_call(&router, &token, "list_modules", json!({ "project_id": project_id })).await;
+    assert!(!is_error, "{payload:?}");
+    assert_eq!(payload["count"], 2, "{payload:?}");
+    let modules = payload["modules"].as_array().unwrap();
+    assert_eq!(modules.len(), 2);
+
+    let backlog = modules.iter().find(|m| m["id"] == module_id.as_str()).unwrap();
+    assert_eq!(backlog["name"], "Backlog");
+    assert_eq!(backlog["order"], 0);
+    // `Module` carries no `project_id` on the wire — the tool echoes back the
+    // id it was asked about instead. This is the mapping most likely to
+    // silently regress: the task file's own draft claimed a `m.project_id`
+    // field that does not exist on the proto.
+    assert_eq!(backlog["project_id"], project_id.as_str());
+
+    let doing = modules.iter().find(|m| m["id"] == other_module_id.as_str()).unwrap();
+    assert_eq!(doing["name"], "Doing");
+    assert_eq!(doing["order"], 1);
+    assert_eq!(doing["project_id"], project_id.as_str());
 }
