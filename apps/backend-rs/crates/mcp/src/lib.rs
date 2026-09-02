@@ -18,7 +18,9 @@ use persistence::Store;
 use serde_json::Value;
 use transport::Notifier;
 
-use protocol::{error, initialize_result, result, Rpc, METHOD_NOT_FOUND, PARSE_ERROR};
+use protocol::{
+    error, initialize_result, result, Rpc, INVALID_REQUEST, METHOD_NOT_FOUND, PARSE_ERROR,
+};
 
 #[derive(Clone)]
 pub struct McpState {
@@ -44,8 +46,16 @@ async fn handle_post(
     Extension(_state): Extension<McpState>,
     body: axum::body::Bytes,
 ) -> Response {
-    let Ok(rpc) = serde_json::from_slice::<Rpc>(&body) else {
-        return Json(error(None, PARSE_ERROR, "invalid JSON-RPC request")).into_response();
+    // Two stages, because these are two different client bugs: a body that is not
+    // JSON at all, and a body that is JSON but not a JSON-RPC request. Collapsing
+    // them into one code tells a client its transport is broken when its request
+    // builder is what is actually wrong.
+    let Ok(raw) = serde_json::from_slice::<Value>(&body) else {
+        return Json(error(None, PARSE_ERROR, "request body is not valid JSON")).into_response();
+    };
+    let id = raw.get("id").cloned();
+    let Ok(rpc) = serde_json::from_value::<Rpc>(raw) else {
+        return Json(error(id, INVALID_REQUEST, "not a valid JSON-RPC request")).into_response();
     };
 
     // A notification (no `id`) is never answered — the spec calls for an empty 202.

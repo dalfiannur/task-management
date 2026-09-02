@@ -13,6 +13,9 @@ use serde_json::{json, Value};
 pub const SUPPORTED_VERSIONS: [&str; 2] = ["2025-06-18", "2025-03-26"];
 
 pub const PARSE_ERROR: i64 = -32700;
+/// Well-formed JSON that is not a JSON-RPC request. Distinct from PARSE_ERROR on
+/// purpose: it tells a client its request builder is wrong, not its transport.
+pub const INVALID_REQUEST: i64 = -32600;
 pub const METHOD_NOT_FOUND: i64 = -32601;
 pub const INVALID_PARAMS: i64 = -32602;
 
