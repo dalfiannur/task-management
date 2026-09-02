@@ -2540,7 +2540,7 @@ pub const LIST_TASKS: ToolMeta = ToolMeta {
             "project_id": { "type": "string" },
             "module_id": { "type": "string" },
             "assignee_id": { "type": "string" },
-            "status": { "type": "string", "enum": ["todo", "in_progress", "done", "blocked"] },
+            "status": { "type": "string", "enum": ["todo", "in_progress", "done", "cancelled"] },
             "limit": { "type": "integer", "minimum": 1, "maximum": 200 }
         }
     }),
@@ -2641,7 +2641,7 @@ pub const UPDATE_TASK: ToolMeta = ToolMeta {
             "task_id": { "type": "string" },
             "title": { "type": "string" },
             "description": { "type": "string" },
-            "status": { "type": "string", "enum": ["todo", "in_progress", "done", "blocked"] },
+            "status": { "type": "string", "enum": ["todo", "in_progress", "done", "cancelled"] },
             "priority": { "type": "string", "enum": ["none", "low", "medium", "high", "urgent"] },
             "start_date": { "type": "string" },
             "due_date": { "type": "string" },
@@ -2716,46 +2716,53 @@ async fn create_then_get_a_task_through_mcp() {
 /// creation flow is already tested in `transport::project_flow`, and this
 /// test only needs data that makes the membership check pass.
 ///
+/// A project owned by `user` (with `user` as a member) plus one module inside it.
+/// Seeded straight through components rather than over RPC: project creation is
+/// already covered by `transport::project_flow`, and this test only needs data
+/// that makes the membership check pass.
+///
 /// Returns `(project_id, module_id)`.
-async fn seed_project_and_module(
-    store: &persistence::Store,
-    user: &str,
-) -> (String, String) {
+async fn seed_project_and_module(store: &persistence::Store, user: &str) -> (String, String) {
     use domain::module::{ModuleDescription, ModuleName, ModuleOrder, ModuleProjectRef};
     use domain::project::{
         ProjectDates, ProjectDescription, ProjectMembership, ProjectName, ProjectOwnerId,
-        ProjectStatusComponent,
+        ProjectStatus, ProjectStatusComponent,
     };
     let project = store
         .create((
             ProjectName { value: "MCP test project".into() },
             ProjectDescription { value: String::new() },
-            ProjectOwnerId { user_id: user.to_string() },
-            ProjectStatusComponent {
-                status: "active".into(),
-                created_at: "2026-01-01T00:00:00Z".into(),
-            },
+            ProjectOwnerId { value: user.to_string() },
+            ProjectStatusComponent { value: ProjectStatus::Active.as_str().to_string() },
             ProjectDates { start_date: None, end_date: None },
-            ProjectMembership { user_ids: vec![user.to_string()] },
         ))
+        .await
+        .unwrap();
+    let project_id = project.to_string();
+    // Membership is its own entity, one row per (project, user) — creating a
+    // project does not make its owner a member.
+    store
+        .create((ProjectMembership {
+            project_id: project_id.clone(),
+            user_id: user.to_string(),
+        },))
         .await
         .unwrap();
     let module = store
         .create((
             ModuleName { value: "Backlog".into() },
             ModuleDescription { value: String::new() },
-            ModuleProjectRef { project_id: project.to_string() },
-            ModuleOrder { sort_order: 0 },
+            ModuleProjectRef { project_id: project_id.clone() },
+            ModuleOrder { value: 0 },
         ))
         .await
         .unwrap();
-    (project.to_string(), module.to_string())
+    (project_id, module.to_string())
 }
 ```
 
-Nama dan field komponen di atas harus disamakan dengan `crates/domain/src/project.rs` dan
-`crates/domain/src/module.rs` yang sebenarnya — bila salah satu field berbeda, ikuti file
-domain-nya, bukan cuplikan ini.
+Bentuk komponen di atas sudah diverifikasi terhadap `crates/domain/src/project.rs` dan
+`crates/domain/src/module.rs` saat Task 10, jadi tidak perlu ditebak lagi.
 
 - [ ] **Step 4: Jalankan test**
 
@@ -2981,7 +2988,7 @@ pub const MY_TASKS: ToolMeta = ToolMeta {
                 "description": "assigned (default) | created | involving \
                                 (commented on or mentioned in)"
             },
-            "status": { "type": "string", "enum": ["todo", "in_progress", "done", "blocked"] },
+            "status": { "type": "string", "enum": ["todo", "in_progress", "done", "cancelled"] },
             "limit": { "type": "integer", "minimum": 1, "maximum": 200 }
         }
     }),
