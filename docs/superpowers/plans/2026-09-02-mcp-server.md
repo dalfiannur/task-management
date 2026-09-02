@@ -1,0 +1,3329 @@
+# MCP Server (PAT) Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Portal mengekspos MCP server ber-PAT di `POST /api/tasks-rs/mcp` sehingga tiap user bisa menyambungkan AI client miliknya sendiri ke akun portalnya, dengan 12 tool untuk task, project, pencarian, dan komentar.
+
+**Architecture:** Crate baru `crates/mcp` di workspace `backend-rs` dipasang pada axum router yang sama dengan Connect service. Logika bisnis yang hari ini terkubur di dalam handler axum diekstrak menjadi "core fn" (`transport::api::*`) sehingga MCP dan UI memakai satu jalur yang sama — termasuk member-gating, activity record, notifikasi, dan search index. Autentikasi PAT dikurung khusus di endpoint MCP; `auth_layer` global tetap JWT-only.
+
+**Tech Stack:** Rust (axum 0.8, connectrpc-axum 0.2, prost, serde_json, sha2, rand), Arke ECS + arke-postgres, PostgreSQL; frontend React 19 + TanStack Router/Query + connect-query + Tailwind/shadcn.
+
+**Spec:** `docs/superpowers/specs/2026-09-02-mcp-server-design.md`
+
+---
+
+## File Structure
+
+**Backend — dibuat:**
+
+| File | Tanggung jawab |
+|---|---|
+| `apps/backend-rs/proto/tokens.proto` | Kontrak `AccessTokenService` (Create/List/Revoke) |
+| `apps/backend-rs/crates/domain/src/token.rs` | Komponen ECS PAT + aturan murni (generate, hash, preview, expiry) |
+| `apps/backend-rs/crates/transport/src/tokens/mod.rs` | Barrel + helper modul token |
+| `apps/backend-rs/crates/transport/src/tokens/record.rs` | Baca token dari store (by hash, by owner) |
+| `apps/backend-rs/crates/transport/src/tokens/token_service.rs` | Handler `AccessTokenService` + `token_router` |
+| `apps/backend-rs/crates/transport/src/api.rs` | Permukaan core fn in-process yang dipakai crate `mcp` |
+| `apps/backend-rs/crates/mcp/Cargo.toml` | Manifest crate MCP |
+| `apps/backend-rs/crates/mcp/src/lib.rs` | `mcp_router` + state |
+| `apps/backend-rs/crates/mcp/src/protocol.rs` | Envelope JSON-RPC 2.0 + dispatch `initialize`/`ping`/`tools/*` |
+| `apps/backend-rs/crates/mcp/src/pat.rs` | Verifikasi PAT → `AuthUser`, update `last_used_at` ter-throttle |
+| `apps/backend-rs/crates/mcp/src/tools/mod.rs` | Registry tool + tipe `Tool`/`ToolError` + mapping error |
+| `apps/backend-rs/crates/mcp/src/tools/tasks.rs` | 5 tool task |
+| `apps/backend-rs/crates/mcp/src/tools/projects.rs` | 3 tool project/module |
+| `apps/backend-rs/crates/mcp/src/tools/discovery.rs` | `search`, `my_tasks` |
+| `apps/backend-rs/crates/mcp/src/tools/comments.rs` | `list_comments`, `add_comment` |
+| `apps/backend-rs/crates/transport/tests/tokens_flow.rs` | Uji end-to-end RPC token |
+| `apps/backend-rs/crates/mcp/tests/mcp_flow.rs` | Uji end-to-end endpoint MCP |
+
+**Backend — diubah:**
+
+| File | Perubahan |
+|---|---|
+| `apps/backend-rs/Cargo.toml` | Tambah `sha2`, `rand` ke workspace deps |
+| `apps/backend-rs/crates/domain/Cargo.toml` | Tambah `sha2`, `rand` |
+| `apps/backend-rs/crates/domain/src/lib.rs` | `pub mod token;` + registrasi 4 komponen |
+| `apps/backend-rs/crates/transport/build.rs` | Kompilasi `tokens.proto` |
+| `apps/backend-rs/crates/transport/src/lib.rs` | `mod tokens; pub mod api;` + `pub use tokens::token_router` |
+| `apps/backend-rs/crates/transport/src/work/mod.rs` | `pub(crate) mod task_service;` `pub(crate) mod module_service;` |
+| `apps/backend-rs/crates/transport/src/work/task_service.rs` | Ekstrak 5 core fn |
+| `apps/backend-rs/crates/transport/src/work/module_service.rs` | Ekstrak `list_modules_core` |
+| `apps/backend-rs/crates/transport/src/projects/*` | Ekstrak `list_projects_core`, `get_project_core` |
+| `apps/backend-rs/crates/transport/src/comments/*` | Ekstrak `list_comments_core`, `create_comment_core` |
+| `apps/backend-rs/crates/transport/src/search/*` | Ekstrak `search_core` |
+| `apps/backend-rs/crates/transport/src/dashboard/*` | Ekstrak `my_tasks_core` |
+| `apps/backend-rs/crates/app/Cargo.toml` | Tambah dep `mcp` |
+| `apps/backend-rs/crates/app/src/router.rs` | Merge `token_router` + nest `mcp_router` |
+
+**Frontend — dibuat:** `src/features/tokens/{types.ts,index.ts,api/mappers.ts,api/hooks.ts,components/token-table.tsx,components/create-token-dialog.tsx,components/connect-panel.tsx}`, `src/routes/_authed/settings/tokens.tsx`.
+**Frontend — diubah:** `src/features/auth/components/app-shell.tsx` (entri nav), `src/lib/gen/tokens_pb.ts` (hasil `buf generate`).
+
+---
+
+# Phase 1 — Fondasi PAT
+
+## Task 1: Komponen & aturan token di `domain`
+
+**Files:**
+- Create: `apps/backend-rs/crates/domain/src/token.rs`
+- Modify: `apps/backend-rs/Cargo.toml`, `apps/backend-rs/crates/domain/Cargo.toml`, `apps/backend-rs/crates/domain/src/lib.rs`
+
+Semua perintah di task ini dijalankan dari `apps/backend-rs/`.
+
+- [ ] **Step 1: Tambah dependency**
+
+Di `apps/backend-rs/Cargo.toml`, dalam `[workspace.dependencies]`, tambahkan setelah baris `argon2 = ...`:
+
+```toml
+sha2 = "0.10"
+rand = "0.8"
+```
+
+Di `apps/backend-rs/crates/domain/Cargo.toml`, dalam `[dependencies]`, tambahkan:
+
+```toml
+sha2 = { workspace = true }
+rand = { workspace = true }
+```
+
+- [ ] **Step 2: Tulis test yang gagal**
+
+Buat `apps/backend-rs/crates/domain/src/token.rs` berisi **hanya** blok test ini dulu:
+
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn generated_token_has_prefix_and_fixed_length() {
+        let t = generate_token();
+        assert!(t.starts_with(TOKEN_PREFIX));
+        assert_eq!(t.len(), TOKEN_PREFIX.len() + 64);
+        assert!(looks_like_token(&t));
+    }
+
+    #[test]
+    fn two_tokens_differ() {
+        assert_ne!(generate_token(), generate_token());
+    }
+
+    #[test]
+    fn hash_is_stable_and_not_the_plaintext() {
+        let t = generate_token();
+        let h = hash_token(&t);
+        assert_eq!(h, hash_token(&t));
+        assert_eq!(h.len(), 64);
+        assert!(!h.contains(&t));
+    }
+
+    #[test]
+    fn preview_is_last_four_chars() {
+        assert_eq!(preview_of("sjw_pat_00ff1a2b"), "1a2b");
+        assert_eq!(preview_of("ab"), "ab"); // lebih pendek dari 4 → apa adanya
+    }
+
+    #[test]
+    fn garbage_is_not_a_token() {
+        assert!(!looks_like_token("hello"));
+        assert!(!looks_like_token(&"sjw_pat_".repeat(9)));
+        // Benar panjangnya, tapi ada karakter non-hex.
+        let bad = format!("{TOKEN_PREFIX}{}", "z".repeat(64));
+        assert!(!looks_like_token(&bad));
+    }
+
+    #[test]
+    fn expiry_compares_lexicographically() {
+        assert!(!is_expired(None, "2026-09-02T00:00:00Z"));
+        assert!(is_expired(
+            Some("2026-09-01T00:00:00Z"),
+            "2026-09-02T00:00:00Z"
+        ));
+        assert!(!is_expired(
+            Some("2026-09-03T00:00:00Z"),
+            "2026-09-02T00:00:00Z"
+        ));
+    }
+}
+```
+
+- [ ] **Step 3: Jalankan test, pastikan gagal**
+
+Run: `cargo test -p domain token::`
+Expected: FAIL kompilasi — `cannot find function generate_token in this scope`.
+
+- [ ] **Step 4: Tulis implementasinya**
+
+Sisipkan di atas blok `#[cfg(test)]` pada `crates/domain/src/token.rs`:
+
+```rust
+//! Personal access token (PAT) untuk endpoint MCP: komponen ECS + aturan murni.
+//!
+//! Design note: rahasia disimpan sebagai digest **SHA-256, bukan Argon2**. Sebuah
+//! PAT membawa entropi 256 bit sehingga tidak brute-force-able seperti password
+//! manusia, sementara Argon2 akan menambah ~50-100 ms pada *setiap* tool call MCP.
+//! Hashing password tetap di `user::UserPassword`.
+
+use arke_postgres::PgComponent;
+
+/// Awalan setiap token yang kita terbitkan, supaya string yang bocor mudah di-grep.
+pub const TOKEN_PREFIX: &str = "sjw_pat_";
+
+/// Rahasia opaque, hanya disimpan sebagai digest. `preview` adalah 4 karakter
+/// terakhir plaintext — satu-satunya bagian yang boleh ditampilkan lagi oleh UI.
+#[derive(PgComponent, Debug, Clone)]
+pub struct TokenSecret {
+    #[pg(index, unique)]
+    pub hash: String,
+    pub preview: String,
+}
+
+/// Pemilik token. Diindeks karena setiap pembacaan daftar difilter dengannya.
+#[derive(PgComponent, Debug, Clone)]
+pub struct TokenOwner {
+    #[pg(index)]
+    pub user_id: String,
+}
+
+#[derive(PgComponent, Debug, Clone)]
+pub struct TokenInfo {
+    pub name: String,
+    pub created_at: String,
+    /// RFC3339. `None` = tidak pernah kedaluwarsa (`expires_in_days = 0`).
+    pub expires_at: Option<String>,
+}
+
+#[derive(PgComponent, Debug, Clone)]
+pub struct TokenUsage {
+    pub last_used_at: Option<String>,
+}
+
+fn to_hex(bytes: &[u8]) -> String {
+    use std::fmt::Write;
+    bytes.iter().fold(String::with_capacity(bytes.len() * 2), |mut s, b| {
+        let _ = write!(s, "{b:02x}");
+        s
+    })
+}
+
+/// Terbitkan token baru: `sjw_pat_` + 32 byte acak dalam hex.
+pub fn generate_token() -> String {
+    use rand::RngCore;
+    let mut bytes = [0u8; 32];
+    rand::thread_rng().fill_bytes(&mut bytes);
+    format!("{TOKEN_PREFIX}{}", to_hex(&bytes))
+}
+
+/// Digest yang disimpan. Deterministik — pencarian token adalah lookup by hash.
+pub fn hash_token(token: &str) -> String {
+    use sha2::{Digest, Sha256};
+    to_hex(&Sha256::digest(token.as_bytes()))
+}
+
+/// 4 karakter terakhir — satu-satunya sisa plaintext yang boleh dilihat lagi.
+pub fn preview_of(token: &str) -> String {
+    let n = token.chars().count();
+    token.chars().skip(n.saturating_sub(4)).collect()
+}
+
+/// Bentuknya mustahil diterbitkan oleh kita → tolak sebelum menyentuh database.
+///
+/// Ini juga yang membuat `hash_token` aman dipakai membangun predikat SQL:
+/// nilainya selalu digest hex 64 karakter hasil hitungan kita sendiri, tidak
+/// pernah teks mentah dari user.
+pub fn looks_like_token(s: &str) -> bool {
+    s.len() == TOKEN_PREFIX.len() + 64
+        && s.starts_with(TOKEN_PREFIX)
+        && s[TOKEN_PREFIX.len()..].bytes().all(|b| b.is_ascii_hexdigit())
+}
+
+/// Sudah lewat `expires_at`? `None` = tanpa kedaluwarsa.
+///
+/// Membandingkan string RFC3339 UTC secara leksikografis — urutan leksikalnya
+/// sama dengan urutan waktu selama kedua sisi diformat oleh `now_iso()` di
+/// transport. Pola yang sama dipakai `task::dates_ok`.
+pub fn is_expired(expires_at: Option<&str>, now: &str) -> bool {
+    match expires_at {
+        None => false,
+        Some(e) => e <= now,
+    }
+}
+```
+
+- [ ] **Step 5: Daftarkan modul dan komponennya**
+
+Di `crates/domain/src/lib.rs`, tambahkan `pub mod token;` pada daftar modul (urut alfabet, setelah `pub mod task;`), lalu di ujung `register_all` — setelah blok `// Activity.` — tambahkan:
+
+```rust
+    // Access tokens (PAT untuk MCP).
+    pg.register::<token::TokenSecret>();
+    pg.register::<token::TokenOwner>();
+    pg.register::<token::TokenInfo>();
+    pg.register::<token::TokenUsage>();
+```
+
+- [ ] **Step 6: Jalankan test, pastikan lulus**
+
+Run: `cargo test -p domain token::`
+Expected: PASS, 6 test.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add apps/backend-rs/Cargo.toml apps/backend-rs/Cargo.lock \
+        apps/backend-rs/crates/domain/Cargo.toml \
+        apps/backend-rs/crates/domain/src/token.rs \
+        apps/backend-rs/crates/domain/src/lib.rs
+git commit -m "feat(domain): add personal access token components and rules"
+```
+
+---
+
+## Task 2: Kontrak proto `AccessTokenService`
+
+**Files:**
+- Create: `apps/backend-rs/proto/tokens.proto`
+- Modify: `apps/backend-rs/crates/transport/build.rs`
+
+- [ ] **Step 1: Tulis protonya**
+
+Buat `apps/backend-rs/proto/tokens.proto`:
+
+```proto
+syntax = "proto3";
+package sedjiwa.tasks.token.v1;
+
+// Personal access token untuk endpoint MCP. Seluruh RPC bersifat self-scoped:
+// pemilik selalu diambil dari JWT pemanggil, sehingga admin sekalipun tidak
+// bisa membaca atau mencabut token milik orang lain.
+
+service AccessTokenService {
+  rpc CreateToken(CreateTokenRequest) returns (CreateTokenResponse);
+  rpc ListTokens(ListTokensRequest) returns (ListTokensResponse);
+  rpc RevokeToken(RevokeTokenRequest) returns (RevokeTokenResponse);
+}
+
+// Metadata token. Plaintext tidak pernah muncul di sini.
+message AccessToken {
+  string id = 1;
+  string name = 2;
+  string preview = 3; // 4 karakter terakhir, untuk membedakan baris di UI
+  string created_at = 4;
+  optional string expires_at = 5;   // absen = tidak pernah kedaluwarsa
+  optional string last_used_at = 6; // absen = belum pernah dipakai
+  bool expired = 7;                 // dihitung server terhadap jam sekarang
+}
+
+message CreateTokenRequest {
+  string name = 1;
+  uint32 expires_in_days = 2; // 0 = tanpa kedaluwarsa
+}
+// `token` hanya ada di respons ini dan tidak pernah bisa dibaca lagi.
+message CreateTokenResponse {
+  string token = 1;
+  AccessToken meta = 2;
+}
+
+message ListTokensRequest {}
+message ListTokensResponse {
+  repeated AccessToken tokens = 1;
+}
+
+message RevokeTokenRequest {
+  string id = 1;
+}
+message RevokeTokenResponse {
+  bool ok = 1;
+}
+```
+
+- [ ] **Step 2: Daftarkan di build.rs**
+
+Di `apps/backend-rs/crates/transport/build.rs`, tambahkan `"../../proto/tokens.proto",` di akhir array pertama (setelah `export.proto`), dan di bawahnya tambahkan:
+
+```rust
+    println!("cargo:rerun-if-changed=../../proto/tokens.proto");
+```
+
+- [ ] **Step 3: Pastikan proto terkompilasi**
+
+Run: `cargo build -p transport`
+Expected: sukses. Bila gagal dengan `File not found`, periksa jalur relatifnya dari direktori crate `transport`.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add apps/backend-rs/proto/tokens.proto apps/backend-rs/crates/transport/build.rs
+git commit -m "feat(proto): add AccessTokenService contract"
+```
+
+---
+
+## Task 3: RPC manajemen token
+
+**Files:**
+- Create: `apps/backend-rs/crates/transport/src/tokens/mod.rs`, `.../tokens/record.rs`, `.../tokens/token_service.rs`, `apps/backend-rs/crates/transport/tests/tokens_flow.rs`
+- Modify: `apps/backend-rs/crates/transport/src/lib.rs`, `apps/backend-rs/crates/app/src/router.rs`
+
+- [ ] **Step 1: Tulis uji alur yang gagal**
+
+Buat `apps/backend-rs/crates/transport/tests/tokens_flow.rs`. Pola setup-nya menyalin `comment_flow.rs` — dilewati diam-diam bila `DATABASE_URL` tidak diset, dan memakai id unik supaya rerun tetap terisolasi:
+
+```rust
+//! End-to-end AccessTokenService lewat router Connect asli + Postgres.
+//! Dilewati kecuali `DATABASE_URL` diset. Id unik agar rerun tetap terisolasi.
+
+use std::sync::Arc;
+
+use auth::{sign_jwt, verify_jwt};
+use axum::body::{to_bytes, Body};
+use axum::extract::Request;
+use axum::http::header::{AUTHORIZATION, CONTENT_TYPE};
+use axum::http::StatusCode;
+use axum::middleware::{from_fn, Next};
+use axum::response::Response;
+use axum::Router;
+use persistence::Store;
+use serde_json::{json, Value};
+use tower::ServiceExt;
+
+const SECRET: &str = "test-secret";
+const TOKENS: &str = "/sedjiwa.tasks.token.v1.AccessTokenService";
+
+async fn auth_mw(mut req: Request, next: Next) -> Response {
+    if let Some(tok) = req
+        .headers()
+        .get(AUTHORIZATION)
+        .and_then(|v| v.to_str().ok())
+        .and_then(|h| h.strip_prefix("Bearer "))
+    {
+        if let Ok(u) = verify_jwt(tok.trim(), SECRET) {
+            req.extensions_mut().insert(u);
+        }
+    }
+    next.run(req).await
+}
+
+async fn setup() -> Option<(Router, Arc<Store>)> {
+    let url = std::env::var("DATABASE_URL").ok()?;
+    let store = Arc::new(Store::connect(&url, domain::register_all).await.unwrap());
+    let router = transport::token_router(store.clone()).layer(from_fn(auth_mw));
+    Some((router, store))
+}
+
+fn uniq() -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos().to_string()
+}
+
+fn token(sub: &str) -> String {
+    sign_jwt(SECRET, sub, &[], 9_999_999_999).unwrap()
+}
+
+async fn call(router: &Router, path: &str, jwt: Option<&str>, body: Value) -> (StatusCode, Value) {
+    let mut b = Request::builder().method("POST").uri(path).header(CONTENT_TYPE, "application/json");
+    if let Some(t) = jwt {
+        b = b.header(AUTHORIZATION, format!("Bearer {t}"));
+    }
+    let req = b.body(Body::from(body.to_string())).unwrap();
+    let resp = router.clone().oneshot(req).await.unwrap();
+    let status = resp.status();
+    let bytes = to_bytes(resp.into_body(), usize::MAX).await.unwrap();
+    (status, serde_json::from_slice(&bytes).unwrap_or(Value::Null))
+}
+
+#[tokio::test]
+async fn create_list_revoke_round_trip() {
+    let Some((router, _store)) = setup().await else { return };
+    let user = format!("u-{}", uniq());
+    let jwt = token(&user);
+
+    let (st, created) = call(
+        &router,
+        &format!("{TOKENS}/CreateToken"),
+        Some(&jwt),
+        json!({ "name": "laptop", "expiresInDays": 0 }),
+    )
+    .await;
+    assert_eq!(st, StatusCode::OK, "{created:?}");
+    let plaintext = created["token"].as_str().unwrap().to_string();
+    assert!(plaintext.starts_with("sjw_pat_"));
+    assert_eq!(created["meta"]["name"], "laptop");
+    assert_eq!(created["meta"]["preview"], plaintext[plaintext.len() - 4..]);
+    assert!(created["meta"]["expiresAt"].is_null());
+    let id = created["meta"]["id"].as_str().unwrap().to_string();
+
+    let (st, listed) = call(&router, &format!("{TOKENS}/ListTokens"), Some(&jwt), json!({})).await;
+    assert_eq!(st, StatusCode::OK);
+    let rows = listed["tokens"].as_array().unwrap();
+    assert_eq!(rows.len(), 1);
+    // Plaintext tidak pernah muncul lagi setelah pembuatan.
+    assert!(rows[0].get("token").is_none());
+
+    let (st, revoked) = call(
+        &router,
+        &format!("{TOKENS}/RevokeToken"),
+        Some(&jwt),
+        json!({ "id": id }),
+    )
+    .await;
+    assert_eq!(st, StatusCode::OK, "{revoked:?}");
+
+    let (_, after) = call(&router, &format!("{TOKENS}/ListTokens"), Some(&jwt), json!({})).await;
+    assert!(after["tokens"].as_array().unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn tokens_are_isolated_between_users() {
+    let Some((router, _store)) = setup().await else { return };
+    let owner = format!("u-{}", uniq());
+    let other = format!("u-{}", uniq());
+
+    let (_, created) = call(
+        &router,
+        &format!("{TOKENS}/CreateToken"),
+        Some(&token(&owner)),
+        json!({ "name": "mine", "expiresInDays": 30 }),
+    )
+    .await;
+    let id = created["meta"]["id"].as_str().unwrap().to_string();
+    assert!(created["meta"]["expiresAt"].is_string());
+
+    // User lain tidak melihatnya…
+    let (_, listed) = call(&router, &format!("{TOKENS}/ListTokens"), Some(&token(&other)), json!({})).await;
+    assert!(listed["tokens"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|t| t["id"] != id.as_str()));
+
+    // …dan tidak bisa mencabutnya.
+    let (st, _) = call(
+        &router,
+        &format!("{TOKENS}/RevokeToken"),
+        Some(&token(&other)),
+        json!({ "id": id }),
+    )
+    .await;
+    assert_eq!(st, StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn anonymous_is_refused() {
+    let Some((router, _store)) = setup().await else { return };
+    let (st, _) = call(&router, &format!("{TOKENS}/ListTokens"), None, json!({})).await;
+    assert_eq!(st, StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
+async fn empty_name_is_rejected() {
+    let Some((router, _store)) = setup().await else { return };
+    let jwt = token(&format!("u-{}", uniq()));
+    let (st, _) = call(
+        &router,
+        &format!("{TOKENS}/CreateToken"),
+        Some(&jwt),
+        json!({ "name": "", "expiresInDays": 0 }),
+    )
+    .await;
+    // Nama kosong ditolak; `expires_in_days` bertipe uint32 sehingga nilai
+    // negatif sudah mustahil sampai ke sini lewat proto.
+    assert_eq!(st, StatusCode::BAD_REQUEST);
+}
+```
+
+- [ ] **Step 2: Jalankan test, pastikan gagal**
+
+Run: `cargo test -p transport --test tokens_flow`
+Expected: FAIL kompilasi — `cannot find function token_router in crate transport`.
+
+- [ ] **Step 3: Tulis pembacaan token**
+
+Buat `apps/backend-rs/crates/transport/src/tokens/record.rs`:
+
+```rust
+//! Pembacaan PAT dari store. Satu `TokenRecord` pipih agar handler dan crate
+//! `mcp` tidak perlu menyentuh komponen ECS satu per satu.
+
+use arke::prelude::*;
+use domain::token::{TokenInfo, TokenOwner, TokenSecret, TokenUsage};
+use persistence::Store;
+
+#[derive(Debug, Clone)]
+pub struct TokenRecord {
+    pub pid: i64,
+    pub user_id: String,
+    pub name: String,
+    pub preview: String,
+    pub created_at: String,
+    pub expires_at: Option<String>,
+    pub last_used_at: Option<String>,
+}
+
+fn read(world: &World, e: Entity, pid: i64) -> Option<TokenRecord> {
+    let owner = world.get::<TokenOwner>(e)?;
+    let info = world.get::<TokenInfo>(e)?;
+    let secret = world.get::<TokenSecret>(e)?;
+    Some(TokenRecord {
+        pid,
+        user_id: owner.user_id.clone(),
+        name: info.name.clone(),
+        preview: secret.preview.clone(),
+        created_at: info.created_at.clone(),
+        expires_at: info.expires_at.clone(),
+        last_used_at: world
+            .get::<TokenUsage>(e)
+            .and_then(|u| u.last_used_at.clone()),
+    })
+}
+
+/// Token milik satu user, terbaru dulu.
+pub async fn tokens_for_owner(store: &Store, user_id: &str) -> anyhow::Result<Vec<TokenRecord>> {
+    let owner = user_id.to_string();
+    let mut v = store
+        .query::<TokenOwner, TokenRecord>(None, move |world, pairs| {
+            pairs
+                .iter()
+                .filter_map(|(pid, e)| read(world, *e, *pid))
+                .filter(|t| t.user_id == owner)
+                .collect()
+        })
+        .await?;
+    v.sort_by(|a, b| b.created_at.cmp(&a.created_at).then(b.pid.cmp(&a.pid)));
+    Ok(v)
+}
+
+pub async fn load_token(store: &Store, pid: i64) -> anyhow::Result<Option<TokenRecord>> {
+    let pred = format!("pid = {pid}");
+    let mut v = store
+        .query::<TokenSecret, TokenRecord>(Some(&pred), |world, pairs| {
+            pairs
+                .iter()
+                .filter_map(|(p, e)| read(world, *e, *p))
+                .collect()
+        })
+        .await?;
+    Ok(v.pop())
+}
+
+/// Lookup by digest — jalur panas setiap tool call MCP.
+///
+/// Interpolasi ke predikat SQL aman di sini: `hash` selalu digest hex 64
+/// karakter hasil `domain::token::hash_token`, bukan teks mentah dari user
+/// (pemanggil wajib menyaring lewat `looks_like_token` lebih dulu).
+pub async fn find_by_hash(store: &Store, hash: &str) -> anyhow::Result<Option<TokenRecord>> {
+    let pred = format!("hash = '{hash}'");
+    let mut v = store
+        .query::<TokenSecret, TokenRecord>(Some(&pred), |world, pairs| {
+            pairs
+                .iter()
+                .filter_map(|(p, e)| read(world, *e, *p))
+                .collect()
+        })
+        .await?;
+    Ok(v.pop())
+}
+```
+
+- [ ] **Step 4: Tulis service-nya**
+
+Buat `apps/backend-rs/crates/transport/src/tokens/token_service.rs`:
+
+```rust
+//! AccessTokenService: terbitkan / daftar / cabut PAT. Seluruhnya self-scoped —
+//! pemilik selalu diambil dari JWT, jadi admin pun tidak bisa menyentuh token
+//! milik orang lain. Plaintext hanya ada satu kali, di respons CreateToken.
+
+use std::sync::Arc;
+
+use auth::AuthUser;
+use axum::Extension;
+use connectrpc_axum::{ConnectError, ConnectRequest, ConnectResponse};
+use domain::token::{
+    generate_token, hash_token, is_expired, preview_of, TokenInfo, TokenOwner, TokenSecret,
+    TokenUsage,
+};
+use persistence::Store;
+
+use super::record::{load_token, tokens_for_owner, TokenRecord};
+use crate::sedjiwa::tasks::token::v1 as pb;
+use crate::sedjiwa::tasks::token::v1::access_token_service_connect::AccessTokenServiceBuilder;
+
+fn internal(e: impl std::fmt::Display) -> ConnectError {
+    ConnectError::new_internal(e.to_string())
+}
+
+fn require_auth(user: Option<Extension<AuthUser>>) -> Result<AuthUser, ConnectError> {
+    user.map(|Extension(u)| u)
+        .ok_or_else(|| ConnectError::new_unauthenticated("authentication required"))
+}
+
+fn now_iso() -> String {
+    use time::format_description::well_known::Rfc3339;
+    time::OffsetDateTime::now_utc().format(&Rfc3339).unwrap_or_default()
+}
+
+/// `expires_in_days` → `expires_at` RFC3339. 0 = tanpa kedaluwarsa.
+fn expiry_from_days(days: u32) -> Option<String> {
+    use time::format_description::well_known::Rfc3339;
+    if days == 0 {
+        return None;
+    }
+    let at = time::OffsetDateTime::now_utc() + time::Duration::days(days as i64);
+    at.format(&Rfc3339).ok()
+}
+
+fn to_proto(t: &TokenRecord, now: &str) -> pb::AccessToken {
+    pb::AccessToken {
+        id: t.pid.to_string(),
+        name: t.name.clone(),
+        preview: t.preview.clone(),
+        created_at: t.created_at.clone(),
+        expires_at: t.expires_at.clone(),
+        last_used_at: t.last_used_at.clone(),
+        expired: is_expired(t.expires_at.as_deref(), now),
+    }
+}
+
+async fn create_token(
+    Extension(store): Extension<Arc<Store>>,
+    user: Option<Extension<AuthUser>>,
+    req: ConnectRequest<pb::CreateTokenRequest>,
+) -> Result<ConnectResponse<pb::CreateTokenResponse>, ConnectError> {
+    let auth = require_auth(user)?;
+    let ConnectRequest(r) = req;
+    let name = r.name.trim();
+    if name.is_empty() || name.chars().count() > 64 {
+        return Err(ConnectError::new_invalid_argument(
+            "name is required (max 64 characters)",
+        ));
+    }
+    let plaintext = generate_token();
+    let now = now_iso();
+    let pid = store
+        .create((
+            TokenSecret {
+                hash: hash_token(&plaintext),
+                preview: preview_of(&plaintext),
+            },
+            TokenOwner {
+                user_id: auth.id.clone(),
+            },
+            TokenInfo {
+                name: name.to_string(),
+                created_at: now.clone(),
+                expires_at: expiry_from_days(r.expires_in_days),
+            },
+            TokenUsage { last_used_at: None },
+        ))
+        .await
+        .map_err(internal)?;
+    let rec = load_token(&store, pid)
+        .await
+        .map_err(internal)?
+        .ok_or_else(|| ConnectError::new_internal("token vanished after create"))?;
+    Ok(ConnectResponse::new(pb::CreateTokenResponse {
+        token: plaintext,
+        meta: Some(to_proto(&rec, &now)),
+    }))
+}
+
+async fn list_tokens(
+    Extension(store): Extension<Arc<Store>>,
+    user: Option<Extension<AuthUser>>,
+    _req: ConnectRequest<pb::ListTokensRequest>,
+) -> Result<ConnectResponse<pb::ListTokensResponse>, ConnectError> {
+    let auth = require_auth(user)?;
+    let now = now_iso();
+    let rows = tokens_for_owner(&store, &auth.id).await.map_err(internal)?;
+    Ok(ConnectResponse::new(pb::ListTokensResponse {
+        tokens: rows.iter().map(|t| to_proto(t, &now)).collect(),
+    }))
+}
+
+/// Cabut = hapus entity. Token milik orang lain dibalas `not_found`, bukan
+/// `permission_denied`: membedakan keduanya akan membocorkan id mana yang ada.
+async fn revoke_token(
+    Extension(store): Extension<Arc<Store>>,
+    user: Option<Extension<AuthUser>>,
+    req: ConnectRequest<pb::RevokeTokenRequest>,
+) -> Result<ConnectResponse<pb::RevokeTokenResponse>, ConnectError> {
+    let auth = require_auth(user)?;
+    let ConnectRequest(r) = req;
+    let pid = r
+        .id
+        .parse::<i64>()
+        .map_err(|_| ConnectError::new_not_found("token not found"))?;
+    let rec = load_token(&store, pid)
+        .await
+        .map_err(internal)?
+        .filter(|t| t.user_id == auth.id)
+        .ok_or_else(|| ConnectError::new_not_found("token not found"))?;
+    store.delete(rec.pid).await.map_err(internal)?;
+    Ok(ConnectResponse::new(pb::RevokeTokenResponse { ok: true }))
+}
+
+/// AccessTokenService router; menyuntikkan Store sebagai request extension.
+pub fn token_router(store: Arc<Store>) -> axum::Router<()> {
+    type S = Extension<Arc<Store>>;
+    type A = Option<Extension<AuthUser>>;
+    AccessTokenServiceBuilder::<()>::new()
+        .create_token::<_, (S, A, ConnectRequest<pb::CreateTokenRequest>)>(create_token)
+        .list_tokens::<_, (S, A, ConnectRequest<pb::ListTokensRequest>)>(list_tokens)
+        .revoke_token::<_, (S, A, ConnectRequest<pb::RevokeTokenRequest>)>(revoke_token)
+        .build()
+        .layer(Extension(store))
+}
+```
+
+Buat `apps/backend-rs/crates/transport/src/tokens/mod.rs`:
+
+```rust
+//! Access tokens (PAT) untuk endpoint MCP. Lihat
+//! docs/superpowers/specs/2026-09-02-mcp-server-design.md.
+
+pub(crate) mod record;
+mod token_service;
+
+pub use token_service::token_router;
+```
+
+- [ ] **Step 5: Ekspor dari lib.rs dan pasang di router aplikasi**
+
+Di `apps/backend-rs/crates/transport/src/lib.rs`, tambahkan `mod tokens;` pada daftar modul dan `pub use tokens::token_router;` pada daftar re-export.
+
+Di `apps/backend-rs/crates/app/src/router.rs`, sisipkan satu baris pada rantai merge, tepat setelah `.merge(transport::user_router(store.clone()))`:
+
+```rust
+        .merge(transport::token_router(store.clone()))
+```
+
+- [ ] **Step 6: Jalankan test, pastikan lulus**
+
+Run: `DATABASE_URL=$DATABASE_URL cargo test -p transport --test tokens_flow`
+Expected: PASS, 4 test. Catatan: run pertama pada database kosong selalu gagal sekali karena tabel komponen baru dibuat pada run itu — jalankan ulang sekali dan pastikan hijau. Tanpa `DATABASE_URL`, test lulus tanpa menguji apa pun (skip diam-diam).
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add apps/backend-rs/crates/transport/src/tokens apps/backend-rs/crates/transport/src/lib.rs \
+        apps/backend-rs/crates/transport/tests/tokens_flow.rs apps/backend-rs/crates/app/src/router.rs
+git commit -m "feat(tokens): add self-scoped AccessTokenService"
+```
+
+---
+
+# Phase 2 — Ekstraksi core fn
+
+Fase ini murni refactor: **tidak ada perilaku yang berubah, dan tidak ada file test yang boleh disunting.** Seluruh `crates/transport/tests/*_flow.rs` yang ada adalah jaring pengamannya — bila salah satunya perlu diubah agar hijau, itu tanda ekstraksinya mengubah perilaku dan harus diperbaiki, bukan test-nya.
+
+**Aturan mekanis yang berlaku untuk setiap handler:** badan fungsi dipindahkan apa adanya ke sebuah `_core` yang menerima nilai biasa, dan handler Connect menjadi pembungkus yang hanya membongkar extractor.
+
+Contoh lengkap, `get_task` di `crates/transport/src/work/task_service.rs:86-98`. Sebelum:
+
+```rust
+async fn get_task(
+    Extension(store): StoreExt,
+    user: Option<Extension<AuthUser>>,
+    req: ConnectRequest<pb::GetTaskRequest>,
+) -> Result<ConnectResponse<pb::Task>, ConnectError> {
+    let auth = require_auth(user)?;
+    let ConnectRequest(r) = req;
+    let pid = parse_pid(&r.id)?;
+    let t = require_task(&store, pid).await?;
+    let (_, project_id) = module_project(&store, &t.module_id).await?;
+    require_member(&store, &project_id, &auth).await?;
+    Ok(ConnectResponse::new(to_proto(&t)))
+}
+```
+
+Sesudah:
+
+```rust
+/// Core: satu task by id, member-gated lewat module → project.
+pub(crate) async fn get_task_core(
+    store: &Store,
+    auth: &AuthUser,
+    r: pb::GetTaskRequest,
+) -> Result<pb::Task, ConnectError> {
+    let pid = parse_pid(&r.id)?;
+    let t = require_task(store, pid).await?;
+    let (_, project_id) = module_project(store, &t.module_id).await?;
+    require_member(store, &project_id, auth).await?;
+    Ok(to_proto(&t))
+}
+
+async fn get_task(
+    Extension(store): StoreExt,
+    user: Option<Extension<AuthUser>>,
+    req: ConnectRequest<pb::GetTaskRequest>,
+) -> Result<ConnectResponse<pb::Task>, ConnectError> {
+    let auth = require_auth(user)?;
+    let ConnectRequest(r) = req;
+    Ok(ConnectResponse::new(get_task_core(&store, &auth, r).await?))
+}
+```
+
+Yang berubah hanyalah: extractor pindah ke pembungkus, `&store` menjadi `store`, `&auth` menjadi `auth`, dan `ConnectResponse::new(..)` pindah ke pembungkus. Isi logikanya tidak disentuh.
+
+## Task 4: Core fn untuk task
+
+**Files:**
+- Modify: `apps/backend-rs/crates/transport/src/work/task_service.rs`, `apps/backend-rs/crates/transport/src/work/mod.rs`
+- Create: `apps/backend-rs/crates/transport/src/api.rs`
+- Test: `apps/backend-rs/crates/transport/tests/work_flow.rs` (sudah ada, tidak diubah)
+
+- [ ] **Step 1: Catat baseline hijau**
+
+Run: `cargo test -p transport --test work_flow`
+Expected: PASS. Catat jumlah test-nya — angka itu harus sama persis di akhir task.
+
+- [ ] **Step 2: Ekstrak lima core fn**
+
+Di `task_service.rs`, terapkan aturan mekanis di atas pada `get_task`, `list_tasks`, `create_task`, `update_task`, dan `move_task`. `delete_task` **tidak** diekstrak — ia tidak dipakai MCP (lihat spec).
+
+Dua di antaranya juga mengambil `Notifier`, jadi core fn-nya menerimanya sebagai parameter biasa — MCP wajib meneruskannya agar task yang dibuat lewat AI tetap memberi notifikasi ke assignee-nya:
+
+```rust
+pub(crate) async fn create_task_core(
+    store: &Store,
+    notifier: Option<&Arc<Notifier>>,
+    auth: &AuthUser,
+    r: pb::CreateTaskRequest,
+) -> Result<pb::Task, ConnectError> { /* badan create_task, tanpa baris extractor */ }
+
+pub(crate) async fn update_task_core(
+    store: &Store,
+    notifier: Option<&Arc<Notifier>>,
+    auth: &AuthUser,
+    r: pb::UpdateTaskRequest,
+) -> Result<pb::Task, ConnectError> { /* idem */ }
+```
+
+Di dalam badan yang dipindah, setiap pemakaian `notifier` yang tadinya berbentuk `Option<Extension<Arc<Notifier>>>` menjadi `notifier` (sudah `Option<&Arc<Notifier>>`); sesuaikan pemanggilan `emit(..)` mengikuti bentuk barunya.
+
+Handler pembungkusnya:
+
+```rust
+async fn create_task(
+    Extension(store): StoreExt,
+    notifier: Option<Extension<Arc<Notifier>>>,
+    user: Option<Extension<AuthUser>>,
+    req: ConnectRequest<pb::CreateTaskRequest>,
+) -> Result<ConnectResponse<pb::Task>, ConnectError> {
+    let auth = require_auth(user)?;
+    let ConnectRequest(r) = req;
+    let n = notifier.as_ref().map(|Extension(n)| n);
+    Ok(ConnectResponse::new(
+        create_task_core(&store, n, &auth, r).await?,
+    ))
+}
+```
+
+Signature dua sisanya:
+
+```rust
+pub(crate) async fn list_tasks_core(store: &Store, auth: &AuthUser, r: pb::ListTasksRequest)
+    -> Result<pb::ListTasksResponse, ConnectError>;
+pub(crate) async fn move_task_core(store: &Store, auth: &AuthUser, r: pb::MoveTaskRequest)
+    -> Result<pb::Task, ConnectError>;
+```
+
+- [ ] **Step 3: Buka modulnya dan buat permukaan `api`**
+
+Di `crates/transport/src/work/mod.rs`, ubah `mod task_service;` menjadi `pub(crate) mod task_service;`.
+
+Buat `apps/backend-rs/crates/transport/src/api.rs`:
+
+```rust
+//! Permukaan service in-process: fungsi yang sama persis dengan yang dipanggil
+//! handler Connect, tanpa extractor axum.
+//!
+//! Ada supaya crate `mcp` bisa memakai ulang logika bisnis apa adanya —
+//! member-gating, validasi, activity record, notifikasi, dan search index ikut
+//! serta. Menduplikasi aturan itu di sisi MCP adalah cara paling cepat membuat
+//! AI dan UI berbeda perilaku secara diam-diam.
+
+pub use crate::work::task_service::{
+    create_task_core, get_task_core, list_tasks_core, move_task_core, update_task_core,
+};
+```
+
+Di `crates/transport/src/lib.rs`, tambahkan `pub mod api;` di dekat deklarasi modul lain.
+
+- [ ] **Step 4: Pastikan tidak ada perilaku yang berubah**
+
+Run: `cargo test -p transport --test work_flow`
+Expected: PASS dengan jumlah test sama seperti Step 1, tanpa satu pun baris test disunting.
+
+Run: `cargo clippy -p transport --all-targets -- -D warnings`
+Expected: bersih.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add apps/backend-rs/crates/transport/src/work apps/backend-rs/crates/transport/src/api.rs \
+        apps/backend-rs/crates/transport/src/lib.rs
+git commit -m "refactor(transport): extract task core fns for in-process reuse"
+```
+
+---
+
+## Task 5: Core fn untuk project & module
+
+**Files:**
+- Modify: `apps/backend-rs/crates/transport/src/projects/*`, `apps/backend-rs/crates/transport/src/work/module_service.rs`, `apps/backend-rs/crates/transport/src/work/mod.rs`, `apps/backend-rs/crates/transport/src/api.rs`
+- Test: `crates/transport/tests/project_flow.rs`, `crates/transport/tests/work_flow.rs` (sudah ada, tidak diubah)
+
+- [ ] **Step 1: Catat baseline hijau**
+
+Run: `cargo test -p transport --test project_flow --test work_flow`
+Expected: PASS. Catat jumlah test-nya.
+
+- [ ] **Step 2: Ekstrak tiga core fn**
+
+Terapkan aturan mekanis yang sama pada `list_projects` dan `get_project` di modul `projects`, serta `list_modules` di `work/module_service.rs`. Signature targetnya:
+
+```rust
+pub(crate) async fn list_projects_core(store: &Store, auth: &AuthUser, r: pb::ListProjectsRequest)
+    -> Result<pb::ListProjectsResponse, ConnectError>;
+pub(crate) async fn get_project_core(store: &Store, auth: &AuthUser, r: pb::GetProjectRequest)
+    -> Result<pb::Project, ConnectError>;
+pub(crate) async fn list_modules_core(store: &Store, auth: &AuthUser, r: pb::ListModulesRequest)
+    -> Result<pb::ListModulesResponse, ConnectError>;
+```
+
+Bila nama request/response di proto berbeda dari tebakan di atas, pakai nama yang sebenarnya ada di `proto/projects.proto` dan `proto/work.proto` — signature-nya mengikuti proto, bukan sebaliknya.
+
+Buka modulnya sesuai kebutuhan: `pub(crate) mod module_service;` di `work/mod.rs`, dan modul service project di `projects/mod.rs`.
+
+- [ ] **Step 3: Ekspor lewat `api`**
+
+Tambahkan di `crates/transport/src/api.rs`:
+
+```rust
+pub use crate::projects::project_service::{get_project_core, list_projects_core};
+pub use crate::work::module_service::list_modules_core;
+```
+
+Sesuaikan nama modulnya dengan struktur `projects/` yang sebenarnya.
+
+- [ ] **Step 4: Pastikan tidak ada perilaku yang berubah**
+
+Run: `cargo test -p transport --test project_flow --test work_flow`
+Expected: PASS, jumlah test sama seperti Step 1.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add apps/backend-rs/crates/transport/src
+git commit -m "refactor(transport): extract project and module core fns"
+```
+
+---
+
+## Task 6: Core fn untuk comment, search, dan my-tasks
+
+**Files:**
+- Modify: `apps/backend-rs/crates/transport/src/comments/*`, `.../search/*`, `.../dashboard/*`, `apps/backend-rs/crates/transport/src/api.rs`
+- Test: `crates/transport/tests/comment_flow.rs`, `search_flow.rs`, `dashboard_flow.rs` (sudah ada, tidak diubah)
+
+- [ ] **Step 1: Catat baseline hijau**
+
+Run: `cargo test -p transport --test comment_flow --test search_flow --test dashboard_flow`
+Expected: PASS. Catat jumlah test-nya.
+
+- [ ] **Step 2: Ekstrak empat core fn**
+
+Aturan mekanis yang sama. `create_comment` juga memegang `Notifier` (mention → notifikasi), jadi ia mengikuti bentuk `create_task_core`:
+
+```rust
+pub(crate) async fn list_comments_core(store: &Store, auth: &AuthUser, r: pb::ListCommentsRequest)
+    -> Result<pb::ListCommentsResponse, ConnectError>;
+pub(crate) async fn create_comment_core(
+    store: &Store,
+    notifier: Option<&Arc<Notifier>>,
+    auth: &AuthUser,
+    r: pb::CreateCommentRequest,
+) -> Result<pb::Comment, ConnectError>;
+pub(crate) async fn search_core(store: &Store, auth: &AuthUser, r: pb::SearchRequest)
+    -> Result<pb::SearchResponse, ConnectError>;
+pub(crate) async fn my_tasks_core(store: &Store, auth: &AuthUser, r: pb::MyTasksRequest)
+    -> Result<pb::MyTasksResponse, ConnectError>;
+```
+
+Pakai nama message yang sebenarnya dari `proto/search.proto` dan `proto/dashboard.proto`.
+
+- [ ] **Step 3: Ekspor lewat `api`**
+
+Tambahkan re-export-nya di `crates/transport/src/api.rs`, mengikuti jalur modul yang sebenarnya.
+
+- [ ] **Step 4: Pastikan tidak ada perilaku yang berubah**
+
+Run: `cargo test -p transport`
+Expected: PASS untuk seluruh test transport, jumlahnya sama seperti sebelum Phase 2 dimulai.
+
+Run: `cargo clippy --workspace --all-targets -- -D warnings`
+Expected: bersih.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add apps/backend-rs/crates/transport/src
+git commit -m "refactor(transport): extract comment, search, and my-tasks core fns"
+```
+
+---
+
+# Phase 3 — Crate MCP
+
+## Task 7: Kerangka crate + envelope JSON-RPC
+
+**Files:**
+- Create: `apps/backend-rs/crates/mcp/Cargo.toml`, `apps/backend-rs/crates/mcp/src/lib.rs`, `apps/backend-rs/crates/mcp/src/protocol.rs`, `apps/backend-rs/crates/mcp/tests/mcp_flow.rs`
+
+- [ ] **Step 1: Buat manifest**
+
+`apps/backend-rs/crates/mcp/Cargo.toml`:
+
+```toml
+[package]
+name = "mcp"
+edition.workspace = true
+version.workspace = true
+
+[dependencies]
+axum = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tokio = { workspace = true }
+time = { workspace = true }
+tracing = { workspace = true }
+anyhow = { workspace = true }
+connectrpc-axum = { workspace = true }
+auth = { path = "../auth" }
+domain = { path = "../domain" }
+persistence = { path = "../persistence" }
+transport = { path = "../transport" }
+
+[dev-dependencies]
+tower = { workspace = true }
+```
+
+Crate ini otomatis ikut workspace (`members = ["crates/*"]`).
+
+- [ ] **Step 2: Tulis test handshake yang gagal**
+
+`apps/backend-rs/crates/mcp/tests/mcp_flow.rs`:
+
+```rust
+//! End-to-end endpoint MCP. Handshake tidak menyentuh database, jadi bagian itu
+//! jalan tanpa `DATABASE_URL`; test yang butuh store dilewati diam-diam.
+
+use axum::body::{to_bytes, Body};
+use axum::extract::Request;
+use axum::http::header::{AUTHORIZATION, CONTENT_TYPE};
+use axum::http::StatusCode;
+use axum::Router;
+use serde_json::{json, Value};
+use std::sync::Arc;
+use tower::ServiceExt;
+
+async fn router_and_store() -> Option<(Router, Arc<persistence::Store>)> {
+    let url = std::env::var("DATABASE_URL").ok()?;
+    let store = Arc::new(
+        persistence::Store::connect(&url, domain::register_all)
+            .await
+            .unwrap(),
+    );
+    let notifier = Arc::new(transport::Notifier::new());
+    let router = Router::new().nest("/mcp", mcp::mcp_router(store.clone(), notifier));
+    Some((router, store))
+}
+
+/// Test yang tidak menyentuh store hanya butuh router-nya.
+async fn router() -> Option<Router> {
+    Some(router_and_store().await?.0)
+}
+
+async fn rpc(router: &Router, bearer: Option<&str>, body: Value) -> (StatusCode, Value) {
+    let mut b = Request::builder()
+        .method("POST")
+        .uri("/mcp")
+        .header(CONTENT_TYPE, "application/json");
+    if let Some(t) = bearer {
+        b = b.header(AUTHORIZATION, format!("Bearer {t}"));
+    }
+    let req = b.body(Body::from(body.to_string())).unwrap();
+    let resp = router.clone().oneshot(req).await.unwrap();
+    let status = resp.status();
+    let bytes = to_bytes(resp.into_body(), usize::MAX).await.unwrap();
+    (status, serde_json::from_slice(&bytes).unwrap_or(Value::Null))
+}
+
+#[tokio::test]
+async fn initialize_returns_capabilities() {
+    let Some(router) = router().await else { return };
+    let (st, body) = rpc(
+        &router,
+        None,
+        json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "initialize",
+            "params": { "protocolVersion": "2025-06-18", "capabilities": {} }
+        }),
+    )
+    .await;
+    // Handshake tidak butuh kredensial — client harus bisa menemukan server
+    // sebelum user menempelkan token.
+    assert_eq!(st, StatusCode::OK, "{body:?}");
+    assert_eq!(body["jsonrpc"], "2.0");
+    assert_eq!(body["id"], 1);
+    assert!(body["result"]["capabilities"]["tools"].is_object());
+    assert_eq!(body["result"]["serverInfo"]["name"], "sedjiwa-tasks");
+}
+
+#[tokio::test]
+async fn notification_gets_202_and_no_body() {
+    let Some(router) = router().await else { return };
+    let req = Request::builder()
+        .method("POST")
+        .uri("/mcp")
+        .header(CONTENT_TYPE, "application/json")
+        .body(Body::from(
+            json!({ "jsonrpc": "2.0", "method": "notifications/initialized" }).to_string(),
+        ))
+        .unwrap();
+    let resp = router.oneshot(req).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::ACCEPTED);
+}
+
+#[tokio::test]
+async fn unknown_method_is_a_jsonrpc_error() {
+    let Some(router) = router().await else { return };
+    let (st, body) = rpc(
+        &router,
+        None,
+        json!({ "jsonrpc": "2.0", "id": 9, "method": "does/not/exist" }),
+    )
+    .await;
+    assert_eq!(st, StatusCode::OK);
+    assert_eq!(body["error"]["code"], -32601);
+}
+
+#[tokio::test]
+async fn malformed_json_is_a_parse_error() {
+    let Some(router) = router().await else { return };
+    let req = Request::builder()
+        .method("POST")
+        .uri("/mcp")
+        .header(CONTENT_TYPE, "application/json")
+        .body(Body::from("{ not json"))
+        .unwrap();
+    let resp = router.oneshot(req).await.unwrap();
+    let bytes = to_bytes(resp.into_body(), usize::MAX).await.unwrap();
+    let body: Value = serde_json::from_slice(&bytes).unwrap();
+    assert_eq!(body["error"]["code"], -32700);
+}
+
+#[tokio::test]
+async fn get_is_not_supported() {
+    let Some(router) = router().await else { return };
+    let req = Request::builder().method("GET").uri("/mcp").body(Body::empty()).unwrap();
+    let resp = router.oneshot(req).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::METHOD_NOT_ALLOWED);
+}
+```
+
+- [ ] **Step 3: Jalankan test, pastikan gagal**
+
+Run: `cargo test -p mcp`
+Expected: FAIL kompilasi — crate `mcp` belum punya `mcp_router`.
+
+- [ ] **Step 4: Tulis lapis protokol**
+
+`apps/backend-rs/crates/mcp/src/protocol.rs`:
+
+```rust
+//! Envelope JSON-RPC 2.0 untuk MCP di atas Streamable HTTP.
+//!
+//! Stateless: tidak ada `Mcp-Session-Id`. Setiap request membawa PAT-nya
+//! sendiri, jadi tidak ada state sesi yang perlu dipegang dan instance mana pun
+//! boleh melayani request mana pun.
+
+use serde::Deserialize;
+use serde_json::{json, Value};
+
+/// Versi spec MCP yang kita layani, terbaru dulu. Bila client meminta salah
+/// satu di antaranya kita balas persis yang diminta; selain itu kita balas yang
+/// pertama dan client memutuskan apakah masih mau lanjut.
+pub const SUPPORTED_VERSIONS: [&str; 2] = ["2025-06-18", "2025-03-26"];
+
+pub const PARSE_ERROR: i64 = -32700;
+pub const METHOD_NOT_FOUND: i64 = -32601;
+pub const INVALID_PARAMS: i64 = -32602;
+
+#[derive(Debug, Deserialize)]
+pub struct Rpc {
+    #[serde(default)]
+    pub id: Option<Value>,
+    pub method: String,
+    #[serde(default)]
+    pub params: Value,
+}
+
+pub fn result(id: Option<Value>, result: Value) -> Value {
+    json!({ "jsonrpc": "2.0", "id": id, "result": result })
+}
+
+pub fn error(id: Option<Value>, code: i64, message: &str) -> Value {
+    json!({ "jsonrpc": "2.0", "id": id, "error": { "code": code, "message": message } })
+}
+
+/// Balasan `initialize`. Kita hanya mengiklankan `tools` — v1 tidak punya
+/// `resources`, `prompts`, maupun pesan server-initiated.
+pub fn initialize_result(params: &Value) -> Value {
+    let requested = params
+        .get("protocolVersion")
+        .and_then(Value::as_str)
+        .unwrap_or("");
+    let version = SUPPORTED_VERSIONS
+        .iter()
+        .find(|v| **v == requested)
+        .copied()
+        .unwrap_or(SUPPORTED_VERSIONS[0]);
+    json!({
+        "protocolVersion": version,
+        "capabilities": { "tools": { "listChanged": false } },
+        "serverInfo": { "name": "sedjiwa-tasks", "version": env!("CARGO_PKG_VERSION") }
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn echoes_a_supported_version() {
+        let p = json!({ "protocolVersion": "2025-03-26" });
+        assert_eq!(initialize_result(&p)["protocolVersion"], "2025-03-26");
+    }
+
+    #[test]
+    fn falls_back_to_latest_for_unknown_version() {
+        let p = json!({ "protocolVersion": "1999-01-01" });
+        assert_eq!(initialize_result(&p)["protocolVersion"], SUPPORTED_VERSIONS[0]);
+    }
+}
+```
+
+- [ ] **Step 5: Tulis router-nya**
+
+`apps/backend-rs/crates/mcp/src/lib.rs`:
+
+```rust
+//! Endpoint MCP: satu route Streamable HTTP yang mengekspos tool portal ke AI
+//! client milik user, diautentikasi dengan personal access token.
+//!
+//! Dipasang di `/mcp` pada server; publik lewat `/api/tasks-rs/mcp` (proxy
+//! membuang prefix `/api/tasks-rs`, sama seperti untuk route Connect).
+
+mod protocol;
+
+use std::sync::Arc;
+
+use axum::extract::Extension;
+use axum::http::StatusCode;
+use axum::response::{IntoResponse, Response};
+use axum::routing::post;
+use axum::Json;
+use persistence::Store;
+use serde_json::Value;
+use transport::Notifier;
+
+use protocol::{error, initialize_result, result, Rpc, METHOD_NOT_FOUND, PARSE_ERROR};
+
+#[derive(Clone)]
+pub struct McpState {
+    pub store: Arc<Store>,
+    pub notifier: Arc<Notifier>,
+}
+
+/// Router endpoint MCP. Pasang dengan `Router::new().nest("/mcp", mcp_router(..))`.
+pub fn mcp_router(store: Arc<Store>, notifier: Arc<Notifier>) -> axum::Router<()> {
+    axum::Router::new()
+        .route("/", post(handle_post).get(handle_get))
+        .layer(Extension(McpState { store, notifier }))
+}
+
+/// GET dipakai spec untuk membuka stream SSE server→client. v1 tidak punya
+/// pesan server-initiated, jadi menolaknya lebih jujur daripada membuka stream
+/// yang tidak akan pernah mengirim apa pun.
+async fn handle_get() -> Response {
+    StatusCode::METHOD_NOT_ALLOWED.into_response()
+}
+
+async fn handle_post(
+    Extension(_state): Extension<McpState>,
+    body: axum::body::Bytes,
+) -> Response {
+    let Ok(rpc) = serde_json::from_slice::<Rpc>(&body) else {
+        return Json(error(None, PARSE_ERROR, "invalid JSON-RPC request")).into_response();
+    };
+
+    // Notifikasi (tanpa `id`) tidak pernah dibalas — spec meminta 202 kosong.
+    let is_notification = rpc.id.is_none();
+
+    let response: Value = match rpc.method.as_str() {
+        "initialize" => result(rpc.id.clone(), initialize_result(&rpc.params)),
+        "ping" => result(rpc.id.clone(), serde_json::json!({})),
+        m if m.starts_with("notifications/") => {
+            return StatusCode::ACCEPTED.into_response();
+        }
+        other => error(rpc.id.clone(), METHOD_NOT_FOUND, &format!("unknown method: {other}")),
+    };
+
+    if is_notification {
+        return StatusCode::ACCEPTED.into_response();
+    }
+    Json(response).into_response()
+}
+```
+
+- [ ] **Step 6: Jalankan test, pastikan lulus**
+
+Run: `cargo test -p mcp`
+Expected: PASS (7 test: 5 di `mcp_flow`, 2 unit di `protocol`).
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add apps/backend-rs/crates/mcp apps/backend-rs/Cargo.lock
+git commit -m "feat(mcp): add MCP crate with JSON-RPC envelope"
+```
+
+---
+
+## Task 8: Autentikasi PAT
+
+**Files:**
+- Create: `apps/backend-rs/crates/mcp/src/pat.rs`
+- Modify: `apps/backend-rs/crates/mcp/src/lib.rs`, `apps/backend-rs/crates/transport/src/api.rs`, `apps/backend-rs/crates/transport/src/users/record.rs`, `apps/backend-rs/crates/mcp/tests/mcp_flow.rs`
+
+- [ ] **Step 1: Tambahkan test yang gagal**
+
+Tambahkan di ujung `crates/mcp/tests/mcp_flow.rs`:
+
+```rust
+#[tokio::test]
+async fn tools_list_without_token_is_401() {
+    let Some(router) = router().await else { return };
+    let req = Request::builder()
+        .method("POST")
+        .uri("/mcp")
+        .header(CONTENT_TYPE, "application/json")
+        .body(Body::from(
+            json!({ "jsonrpc": "2.0", "id": 2, "method": "tools/list" }).to_string(),
+        ))
+        .unwrap();
+    let resp = router.oneshot(req).await.unwrap();
+    // Kredensial salah dibedakan dari permintaan salah: 401 + WWW-Authenticate,
+    // bukan error JSON-RPC, supaya client tahu ini soal token.
+    assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+    assert!(resp.headers().get("www-authenticate").is_some());
+}
+
+#[tokio::test]
+async fn garbage_token_is_401() {
+    let Some(router) = router().await else { return };
+    let (st, _) = rpc(
+        &router,
+        Some("not-a-real-token"),
+        json!({ "jsonrpc": "2.0", "id": 3, "method": "tools/list" }),
+    )
+    .await;
+    assert_eq!(st, StatusCode::UNAUTHORIZED);
+}
+```
+
+Run: `cargo test -p mcp`
+Expected: FAIL — `tools/list` masih dibalas `-32601` dengan status 200.
+
+- [ ] **Step 2: Ekspos resolusi user dari transport**
+
+Di `crates/transport/src/users/record.rs`, tambahkan:
+
+```rust
+/// `AuthUser` yang akan dilihat handler Connect untuk user ini — dipakai jalur
+/// PAT, yang membawa id pemilik tetapi bukan permission-nya.
+///
+/// Permission dibaca ulang setiap kali, bukan dibekukan ke dalam token: itulah
+/// yang membuat token otomatis kehilangan hak begitu user di-suspend atau
+/// dicabut status adminnya.
+pub async fn auth_user_for(store: &Store, user_id: &str) -> anyhow::Result<Option<AuthUser>> {
+    let Ok(pid) = user_id.parse::<i64>() else {
+        return Ok(None);
+    };
+    let Some(u) = load_user(store, pid).await? else {
+        return Ok(None);
+    };
+    if domain::user::UserStatus::parse(&u.status) != Some(domain::user::UserStatus::Active) {
+        return Ok(None);
+    }
+    Ok(Some(AuthUser {
+        id: user_id.to_string(),
+        permissions: if u.is_admin { vec!["*".to_string()] } else { vec![] },
+    }))
+}
+```
+
+Sesuaikan nama field `u.status` / `u.is_admin` dengan `UserRecord` yang sebenarnya ada di file itu. Tambahkan `use auth::AuthUser;` bila belum ada.
+
+Di `crates/transport/src/api.rs`, tambahkan:
+
+```rust
+pub use crate::tokens::record::{find_by_hash, TokenRecord};
+pub use crate::users::record::auth_user_for;
+```
+
+Pastikan `mod users` / `mod tokens` mengekspos `pub(crate) mod record;` dan item di dalamnya `pub`.
+
+- [ ] **Step 3: Tulis verifikasi PAT**
+
+`apps/backend-rs/crates/mcp/src/pat.rs`:
+
+```rust
+//! Verifikasi personal access token untuk endpoint MCP.
+//!
+//! Jalur ini sengaja terpisah dari `auth_layer` milik aplikasi: JWT sesi browser
+//! tidak berlaku di sini, dan PAT tidak berlaku di Connect API. Dua kredensial
+//! itu tidak pernah bersinggungan, jadi PAT yang bocor hanya membuka tool MCP.
+
+use auth::AuthUser;
+use domain::token::{hash_token, is_expired, looks_like_token};
+use persistence::Store;
+use transport::api::{auth_user_for, find_by_hash, TokenRecord};
+
+/// Sengaja satu varian saja: membedakan "token tidak ada" dari "token
+/// kedaluwarsa" di respons akan memberi tahu penebak mana yang hampir benar.
+#[derive(Debug)]
+pub struct Unauthorized;
+
+fn now_iso() -> String {
+    use time::format_description::well_known::Rfc3339;
+    time::OffsetDateTime::now_utc().format(&Rfc3339).unwrap_or_default()
+}
+
+/// Header `Authorization` → user portal, atau `Unauthorized`.
+pub async fn authenticate(store: &Store, header: Option<&str>) -> Result<AuthUser, Unauthorized> {
+    let raw = header.ok_or(Unauthorized)?;
+    let token = raw
+        .strip_prefix("Bearer ")
+        .or_else(|| raw.strip_prefix("bearer "))
+        .ok_or(Unauthorized)?
+        .trim();
+    // Saring bentuknya lebih dulu: string yang mustahil kita terbitkan tidak
+    // pernah sampai ke database, dan itu juga yang membuat digest aman dipakai
+    // membangun predikat SQL di `find_by_hash`.
+    if !looks_like_token(token) {
+        return Err(Unauthorized);
+    }
+    let rec: TokenRecord = find_by_hash(store, &hash_token(token))
+        .await
+        .map_err(|_| Unauthorized)?
+        .ok_or(Unauthorized)?;
+    let now = now_iso();
+    if is_expired(rec.expires_at.as_deref(), &now) {
+        return Err(Unauthorized);
+    }
+    let user = auth_user_for(store, &rec.user_id)
+        .await
+        .map_err(|_| Unauthorized)?
+        .ok_or(Unauthorized)?;
+    touch(store, &rec, &now).await;
+    Ok(user)
+}
+
+/// Catat pemakaian, tapi paling sering satu jam sekali.
+///
+/// Tanpa throttle ini setiap tool call — dan satu percakapan AI bisa memicu
+/// belasan — akan menulis satu baris ke database hanya untuk memperbarui
+/// stempel waktu yang dibaca manusia sesekali.
+async fn touch(store: &Store, rec: &TokenRecord, now: &str) {
+    use time::format_description::well_known::Rfc3339;
+    let cutoff = (time::OffsetDateTime::now_utc() - time::Duration::hours(1))
+        .format(&Rfc3339)
+        .unwrap_or_default();
+    let fresh = rec
+        .last_used_at
+        .as_deref()
+        .map(|t| t > cutoff.as_str())
+        .unwrap_or(false);
+    if fresh {
+        return;
+    }
+    let stamp = now.to_string();
+    if let Err(e) = store
+        .update(rec.pid, move |w, e| {
+            w.remove::<domain::token::TokenUsage>(e);
+            w.insert(
+                e,
+                domain::token::TokenUsage {
+                    last_used_at: Some(stamp),
+                },
+            );
+        })
+        .await
+    {
+        // Gagal mencatat pemakaian tidak boleh menggagalkan tool call-nya.
+        tracing::warn!(error = %e, token = rec.pid, "failed to record token usage");
+    }
+}
+```
+
+- [ ] **Step 4: Pasang di router**
+
+Di `crates/mcp/src/lib.rs`, tambahkan `mod pat;`, lalu ubah `handle_post` agar meminta kredensial untuk semua method **kecuali** handshake:
+
+```rust
+async fn handle_post(
+    Extension(state): Extension<McpState>,
+    headers: axum::http::HeaderMap,
+    body: axum::body::Bytes,
+) -> Response {
+    let Ok(rpc) = serde_json::from_slice::<Rpc>(&body) else {
+        return Json(error(None, PARSE_ERROR, "invalid JSON-RPC request")).into_response();
+    };
+    let is_notification = rpc.id.is_none();
+
+    // `initialize`/`ping` sengaja terbuka: client harus bisa menyelesaikan
+    // handshake dan menampilkan nama server sebelum user menempelkan token.
+    let needs_auth = !matches!(rpc.method.as_str(), "initialize" | "ping")
+        && !rpc.method.starts_with("notifications/");
+    let auth = if needs_auth {
+        let header = headers
+            .get(axum::http::header::AUTHORIZATION)
+            .and_then(|v| v.to_str().ok());
+        match pat::authenticate(&state.store, header).await {
+            Ok(u) => Some(u),
+            Err(_) => {
+                return (
+                    StatusCode::UNAUTHORIZED,
+                    [("WWW-Authenticate", "Bearer realm=\"sedjiwa-tasks-mcp\"")],
+                    Json(error(rpc.id, -32001, "invalid or missing access token")),
+                )
+                    .into_response()
+            }
+        }
+    } else {
+        None
+    };
+    let _ = &auth; // dipakai mulai Task 9
+
+    let response: Value = match rpc.method.as_str() { /* seperti Task 7 */ };
+
+    if is_notification {
+        return StatusCode::ACCEPTED.into_response();
+    }
+    Json(response).into_response()
+}
+```
+
+- [ ] **Step 5: Jalankan test, pastikan lulus**
+
+Run: `DATABASE_URL=$DATABASE_URL cargo test -p mcp`
+Expected: PASS, 9 test.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add apps/backend-rs/crates/mcp apps/backend-rs/crates/transport/src
+git commit -m "feat(mcp): authenticate the MCP endpoint with personal access tokens"
+```
+
+---
+
+## Task 9: Registry tool + `tools/list` + `tools/call`
+
+**Files:**
+- Create: `apps/backend-rs/crates/mcp/src/tools/mod.rs`
+- Modify: `apps/backend-rs/crates/mcp/src/lib.rs`, `apps/backend-rs/crates/mcp/tests/mcp_flow.rs`
+
+- [ ] **Step 1: Tambahkan test yang gagal**
+
+Tambahkan di `mcp_flow.rs` sebuah helper untuk menerbitkan PAT langsung ke store, lalu test-nya:
+
+```rust
+/// Terbitkan PAT untuk seorang user langsung lewat store — jalur RPC-nya sudah
+/// diuji terpisah di `transport::tokens_flow`.
+async fn issue_token(store: &persistence::Store, user_id: &str) -> String {
+    use domain::token::{generate_token, hash_token, preview_of, TokenInfo, TokenOwner, TokenSecret, TokenUsage};
+    let t = generate_token();
+    store
+        .create((
+            TokenSecret { hash: hash_token(&t), preview: preview_of(&t) },
+            TokenOwner { user_id: user_id.to_string() },
+            TokenInfo {
+                name: "test".into(),
+                created_at: "2026-01-01T00:00:00Z".into(),
+                expires_at: None,
+            },
+            TokenUsage { last_used_at: None },
+        ))
+        .await
+        .unwrap();
+    t
+}
+
+#[tokio::test]
+async fn tools_list_returns_the_registry() {
+    let Some((router, store)) = router_and_store().await else { return };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+
+    let (st, body) = rpc(
+        &router,
+        Some(&token),
+        json!({ "jsonrpc": "2.0", "id": 4, "method": "tools/list" }),
+    )
+    .await;
+    assert_eq!(st, StatusCode::OK, "{body:?}");
+    let tools = body["result"]["tools"].as_array().unwrap();
+    assert_eq!(tools.len(), 12);
+    let names: Vec<&str> = tools.iter().map(|t| t["name"].as_str().unwrap()).collect();
+    assert!(names.contains(&"create_task"));
+    assert!(!names.contains(&"delete_task"), "delete sengaja tidak diekspos");
+    for t in tools {
+        assert!(t["description"].as_str().is_some_and(|d| !d.is_empty()));
+        assert_eq!(t["inputSchema"]["type"], "object");
+    }
+}
+
+#[tokio::test]
+async fn calling_an_unknown_tool_is_invalid_params() {
+    let Some((router, store)) = router_and_store().await else { return };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    let (_, body) = rpc(
+        &router,
+        Some(&token),
+        json!({ "jsonrpc": "2.0", "id": 5, "method": "tools/call",
+                "params": { "name": "nope", "arguments": {} } }),
+    )
+    .await;
+    assert_eq!(body["error"]["code"], -32602);
+}
+
+#[tokio::test]
+async fn business_failure_is_an_error_result_not_a_protocol_error() {
+    let Some((router, store)) = router_and_store().await else { return };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    let (st, body) = rpc(
+        &router,
+        Some(&token),
+        json!({ "jsonrpc": "2.0", "id": 6, "method": "tools/call",
+                "params": { "name": "get_task", "arguments": { "task_id": "999999999" } } }),
+    )
+    .await;
+    assert_eq!(st, StatusCode::OK);
+    assert!(body.get("error").is_none(), "bukan error protokol");
+    assert_eq!(body["result"]["isError"], true);
+    assert!(body["result"]["content"][0]["text"].as_str().is_some());
+}
+```
+
+`router_and_store()` sudah ada sejak Task 7. Tambahkan helper penyemai user aktif:
+
+```rust
+/// User aktif minimal — `auth_user_for` menolak apa pun yang bukan `active`.
+async fn seed_active_user(store: &persistence::Store) -> String {
+    use domain::user::{UserPassword, UserPhone, UserProfile, UserStatusComponent};
+    let uniq = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let pid = store
+        .create((
+            UserPhone { value: format!("62{uniq}"), verified: true },
+            UserPassword { hash: "x".into(), changed_at: "2026-01-01T00:00:00Z".into() },
+            UserProfile {
+                display_name: "MCP Tester".into(),
+                avatar_url: String::new(),
+                email: String::new(),
+            },
+            UserStatusComponent {
+                status: "active".into(),
+                created_at: "2026-01-01T00:00:00Z".into(),
+                last_login_at: None,
+            },
+        ))
+        .await
+        .unwrap();
+    pid.to_string()
+}
+```
+
+Run: `DATABASE_URL=$DATABASE_URL cargo test -p mcp`
+Expected: FAIL — `tools/list` belum ada.
+
+- [ ] **Step 2: Tulis registry-nya**
+
+`apps/backend-rs/crates/mcp/src/tools/mod.rs`:
+
+```rust
+//! Registry tool MCP: metadata untuk `tools/list` dan dispatch untuk
+//! `tools/call`.
+//!
+//! Setiap tool memanggil core fn yang sama dengan handler Connect
+//! (`transport::api`), jadi member-gating, validasi, activity record,
+//! notifikasi, dan search index ikut serta tanpa aturan kembar.
+
+pub mod comments;
+pub mod discovery;
+pub mod projects;
+pub mod tasks;
+
+use std::sync::Arc;
+
+use auth::AuthUser;
+use connectrpc_axum::ConnectError;
+use persistence::Store;
+use serde_json::{json, Value};
+use transport::Notifier;
+
+/// Apa yang dibutuhkan sebuah tool untuk berjalan.
+pub struct Ctx {
+    pub store: Arc<Store>,
+    pub notifier: Arc<Notifier>,
+    pub auth: AuthUser,
+}
+
+pub enum ToolError {
+    /// Permintaannya sah tapi ditolak aturan bisnis → tool result `isError`,
+    /// karena model bisa membaca alasannya dan mencoba lagi dengan benar.
+    Business(String),
+    /// Argumennya sendiri salah bentuk → error protokol JSON-RPC.
+    BadArgs(String),
+}
+
+impl From<ConnectError> for ToolError {
+    fn from(e: ConnectError) -> Self {
+        // `message()` adalah kalimat yang ditulis handler untuk manusia; kode
+        // dipakai hanya bila handler tidak menyertakan pesan.
+        ToolError::Business(e.message().unwrap_or(e.code().as_str()).to_string())
+    }
+}
+
+pub struct ToolMeta {
+    pub name: &'static str,
+    pub description: &'static str,
+    pub schema: fn() -> Value,
+}
+
+pub const TOOLS: &[ToolMeta] = &[
+    tasks::LIST_TASKS,
+    tasks::GET_TASK,
+    tasks::CREATE_TASK,
+    tasks::UPDATE_TASK,
+    tasks::MOVE_TASK,
+    projects::LIST_PROJECTS,
+    projects::GET_PROJECT,
+    projects::LIST_MODULES,
+    discovery::SEARCH,
+    discovery::MY_TASKS,
+    comments::LIST_COMMENTS,
+    comments::ADD_COMMENT,
+];
+
+pub fn tool_list() -> Value {
+    json!({
+        "tools": TOOLS
+            .iter()
+            .map(|t| json!({
+                "name": t.name,
+                "description": t.description,
+                "inputSchema": (t.schema)(),
+            }))
+            .collect::<Vec<_>>()
+    })
+}
+
+/// Jalankan satu tool. `Err(BadArgs)` berarti error protokol; `Err(Business)`
+/// dibungkus pemanggil menjadi tool result ber-`isError`.
+pub async fn dispatch(ctx: &Ctx, name: &str, args: &Value) -> Result<Value, ToolError> {
+    match name {
+        "list_tasks" => tasks::list_tasks(ctx, args).await,
+        "get_task" => tasks::get_task(ctx, args).await,
+        "create_task" => tasks::create_task(ctx, args).await,
+        "update_task" => tasks::update_task(ctx, args).await,
+        "move_task" => tasks::move_task(ctx, args).await,
+        "list_projects" => projects::list_projects(ctx, args).await,
+        "get_project" => projects::get_project(ctx, args).await,
+        "list_modules" => projects::list_modules(ctx, args).await,
+        "search" => discovery::search(ctx, args).await,
+        "my_tasks" => discovery::my_tasks(ctx, args).await,
+        "list_comments" => comments::list_comments(ctx, args).await,
+        "add_comment" => comments::add_comment(ctx, args).await,
+        other => Err(ToolError::BadArgs(format!("unknown tool: {other}"))),
+    }
+}
+
+/// Hasil tool → `content` MCP. Kita mengirim JSON di dalam satu blok teks:
+/// setiap client menampilkan `text`, sementara struktur JSON-nya tetap terbaca
+/// model.
+pub fn ok_content(value: Value) -> Value {
+    json!({
+        "content": [{ "type": "text", "text": serde_json::to_string_pretty(&value).unwrap_or_default() }],
+        "isError": false
+    })
+}
+
+pub fn error_content(message: &str) -> Value {
+    json!({ "content": [{ "type": "text", "text": message }], "isError": true })
+}
+
+// --- Helper argumen, dipakai seluruh modul tool ---
+
+pub fn str_arg(args: &Value, key: &str) -> Result<String, ToolError> {
+    args.get(key)
+        .and_then(Value::as_str)
+        .map(str::to_string)
+        .ok_or_else(|| ToolError::BadArgs(format!("`{key}` is required and must be a string")))
+}
+
+pub fn opt_str(args: &Value, key: &str) -> Option<String> {
+    args.get(key)
+        .and_then(Value::as_str)
+        .filter(|s| !s.is_empty())
+        .map(str::to_string)
+}
+
+pub fn opt_str_list(args: &Value, key: &str) -> Option<Vec<String>> {
+    args.get(key).and_then(Value::as_array).map(|a| {
+        a.iter()
+            .filter_map(Value::as_str)
+            .map(str::to_string)
+            .collect()
+    })
+}
+
+/// `limit` yang dipatok: default 50, maksimum 200. Batas ini yang menjaga satu
+/// tool call tidak menelan seluruh konteks client.
+pub const DEFAULT_LIMIT: usize = 50;
+pub const MAX_LIMIT: usize = 200;
+
+pub fn limit_arg(args: &Value) -> usize {
+    args.get("limit")
+        .and_then(Value::as_u64)
+        .map(|n| (n as usize).clamp(1, MAX_LIMIT))
+        .unwrap_or(DEFAULT_LIMIT)
+}
+
+/// Deskripsi panjang dipotong sebelum dikirim ke model.
+pub const MAX_DESCRIPTION: usize = 2000;
+
+pub fn truncate(s: &str) -> String {
+    if s.chars().count() <= MAX_DESCRIPTION {
+        return s.to_string();
+    }
+    let head: String = s.chars().take(MAX_DESCRIPTION).collect();
+    format!("{head}… [dipotong; buka task di portal untuk teks lengkap]")
+}
+```
+
+- [ ] **Step 3: Sambungkan ke dispatch protokol**
+
+Di `crates/mcp/src/lib.rs`, tambahkan `mod tools;` dan lengkapi `match` di `handle_post`:
+
+```rust
+        "tools/list" => result(rpc.id.clone(), tools::tool_list()),
+        "tools/call" => {
+            let name = rpc.params.get("name").and_then(Value::as_str).unwrap_or_default();
+            let args = rpc.params.get("arguments").cloned().unwrap_or(Value::Object(Default::default()));
+            let ctx = tools::Ctx {
+                store: state.store.clone(),
+                notifier: state.notifier.clone(),
+                auth: auth.expect("tools/call requires auth"),
+            };
+            match tools::dispatch(&ctx, name, &args).await {
+                Ok(v) => result(rpc.id.clone(), tools::ok_content(v)),
+                Err(tools::ToolError::Business(m)) => {
+                    result(rpc.id.clone(), tools::error_content(&m))
+                }
+                Err(tools::ToolError::BadArgs(m)) => {
+                    error(rpc.id.clone(), INVALID_PARAMS, &m)
+                }
+            }
+        }
+```
+
+Impor `INVALID_PARAMS` dari `protocol`.
+
+- [ ] **Step 4: Buat empat modul tool sebagai stub**
+
+Supaya task ini berdiri sendiri, buat `tools/tasks.rs`, `tools/projects.rs`,
+`tools/discovery.rs`, dan `tools/comments.rs` lebih dulu berisi stub yang bisa
+dikompilasi — satu `ToolMeta` per tool dengan schema minimal, dan handler yang
+mengembalikan `Business`. Task 10–13 menggantinya satu per satu. Pola stub-nya,
+diulang untuk kedua belas nama tool di `TOOLS`:
+
+```rust
+use serde_json::{json, Value};
+use super::{Ctx, ToolError, ToolMeta};
+
+pub const LIST_TASKS: ToolMeta = ToolMeta {
+    name: "list_tasks",
+    description: "Daftar task dalam sebuah project atau module.",
+    schema: || json!({ "type": "object", "properties": {} }),
+};
+
+pub async fn list_tasks(_ctx: &Ctx, _args: &Value) -> Result<Value, ToolError> {
+    Err(ToolError::Business("not implemented yet".into()))
+}
+```
+
+- [ ] **Step 5: Jalankan test**
+
+Run: `DATABASE_URL=$DATABASE_URL cargo test -p mcp`
+Expected: PASS untuk `tools_list_returns_the_registry` dan
+`calling_an_unknown_tool_is_invalid_params`. Test
+`business_failure_is_an_error_result_not_a_protocol_error` juga lulus — stub
+mengembalikan `Business`, yang persis bentuk yang diuji.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add apps/backend-rs/crates/mcp
+git commit -m "feat(mcp): add tool registry, tools/list, and tools/call dispatch"
+```
+
+---
+
+## Task 10: Tool task
+
+**Files:**
+- Create: `apps/backend-rs/crates/mcp/src/tools/tasks.rs`
+
+- [ ] **Step 1: Tulis kelima tool**
+
+`apps/backend-rs/crates/mcp/src/tools/tasks.rs`:
+
+```rust
+//! Tool task. Setiap tool memanggil core fn yang sama dengan UI, lalu
+//! memipihkan hasil proto menjadi JSON ramah-model — enum jadi string, dan
+//! deskripsi panjang dipotong.
+
+use serde_json::{json, Value};
+use transport::api::{
+    create_task_core, get_task_core, list_tasks_core, move_task_core, update_task_core,
+};
+
+use super::{limit_arg, opt_str, opt_str_list, str_arg, truncate, Ctx, ToolError, ToolMeta};
+
+/// Proto Task → JSON pipih. Nama field `snake_case` supaya sama dengan nama
+/// argumen tool; model tidak perlu menerjemahkan dua konvensi.
+pub(crate) fn flatten(t: &transport::api::work_pb::Task) -> Value {
+    json!({
+        "id": t.id,
+        "title": t.title,
+        "description": truncate(&t.description),
+        "status": t.status_label(),
+        "priority": t.priority_label(),
+        "module_id": t.module_id,
+        "assignee_ids": t.assignee_ids,
+        "start_date": t.start_date,
+        "due_date": t.due_date,
+        "parent_id": t.parent_id,
+    })
+}
+```
+
+Bentuk `flatten` di atas bergantung pada tipe proto yang sebenarnya. Sebelum menulisnya, jalankan `cargo doc -p transport --open` atau baca `proto/work.proto`, lalu:
+
+1. Tambahkan di `crates/transport/src/api.rs` sebuah re-export tipe proto yang dibutuhkan crate `mcp`, misalnya:
+
+```rust
+pub use crate::sedjiwa::tasks::work::v1 as work_pb;
+pub use crate::sedjiwa::tasks::project::v1 as project_pb;
+pub use crate::sedjiwa::tasks::comment::v1 as comment_pb;
+pub use crate::sedjiwa::tasks::search::v1 as search_pb;
+pub use crate::sedjiwa::tasks::dashboard::v1 as dashboard_pb;
+```
+
+(sesuaikan nama package dengan `package …` di tiap proto).
+
+2. Untuk `status` dan `priority`, ubah angka enum menjadi label yang dibaca model dengan helper domain yang sudah ada:
+
+```rust
+pub(crate) fn status_label(v: i32) -> &'static str {
+    domain::task::TaskStatus::from_proto(v)
+        .unwrap_or(domain::task::TaskStatus::Todo)
+        .as_str()
+}
+fn priority_label(v: i32) -> &'static str {
+    domain::task::TaskPriority::from_proto(v)
+        .unwrap_or(domain::task::TaskPriority::None)
+        .as_str()
+}
+```
+
+Lalu `flatten` memakai `status_label(t.status)` dan `priority_label(t.priority)`.
+
+- [ ] **Step 2: Definisikan metadata dan handler**
+
+Lanjutkan file yang sama:
+
+```rust
+pub const LIST_TASKS: ToolMeta = ToolMeta {
+    name: "list_tasks",
+    description: "Daftar task dalam sebuah project atau module. Salah satu dari \
+                  project_id atau module_id wajib diisi. Pakai list_projects lebih \
+                  dulu bila belum tahu id-nya.",
+    schema: || json!({
+        "type": "object",
+        "properties": {
+            "project_id": { "type": "string" },
+            "module_id": { "type": "string" },
+            "assignee_id": { "type": "string" },
+            "status": { "type": "string", "enum": ["todo", "in_progress", "done", "blocked"] },
+            "limit": { "type": "integer", "minimum": 1, "maximum": 200 }
+        }
+    }),
+};
+
+pub async fn list_tasks(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
+    let project_id = opt_str(args, "project_id");
+    let module_id = opt_str(args, "module_id");
+    // Tanpa salah satunya, permintaan ini akan memindai seluruh basis data.
+    if project_id.is_none() && module_id.is_none() {
+        return Err(ToolError::BadArgs(
+            "either `project_id` or `module_id` is required".into(),
+        ));
+    }
+    let req = transport::api::work_pb::ListTasksRequest {
+        project_id: project_id.unwrap_or_default(),
+        module_id: module_id.clone(),
+    };
+    let resp = list_tasks_core(&ctx.store, &ctx.auth, req).await?;
+    let status = opt_str(args, "status");
+    let assignee = opt_str(args, "assignee_id");
+    let rows: Vec<Value> = resp
+        .tasks
+        .iter()
+        .filter(|t| status.as_deref().is_none_or(|s| status_label(t.status) == s))
+        .filter(|t| assignee.as_deref().is_none_or(|a| t.assignee_ids.iter().any(|x| x == a)))
+        .take(limit_arg(args))
+        .map(flatten)
+        .collect();
+    Ok(json!({ "tasks": rows, "count": rows.len() }))
+}
+```
+
+Bila `ListTasksRequest` mewajibkan `project_id` sementara pemanggil hanya memberi `module_id`, resolusikan project-nya lebih dulu lewat `get_task`/`list_modules` sesuai bentuk proto yang sebenarnya — jangan mengubah core fn-nya.
+
+Tulis empat sisanya dengan pola yang sama:
+
+```rust
+pub const GET_TASK: ToolMeta = ToolMeta {
+    name: "get_task",
+    description: "Ambil satu task lengkap dengan deskripsi, assignee, tanggal, dan status.",
+    schema: || json!({
+        "type": "object",
+        "properties": { "task_id": { "type": "string" } },
+        "required": ["task_id"]
+    }),
+};
+
+pub async fn get_task(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
+    let req = transport::api::work_pb::GetTaskRequest { id: str_arg(args, "task_id")? };
+    Ok(flatten(&get_task_core(&ctx.store, &ctx.auth, req).await?))
+}
+
+pub const CREATE_TASK: ToolMeta = ToolMeta {
+    name: "create_task",
+    description: "Buat task baru di sebuah module. Assignee wajib anggota project.",
+    schema: || json!({
+        "type": "object",
+        "properties": {
+            "module_id": { "type": "string" },
+            "title": { "type": "string" },
+            "description": { "type": "string" },
+            "priority": { "type": "string", "enum": ["none", "low", "medium", "high", "urgent"] },
+            "start_date": { "type": "string", "description": "RFC3339" },
+            "due_date": { "type": "string", "description": "RFC3339" },
+            "assignee_ids": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["module_id", "title"]
+    }),
+};
+
+pub async fn create_task(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
+    let req = transport::api::work_pb::CreateTaskRequest {
+        module_id: str_arg(args, "module_id")?,
+        title: str_arg(args, "title")?,
+        description: opt_str(args, "description"),
+        status: 0,
+        priority: priority_value(opt_str(args, "priority").as_deref()),
+        start_date: opt_str(args, "start_date"),
+        due_date: opt_str(args, "due_date"),
+        assignee_ids: opt_str_list(args, "assignee_ids").unwrap_or_default(),
+        label_ids: Vec::new(),
+        parent_id: opt_str(args, "parent_id"),
+    };
+    let t = create_task_core(&ctx.store, Some(&ctx.notifier), &ctx.auth, req).await?;
+    Ok(flatten(&t))
+}
+
+pub const UPDATE_TASK: ToolMeta = ToolMeta {
+    name: "update_task",
+    description: "Ubah sebagian field sebuah task. Field yang tidak dikirim dibiarkan apa adanya.",
+    schema: || json!({
+        "type": "object",
+        "properties": {
+            "task_id": { "type": "string" },
+            "title": { "type": "string" },
+            "description": { "type": "string" },
+            "status": { "type": "string", "enum": ["todo", "in_progress", "done", "blocked"] },
+            "priority": { "type": "string", "enum": ["none", "low", "medium", "high", "urgent"] },
+            "start_date": { "type": "string" },
+            "due_date": { "type": "string" },
+            "assignee_ids": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["task_id"]
+    }),
+};
+
+pub const MOVE_TASK: ToolMeta = ToolMeta {
+    name: "move_task",
+    description: "Pindahkan task ke module lain dalam project yang sama.",
+    schema: || json!({
+        "type": "object",
+        "properties": { "task_id": { "type": "string" }, "module_id": { "type": "string" } },
+        "required": ["task_id", "module_id"]
+    }),
+};
+```
+
+`update_task` dan `move_task` mengikuti bentuk `get_task`: bangun request proto dari argumen, panggil core fn (`update_task_core` meneruskan `Some(&ctx.notifier)`), lalu kembalikan `flatten(&t)`. `priority_value` adalah kebalikan `priority_label` — pakai `domain::task::TaskPriority::parse(..).map(|p| p.to_proto()).unwrap_or(0)`; kalau `parse` tidak ada, tambahkan di `domain::task` bersama unit test-nya, sejajar dengan `TaskStatus::parse`.
+
+- [ ] **Step 2b: Sesuaikan nama field**
+
+Nama field pada `CreateTaskRequest`/`UpdateTaskRequest` di atas mengikuti `proto/work.proto`. Buka file itu dan samakan persis — `Option<String>` untuk field `optional`, `String` untuk yang biasa.
+
+- [ ] **Step 3: Tulis test tool task**
+
+Tambahkan di `crates/mcp/tests/mcp_flow.rs`:
+
+```rust
+#[tokio::test]
+async fn create_then_get_a_task_through_mcp() {
+    let Some((router, store)) = router_and_store().await else { return };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    // Project + module disemai lewat core fn transport agar aturan membership
+    // yang sama berlaku; lihat helper `seed_project_and_module` di bawah.
+    let (_project_id, module_id) = seed_project_and_module(&store, &user).await;
+
+    let (_, created) = rpc(
+        &router,
+        Some(&token),
+        json!({ "jsonrpc": "2.0", "id": 10, "method": "tools/call",
+                "params": { "name": "create_task",
+                            "arguments": { "module_id": module_id, "title": "dari MCP" } } }),
+    )
+    .await;
+    assert_eq!(created["result"]["isError"], false, "{created:?}");
+    let payload: Value =
+        serde_json::from_str(created["result"]["content"][0]["text"].as_str().unwrap()).unwrap();
+    assert_eq!(payload["title"], "dari MCP");
+    let task_id = payload["id"].as_str().unwrap().to_string();
+
+    let (_, fetched) = rpc(
+        &router,
+        Some(&token),
+        json!({ "jsonrpc": "2.0", "id": 11, "method": "tools/call",
+                "params": { "name": "get_task", "arguments": { "task_id": task_id } } }),
+    )
+    .await;
+    let payload: Value =
+        serde_json::from_str(fetched["result"]["content"][0]["text"].as_str().unwrap()).unwrap();
+    assert_eq!(payload["title"], "dari MCP");
+    assert_eq!(payload["status"], "todo");
+}
+
+/// Project (dimiliki `user`, dengan `user` sebagai member) + satu module di
+/// dalamnya. Disemai langsung lewat komponen, bukan lewat RPC: alur pembuatan
+/// project sudah diuji di `transport::project_flow`, dan test ini hanya butuh
+/// data yang membuat pemeriksaan membership lolos.
+///
+/// Mengembalikan `(project_id, module_id)`.
+async fn seed_project_and_module(
+    store: &persistence::Store,
+    user: &str,
+) -> (String, String) {
+    use domain::module::{ModuleDescription, ModuleName, ModuleOrder, ModuleProjectRef};
+    use domain::project::{
+        ProjectDates, ProjectDescription, ProjectMembership, ProjectName, ProjectOwnerId,
+        ProjectStatusComponent,
+    };
+    let project = store
+        .create((
+            ProjectName { value: "MCP test project".into() },
+            ProjectDescription { value: String::new() },
+            ProjectOwnerId { user_id: user.to_string() },
+            ProjectStatusComponent {
+                status: "active".into(),
+                created_at: "2026-01-01T00:00:00Z".into(),
+            },
+            ProjectDates { start_date: None, end_date: None },
+            ProjectMembership { user_ids: vec![user.to_string()] },
+        ))
+        .await
+        .unwrap();
+    let module = store
+        .create((
+            ModuleName { value: "Backlog".into() },
+            ModuleDescription { value: String::new() },
+            ModuleProjectRef { project_id: project.to_string() },
+            ModuleOrder { sort_order: 0 },
+        ))
+        .await
+        .unwrap();
+    (project.to_string(), module.to_string())
+}
+```
+
+Nama dan field komponen di atas harus disamakan dengan `crates/domain/src/project.rs` dan
+`crates/domain/src/module.rs` yang sebenarnya — bila salah satu field berbeda, ikuti file
+domain-nya, bukan cuplikan ini.
+
+- [ ] **Step 4: Jalankan test**
+
+Run: `DATABASE_URL=$DATABASE_URL cargo test -p mcp`
+Expected: PASS (test tool task + seluruh test Task 7–9).
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add apps/backend-rs/crates/mcp
+git commit -m "feat(mcp): implement the task tools"
+```
+
+---
+
+## Task 11: Tool project & module
+
+**Files:**
+- Create: `apps/backend-rs/crates/mcp/src/tools/projects.rs`
+
+- [ ] **Step 1: Tulis ketiga tool**
+
+```rust
+//! Tool navigasi: project dan module. Ini yang dipakai model untuk menemukan id
+//! sebelum menyentuh task — tanpa ini `create_task` tidak punya `module_id`.
+
+use serde_json::{json, Value};
+use transport::api::{get_project_core, list_modules_core, list_projects_core, project_pb, work_pb};
+
+use super::{limit_arg, str_arg, truncate, Ctx, ToolError, ToolMeta};
+
+pub const LIST_PROJECTS: ToolMeta = ToolMeta {
+    name: "list_projects",
+    description: "Daftar project yang bisa diakses user. Mulai dari sini bila belum tahu id project.",
+    schema: || json!({
+        "type": "object",
+        "properties": { "limit": { "type": "integer", "minimum": 1, "maximum": 200 } }
+    }),
+};
+
+pub async fn list_projects(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
+    let resp = list_projects_core(&ctx.store, &ctx.auth, project_pb::ListProjectsRequest::default())
+        .await?;
+    let rows: Vec<Value> = resp
+        .projects
+        .iter()
+        .take(limit_arg(args))
+        .map(|p| json!({ "id": p.id, "name": p.name, "status": p.status }))
+        .collect();
+    Ok(json!({ "projects": rows, "count": rows.len() }))
+}
+
+pub const GET_PROJECT: ToolMeta = ToolMeta {
+    name: "get_project",
+    description: "Detail satu project: deskripsi, status, tanggal, dan pemiliknya.",
+    schema: || json!({
+        "type": "object",
+        "properties": { "project_id": { "type": "string" } },
+        "required": ["project_id"]
+    }),
+};
+
+pub async fn get_project(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
+    let req = project_pb::GetProjectRequest { id: str_arg(args, "project_id")? };
+    let p = get_project_core(&ctx.store, &ctx.auth, req).await?;
+    Ok(json!({
+        "id": p.id,
+        "name": p.name,
+        "description": truncate(&p.description),
+        "status": p.status,
+        "owner_id": p.owner_id,
+    }))
+}
+
+pub const LIST_MODULES: ToolMeta = ToolMeta {
+    name: "list_modules",
+    description: "Module (kelompok task) di sebuah project. `create_task` butuh module_id, bukan project_id.",
+    schema: || json!({
+        "type": "object",
+        "properties": { "project_id": { "type": "string" } },
+        "required": ["project_id"]
+    }),
+};
+
+pub async fn list_modules(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
+    let req = work_pb::ListModulesRequest { project_id: str_arg(args, "project_id")? };
+    let resp = list_modules_core(&ctx.store, &ctx.auth, req).await?;
+    let rows: Vec<Value> = resp
+        .modules
+        .iter()
+        .map(|m| json!({ "id": m.id, "name": m.name, "project_id": m.project_id }))
+        .collect();
+    Ok(json!({ "modules": rows, "count": rows.len() }))
+}
+```
+
+Samakan nama field (`p.status`, `p.owner_id`, `m.project_id`, dan bentuk `ListProjectsRequest`) dengan `proto/projects.proto` dan `proto/work.proto`. Bila `status` di proto berupa enum numerik, ubah ke label lewat helper `domain::project` yang setara dengan `TaskStatus::as_str`.
+
+- [ ] **Step 2: Uji lewat MCP**
+
+Tambahkan di `crates/mcp/tests/mcp_flow.rs`:
+
+```rust
+#[tokio::test]
+async fn list_projects_only_shows_projects_the_user_can_see() {
+    let Some((router, store)) = router_and_store().await else { return };
+    let member = seed_active_user(&store).await;
+    let stranger = seed_active_user(&store).await;
+    let (project_id, _module_id) = seed_project_and_module(&store, &member).await;
+
+    let (_, mine) = tools_call(&router, &issue_token(&store, &member).await, "list_projects", json!({})).await;
+    assert!(mine["projects"].as_array().unwrap().iter().any(|p| p["id"] == project_id.as_str()));
+
+    let (_, theirs) = tools_call(&router, &issue_token(&store, &stranger).await, "list_projects", json!({})).await;
+    assert!(theirs["projects"].as_array().unwrap().iter().all(|p| p["id"] != project_id.as_str()));
+}
+```
+
+Tambahkan helper `tools_call` yang membungkus `rpc` dan langsung mem-parse payload JSON di dalam `content[0].text`:
+
+```rust
+/// Panggil satu tool dan kembalikan (isError, payload JSON hasil parse).
+async fn tools_call(router: &Router, token: &str, name: &str, arguments: Value) -> (bool, Value) {
+    let (_, body) = rpc(
+        router,
+        Some(token),
+        json!({ "jsonrpc": "2.0", "id": 99, "method": "tools/call",
+                "params": { "name": name, "arguments": arguments } }),
+    )
+    .await;
+    let is_error = body["result"]["isError"].as_bool().unwrap_or(true);
+    let text = body["result"]["content"][0]["text"].as_str().unwrap_or("null");
+    (is_error, serde_json::from_str(text).unwrap_or(Value::Null))
+}
+```
+
+- [ ] **Step 3: Jalankan test dan commit**
+
+Run: `DATABASE_URL=$DATABASE_URL cargo test -p mcp`
+Expected: PASS.
+
+```bash
+git add apps/backend-rs/crates/mcp
+git commit -m "feat(mcp): add project and module tools"
+```
+
+---
+
+## Task 12: Tool `search` dan `my_tasks`
+
+**Files:**
+- Create: `apps/backend-rs/crates/mcp/src/tools/discovery.rs`
+
+- [ ] **Step 1: Tulis kedua tool**
+
+```rust
+//! Tool penemuan: pencarian lintas entity dan "apa yang jadi tanggung jawab
+//! saya". Keduanya read-only dan lintas project, jadi keduanya bergantung penuh
+//! pada filter membership di dalam core fn-nya.
+
+use serde_json::{json, Value};
+use transport::api::{dashboard_pb, my_tasks_core, search_core, search_pb};
+
+use super::{limit_arg, str_arg, truncate, Ctx, ToolError, ToolMeta};
+
+pub const SEARCH: ToolMeta = ToolMeta {
+    name: "search",
+    description: "Cari task, project, halaman, dan komentar dengan kata kunci. \
+                  Pakai ini kalau user menyebut sesuatu dengan nama, bukan id.",
+    schema: || json!({
+        "type": "object",
+        "properties": {
+            "query": { "type": "string" },
+            "limit": { "type": "integer", "minimum": 1, "maximum": 200 }
+        },
+        "required": ["query"]
+    }),
+};
+
+pub async fn search(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
+    let req = search_pb::SearchRequest {
+        query: str_arg(args, "query")?,
+        ..Default::default()
+    };
+    let resp = search_core(&ctx.store, &ctx.auth, req).await?;
+    let rows: Vec<Value> = resp
+        .results
+        .iter()
+        .take(limit_arg(args))
+        .map(|r| json!({
+            "kind": r.kind,
+            "id": r.entity_id,
+            "title": r.title,
+            "snippet": truncate(&r.snippet),
+            "project_id": r.project_id,
+        }))
+        .collect();
+    Ok(json!({ "results": rows, "count": rows.len() }))
+}
+
+pub const MY_TASKS: ToolMeta = ToolMeta {
+    name: "my_tasks",
+    description: "Task yang ditugaskan ke user ini di seluruh project. Jawaban untuk \
+                  'apa yang harus saya kerjakan'.",
+    schema: || json!({
+        "type": "object",
+        "properties": {
+            "status": { "type": "string", "enum": ["todo", "in_progress", "done", "blocked"] },
+            "limit": { "type": "integer", "minimum": 1, "maximum": 200 }
+        }
+    }),
+};
+
+pub async fn my_tasks(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
+    let resp = my_tasks_core(&ctx.store, &ctx.auth, dashboard_pb::MyTasksRequest::default()).await?;
+    let want = super::opt_str(args, "status");
+    let rows: Vec<Value> = resp
+        .tasks
+        .iter()
+        .filter(|t| want.as_deref().is_none_or(|s| super::tasks::status_label(t.status) == s))
+        .take(limit_arg(args))
+        .map(super::tasks::flatten)
+        .collect();
+    Ok(json!({ "tasks": rows, "count": rows.len() }))
+}
+```
+
+Agar `my_tasks` bisa memakainya, ubah `flatten` dan `status_label` di `tools/tasks.rs` menjadi `pub(crate)`. Samakan nama field hasil pencarian (`r.kind`, `r.entity_id`, `r.snippet`) dengan `proto/search.proto`, dan bentuk `MyTasksResponse` dengan `proto/dashboard.proto` — bila `my_tasks` mengembalikan pengelompokan (misal per due-date) alih-alih satu daftar datar, ratakan di sini dan simpan kelompoknya sebagai field `bucket` pada tiap baris.
+
+- [ ] **Step 2: Uji dan commit**
+
+Tambahkan di `mcp_flow.rs`:
+
+```rust
+#[tokio::test]
+async fn my_tasks_returns_only_assigned_work() {
+    let Some((router, store)) = router_and_store().await else { return };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    let (_project_id, module_id) = seed_project_and_module(&store, &user).await;
+
+    let (err, _) = tools_call(&router, &token, "create_task",
+        json!({ "module_id": module_id, "title": "punya saya", "assignee_ids": [user.clone()] })).await;
+    assert!(!err);
+    let (err, _) = tools_call(&router, &token, "create_task",
+        json!({ "module_id": module_id, "title": "tanpa assignee" })).await;
+    assert!(!err);
+
+    let (err, mine) = tools_call(&router, &token, "my_tasks", json!({})).await;
+    assert!(!err);
+    let titles: Vec<&str> = mine["tasks"].as_array().unwrap()
+        .iter().map(|t| t["title"].as_str().unwrap()).collect();
+    assert!(titles.contains(&"punya saya"));
+    assert!(!titles.contains(&"tanpa assignee"));
+}
+```
+
+Run: `DATABASE_URL=$DATABASE_URL cargo test -p mcp`
+Expected: PASS.
+
+```bash
+git add apps/backend-rs/crates/mcp
+git commit -m "feat(mcp): add search and my-tasks tools"
+```
+
+---
+
+## Task 13: Tool komentar
+
+**Files:**
+- Create: `apps/backend-rs/crates/mcp/src/tools/comments.rs`
+
+- [ ] **Step 1: Tulis kedua tool**
+
+```rust
+//! Tool komentar. `add_comment` meneruskan Notifier: komentar yang ditulis AI
+//! memicu notifikasi mention persis seperti komentar yang diketik manusia.
+
+use serde_json::{json, Value};
+use transport::api::{comment_pb, create_comment_core, list_comments_core};
+
+use super::{limit_arg, str_arg, truncate, Ctx, ToolError, ToolMeta};
+
+pub const LIST_COMMENTS: ToolMeta = ToolMeta {
+    name: "list_comments",
+    description: "Diskusi pada sebuah task, terlama dulu.",
+    schema: || json!({
+        "type": "object",
+        "properties": {
+            "task_id": { "type": "string" },
+            "limit": { "type": "integer", "minimum": 1, "maximum": 200 }
+        },
+        "required": ["task_id"]
+    }),
+};
+
+pub async fn list_comments(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
+    let req = comment_pb::ListCommentsRequest {
+        task_id: str_arg(args, "task_id")?,
+        page: 1,
+        page_size: limit_arg(args) as u32,
+    };
+    let resp = list_comments_core(&ctx.store, &ctx.auth, req).await?;
+    let rows: Vec<Value> = resp
+        .comments
+        .iter()
+        .map(|c| json!({
+            "id": c.id,
+            "author_id": c.author_id,
+            "content": truncate(&c.content),
+            "created_at": c.created_at,
+        }))
+        .collect();
+    Ok(json!({ "comments": rows, "count": rows.len() }))
+}
+
+pub const ADD_COMMENT: ToolMeta = ToolMeta {
+    name: "add_comment",
+    description: "Tulis komentar pada sebuah task, atas nama user pemilik token.",
+    schema: || json!({
+        "type": "object",
+        "properties": {
+            "task_id": { "type": "string" },
+            "content": { "type": "string" }
+        },
+        "required": ["task_id", "content"]
+    }),
+};
+
+pub async fn add_comment(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
+    let req = comment_pb::CreateCommentRequest {
+        task_id: str_arg(args, "task_id")?,
+        content: str_arg(args, "content")?,
+        ..Default::default()
+    };
+    let c = create_comment_core(&ctx.store, Some(&ctx.notifier), &ctx.auth, req).await?;
+    Ok(json!({ "id": c.id, "task_id": c.task_id, "created_at": c.created_at }))
+}
+```
+
+- [ ] **Step 2: Uji dan commit**
+
+```rust
+#[tokio::test]
+async fn add_then_list_comments() {
+    let Some((router, store)) = router_and_store().await else { return };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    let (_p, module_id) = seed_project_and_module(&store, &user).await;
+    let (_, task) = tools_call(&router, &token, "create_task",
+        json!({ "module_id": module_id, "title": "berkomentar" })).await;
+    let task_id = task["id"].as_str().unwrap().to_string();
+
+    let (err, _) = tools_call(&router, &token, "add_comment",
+        json!({ "task_id": task_id, "content": "laporan dari AI" })).await;
+    assert!(!err);
+
+    let (err, listed) = tools_call(&router, &token, "list_comments", json!({ "task_id": task_id })).await;
+    assert!(!err);
+    assert_eq!(listed["comments"][0]["content"], "laporan dari AI");
+    assert_eq!(listed["comments"][0]["author_id"], user.as_str());
+}
+```
+
+Run: `DATABASE_URL=$DATABASE_URL cargo test -p mcp`
+Expected: PASS, dan `tools_list_returns_the_registry` sekarang benar-benar melihat 12 tool.
+
+```bash
+git add apps/backend-rs/crates/mcp
+git commit -m "feat(mcp): add comment tools"
+```
+
+---
+
+## Task 14: Pasang endpoint di aplikasi
+
+**Files:**
+- Modify: `apps/backend-rs/crates/app/Cargo.toml`, `apps/backend-rs/crates/app/src/router.rs`
+
+- [ ] **Step 1: Tambah dependency**
+
+Di `apps/backend-rs/crates/app/Cargo.toml`, `[dependencies]`:
+
+```toml
+mcp = { path = "../mcp" }
+```
+
+- [ ] **Step 2: Pasang di router**
+
+Di `apps/backend-rs/crates/app/src/router.rs`, ganti baris terakhir rantai merge (`.merge(transport::notification_router(store, notifier.clone()))`) menjadi dua langkah agar `store` masih bisa dipakai MCP:
+
+```rust
+        .merge(transport::notification_router(store.clone(), notifier.clone()))
+        // MCP punya jalur kredensialnya sendiri (PAT), jadi ia sengaja dipasang
+        // di luar `ConnectLayer` dan tidak ikut `auth_layer` JWT di bawah.
+        .nest("/mcp", mcp::mcp_router(store, notifier.clone()))
+```
+
+Endpoint publiknya menjadi `/api/tasks-rs/mcp`: proxy dev di `apps/frontend/vite.config.ts` membuang prefix `/api/tasks-rs` sebelum meneruskan ke `:3010`, sama seperti untuk route Connect.
+
+- [ ] **Step 3: Verifikasi manual**
+
+```bash
+cargo run -p app &
+curl -s localhost:3010/mcp -H 'content-type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18"}}'
+```
+
+Expected: JSON berisi `"serverInfo":{"name":"sedjiwa-tasks"…}`.
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' localhost:3010/mcp -H 'content-type: application/json' \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tools/list"}'
+```
+
+Expected: `401`.
+
+Hentikan servernya dengan mencari pid-nya lebih dulu (`jobs -p`, lalu `kill <pid>`) — jangan `pkill -f` dengan pola yang juga cocok dengan perintah yang sedang diketik.
+
+- [ ] **Step 4: Jalankan seluruh test workspace dan commit**
+
+Run: `DATABASE_URL=$DATABASE_URL cargo test --workspace`
+Expected: PASS.
+
+```bash
+git add apps/backend-rs/crates/app
+git commit -m "feat(app): mount the MCP endpoint at /mcp"
+```
+
+---
+
+# Phase 4 — Frontend: manajemen token
+
+## Task 15: Client dan hooks token
+
+**Files:**
+- Create: `apps/frontend/src/features/tokens/types.ts`, `.../api/mappers.ts`, `.../api/hooks.ts`, `.../index.ts`
+- Generated: `apps/frontend/src/lib/gen/tokens_pb.ts`
+
+Semua perintah di Phase 4 dijalankan dari `apps/frontend/`.
+
+- [ ] **Step 1: Regenerasi client Connect**
+
+Run: `./node_modules/.bin/buf generate`
+Expected: `src/lib/gen/tokens_pb.ts` muncul dan mengekspor `AccessTokenService`.
+
+- [ ] **Step 2: Tulis tipe pipih**
+
+`src/features/tokens/types.ts`:
+
+```typescript
+/** Metadata PAT seperti yang ditampilkan UI. Plaintext-nya tidak pernah ada di sini. */
+export type AccessToken = {
+  id: string;
+  name: string;
+  /** 4 karakter terakhir — satu-satunya sisa plaintext yang masih terlihat. */
+  preview: string;
+  createdAt: string;
+  expiresAt: string | null;
+  lastUsedAt: string | null;
+  expired: boolean;
+};
+```
+
+`src/features/tokens/api/mappers.ts`:
+
+```typescript
+import type { AccessToken as AccessTokenProto } from "@/lib/gen/tokens_pb";
+import type { AccessToken } from "../types";
+
+export function mapToken(t: AccessTokenProto): AccessToken {
+  return {
+    id: t.id,
+    name: t.name,
+    preview: t.preview,
+    createdAt: t.createdAt,
+    expiresAt: t.expiresAt ?? null,
+    lastUsedAt: t.lastUsedAt ?? null,
+    expired: t.expired,
+  };
+}
+```
+
+- [ ] **Step 3: Tulis hooks**
+
+`src/features/tokens/api/hooks.ts`:
+
+```typescript
+// Hook RPC personal access token (connect-query atas AccessTokenService).
+// Seluruhnya self-scoped di server, jadi tidak ada parameter pemilik di sini.
+
+import {
+  useMutation,
+  useQuery,
+  createConnectQueryKey,
+} from "@connectrpc/connect-query";
+import { AccessTokenService } from "@/lib/gen/tokens_pb";
+import { queryClient } from "@/lib/query";
+import type { AccessToken } from "../types";
+import { mapToken } from "./mappers";
+
+function invalidateTokens() {
+  return queryClient.invalidateQueries({
+    queryKey: createConnectQueryKey({
+      schema: AccessTokenService,
+      cardinality: "finite",
+    }),
+  });
+}
+
+export function useTokens() {
+  const result = useQuery(AccessTokenService.method.listTokens, {});
+  const tokens: AccessToken[] = (result.data?.tokens ?? []).map(mapToken);
+  return { ...result, tokens };
+}
+
+export function useCreateToken() {
+  return useMutation(AccessTokenService.method.createToken, {
+    onSuccess: invalidateTokens,
+  });
+}
+
+export function useRevokeToken() {
+  return useMutation(AccessTokenService.method.revokeToken, {
+    onSuccess: invalidateTokens,
+  });
+}
+```
+
+- [ ] **Step 4: Barrel**
+
+`src/features/tokens/index.ts`:
+
+```typescript
+// Tokens feature barrel.
+
+export type { AccessToken } from "./types";
+export { mapToken } from "./api/mappers";
+export { useTokens, useCreateToken, useRevokeToken } from "./api/hooks";
+```
+
+- [ ] **Step 5: Verifikasi dan commit**
+
+Run: `bun run tsc --noEmit && bun run lint`
+Expected: bersih.
+
+```bash
+git add apps/frontend/src/features/tokens apps/frontend/src/lib/gen/tokens_pb.ts
+git commit -m "feat(tokens): add access token client hooks"
+```
+
+---
+
+## Task 16: Komponen halaman token
+
+**Files:**
+- Create: `apps/frontend/src/features/tokens/components/token-table.tsx`, `.../create-token-dialog.tsx`, `.../connect-panel.tsx`, `.../tokens-page.tsx`
+- Modify: `apps/frontend/src/features/tokens/index.ts`
+
+- [ ] **Step 1: Tabel token**
+
+`src/features/tokens/components/token-table.tsx`:
+
+```typescript
+// Satu baris per token. Plaintext tidak pernah ada di sini — hanya `preview`,
+// 4 karakter terakhir, yang cukup untuk membedakan baris mana yang mana.
+
+import { useState } from "react";
+import { KeyRound } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { useRevokeToken, useTokens } from "../api/hooks";
+import type { AccessToken } from "../types";
+
+function when(iso: string | null, fallback: string) {
+  return iso ? new Date(iso).toLocaleDateString() : fallback;
+}
+
+export function TokenTable() {
+  const { tokens, isLoading } = useTokens();
+  const revoke = useRevokeToken();
+  const [pending, setPending] = useState<AccessToken | null>(null);
+
+  if (isLoading) return <p className="text-sm text-muted-foreground">Memuat…</p>;
+  if (tokens.length === 0) {
+    return (
+      <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed p-8 text-center">
+        <KeyRound className="h-5 w-5 text-muted-foreground" aria-hidden="true" />
+        <p className="text-sm text-muted-foreground">
+          Belum ada token. Buat satu untuk menyambungkan AI client.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Nama</TableHead>
+            <TableHead>Token</TableHead>
+            <TableHead>Dibuat</TableHead>
+            <TableHead>Kedaluwarsa</TableHead>
+            <TableHead>Terakhir dipakai</TableHead>
+            <TableHead className="w-0" />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {tokens.map((t) => (
+            <TableRow key={t.id}>
+              <TableCell className="font-medium">
+                {t.name}
+                {t.expired && (
+                  <Badge variant="secondary" className="ml-2">
+                    Kedaluwarsa
+                  </Badge>
+                )}
+              </TableCell>
+              <TableCell className="font-mono text-muted-foreground">…{t.preview}</TableCell>
+              <TableCell>{when(t.createdAt, "—")}</TableCell>
+              <TableCell>{when(t.expiresAt, "Tidak kedaluwarsa")}</TableCell>
+              <TableCell>{when(t.lastUsedAt, "Belum pernah")}</TableCell>
+              <TableCell>
+                <Button variant="ghost" size="sm" onClick={() => setPending(t)}>
+                  Cabut
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+
+      <AlertDialog open={!!pending} onOpenChange={(o) => !o && setPending(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cabut token ini?</AlertDialogTitle>
+            <AlertDialogDescription>
+              AI client yang memakai token ini akan langsung kehilangan akses.
+              Tindakan ini tidak bisa dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (pending) revoke.mutate({ id: pending.id });
+                setPending(null);
+              }}
+            >
+              Cabut
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+```
+
+- [ ] **Step 2: Dialog pembuatan**
+
+`src/features/tokens/components/create-token-dialog.tsx`:
+
+```typescript
+// Dialog dua tahap. Tahap kedua ada karena plaintext hanya dikirim sekali oleh
+// server: menutup dialog otomatis setelah sukses akan membuang satu-satunya
+// kesempatan user menyalinnya.
+
+import { useState } from "react";
+import { Copy } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { toast } from "sonner";
+import { useCreateToken } from "../api/hooks";
+
+const EXPIRY_OPTIONS = [
+  { value: "30", label: "30 hari" },
+  { value: "90", label: "90 hari" },
+  { value: "365", label: "1 tahun" },
+  { value: "0", label: "Tidak kedaluwarsa" },
+];
+
+export function CreateTokenDialog() {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [days, setDays] = useState("90");
+  const [issued, setIssued] = useState<string | null>(null);
+  const create = useCreateToken();
+
+  function reset() {
+    setName("");
+    setDays("90");
+    setIssued(null);
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (!o) reset();
+      }}
+    >
+      <DialogTrigger asChild>
+        <Button>Buat token</Button>
+      </DialogTrigger>
+      <DialogContent>
+        {issued ? (
+          <>
+            <DialogHeader>
+              <DialogTitle>Token dibuat</DialogTitle>
+              <DialogDescription>
+                Simpan sekarang — token ini tidak akan ditampilkan lagi.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 select-all break-all rounded-md border bg-muted p-3 font-mono text-xs">
+                {issued}
+              </code>
+              <Button
+                variant="outline"
+                size="icon"
+                aria-label="Salin token"
+                onClick={() => {
+                  void navigator.clipboard.writeText(issued);
+                  toast.success("Token disalin");
+                }}
+              >
+                <Copy className="h-4 w-4" aria-hidden="true" />
+              </Button>
+            </div>
+            <DialogFooter>
+              <Button onClick={() => setOpen(false)}>Tutup</Button>
+            </DialogFooter>
+          </>
+        ) : (
+          <>
+            <DialogHeader>
+              <DialogTitle>Buat access token</DialogTitle>
+              <DialogDescription>
+                Token ini memberi AI client akses sebagai Anda.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="token-name">Nama</Label>
+                <Input
+                  id="token-name"
+                  value={name}
+                  maxLength={64}
+                  placeholder="Laptop kerja"
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="token-expiry">Masa berlaku</Label>
+                <Select value={days} onValueChange={setDays}>
+                  <SelectTrigger id="token-expiry">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {EXPIRY_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                disabled={!name.trim() || create.isPending}
+                onClick={() => {
+                  create.mutate(
+                    { name: name.trim(), expiresInDays: Number(days) },
+                    {
+                      onSuccess: (res) => setIssued(res.token),
+                      onError: (e) => toast.error(e.message),
+                    },
+                  );
+                }}
+              >
+                Buat
+              </Button>
+            </DialogFooter>
+          </>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+```
+
+- [ ] **Step 3: Panel cara menyambungkan**
+
+`src/features/tokens/components/connect-panel.tsx`:
+
+```typescript
+// Tanpa panel ini fiturnya tidak self-serve: user memegang token tetapi tidak
+// tahu ke mana menempelkannya.
+
+import { Copy } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { toast } from "sonner";
+
+export function ConnectPanel() {
+  const endpoint = `${window.location.origin}/api/tasks-rs/mcp`;
+  const snippet = JSON.stringify(
+    {
+      mcpServers: {
+        "sedjiwa-tasks": {
+          type: "http",
+          url: endpoint,
+          headers: { Authorization: "Bearer <token-anda>" },
+        },
+      },
+    },
+    null,
+    2,
+  );
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Cara menyambungkan</CardTitle>
+        <CardDescription>
+          Tempelkan konfigurasi ini di AI client Anda, ganti
+          <code className="mx-1 font-mono">&lt;token-anda&gt;</code>
+          dengan token yang dibuat di bawah. Siapa pun yang memegang token itu
+          bisa bertindak sebagai Anda di portal.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="font-mono text-xs text-muted-foreground">{endpoint}</p>
+        <div className="flex items-start gap-2">
+          <pre className="flex-1 overflow-x-auto rounded-md border bg-muted p-3 text-xs">
+            {snippet}
+          </pre>
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label="Salin konfigurasi"
+            onClick={() => {
+              void navigator.clipboard.writeText(snippet);
+              toast.success("Konfigurasi disalin");
+            }}
+          >
+            <Copy className="h-4 w-4" aria-hidden="true" />
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+```
+
+- [ ] **Step 4: Rakit halamannya**
+
+`src/features/tokens/components/tokens-page.tsx`:
+
+```typescript
+import { ConnectPanel } from "./connect-panel";
+import { CreateTokenDialog } from "./create-token-dialog";
+import { TokenTable } from "./token-table";
+
+export function TokensPage() {
+  return (
+    <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-semibold">Access tokens</h1>
+          <p className="text-sm text-muted-foreground">
+            Personal access token untuk menyambungkan AI client ke akun Anda.
+          </p>
+        </div>
+        <CreateTokenDialog />
+      </div>
+      <ConnectPanel />
+      <TokenTable />
+    </div>
+  );
+}
+```
+
+Tambahkan ekspornya di `src/features/tokens/index.ts`:
+
+```typescript
+export { TokensPage } from "./components/tokens-page";
+```
+
+- [ ] **Step 5: Verifikasi dan commit**
+
+Run: `bun run tsc --noEmit && bun run lint`
+Expected: bersih.
+
+```bash
+git add apps/frontend/src/features/tokens
+git commit -m "feat(tokens): add token management UI"
+```
+
+---
+
+## Task 17: Route dan navigasi
+
+**Files:**
+- Create: `apps/frontend/src/routes/_authed/settings/tokens.tsx`
+- Modify: `apps/frontend/src/features/auth/components/app-shell.tsx`
+
+- [ ] **Step 1: Tulis route-nya**
+
+`src/routes/_authed/settings/tokens.tsx`:
+
+```typescript
+import { createFileRoute } from "@tanstack/react-router";
+import { TokensPage } from "@/features/tokens";
+
+/**
+ * Pengaturan personal access token. Tidak ada guard tambahan: `_authed` sudah
+ * menuntut sesi, dan setiap RPC di halaman ini self-scoped di server.
+ */
+export const Route = createFileRoute("/_authed/settings/tokens")({
+  component: TokensPage,
+});
+```
+
+- [ ] **Step 2: Tambahkan entri navigasi**
+
+Di `src/features/auth/components/app-shell.tsx`, impor `KeyRound` dari `lucide-react` dan tambahkan sebagai entri terakhir non-admin pada `NAV`:
+
+```typescript
+    { to: "/settings/tokens", label: "Access tokens", icon: KeyRound },
+```
+
+- [ ] **Step 3: Verifikasi**
+
+Run: `bun run build`
+Expected: sukses; `src/routeTree.gen.ts` teregenerasi dan memuat `/_authed/settings/tokens`.
+
+Run: `bun run lint`
+Expected: bersih.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add apps/frontend/src/routes apps/frontend/src/features/auth/components/app-shell.tsx \
+        apps/frontend/src/routeTree.gen.ts
+git commit -m "feat(tokens): add settings route and navigation entry"
+```
+
+---
+
+## Task 18: Verifikasi end-to-end
+
+**Files:** tidak ada yang diubah kecuali perbaikan yang ditemukan.
+
+- [ ] **Step 1: Jalankan semua gate**
+
+```bash
+cd apps/backend-rs && DATABASE_URL=$DATABASE_URL cargo test --workspace \
+  && cargo clippy --workspace --all-targets -- -D warnings
+cd ../frontend && bun run tsc --noEmit && bun run lint && bun run build
+```
+
+Expected: semuanya lulus.
+
+- [ ] **Step 2: Buktikan jalurnya hidup dari ujung ke ujung**
+
+Jalankan backend (`cargo run -p app`) dan frontend (`bun run dev`), lalu:
+
+1. Login, buka **Access tokens**, buat token bernama "laptop" dengan masa berlaku 30 hari, salin plaintext-nya.
+2. Panggil `tools/list` dengan token itu:
+
+```bash
+curl -s localhost:3001/api/tasks-rs/mcp -H 'content-type: application/json' \
+  -H "Authorization: Bearer <token>" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | head -40
+```
+
+Expected: 12 tool.
+
+3. Buat satu task lewat `tools/call` `create_task`, lalu **muat ulang halaman project di browser** dan pastikan task itu muncul — ini yang membuktikan MCP menulis lewat jalur yang sama dengan UI.
+4. Kembali ke halaman Access tokens dan pastikan kolom "Terakhir dipakai" sudah terisi.
+5. Cabut token itu, ulangi panggilan `tools/list`, pastikan balasannya `401`.
+
+- [ ] **Step 3: Commit perbaikan bila ada**
+
+```bash
+git commit -am "fix(mcp): address end-to-end verification findings"
+```
+
+Bila tidak ada temuan, lewati langkah ini — jangan membuat commit kosong.
