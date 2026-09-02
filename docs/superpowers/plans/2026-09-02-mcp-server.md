@@ -2942,8 +2942,11 @@ pub const SEARCH: ToolMeta = ToolMeta {
     schema: || json!({
         "type": "object",
         "properties": {
-            "query": { "type": "string" },
-            "limit": { "type": "integer", "minimum": 1, "maximum": 200 }
+            "q": { "type": "string" },
+            // 50, not 200: `search_core` hard-caps there, and a schema that
+            // promises a ceiling the server will not honour is worse than none —
+            // the model asks for 200, receives 50, and is told nothing.
+            "limit": { "type": "integer", "minimum": 1, "maximum": 50 }
         },
         "required": ["query"]
     }),
