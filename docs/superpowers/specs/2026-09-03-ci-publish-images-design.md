@@ -71,6 +71,12 @@ Solusinya: jalankan **satu** test lebih dulu, sendirian. Koneksi pertamanya
 menyinkronkan seluruh skema, setelah itu suite penuh berjalan paralel tanpa
 balapan.
 
+Test pemanasannya: `cargo test -p mcp --test mcp_flow initialize_returns_capabilities`.
+Test apa pun yang memanggil `Store::connect` sebenarnya cukup — yang ini dipilih
+karena ia satu test bernama yang jelas dan helper-nya memang menyambung ke
+database sebelum apa pun yang lain. Kalau nanti test itu dihapus atau berganti
+nama, penggantinya cukup test lain mana pun yang menyentuh database.
+
 **Alternatif yang ditolak:** `--test-threads=1`. Ia menghilangkan balapan tapi
 menyerialkan 164 test, dan CI yang lambat adalah CI yang orang mulai lewati.
 
@@ -113,8 +119,22 @@ bawaan untuk owner yang sama, jadi **tidak ada secret yang perlu disiapkan**.
 
 **Job `test-backend`**
 - Service container `postgres:17-alpine`.
-- Checkout task-management, lalu checkout `dalfiannur/arke` pada SHA tersemat ke
-  path sibling yang membuat `../../../rust-ecs` resolve.
+- Checkout **keduanya ke subdirektori bernama**, bukan ke root workspace:
+  task-management ke `task-management/`, dan `dalfiannur/arke` pada SHA tersemat
+  ke **`rust-ecs/`** — nama direktorinya harus `rust-ecs`, bukan `arke`, karena
+  itulah yang dicari manifest.
+
+  Ini bukan preferensi gaya. Dari `task-management/apps/backend-rs/Cargo.toml`,
+  path `../../../rust-ecs` menunjuk ke induk dari root repo. Dengan kedua repo
+  sebagai subdirektori `$GITHUB_WORKSPACE`, path itu resolve ke
+  `$GITHUB_WORKSPACE/rust-ecs` — persis di tempat arke berada. `path:` milik
+  `actions/checkout` juga tidak boleh keluar dari workspace, jadi menaruh arke
+  sebagai sibling di luar workspace bukan pilihan.
+
+  Efek sampingnya menyenangkan: `deploy/build.sh` menghitung `ARKE` sebagai
+  `$ROOT/../rust-ecs` secara default, sehingga tata letak ini membuatnya benar
+  tanpa `ARKE_DIR` sama sekali. Tetap set `ARKE_DIR` secara eksplisit agar
+  ketergantungan itu terlihat, bukan kebetulan.
 - Cache cargo registry dan `target/`.
 - Jalankan satu test sebagai pemanasan, lalu `cargo test --workspace`.
 - Env: `DATABASE_URL` menunjuk service container, `AUTH_JWT_SECRET` nilai apa pun.
@@ -126,7 +146,8 @@ bawaan untuk owner yang sama, jadi **tidak ada secret yang perlu disiapkan**.
 - `needs: [test-backend, test-frontend]`, dan `if:` hanya untuk push ke `main`.
 - Checkout keduanya seperti di atas.
 - Login ke `ghcr.io` dengan `GITHUB_TOKEN`.
-- `ENGINE=docker ARKE_DIR=<path> deploy/build.sh --push`.
+- `ENGINE=docker ARKE_DIR=$GITHUB_WORKSPACE/rust-ecs deploy/build.sh --push`,
+  dijalankan dari dalam checkout task-management.
 
 ## Verifikasi
 
