@@ -24,6 +24,7 @@ export {
   useMoveTask,
 } from "./api/hooks";
 export { AllTasksTab } from "./components/all-tasks-tab";
+export { useModuleCollapsed } from "./atoms/collapsed-modules";
 export { StatusBadge, PriorityLabel } from "./components/task-badges";
 export {
   buildHierarchy,
