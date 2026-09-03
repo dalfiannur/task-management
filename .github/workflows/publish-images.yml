@@ -62,6 +62,12 @@ jobs:
         with:
           workspaces: task-management/apps/backend-rs
 
+      # crates/transport/build.rs compiles .proto files via prost-build, which
+      # needs protoc on PATH. backend.Dockerfile installs the same package for
+      # the same reason; the runner image doesn't carry it by default.
+      - name: Install protoc
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends protobuf-compiler
+
       # Satu test lebih dulu, sendirian. `Store::connect` menyinkronkan seluruh
       # skema pada koneksi pertama; tanpa ini, binary test yang berjalan
       # bersamaan terhadap database kosong berebut membuat tabel komponen yang
