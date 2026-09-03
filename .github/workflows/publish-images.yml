@@ -8,10 +8,6 @@ on:
   pull_request:
     branches: [main]
 
-permissions:
-  contents: read
-  packages: write
-
 env:
   # `apps/backend-rs` bergantung pada arke lewat dependensi *path*, yang tidak
   # dikunci Cargo.lock. Tanpa SHA tersemat di sini, tidak ada apa pun yang
@@ -111,3 +107,48 @@ jobs:
 
       - run: bun run build
         working-directory: apps/frontend
+
+  publish:
+    # Tidak ada image terbit dari commit yang test-nya merah.
+    needs: [test-backend, test-frontend]
+    # Job test berjalan untuk PR juga; publikasi hanya untuk main.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    # Scope tulis ke GHCR hanya dibutuhkan di sini, bukan di level workflow —
+    # dua job test tidak pernah menyentuh registry, jadi biarkan keduanya
+    # mewarisi default baca saja.
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      # Kedua repo jadi subdirektori bernama, supaya `../../../rust-ecs` di
+      # manifest resolve. Nama `rust-ecs` wajib — bukan `arke`.
+      - uses: actions/checkout@v4
+        with:
+          path: task-management
+
+      - uses: actions/checkout@v4
+        with:
+          repository: dalfiannur/arke
+          ref: ${{ env.ARKE_SHA }}
+          path: rust-ecs
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Memakai script yang sudah ada, bukan menulis ulang langkahnya di sini.
+      # `build.sh` menyusun build context backend dari dua checkout, menandai
+      # dengan SHA commit, dan menambahkan akhiran `-dirty` bila working tree
+      # kotor. Menyalin logika itu ke YAML berarti dua tempat yang akan
+      # menyimpang. Default ENGINE-nya podman; runner memakai docker.
+      - name: Build and push images
+        working-directory: task-management
+        env:
+          ENGINE: docker
+          ARKE_DIR: ${{ github.workspace }}/rust-ecs
+        run: ./deploy/build.sh --push
