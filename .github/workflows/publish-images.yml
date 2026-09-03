@@ -18,6 +18,7 @@ env:
 jobs:
   test-backend:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     services:
       postgres:
@@ -88,6 +89,7 @@ jobs:
 
   test-frontend:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4
@@ -114,6 +116,19 @@ jobs:
     # Job test berjalan untuk PR juga; publikasi hanya untuk main.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    # Rust dikompilasi dari nol di dalam builder Docker — cache cargo milik
+    # test-backend tidak menolong di sini. Batas 60 menit jauh di atas durasi
+    # normal, tapi menahan build yang macet supaya tidak menggantung runner
+    # sampai default GitHub 6 jam.
+    timeout-minutes: 60
+
+    # Dua merge beruntun bisa mendorong `:latest` bersamaan, dan yang selesai
+    # belakangan menang — belum tentu yang commit-nya lebih baru. Antrekan,
+    # jangan batalkan: membatalkan di tengah push justru meninggalkan registry
+    # setengah terbit. Tag `:SHA` tetap benar apa pun yang terjadi.
+    concurrency:
+      group: publish-images
+      cancel-in-progress: false
 
     # Scope tulis ke GHCR hanya dibutuhkan di sini, bukan di level workflow —
     # dua job test tidak pernah menyentuh registry, jadi biarkan keduanya
@@ -135,12 +150,20 @@ jobs:
           ref: ${{ env.ARKE_SHA }}
           path: rust-ecs
 
+      # `github.actor` aman di sini justru karena `if:` di atas membatasi job
+      # ini ke event push: actor-nya selalu pengguna yang mendorong atau menekan
+      # tombol merge, tidak pernah kosong seperti pada event dari fork.
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # `build.sh` mendorong backend lalu frontend berurutan di bawah `set -e`.
+      # Kalau frontend gagal setelah backend terdorong, registry sesaat memuat
+      # pasangan yang tidak cocok sampai run berikutnya yang sukses — merge
+      # berikutnya, atau run ini diulang, memperbaikinya sendiri.
+      #
       # Memakai script yang sudah ada, bukan menulis ulang langkahnya di sini.
       # `build.sh` menyusun build context backend dari dua checkout, menandai
       # dengan SHA commit, dan menambahkan akhiran `-dirty` bila working tree
