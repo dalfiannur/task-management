@@ -80,7 +80,12 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          // Position + centering
+          // Position + centering. `dvh` rather than `vh`: mobile Safari counts
+          // its collapsing address bar in `vh`, so `vh` overstates the visible
+          // viewport and would clip the dialog. And `fixed` makes Content its
+          // own positioning context, which is what the absolutely positioned
+          // close button below anchors to — the `relative` that used to sit
+          // here is redundant now, not missing.
           "fixed inset-0 z-50 m-auto h-fit max-h-[calc(100dvh-2rem)] overflow-y-auto",
           // Width. `%` here resolves against the viewport (Content has no
           // padded wrapper around it anymore), so the gutter that used to

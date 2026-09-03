@@ -71,7 +71,9 @@ function AlertDialogContent({
         data-slot="alert-dialog-content"
         data-size={size}
         className={cn(
-          // Position + centering
+          // Position + centering. `dvh` rather than `vh`: mobile Safari counts
+          // its collapsing address bar in `vh`, so `vh` overstates the visible
+          // viewport and would clip the dialog.
           "fixed inset-0 z-50 m-auto h-fit max-h-[calc(100dvh-2rem)] overflow-y-auto",
           // Width. `%` resolves against the viewport now that there's no
           // padded wrapper, so the wrapper's old `p-4` (1rem/side) gutter is
