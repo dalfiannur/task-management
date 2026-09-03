@@ -59,6 +59,33 @@ fn status_value(s: &str) -> i32 {
         .unwrap_or(0)
 }
 
+/// `update_task`'s re-parent argument, mapped onto the proto's `StringList`
+/// wrapper: absent = unchanged, `null` = detach to top level, a string = that
+/// parent. Re-parenting needs all three states, which is why the proto uses a
+/// list here rather than an `optional string` (see `UpdateTaskRequest`).
+///
+/// `null` carries the detach signal rather than an empty string because
+/// `opt_str` reads `""` as "not supplied" everywhere else in this file. An
+/// empty string would therefore mean "unchanged" — precisely the outcome a
+/// caller asking to detach did not want, and a silent one. It is refused with
+/// a message naming the alternative instead.
+fn parent_arg(args: &Value) -> Result<Option<work_pb::StringList>, ToolError> {
+    match args.get("parent_id") {
+        None => Ok(None),
+        Some(Value::Null) => Ok(Some(work_pb::StringList { values: Vec::new() })),
+        Some(Value::String(s)) if s.is_empty() => Err(ToolError::BadArgs(
+            "`parent_id` cannot be an empty string; send null to detach the task to top level"
+                .into(),
+        )),
+        Some(Value::String(s)) => Ok(Some(work_pb::StringList {
+            values: vec![s.clone()],
+        })),
+        Some(_) => Err(ToolError::BadArgs(
+            "`parent_id` must be a task id string, or null to detach".into(),
+        )),
+    }
+}
+
 /// Proto `Task` → flat JSON. `snake_case` field names to match the tool
 /// argument names; the model doesn't need to translate between two
 /// conventions. `pub(crate)` for the same reason as `status_label`.
@@ -167,14 +194,18 @@ pub async fn get_task(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
 
 pub const CREATE_TASK: ToolMeta = ToolMeta {
     name: "create_task",
-    description: "Create a new task in a module. Assignees must be project members.",
+    description: "Create a new task in a module, or a subtask of an existing task \
+                  by passing `parent_id`. Assignees must be project members. Record \
+                  a fix or follow-up as a subtask of the task it belongs to, so the \
+                  history stays attached to the work it changed.",
     schema: || {
         json!({
             "type": "object",
             "properties": {
-                "module_id": { "type": "string" },
+                "module_id": { "type": "string", "description": "Module the task goes in. Still required with `parent_id`, but then it only picks the project: a subtask always lands in its parent's module." },
                 "title": { "type": "string" },
                 "description": { "type": "string" },
+                "parent_id": { "type": "string", "description": "Make this a subtask of that task. The parent must be in the same project and must not itself be a subtask — nesting is one level deep." },
                 "priority": { "type": "string", "enum": ["none", "low", "medium", "high", "urgent"] },
                 "start_date": { "type": "string", "description": "ISO-8601 date, yyyy-MM-dd" },
                 "due_date": { "type": "string", "description": "ISO-8601 date, yyyy-MM-dd" },
@@ -202,7 +233,10 @@ pub async fn create_task(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
         due_date: opt_str(args, "due_date"),
         assignee_ids: opt_str_list(args, "assignee_ids")?.unwrap_or_default(),
         label_ids: Vec::new(),
-        parent_id: None,
+        // `create_task_core` owns the rules — parent exists, same project, not
+        // itself a subtask — and overrides `module_id` with the parent's, so
+        // there is nothing left to check here.
+        parent_id: opt_str(args, "parent_id"),
     };
     let t = create_task_core(&ctx.store, Some(&ctx.notifier), &ctx.auth, req).await?;
     Ok(flatten(&t))
@@ -210,7 +244,10 @@ pub async fn create_task(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
 
 pub const UPDATE_TASK: ToolMeta = ToolMeta {
     name: "update_task",
-    description: "Update a subset of a task's fields. Fields not sent are left as-is.",
+    description: "Update a subset of a task's fields. Fields not sent are left as-is. \
+                  `parent_id` re-parents the task: a task id makes it a subtask of that \
+                  task, null detaches it back to top level, and omitting it leaves the \
+                  task where it is.",
     schema: || {
         json!({
             "type": "object",
@@ -218,6 +255,7 @@ pub const UPDATE_TASK: ToolMeta = ToolMeta {
                 "task_id": { "type": "string" },
                 "title": { "type": "string" },
                 "description": { "type": "string" },
+                "parent_id": { "type": ["string", "null"], "description": "Task id to become a subtask of, or null to detach to top level. Omit to leave the parent unchanged. The parent must be in the same project and must not itself be a subtask." },
                 "status": { "type": "string", "enum": ["todo", "in_progress", "done", "cancelled"] },
                 "priority": { "type": "string", "enum": ["none", "low", "medium", "high", "urgent"] },
                 "start_date": { "type": "string", "description": "ISO-8601 date, yyyy-MM-dd" },
@@ -247,7 +285,7 @@ pub async fn update_task(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
             .map(|values| work_pb::StringList { values }),
         label_ids: None,
         blocked_by_ids: None,
-        parent_id_set: None,
+        parent_id_set: parent_arg(args)?,
     };
     let t = update_task_core(&ctx.store, Some(&ctx.notifier), &ctx.auth, req).await?;
     Ok(flatten(&t))
