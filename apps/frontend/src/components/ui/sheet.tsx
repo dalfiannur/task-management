@@ -62,6 +62,28 @@ function SheetContent({
         data-side={side}
         className={cn(
           // Base
+          //
+          // Height, for whoever uses this first — nothing does today, so none
+          // of the below has ever been exercised:
+          //
+          // Left/right pin `inset-y-0` on a fixed element, so the browser
+          // sizes them to the visual viewport. That is inherently correct on
+          // mobile, where a `vh` length would overstate the visible area by
+          // the collapsing address bar (`dialog.tsx` uses `dvh` to work around
+          // exactly that; here it isn't needed).
+          //
+          // Top/bottom are `h-auto`: height follows content, with no `max-h`
+          // and no `overflow` anywhere on this element. Tall content will grow
+          // straight past the viewport with nothing able to scroll it — the
+          // same gap `DialogContent` had before it gained
+          // `max-h` + `overflow-y-auto`. Left/right have no `overflow` either,
+          // so they overflow too once content exceeds the screen.
+          //
+          // Left unfixed on purpose rather than overlooked: the right shape
+          // depends on the first real use (a bottom action sheet wants to hug
+          // its content up to a cap; a side filter panel wants an internal
+          // scroll region), and there is no consumer to verify a guess
+          // against.
           "fixed z-50 flex flex-col gap-3",
           // Solid background
           "bg-surface-overlay shadow-4",
