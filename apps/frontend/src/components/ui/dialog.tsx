@@ -58,6 +58,21 @@ function DialogContent({
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay />
+      {/* Centering wrapper. Flex rather than shadcn's translate-based
+          centering, which clips a dialog taller than the viewport at the top
+          with no way to scroll back up to it.
+
+          Known consequence: `data-[state=closed]:dialog-exit` below never
+          runs. DialogPortal gives each of its direct children its own
+          Presence, and this div has no animation of its own — so its Presence
+          unmounts it, and Content with it, the instant state flips to closed,
+          before Content's own Presence can wait for the exit animation. The
+          CSS rule is generated correctly (see styles/dialog-utilities.css);
+          nothing ever gets the chance to play it. Closing therefore snaps.
+
+          Fixing it means making Content a direct child of the Portal and
+          moving the centering onto Content itself. The overlay is unaffected
+          and does fade out. */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <DialogPrimitive.Content
           data-slot="dialog-content"
