@@ -91,27 +91,12 @@
   to { height: 0; }
 }
 
-/* Dialog/Sheet overlay and content animations.
-   Durasi dan easing hanya dari token — motion.md §1. Modal masuk pakai
-   --duration-slow; yang KELUAR selalu lebih cepat (--duration-fast), karena
-   user sudah memutuskan untuk menutup. */
-.overlay-enter {
-  animation: fade-in var(--duration) var(--ease-out);
-}
-
-.overlay-exit {
-  animation: fade-out var(--duration-fast) var(--ease-out);
-}
-
-.dialog-enter {
-  animation: fade-in var(--duration-slow) var(--ease-out),
-             zoom-in var(--duration-slow) var(--ease-out);
-}
-
-.dialog-exit {
-  animation: fade-out var(--duration-fast) var(--ease-out),
-             zoom-out var(--duration-fast) var(--ease-out);
-}
+/* Dialog/Sheet overlay and content animations (`overlay-enter`,
+   `overlay-exit`, `dialog-enter`, `dialog-exit`) now live in
+   dialog-utilities.css as `@utility` rules, not plain classes here — see
+   that file for why. Durasi dan easing hanya dari token — motion.md §1.
+   Modal masuk pakai --duration-slow; yang KELUAR selalu lebih cepat
+   (--duration-fast), karena user sudah memutuskan untuk menutup. */
 
 /* Collapsible module card body — folds its measured height via the
    `--radix-collapsible-content-height` var Radix exposes on
@@ -120,12 +105,13 @@
    "enter slow, exit fast because the user already committed" dismissal.
 
    Plain attribute selectors, NOT the `data-[state=open]:foo-enter` Tailwind
-   variant the overlay/dialog rules above use as a class string — verified in
-   the browser that Tailwind v4 never generates a rule for that combination
-   (`foo-enter` isn't a Tailwind utility, so the variant has nothing to wrap;
-   `getAnimations()` on an open dialog confirms it's a no-op there today).
-   Wiring these to the actual `[data-state]` attribute is what makes the fold
-   run instead of silently no-op the same way. */
+   variant pattern dialog-utilities.css's overlay/dialog rules use as a class
+   string — that pattern works fine when the right-hand side is a real
+   Tailwind utility (which is why those are defined with `@utility`, not as
+   plain classes). It's used here as attribute selectors instead because
+   these rules are applied globally by `data-slot`, not through a component
+   className, so there's no class string for a variant to attach to in the
+   first place. */
 [data-slot="collapsible-content"][data-state="open"] {
   animation: collapsible-down var(--duration) var(--ease-out);
 }

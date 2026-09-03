@@ -1,0 +1,30 @@
+/* Dialog/Sheet/AlertDialog overlay + content enter/exit utilities.
+
+   These must be `@utility` (not plain classes) because the components apply
+   them as Tailwind variants — `data-[state=open]:overlay-enter` etc. Tailwind
+   v4 only generates a variant around a utility it recognises; a plain class
+   with that name produces no rule at all. Defined here rather than in
+   animations.css because `@utility` cannot live inside a `@layer` block, and
+   this file (unlike animations.css) is imported into index.css WITHOUT
+   `layer(base)` for exactly that reason.
+
+   Durasi dan easing hanya dari token — motion.md §1. Modal masuk pakai
+   --duration-slow; yang KELUAR selalu lebih cepat (--duration-fast), karena
+   user sudah memutuskan untuk menutup. */
+@utility overlay-enter {
+  animation: fade-in var(--duration) var(--ease-out);
+}
+
+@utility overlay-exit {
+  animation: fade-out var(--duration-fast) var(--ease-out);
+}
+
+@utility dialog-enter {
+  animation: fade-in var(--duration-slow) var(--ease-out),
+             zoom-in var(--duration-slow) var(--ease-out);
+}
+
+@utility dialog-exit {
+  animation: fade-out var(--duration-fast) var(--ease-out),
+             zoom-out var(--duration-fast) var(--ease-out);
+}

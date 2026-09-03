@@ -4,6 +4,9 @@
 @import "./styles/tokens.css" layer(base);
 @import "./styles/reset.css" layer(base);
 @import "./styles/animations.css" layer(base);
+/* No `layer(...)` here: this file defines `@utility` rules, which Tailwind
+   v4 refuses to process inside a @layer block. */
+@import "./styles/dialog-utilities.css";
 
 /* Class-based dark mode (driven by next-themes on <html>) */
 @custom-variant dark (&:is(.dark *));
