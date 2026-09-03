@@ -58,60 +58,68 @@ function DialogContent({
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay />
-      {/* Centering wrapper. Flex rather than shadcn's translate-based
-          centering, which clips a dialog taller than the viewport at the top
-          with no way to scroll back up to it.
+      {/* Content is a direct Portal child — not wrapped in a centering div.
+          DialogPortal gives each of its direct children its own Presence; a
+          wrapper with no animation of its own would have its Presence
+          unmount it (and Content inside it) the instant state flips to
+          closed, before Content's own Presence could wait out its exit
+          animation. That is what silently ate `data-[state=closed]:dialog-
+          exit` before (CSS rule generated correctly — see
+          styles/dialog-utilities.css — just never given the chance to run).
 
-          Known consequence: `data-[state=closed]:dialog-exit` below never
-          runs. DialogPortal gives each of its direct children its own
-          Presence, and this div has no animation of its own — so its Presence
-          unmounts it, and Content with it, the instant state flips to closed,
-          before Content's own Presence can wait for the exit animation. The
-          CSS rule is generated correctly (see styles/dialog-utilities.css);
-          nothing ever gets the chance to play it. Closing therefore snaps.
-
-          Fixing it means making Content a direct child of the Portal and
-          moving the centering onto Content itself. The overlay is unaffected
-          and does fade out. */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <DialogPrimitive.Content
-          data-slot="dialog-content"
-          className={cn(
-            // Layout
-            "relative w-full max-w-[calc(100%-2rem)] sm:max-w-lg",
-            "grid gap-4 p-6 text-text outline-none",
-            // Permukaan overlay + elevasi modal (depth.md §3). Sebelumnya
-            // background-nya di-hardcode hsl(228 20% 10% / .9) — dark-only,
-            // sehingga dialog tetap gelap saat tema light aktif.
-            "bg-surface-overlay border border-border-strong shadow-4 rounded-xl",
-            // Animation
-            "data-[state=open]:dialog-enter",
-            "data-[state=closed]:dialog-exit",
-            className,
-          )}
-          {...props}
-        >
-          {children}
-          {showCloseButton && (
-            <DialogPrimitive.Close
-              data-slot="dialog-close"
-              className={cn(
-                "absolute top-3.5 right-3.5 rounded-lg p-1 border-none",
-                "text-text-muted cursor-pointer",
-                // Interactive standards
-                "transition-all duration-200 active:scale-95",
-                "hover:bg-surface-hover hover:text-text",
-                "focus:outline-none focus:ring-2 focus:ring-focus/40",
-                "disabled:pointer-events-none",
-                "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*=size-])]:size-4",
-              )}
-            >
-              <XIcon />
-              <span className="sr-only">Close</span>
-            </DialogPrimitive.Close>
-          )}
-        </DialogPrimitive.Content>
-      </div>
+          Centering is `inset-0 m-auto h-fit` instead: for a fixed element
+          with all four insets at 0, an explicit (non-auto) width/height plus
+          `margin: auto` is the classic way auto-margins center an
+          absolutely/fixed positioned box, on both axes, without a translate
+          that would fight the enter/exit `zoom-in`/`zoom-out` transform.
+          `max-h` + `overflow-y-auto` is the load-bearing part: it's what
+          keeps a dialog taller than the viewport scrollable to its top,
+          which is the property shadcn's translate + no-overflow-handling
+          centering lacks. A consumer that manages its own internal scroll
+          region (e.g. task-dialog.tsx) overrides both. */}
+      <DialogPrimitive.Content
+        data-slot="dialog-content"
+        className={cn(
+          // Position + centering
+          "fixed inset-0 z-50 m-auto h-fit max-h-[calc(100dvh-2rem)] overflow-y-auto",
+          // Width. `%` here resolves against the viewport (Content has no
+          // padded wrapper around it anymore), so the gutter that used to
+          // come from the wrapper's `p-4` (1rem/side) is folded into this
+          // calc directly — 4rem, not 2rem, to land on the same ~2rem
+          // margin per side the old wrapper+content combination produced.
+          "w-full max-w-[calc(100%-4rem)] sm:max-w-lg",
+          "grid gap-4 p-6 text-text outline-none",
+          // Permukaan overlay + elevasi modal (depth.md §3). Sebelumnya
+          // background-nya di-hardcode hsl(228 20% 10% / .9) — dark-only,
+          // sehingga dialog tetap gelap saat tema light aktif.
+          "bg-surface-overlay border border-border-strong shadow-4 rounded-xl",
+          // Animation
+          "data-[state=open]:dialog-enter",
+          "data-[state=closed]:dialog-exit",
+          className,
+        )}
+        {...props}
+      >
+        {children}
+        {showCloseButton && (
+          <DialogPrimitive.Close
+            data-slot="dialog-close"
+            className={cn(
+              "absolute top-3.5 right-3.5 rounded-lg p-1 border-none",
+              "text-text-muted cursor-pointer",
+              // Interactive standards
+              "transition-all duration-200 active:scale-95",
+              "hover:bg-surface-hover hover:text-text",
+              "focus:outline-none focus:ring-2 focus:ring-focus/40",
+              "disabled:pointer-events-none",
+              "[&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*=size-])]:size-4",
+            )}
+          >
+            <XIcon />
+            <span className="sr-only">Close</span>
+          </DialogPrimitive.Close>
+        )}
+      </DialogPrimitive.Content>
     </DialogPortal>
   )
 }

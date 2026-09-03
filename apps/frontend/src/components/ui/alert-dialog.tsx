@@ -54,41 +54,42 @@ function AlertDialogContent({
   return (
     <AlertDialogPortal>
       <AlertDialogOverlay />
-      {/* Centering wrapper. Flex rather than shadcn's translate-based
-          centering, which clips a dialog taller than the viewport at the top
-          with no way to scroll back up to it.
+      {/* Content is a direct Portal child — not wrapped in a centering div.
+          Same structure and same reasoning as `dialog.tsx`: AlertDialogPortal
+          gives each of its direct children its own Presence, so a wrapper
+          div with no animation of its own would unmount (taking Content with
+          it) the instant state flips to closed, before Content's own
+          Presence could wait out `data-[state=closed]:dialog-exit`.
 
-          Known consequence: `data-[state=closed]:dialog-exit` below never
-          runs. AlertDialogPortal gives each of its direct children its own
-          Presence, and this div has no animation of its own — so its Presence
-          unmounts it, and Content with it, the instant state flips to closed,
-          before Content's own Presence can wait for the exit animation. The
-          CSS rule is generated correctly (see styles/dialog-utilities.css);
-          nothing ever gets the chance to play it. Closing therefore snaps.
-
-          Same structure and same caveat as `dialog.tsx`. Fixing it means
-          making Content a direct child of the Portal and moving the centering
-          onto Content itself. The overlay is unaffected and does fade out. */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <AlertDialogPrimitive.Content
-          data-slot="alert-dialog-content"
-          data-size={size}
-          className={cn(
-            // Layout
-            "relative w-full max-w-[calc(100%-2rem)] sm:max-w-lg",
-            "grid gap-4 p-6 text-text outline-none",
-            // Solid background + frosted border
-            "bg-surface-overlay border border-border-strong shadow-4 rounded-xl",
-            // Animation
-            "data-[state=open]:dialog-enter",
-            "data-[state=closed]:dialog-exit",
-            // Size variant
-            "data-[size=sm]:max-w-xs",
-            className,
-          )}
-          {...props}
-        />
-      </div>
+          Centering is `inset-0 m-auto h-fit` — the auto-margin trick for a
+          fixed element with all insets at 0 and an explicit width/height —
+          instead of a wrapper div or a translate that would fight the
+          enter/exit `zoom-in`/`zoom-out`. `max-h` + `overflow-y-auto` keeps
+          a dialog taller than the viewport scrollable to its top rather than
+          clipped, which is what the removed wrapper existed to protect. */}
+      <AlertDialogPrimitive.Content
+        data-slot="alert-dialog-content"
+        data-size={size}
+        className={cn(
+          // Position + centering
+          "fixed inset-0 z-50 m-auto h-fit max-h-[calc(100dvh-2rem)] overflow-y-auto",
+          // Width. `%` resolves against the viewport now that there's no
+          // padded wrapper, so the wrapper's old `p-4` (1rem/side) gutter is
+          // folded into this calc — 4rem, not 2rem — to land on the same
+          // ~2rem margin per side as before.
+          "w-full max-w-[calc(100%-4rem)] sm:max-w-lg",
+          "grid gap-4 p-6 text-text outline-none",
+          // Solid background + frosted border
+          "bg-surface-overlay border border-border-strong shadow-4 rounded-xl",
+          // Animation
+          "data-[state=open]:dialog-enter",
+          "data-[state=closed]:dialog-exit",
+          // Size variant
+          "data-[size=sm]:max-w-xs",
+          className,
+        )}
+        {...props}
+      />
     </AlertDialogPortal>
   )
 }
