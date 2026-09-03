@@ -1,0 +1,100 @@
+name: Publish images
+
+# Push ke main mem-publish. Pull request hanya menguji — umpan balik tanpa
+# mengotori registry.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  # `apps/backend-rs` bergantung pada arke lewat dependensi *path*, yang tidak
+  # dikunci Cargo.lock. Tanpa SHA tersemat di sini, tidak ada apa pun yang
+  # mencatat versi arke mana yang menghasilkan sebuah build. Menaikkannya harus
+  # jadi commit yang terlihat, bukan pergeseran diam-diam.
+  ARKE_SHA: bebc0bf4b85c668a5f828146292c97920da92231
+
+jobs:
+  test-backend:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: sedjiwa_tasks_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/sedjiwa_tasks_test
+      AUTH_JWT_SECRET: ci-secret-not-used-outside-ci
+
+    steps:
+      # Kedua repo jadi subdirektori bernama, supaya `../../../rust-ecs` di
+      # manifest resolve. Nama `rust-ecs` wajib — bukan `arke`.
+      - uses: actions/checkout@v4
+        with:
+          path: task-management
+
+      - uses: actions/checkout@v4
+        with:
+          repository: dalfiannur/arke
+          ref: ${{ env.ARKE_SHA }}
+          path: rust-ecs
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.97"
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: task-management/apps/backend-rs
+
+      # Satu test lebih dulu, sendirian. `Store::connect` menyinkronkan seluruh
+      # skema pada koneksi pertama; tanpa ini, binary test yang berjalan
+      # bersamaan terhadap database kosong berebut membuat tabel komponen yang
+      # sama dan gagal dengan `duplicate key value violates unique constraint
+      # "pg_type_typname_nsp_index"`. Itu perilaku yang sudah diketahui: run
+      # pertama terhadap database baru selalu gagal sekali. CI selalu dapat
+      # database baru, jadi tanpa pemanasan ini setiap run gagal.
+      - name: Warm up the database schema
+        working-directory: task-management/apps/backend-rs
+        run: cargo test -p mcp --test mcp_flow initialize_returns_capabilities
+
+      - name: Test workspace
+        working-directory: task-management/apps/backend-rs
+        run: cargo test --workspace
+
+  test-frontend:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.8"
+
+      # Workspace bun ada di root repo, bukan di apps/frontend.
+      - run: bun install --frozen-lockfile
+
+      - run: bun run tsc --noEmit
+        working-directory: apps/frontend
+
+      - run: bun run lint
+        working-directory: apps/frontend
+
+      - run: bun run build
+        working-directory: apps/frontend
