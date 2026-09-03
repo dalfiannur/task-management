@@ -241,7 +241,7 @@ export function TaskDialog({
       {/* Padding moves off the content box and onto each band, so the header
           and footer rules span the full width and the middle band is the only
           thing that scrolls. */}
-      <DialogContent className="flex max-h-[85vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl">
+      <DialogContent className="flex max-h-[85dvh] flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl">
         <DialogHeader className="shrink-0 border-b border-border-subtle px-6 py-4">
           {/* Demoted to an eyebrow: the task's own title is the heading of
               this dialog now, so this line only names the mode. */}
