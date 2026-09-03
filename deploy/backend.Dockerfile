@@ -15,6 +15,8 @@
 
 # ─── Stage 1: compile ────────────────────────────────────────────────────────
 # Pinned to the toolchain the service is developed against; arke needs >= 1.88.
+# Kept in lockstep with `toolchain:` in .github/workflows/publish-images.yml —
+# CI must test on the same toolchain that builds this image. Bump both.
 FROM docker.io/library/rust:1.97-bookworm AS builder
 
 # transport/build.rs compiles the .proto files, which needs protoc on PATH.

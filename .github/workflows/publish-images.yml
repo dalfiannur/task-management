@@ -1,0 +1,177 @@
+name: Publish images
+
+# Push ke main mem-publish. Pull request hanya menguji — umpan balik tanpa
+# mengotori registry.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  # `apps/backend-rs` bergantung pada arke lewat dependensi *path*, yang tidak
+  # dikunci Cargo.lock. Tanpa SHA tersemat di sini, tidak ada apa pun yang
+  # mencatat versi arke mana yang menghasilkan sebuah build. Menaikkannya harus
+  # jadi commit yang terlihat, bukan pergeseran diam-diam.
+  ARKE_SHA: bebc0bf4b85c668a5f828146292c97920da92231
+
+jobs:
+  test-backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: sedjiwa_tasks_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/sedjiwa_tasks_test
+      AUTH_JWT_SECRET: ci-secret-not-used-outside-ci
+
+    steps:
+      # Kedua repo jadi subdirektori bernama, supaya `../../../rust-ecs` di
+      # manifest resolve. Nama `rust-ecs` wajib — bukan `arke`.
+      - uses: actions/checkout@v4
+        with:
+          path: task-management
+
+      - uses: actions/checkout@v4
+        with:
+          repository: dalfiannur/arke
+          ref: ${{ env.ARKE_SHA }}
+          path: rust-ecs
+
+      # Versi ini kembar dengan `FROM rust:1.97-bookworm` di
+      # deploy/backend.Dockerfile — image itulah yang benar-benar dikirim ke
+      # produksi. Tidak ada rust-toolchain.toml yang menyatukan keduanya, jadi
+      # menaikkan MSRV berarti mengubah *dua* tempat. Menaikkan salah satu saja
+      # membuat CI menguji toolchain yang berbeda dari yang mem-build image —
+      # persis penyimpangan diam-diam yang workflow ini ada untuk mencegahnya.
+      # (Batas bawahnya arke: Cargo.toml-nya menuntut rust-version 1.88.)
+      - uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: "1.97"
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: task-management/apps/backend-rs
+
+      # crates/transport/build.rs mengompilasi file .proto lewat prost-build,
+      # yang menuntut protoc ada di PATH. Image runner tidak membawanya;
+      # backend.Dockerfile memasang paket yang sama untuk alasan yang sama.
+      - name: Install protoc
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends protobuf-compiler
+
+      # Satu test lebih dulu, sendirian. `Store::connect` menyinkronkan seluruh
+      # skema pada koneksi pertama; tanpa ini, binary test yang berjalan
+      # bersamaan terhadap database kosong berebut membuat tabel komponen yang
+      # sama dan gagal dengan `duplicate key value violates unique constraint
+      # "pg_type_typname_nsp_index"`. Itu perilaku yang sudah diketahui: run
+      # pertama terhadap database baru selalu gagal sekali. CI selalu dapat
+      # database baru, jadi tanpa pemanasan ini setiap run gagal.
+      - name: Warm up the database schema
+        working-directory: task-management/apps/backend-rs
+        run: cargo test -p mcp --test mcp_flow initialize_returns_capabilities
+
+      - name: Test workspace
+        working-directory: task-management/apps/backend-rs
+        run: cargo test --workspace
+
+  test-frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3.8"
+
+      # Workspace bun ada di root repo, bukan di apps/frontend.
+      - run: bun install --frozen-lockfile
+
+      - run: bun run tsc --noEmit
+        working-directory: apps/frontend
+
+      - run: bun run lint
+        working-directory: apps/frontend
+
+      - run: bun run build
+        working-directory: apps/frontend
+
+  publish:
+    # Tidak ada image terbit dari commit yang test-nya merah.
+    needs: [test-backend, test-frontend]
+    # Job test berjalan untuk PR juga; publikasi hanya untuk main.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    # Rust dikompilasi dari nol di dalam builder Docker — cache cargo milik
+    # test-backend tidak menolong di sini. Batas 60 menit jauh di atas durasi
+    # normal, tapi menahan build yang macet supaya tidak menggantung runner
+    # sampai default GitHub 6 jam.
+    timeout-minutes: 60
+
+    # Dua merge beruntun bisa mendorong `:latest` bersamaan, dan yang selesai
+    # belakangan menang — belum tentu yang commit-nya lebih baru. Antrekan,
+    # jangan batalkan: membatalkan di tengah push justru meninggalkan registry
+    # setengah terbit. Tag `:SHA` tetap benar apa pun yang terjadi.
+    concurrency:
+      group: publish-images
+      cancel-in-progress: false
+
+    # Scope tulis ke GHCR hanya dibutuhkan di sini, bukan di level workflow —
+    # dua job test tidak pernah menyentuh registry, jadi biarkan keduanya
+    # mewarisi default baca saja.
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      # Kedua repo jadi subdirektori bernama, supaya `../../../rust-ecs` di
+      # manifest resolve. Nama `rust-ecs` wajib — bukan `arke`.
+      - uses: actions/checkout@v4
+        with:
+          path: task-management
+
+      - uses: actions/checkout@v4
+        with:
+          repository: dalfiannur/arke
+          ref: ${{ env.ARKE_SHA }}
+          path: rust-ecs
+
+      # `github.actor` aman di sini justru karena `if:` di atas membatasi job
+      # ini ke event push: actor-nya selalu pengguna yang mendorong atau menekan
+      # tombol merge, tidak pernah kosong seperti pada event dari fork.
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # `build.sh` mendorong backend lalu frontend berurutan di bawah `set -e`.
+      # Kalau frontend gagal setelah backend terdorong, registry sesaat memuat
+      # pasangan yang tidak cocok sampai run berikutnya yang sukses — merge
+      # berikutnya, atau run ini diulang, memperbaikinya sendiri.
+      #
+      # Memakai script yang sudah ada, bukan menulis ulang langkahnya di sini.
+      # `build.sh` menyusun build context backend dari dua checkout, menandai
+      # dengan SHA commit, dan menambahkan akhiran `-dirty` bila working tree
+      # kotor. Menyalin logika itu ke YAML berarti dua tempat yang akan
+      # menyimpang. Default ENGINE-nya podman; runner memakai docker.
+      - name: Build and push images
+        working-directory: task-management
+        env:
+          ENGINE: docker
+          ARKE_DIR: ${{ github.workspace }}/rust-ecs
+        run: ./deploy/build.sh --push
