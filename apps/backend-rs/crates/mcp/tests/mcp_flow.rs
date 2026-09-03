@@ -825,6 +825,202 @@ async fn update_task_round_trips_title_description_and_priority() {
     assert_eq!(payload["priority"], "urgent");
 }
 
+/// Create a task through the tool and return its id. Every subtask test below
+/// needs at least two of these, and the two-step json/parse dance is the same
+/// each time.
+async fn create_task_via_tool(router: &Router, token: &str, args: Value) -> String {
+    let (_, created) = rpc(
+        router,
+        Some(token),
+        json!({ "jsonrpc": "2.0", "id": 90, "method": "tools/call",
+                "params": { "name": "create_task", "arguments": args } }),
+    )
+    .await;
+    assert_eq!(created["result"]["isError"], false, "{created:?}");
+    let payload: Value =
+        serde_json::from_str(created["result"]["content"][0]["text"].as_str().unwrap()).unwrap();
+    payload["id"].as_str().unwrap().to_string()
+}
+
+#[tokio::test]
+async fn create_task_makes_a_subtask_in_its_parents_module() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    let (project_id, module_id) = seed_project_and_module(&store, &user).await;
+    let other_module_id = seed_module(&store, &project_id, "elsewhere").await;
+
+    let parent = create_task_via_tool(
+        &router,
+        &token,
+        json!({ "module_id": module_id, "title": "parent" }),
+    )
+    .await;
+
+    // Deliberately point the child at a *different* module. A subtask lives in
+    // its parent's module, so the argument must be overridden rather than
+    // honoured — asserting on the parent's module is what proves that, and it
+    // would pass by accident if both ids were the same.
+    let (_, created) = rpc(
+        &router,
+        Some(&token),
+        json!({ "jsonrpc": "2.0", "id": 91, "method": "tools/call",
+                "params": { "name": "create_task",
+                            "arguments": {
+                                "module_id": other_module_id,
+                                "title": "child",
+                                "parent_id": parent
+                            } } }),
+    )
+    .await;
+    assert_eq!(created["result"]["isError"], false, "{created:?}");
+    let payload: Value =
+        serde_json::from_str(created["result"]["content"][0]["text"].as_str().unwrap()).unwrap();
+    assert_eq!(payload["parent_id"], parent);
+    assert_eq!(payload["module_id"], module_id);
+    assert_ne!(payload["module_id"], other_module_id);
+}
+
+#[tokio::test]
+async fn create_task_refuses_to_nest_a_subtask_under_a_subtask() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    let (_project_id, module_id) = seed_project_and_module(&store, &user).await;
+
+    let parent = create_task_via_tool(
+        &router,
+        &token,
+        json!({ "module_id": module_id, "title": "parent" }),
+    )
+    .await;
+    let child = create_task_via_tool(
+        &router,
+        &token,
+        json!({ "module_id": module_id, "title": "child", "parent_id": parent }),
+    )
+    .await;
+
+    let (_, body) = rpc(
+        &router,
+        Some(&token),
+        json!({ "jsonrpc": "2.0", "id": 92, "method": "tools/call",
+                "params": { "name": "create_task",
+                            "arguments": {
+                                "module_id": module_id,
+                                "title": "grandchild",
+                                "parent_id": child
+                            } } }),
+    )
+    .await;
+    // One level deep is a core rule, and it reaches the model as a readable
+    // business error rather than a protocol error: the model can pick a
+    // different parent and retry.
+    assert_eq!(body["result"]["isError"], true, "{body:?}");
+    let text = body["result"]["content"][0]["text"].as_str().unwrap();
+    assert!(text.contains("subtask"), "{text}");
+}
+
+#[tokio::test]
+async fn update_task_sets_detaches_and_leaves_the_parent_alone() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    let (_project_id, module_id) = seed_project_and_module(&store, &user).await;
+
+    let parent = create_task_via_tool(
+        &router,
+        &token,
+        json!({ "module_id": module_id, "title": "parent" }),
+    )
+    .await;
+    let task = create_task_via_tool(
+        &router,
+        &token,
+        json!({ "module_id": module_id, "title": "standalone" }),
+    )
+    .await;
+
+    let update = |args: Value| {
+        let router = &router;
+        let token = &token;
+        async move {
+            let (_, updated) = rpc(
+                router,
+                Some(token),
+                json!({ "jsonrpc": "2.0", "id": 93, "method": "tools/call",
+                        "params": { "name": "update_task", "arguments": args } }),
+            )
+            .await;
+            assert_eq!(updated["result"]["isError"], false, "{updated:?}");
+            serde_json::from_str::<Value>(
+                updated["result"]["content"][0]["text"].as_str().unwrap(),
+            )
+            .unwrap()
+        }
+    };
+
+    // A string sets the parent.
+    let payload = update(json!({ "task_id": task, "parent_id": parent })).await;
+    assert_eq!(payload["parent_id"], parent);
+
+    // Omitting it leaves the parent alone. This is the state a regression is
+    // most likely to break — reading "absent" as "detach" would quietly
+    // unparent every task the model touches for an unrelated edit — and
+    // nothing else here would catch it.
+    let payload = update(json!({ "task_id": task, "title": "renamed" })).await;
+    assert_eq!(payload["title"], "renamed");
+    assert_eq!(payload["parent_id"], parent);
+
+    // Explicit null detaches back to top level.
+    let payload = update(json!({ "task_id": task, "parent_id": Value::Null })).await;
+    assert_eq!(payload["parent_id"], Value::Null);
+}
+
+#[tokio::test]
+async fn update_task_rejects_an_unusable_parent_id() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    let (_project_id, module_id) = seed_project_and_module(&store, &user).await;
+
+    let task = create_task_via_tool(
+        &router,
+        &token,
+        json!({ "module_id": module_id, "title": "subject" }),
+    )
+    .await;
+
+    // An empty string would read as "not supplied" through `opt_str`, so a
+    // caller meaning to detach would silently change nothing. Refused, with
+    // the alternative named.
+    let (_, empty) = rpc(
+        &router,
+        Some(&token),
+        json!({ "jsonrpc": "2.0", "id": 94, "method": "tools/call",
+                "params": { "name": "update_task",
+                            "arguments": { "task_id": task, "parent_id": "" } } }),
+    )
+    .await;
+    assert_eq!(empty["error"]["code"], -32602, "{empty:?}");
+    assert!(empty["error"]["message"]
+        .as_str()
+        .unwrap()
+        .contains("null"), "{empty:?}");
+
+    // A wrong-typed value is a caller bug, not a business rule.
+    let (_, wrong_type) = rpc(
+        &router,
+        Some(&token),
+        json!({ "jsonrpc": "2.0", "id": 95, "method": "tools/call",
+                "params": { "name": "update_task",
+                            "arguments": { "task_id": task, "parent_id": 7 } } }),
+    )
+    .await;
+    assert_eq!(wrong_type["error"]["code"], -32602, "{wrong_type:?}");
+    assert!(wrong_type.get("result").is_none());
+}
+
 /// A project (owned by `user`, with `user` as a member) + one module inside
 /// it. Seeded directly through components rather than RPC.
 ///
