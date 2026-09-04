@@ -1712,3 +1712,43 @@ async fn list_comments_limit_is_passed_to_the_core_fn_not_just_taken_client_side
     assert_eq!(body["error"]["code"], -32602, "{body:?}");
     assert!(body.get("result").is_none());
 }
+
+/// The other half of the one-level rule, which `validate_parent` did not
+/// enforce: it checked that the proposed parent was not itself a subtask, but
+/// never that the task being moved already had children. So C ← A ← B was
+/// reachable — three levels — through the same call that refuses two.
+///
+/// `update_task`'s `parent_id` is what makes this reachable from a model at
+/// all, and both tool descriptions promise "nesting is one level deep", so the
+/// guarantee has to actually hold rather than be documented.
+#[tokio::test]
+async fn update_task_refuses_moving_a_task_that_has_subtasks() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    let (_project_id, module_id) = seed_project_and_module(&store, &user).await;
+
+    let (err, parent) = tools_call(&router, &token, "create_task",
+        json!({ "module_id": module_id, "title": "punya anak" })).await;
+    assert!(!err, "{parent:?}");
+    let (err, child) = tools_call(&router, &token, "create_task",
+        json!({ "module_id": module_id, "parent_id": parent["id"], "title": "anak" })).await;
+    assert!(!err, "{child:?}");
+    let (err, other) = tools_call(&router, &token, "create_task",
+        json!({ "module_id": module_id, "title": "induk lain" })).await;
+    assert!(!err, "{other:?}");
+
+    let (err, _) = tools_call(&router, &token, "update_task",
+        json!({ "task_id": parent["id"], "parent_id": other["id"] })).await;
+    assert!(err, "a task with subtasks must not become a subtask");
+
+    // Refused outright, not half-applied: neither end of the chain moved.
+    let (err, still) = tools_call(&router, &token, "get_task",
+        json!({ "task_id": parent["id"] })).await;
+    assert!(!err, "{still:?}");
+    assert!(still["parent_id"].is_null(), "{still:?}");
+    let (err, kid) = tools_call(&router, &token, "get_task",
+        json!({ "task_id": child["id"] })).await;
+    assert!(!err, "{kid:?}");
+    assert_eq!(kid["parent_id"], parent["id"], "{kid:?}");
+}

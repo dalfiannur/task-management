@@ -106,8 +106,9 @@ pub(crate) async fn task_project_id(
 ///
 /// Returns the parent's module id, because a subtask always lives in its
 /// parent's module and the caller needs it. Rejects: a missing parent, a parent
-/// in another project, a parent that is itself a subtask (the one-level rule),
-/// and a task parenting itself.
+/// in another project, a parent that is itself a subtask, a task that already
+/// has subtasks of its own (the other half of the one-level rule), and a task
+/// parenting itself.
 pub(crate) async fn validate_parent(
     store: &Store,
     project_id: &str,
@@ -127,6 +128,26 @@ pub(crate) async fn validate_parent(
     if parent.parent_id.is_some() {
         return Err(ConnectError::new_invalid_argument(
             "a subtask cannot have subtasks",
+        ));
+    }
+    // The one-level rule has two halves, and only the half above was checked.
+    // Moving a task that already has children under another parent produces
+    // grandchildren just as surely as nesting under a subtask does — the
+    // difference is only which end of the chain moves. `TaskParent`'s own doc
+    // comment calls one level "what makes cycles structurally impossible", and
+    // the MCP tools promise the model "nesting is one level deep", so both were
+    // relying on a guarantee that was only half enforced.
+    //
+    // `child_pid == 0` is the create path, where the task does not exist yet
+    // and can have no children.
+    if child_pid != 0
+        && !subtask_pids(store, &child_pid.to_string())
+            .await
+            .map_err(internal)?
+            .is_empty()
+    {
+        return Err(ConnectError::new_invalid_argument(
+            "a task with subtasks cannot become a subtask",
         ));
     }
     let parent_project = task_project_id(store, parent_id)
