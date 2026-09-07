@@ -2,7 +2,7 @@ import type { Activity as PbActivity } from "@/lib/gen/activity_pb";
 import { EntityType, ActivityAction as PbAction } from "@/lib/gen/activity_pb";
 import type { Activity, ActivityAction, ActivityEntity } from "../types";
 
-function mapEntity(t: EntityType): ActivityEntity {
+export function mapEntity(t: EntityType): ActivityEntity {
   switch (t) {
     case EntityType.TASK:
       return "task";
@@ -21,7 +21,7 @@ function mapEntity(t: EntityType): ActivityEntity {
   }
 }
 
-function mapAction(a: PbAction): ActivityAction {
+export function mapAction(a: PbAction): ActivityAction {
   switch (a) {
     case PbAction.CREATED:
       return "created";
