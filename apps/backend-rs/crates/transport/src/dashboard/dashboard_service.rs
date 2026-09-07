@@ -39,6 +39,10 @@ async fn get_dashboard_stats(
             continue; // cancelled counts nowhere
         }
         if let Some(pj) = ctx.module_to_project.get(&t.module_id) {
+            // Cumulative (all-time) done/total counting, duplicated in
+            // `reports::aggregate::per_project`'s `row.total`/`row.done_total`
+            // — deliberately not shared, since the report must not modify
+            // dashboard code. Keep the two in sync by hand if this rule changes.
             let e = per.entry(pj.clone()).or_insert((0, 0));
             e.1 += 1;
             if t.status == TaskStatus::Done {

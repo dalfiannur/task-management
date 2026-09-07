@@ -17,8 +17,8 @@ export function ProjectReportTable({ rows }: { rows: ProjectReportRow[] }) {
             <th className="text-label px-4 py-3 text-left">Project</th>
             <th className="text-label px-4 py-3 text-right">Completed</th>
             <th className="text-label px-4 py-3 text-right">Created</th>
-            <th className="text-label px-4 py-3 text-right">Open</th>
-            <th className="text-label px-4 py-3 text-right">Overdue</th>
+            <th className="text-label px-4 py-3 text-right">Open now</th>
+            <th className="text-label px-4 py-3 text-right">Overdue now</th>
             <th className="text-label px-4 py-3 text-right">Progress</th>
           </tr>
         </thead>

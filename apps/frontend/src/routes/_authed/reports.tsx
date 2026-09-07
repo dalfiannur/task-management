@@ -1,6 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useAtom } from "jotai";
+import { Printer } from "lucide-react";
 import { useMemo } from "react";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   ActivitySummary,
@@ -33,6 +35,9 @@ function ReportsPage() {
     <div className="mx-auto max-w-7xl space-y-8 p-6">
       <div className="flex items-center justify-between print:hidden">
         <h1 className="text-2xl font-semibold">Reports</h1>
+        <Button variant="outline" size="sm" onClick={() => window.print()}>
+          <Printer /> Print
+        </Button>
       </div>
 
       <ReportPrintHeader window={activeWindow} />

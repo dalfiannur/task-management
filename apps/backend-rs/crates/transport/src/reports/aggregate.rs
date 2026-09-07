@@ -83,6 +83,10 @@ pub(crate) fn per_project(ctx: &Context, w: &Window, today: &str) -> Vec<pb::Pro
             project_name: ctx.project_name(pid),
             ..Default::default()
         });
+        // Cumulative (all-time, not window-scoped) counting, deliberately
+        // duplicated from `dashboard::dashboard_service::get_dashboard_stats`
+        // rather than shared — the report must not modify dashboard code.
+        // Keep the two in sync by hand if the "done/total" rule ever changes.
         row.total += 1;
         if t.status == TaskStatus::Done {
             row.done_total += 1;
@@ -179,6 +183,12 @@ pub(crate) fn completed_list(ctx: &Context, w: &Window, limit: usize) -> (Vec<My
         .into_iter()
         .filter(|t| t.status == TaskStatus::Done && w.contains_opt(t.completed_at.as_ref()))
         .collect();
+    // Deliberately *not* truncated the way `window.rs` truncates boundaries:
+    // this sorts raw stored `completed_at` strings, so within the same
+    // second a fractional timestamp can sort as earlier than a plain one
+    // that actually preceded it (`.` is below `Z` lexicographically). That's
+    // cosmetic — same-second ordering in a list, not a window boundary — so
+    // it's left as-is rather than paying for truncation on every comparison.
     done.sort_by(|a, b| b.completed_at.cmp(&a.completed_at).then(b.pid.cmp(&a.pid)));
     take(ctx, done, limit)
 }

@@ -15,16 +15,46 @@ use persistence::Store;
 use super::window::Window;
 use crate::sedjiwa::tasks::reports::v1 as pb;
 
+/// `activity_total` below is an independent `COUNT(*)` over every activity
+/// row in scope, not a sum of what `ENTITIES × ACTIONS` produces — so if a
+/// seventh `EntityType` or a fourth `ActivityAction` is ever added without
+/// updating the arrays below, `activity_total` silently stops equalling the
+/// sum of the rows the UI prints beneath it ("{total} recorded changes"),
+/// and nothing fails loudly. `assert_entity_exhaustive`/
+/// `assert_action_exhaustive` exist only to make that impossible to miss:
+/// their `match`es have no wildcard arm, so adding a variant to either enum
+/// without adding an arm here is a compile error, and the person fixing that
+/// error is looking straight at the array they also need to extend.
+const fn assert_entity_exhaustive(e: EntityType) -> EntityType {
+    match e {
+        EntityType::Task
+        | EntityType::Module
+        | EntityType::Membership
+        | EntityType::Ownership
+        | EntityType::Page
+        | EntityType::Media => e,
+    }
+}
+
+const fn assert_action_exhaustive(a: ActivityAction) -> ActivityAction {
+    match a {
+        ActivityAction::Created | ActivityAction::Updated | ActivityAction::Deleted => a,
+    }
+}
+
 const ENTITIES: [EntityType; 6] = [
-    EntityType::Task,
-    EntityType::Module,
-    EntityType::Membership,
-    EntityType::Ownership,
-    EntityType::Page,
-    EntityType::Media,
+    assert_entity_exhaustive(EntityType::Task),
+    assert_entity_exhaustive(EntityType::Module),
+    assert_entity_exhaustive(EntityType::Membership),
+    assert_entity_exhaustive(EntityType::Ownership),
+    assert_entity_exhaustive(EntityType::Page),
+    assert_entity_exhaustive(EntityType::Media),
 ];
-const ACTIONS: [ActivityAction; 3] =
-    [ActivityAction::Created, ActivityAction::Updated, ActivityAction::Deleted];
+const ACTIONS: [ActivityAction; 3] = [
+    assert_action_exhaustive(ActivityAction::Created),
+    assert_action_exhaustive(ActivityAction::Updated),
+    assert_action_exhaustive(ActivityAction::Deleted),
+];
 
 /// `(rows, total)`. Rows with a count of zero are dropped — a report listing
 /// "Page deleted 0×" is noise.

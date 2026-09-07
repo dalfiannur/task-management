@@ -16,8 +16,8 @@ export function MemberReportTable({ rows }: { rows: MemberReportRow[] }) {
             <th className="text-label px-4 py-3 text-left">Member</th>
             <th className="text-label px-4 py-3 text-right">Completed</th>
             <th className="text-label px-4 py-3 text-right">Created</th>
-            <th className="text-label px-4 py-3 text-right">Open</th>
-            <th className="text-label px-4 py-3 text-right">Overdue</th>
+            <th className="text-label px-4 py-3 text-right">Open now</th>
+            <th className="text-label px-4 py-3 text-right">Overdue now</th>
           </tr>
         </thead>
         <tbody>

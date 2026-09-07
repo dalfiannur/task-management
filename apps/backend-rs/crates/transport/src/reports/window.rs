@@ -23,10 +23,15 @@ pub(crate) struct Window {
     end: String,
 }
 
-/// `YYYY-MM-DDTHH:MM:SS` from an RFC3339 instant, or `None` if `s` is not one.
-/// The `T` is normalised to upper case: RFC3339 permits a lowercase `t`, and a
-/// boundary carrying one would never compare equal to stored values that use
-/// `T`.
+/// `YYYY-MM-DDTHH:MM:SS` from an RFC3339 instant that is UTC, or `None` if
+/// `s` isn't one. RFC3339 also permits a numeric `+HH:MM`/`-HH:MM` offset —
+/// that *is* a valid RFC3339 instant, but not a UTC one, and this parser
+/// rejects it: the window contract (see the module doc) is that the caller
+/// sends UTC, so the server never needs a timezone database, and silently
+/// truncating an offset instant would shift the boundary by that offset with
+/// no error at all. The `T` is normalised to upper case: RFC3339 permits a
+/// lowercase `t`, and a boundary carrying one would never compare equal to
+/// stored values that use `T`.
 fn truncate(s: &str) -> Option<String> {
     let b = s.as_bytes();
     if b.len() < 19 {
@@ -52,12 +57,29 @@ fn truncate(s: &str) -> Option<String> {
         && b[16] == b':'
         && digit(17)
         && digit(18);
-    if !shaped {
+    if !shaped || !is_utc_suffix(&b[19..]) {
         return None;
     }
     let mut out = s[..19].to_string();
     out.replace_range(10..11, "T");
     Some(out)
+}
+
+/// Is `rest` (everything after the `YYYY-MM-DDTHH:MM:SS` prefix) a UTC
+/// designator? Only `Z`/`z`, or `.` followed by one to nine fractional digits
+/// and then `Z`/`z`, count — a naked timestamp with no zone, a `+`/`-`
+/// offset, or trailing garbage after a valid zone all return `false`.
+fn is_utc_suffix(rest: &[u8]) -> bool {
+    match rest {
+        [b'Z'] | [b'z'] => true,
+        [b'.', tail @ ..] => match tail.split_last() {
+            Some((b'Z' | b'z', digits)) => {
+                !digits.is_empty() && digits.len() <= 9 && digits.iter().all(u8::is_ascii_digit)
+            }
+            _ => false,
+        },
+        _ => false,
+    }
 }
 
 impl Window {
@@ -143,5 +165,25 @@ mod tests {
         assert!(Window::parse("20xx-09-07T00:00:00Z", END).is_none(), "not digits");
         assert!(Window::parse(END, START).is_none(), "end before start");
         assert!(Window::parse(START, START).is_none(), "empty window");
+        assert!(
+            Window::parse("2026-09-07T17:00:00+07:00", END).is_none(),
+            "valid RFC3339 but not UTC — a numeric offset is rejected, not silently applied"
+        );
+        assert!(
+            Window::parse("2026-09-07T00:00:00", END).is_none(),
+            "no zone designator at all"
+        );
+        assert!(
+            Window::parse("2026-09-07T00:00:00nonsense", END).is_none(),
+            "trailing garbage after the seconds field"
+        );
+        assert!(
+            Window::parse("2026-09-07T00:00:00.Z", END).is_none(),
+            "a bare dot with no fractional digits"
+        );
+        assert!(
+            Window::parse("2026-09-07T00:00:00.1234567890Z", END).is_none(),
+            "ten fractional digits — one more than RFC3339 nanosecond precision allows"
+        );
     }
 }

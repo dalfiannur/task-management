@@ -13,10 +13,10 @@ function Delta({ now, before }: { now: number; before: number | null }) {
   const diff = now - before;
   const sign = diff > 0 ? "+" : "";
   return (
-    <span className="text-num text-xs text-text-muted">
+    <p className="text-num text-xs text-text-muted">
       {sign}
       {diff} vs previous ({before})
-    </span>
+    </p>
   );
 }
 

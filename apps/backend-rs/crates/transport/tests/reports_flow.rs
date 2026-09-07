@@ -129,6 +129,26 @@ async fn rejects_a_malformed_window() {
     )
     .await;
     assert_eq!(st, StatusCode::BAD_REQUEST, "{body}");
+
+    // Both prevStart and prevEnd empty means "no comparison" — that's valid.
+    // But a `prevStart` with no matching `prevEnd` is not "no comparison", it
+    // is a malformed window, and must be rejected rather than silently
+    // dropped. A regression to `Window::parse(...).ok()` would instead read
+    // as "no comparison shown", which looks like a missing feature, not a
+    // bug — so this has to be asserted explicitly.
+    let (st, body) = call(
+        &router,
+        &format!("{REPORT}/GetPeriodReport"),
+        Some(&tm),
+        json!({
+            "periodStart": "2026-09-07T00:00:00Z",
+            "periodEnd": "2026-09-14T00:00:00Z",
+            "prevStart": "2026-08-31T00:00:00Z",
+            "prevEnd": "",
+        }),
+    )
+    .await;
+    assert_eq!(st, StatusCode::BAD_REQUEST, "{body}");
 }
 
 #[tokio::test]
@@ -210,6 +230,12 @@ async fn activity_is_summarised_for_the_window_and_scope() {
     );
     let created_tasks = rows.iter().find(|row| row["entityType"] == "TASK" && row["action"] == "CREATED");
     assert!(created_tasks.is_some(), "a TASK/CREATED row is expected: {r}");
+    // TASK=1/CREATED=1 would still pass even if entityType and action were
+    // transposed at construction, since both proto-encode as 1. MODULE=2 vs
+    // CREATED=1 breaks that symmetry, so this catches a field swap the
+    // assertion above cannot.
+    let created_modules = rows.iter().find(|row| row["entityType"] == "MODULE" && row["action"] == "CREATED");
+    assert!(created_modules.is_some(), "a MODULE/CREATED row is expected: {r}");
 
     // A window in the far past sees none of it.
     let r_old = ok(

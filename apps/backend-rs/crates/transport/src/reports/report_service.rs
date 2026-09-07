@@ -63,8 +63,12 @@ async fn get_period_report(
         activity_summary(&store, ctx.scope.as_ref(), &window).await.map_err(internal)?;
 
     Ok(ConnectResponse::new(pb::PeriodReport {
-        period_start: window.start().to_string(),
-        period_end: window.end().to_string(),
+        // `Window::start`/`end` are the truncated 19-character form with no
+        // zone designator (`"2026-09-07T00:00:00"`); echoed as-is, a JS
+        // `Date` would parse that as *local* time, not the UTC instant it
+        // actually is. Append `Z` so what goes out is genuinely RFC3339 UTC.
+        period_start: format!("{}Z", window.start()),
+        period_end: format!("{}Z", window.end()),
         totals: Some(totals(&scoped, &window, &today)),
         prev_totals: prev.as_ref().map(|w| totals(&scoped, w, &today)),
         per_project: per_project(&ctx, &window, &today),
