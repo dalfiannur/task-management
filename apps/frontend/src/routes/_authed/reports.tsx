@@ -22,11 +22,11 @@ function ReportsPage() {
   const [period, setPeriod] = useAtom(periodAtom);
   // `new Date()` is not a stable dependency, so pin the window per selection —
   // otherwise every render produces new instants and refetches the report.
-  const window = useMemo(
+  const activeWindow = useMemo(
     () => periodWindow(period.granularity, period.offset),
     [period.granularity, period.offset],
   );
-  const { report, isLoading } = usePeriodReport(window);
+  const { report, isLoading, isError, error } = usePeriodReport(activeWindow);
 
   return (
     <div className="mx-auto max-w-7xl space-y-8 p-6">
@@ -35,12 +35,16 @@ function ReportsPage() {
       </div>
 
       <PeriodPicker
-        window={window}
+        window={activeWindow}
         onGranularity={(granularity) => setPeriod({ granularity, offset: period.offset })}
         onOffset={(offset) => setPeriod({ granularity: period.granularity, offset })}
       />
 
-      {isLoading || !report ? (
+      {isError ? (
+        <p className="text-sm text-danger">
+          {error?.message ?? "Failed to load the report."}
+        </p>
+      ) : isLoading || !report ? (
         <div className="space-y-4">
           <Skeleton className="h-20 w-full rounded-xl shadow-2" />
           <Skeleton className="h-48 w-full rounded-xl shadow-2" />
