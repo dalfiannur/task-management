@@ -61,9 +61,9 @@ src/
 │   ├── __root.tsx        # root: router context { queryClient } + <Toaster/>
 │   ├── login.tsx · register.tsx
 │   ├── _authed.tsx       # pathless layout: token guard (→ /login?redirect=…) + <AppShell/>
-│   └── _authed/          # dashboard, my-tasks, projects/index, projects/$projectId(+ tabs)
+│   └── _authed/          # dashboard, my-tasks, projects/index, projects/$projectId(+ tabs), reports
 ├── features/<domain>/    # auth, users, projects, tasks, timeline, members, pages, media,
-│   │                     #   labels, comments, notifications, activity, dashboard
+│   │                     #   labels, comments, notifications, activity, dashboard, reports
 │   ├── api/              # connect-query hooks + proto→flat mappers
 │   ├── components/       # feature-specific UI
 │   ├── atoms/            # Jotai atoms (only when needed)
@@ -91,7 +91,7 @@ src/
 
 **Codegen:** `buf generate` (config `buf.gen.yaml`, `protoc-gen-es`) reads `../backend-rs/proto/*.proto` → `src/lib/gen/*_pb.ts`. Services export as `AuthService`, `ProjectService`, etc. (`GenService<…>`); enums/messages alongside. Regenerate after any proto change.
 
-**Route structure:** file-based under `src/routes/`. Key routes: `/login`, `/register`, `/dashboard`, `/my-tasks`, `/projects`, `/projects/$projectId` (detail shell) + tab children `all-tasks` (default) · `timeline` · `members` · `media` · `pages`. `routeTree.gen.ts` is regenerated on `vite build`/dev by the router plugin.
+**Route structure:** file-based under `src/routes/`. Key routes: `/login`, `/register`, `/dashboard`, `/my-tasks`, `/projects`, `/projects/$projectId` (detail shell) + tab children `all-tasks` (default) · `timeline` · `members` · `media` · `pages`, `/reports`. `routeTree.gen.ts` is regenerated on `vite build`/dev by the router plugin.
 
 ### Frontend Conventions
 

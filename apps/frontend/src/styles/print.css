@@ -1,0 +1,62 @@
+/* ============================================================
+   Print palette.
+
+   Deliberately ONE palette for both themes rather than a restoration of the
+   light one: a printed sheet should look the same whoever printed it, and
+   printing the dark theme wastes ink and reads badly on paper.
+
+   These override :root and .dark alike because both selectors match <html>
+   with equal specificity — so this file MUST be imported after tokens.css.
+   Only tokens the report actually uses are redefined; anything else keeps its
+   screen value and never reaches paper.
+   ============================================================ */
+
+@media print {
+  :root {
+    --surface: #ffffff;
+    --surface-raised: #ffffff;
+    --surface-sunken: #f2f3f5;
+    --surface-hover: #ffffff;
+
+    --text: #16181d;
+    --text-muted: #43474f;
+    --text-subtle: #555a63;
+
+    --border: #d3d6dc;
+    --border-subtle: #e5e7eb;
+    --border-strong: #979da7;
+
+    /* A muted, ink-friendly blue for the progress bars — not the screen brand. */
+    --brand: #3c4a5e;
+    --brand-text: #16181d;
+
+    --danger: #8a1f11;
+    --danger-subtle: #fbeae8;
+    --success: #14532d;
+    --success-subtle: #e9f4ed;
+    --warning: #6b3f00;
+    --warning-subtle: #fbf1e0;
+
+    /* Shadows are how the screen separates surfaces. On paper they print as
+       grey smudges, so separation falls to the borders above. --shadow-2 is
+       the one shadow token load-bearing for printed content (raised panels
+       in the report tables/lists carry it and no border class of their
+       own), so it becomes a crisp 1px ring instead of a blur — the only way
+       to give those panels an edge without touching their component files.
+       --shadow-1/3/4/5 are only ever on print-hidden chrome or on dialogs/
+       overlays that cannot be open on this page, so they go to none. */
+    --shadow-1: none;
+    --shadow-2: 0 0 0 1px var(--border);
+    --shadow-3: none;
+    --shadow-4: none;
+    --shadow-5: none;
+  }
+
+  body {
+    background: #ffffff;
+  }
+
+  @page {
+    margin: 14mm;
+  }
+}
