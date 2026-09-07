@@ -25,6 +25,7 @@ mod media;
 mod notifications;
 mod pages;
 mod projects;
+mod reports;
 mod search;
 mod sql;
 mod tokens;
