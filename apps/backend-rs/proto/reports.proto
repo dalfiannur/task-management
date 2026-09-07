@@ -1,0 +1,81 @@
+syntax = "proto3";
+package sedjiwa.tasks.reports.v1;
+
+import "dashboard.proto";
+import "activity.proto";
+
+// Cross-project period reporting. Read-only aggregation over existing Task and
+// Activity data — no new entities. Scope is the dashboard's: the caller's member
+// projects, or all projects for an admin.
+// See docs/superpowers/specs/2026-09-07-periodic-reports-design.md.
+service ReportService {
+  rpc GetPeriodReport(GetPeriodReportRequest) returns (PeriodReport);
+}
+
+message GetPeriodReportRequest {
+  // Half-open [start, end), RFC3339 UTC. The client computes them from the
+  // viewer's local calendar; the server does not know what a week is.
+  string period_start = 1;
+  string period_end = 2;
+  // The comparison window. Both empty = no comparison.
+  string prev_start = 3;
+  string prev_end = 4;
+  // Cap on completed_tasks / overdue_tasks. 0 = 50.
+  uint32 list_limit = 5;
+}
+
+// `completed` and `created` are of the window. `still_open` and `overdue` are of
+// *now* — a period cannot have a current backlog.
+message PeriodTotals {
+  uint32 completed = 1;
+  uint32 created = 2;
+  uint32 still_open = 3;
+  uint32 overdue = 4;
+}
+
+message ProjectReportRow {
+  string project_id = 1;
+  string project_name = 2;
+  uint32 completed = 3;
+  uint32 created = 4;
+  uint32 still_open = 5;
+  uint32 overdue = 6;
+  uint32 done_total = 7; // cumulative; matches DashboardStats.per_project
+  uint32 total = 8;
+}
+
+message MemberReportRow {
+  string user_id = 1;
+  string user_name = 2;
+  uint32 completed = 3; // completed in window AND assigned to them
+  uint32 created = 4;   // created_by them, in window
+  uint32 open_assigned = 5;
+  uint32 overdue_assigned = 6;
+}
+
+message ActivitySummaryRow {
+  sedjiwa.tasks.activity.v1.EntityType entity_type = 1;
+  sedjiwa.tasks.activity.v1.ActivityAction action = 2;
+  uint32 count = 3;
+}
+
+message PeriodReport {
+  string period_start = 1;
+  string period_end = 2;
+
+  PeriodTotals totals = 3;
+  PeriodTotals prev_totals = 4; // unset when no comparison window was sent
+
+  repeated ProjectReportRow per_project = 5;
+  repeated MemberReportRow per_member = 6;
+
+  // dashboard.v1.MyTask, not a parallel type: the frontend already has
+  // mapMyTasks and a row component for it.
+  repeated sedjiwa.tasks.dashboard.v1.MyTask completed_tasks = 7;
+  repeated sedjiwa.tasks.dashboard.v1.MyTask overdue_tasks = 8;
+  bool completed_truncated = 9;
+  bool overdue_truncated = 10;
+
+  repeated ActivitySummaryRow activity_summary = 11;
+  uint32 activity_total = 12;
+}

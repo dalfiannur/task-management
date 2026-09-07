@@ -52,6 +52,7 @@ pub fn build_router(
         .merge(transport::media_router(store.clone(), media_storage))
         .merge(transport::activity_router(store.clone()))
         .merge(transport::dashboard_router(store.clone()))
+        .merge(transport::report_router(store.clone()))
         .merge(transport::mytasks_router(store.clone()))
         .merge(transport::search_router(store.clone()))
         .merge(transport::export_router(store.clone()))

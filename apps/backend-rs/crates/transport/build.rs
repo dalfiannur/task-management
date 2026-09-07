@@ -13,6 +13,7 @@ fn main() {
             "../../proto/notifications.proto",
             "../../proto/activity.proto",
             "../../proto/dashboard.proto",
+            "../../proto/reports.proto",
             "../../proto/search.proto",
             "../../proto/export.proto",
             "../../proto/tokens.proto",
@@ -33,6 +34,7 @@ fn main() {
     println!("cargo:rerun-if-changed=../../proto/notifications.proto");
     println!("cargo:rerun-if-changed=../../proto/activity.proto");
     println!("cargo:rerun-if-changed=../../proto/dashboard.proto");
+    println!("cargo:rerun-if-changed=../../proto/reports.proto");
     println!("cargo:rerun-if-changed=../../proto/search.proto");
     println!("cargo:rerun-if-changed=../../proto/export.proto");
     println!("cargo:rerun-if-changed=../../proto/tokens.proto");
