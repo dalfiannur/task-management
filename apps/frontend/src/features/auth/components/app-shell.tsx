@@ -89,7 +89,7 @@ export function AppShell() {
   return (
     <div className="flex min-h-screen bg-surface">
       <SearchOverlay />
-      <aside className="sticky top-0 flex h-screen w-56 shrink-0 flex-col bg-surface-chrome">
+      <aside className="sticky top-0 flex h-screen w-56 shrink-0 flex-col bg-surface-chrome print:hidden">
         <span className="flex h-14 items-center px-5 font-semibold text-text-on-chrome">
           {APP_NAME}
         </span>
@@ -155,7 +155,7 @@ export function AppShell() {
       <div className="flex min-w-0 flex-1 flex-col">
         <header
           className={cn(
-            "sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between gap-3 bg-surface px-4",
+            "sticky top-0 z-40 flex h-14 shrink-0 items-center justify-between gap-3 bg-surface px-4 print:hidden",
             "transition-shadow [transition-duration:var(--duration-fast)] [transition-timing-function:var(--ease-out)]",
             scrolled && "shadow-1",
           )}

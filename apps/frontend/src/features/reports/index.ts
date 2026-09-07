@@ -19,3 +19,4 @@ export { ProjectReportTable } from "./components/project-report-table";
 export { MemberReportTable } from "./components/member-report-table";
 export { ReportTaskList } from "./components/report-task-list";
 export { ActivitySummary } from "./components/activity-summary";
+export { ReportPrintHeader } from "./components/report-print-header";

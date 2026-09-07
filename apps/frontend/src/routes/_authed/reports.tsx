@@ -7,6 +7,7 @@ import {
   MemberReportTable,
   PeriodPicker,
   ProjectReportTable,
+  ReportPrintHeader,
   ReportTaskList,
   ReportTotals,
   periodAtom,
@@ -33,6 +34,8 @@ function ReportsPage() {
       <div className="flex items-center justify-between print:hidden">
         <h1 className="text-2xl font-semibold">Reports</h1>
       </div>
+
+      <ReportPrintHeader window={activeWindow} />
 
       <PeriodPicker
         window={activeWindow}
