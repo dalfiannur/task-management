@@ -2492,11 +2492,14 @@ function ReportsPage() {
   const [period, setPeriod] = useAtom(periodAtom);
   // `new Date()` is not a stable dependency, so pin the window per selection —
   // otherwise every render produces new instants and refetches the report.
-  const window = useMemo(
+  // Named `activeWindow`, not `window`: a local called `window` shadows the
+  // browser global, which ESLint does not catch and the next person to add a
+  // line that needs it will not expect.
+  const activeWindow = useMemo(
     () => periodWindow(period.granularity, period.offset),
     [period.granularity, period.offset],
   );
-  const { report, isLoading } = usePeriodReport(window);
+  const { report, isLoading, isError, error } = usePeriodReport(activeWindow);
 
   return (
     <div className="mx-auto max-w-7xl space-y-8 p-6">
@@ -2505,12 +2508,21 @@ function ReportsPage() {
       </div>
 
       <PeriodPicker
-        window={window}
+        window={activeWindow}
         onGranularity={(granularity) => setPeriod({ granularity, offset: period.offset })}
         onOffset={(offset) => setPeriod({ granularity: period.granularity, offset })}
       />
 
-      {isLoading || !report ? (
+      {/* Error before loading. On a failed query TanStack settles isLoading to
+          false while data stays undefined, so `isLoading || !report` alone
+          leaves a failed request on the skeleton forever — a page that says it
+          is still loading when it has already given up. Pattern follows
+          features/projects/components/project-list.tsx. */}
+      {isError ? (
+        <p className="text-sm text-danger">
+          {error?.message ?? "Could not load this report."}
+        </p>
+      ) : isLoading || !report ? (
         <div className="space-y-4">
           <Skeleton className="h-20 w-full rounded-xl shadow-2" />
           <Skeleton className="h-48 w-full rounded-xl shadow-2" />
@@ -2641,10 +2653,16 @@ Create `apps/frontend/src/styles/print.css`:
     --warning: #6b3f00;
     --warning-subtle: #fbf1e0;
 
-    /* Shadows are how the screen separates surfaces. On paper they print as
-       grey smudges, so separation falls to the borders above. */
+    /* Shadows are how the screen separates surfaces. A blurred shadow prints as
+       a grey smudge, so most of them go. But `Card` sets `border: none` and none
+       of the report's panels carries a border class either — dropping shadow-2
+       as well would leave every panel with no edge at all on white paper. A
+       zero-blur ring is not a blur: it is a crisp 1px rule, delivered through
+       the token those panels already use, so no component has to change.
+       shadow-1 appears only on print-hidden chrome and a loading skeleton;
+       3, 4 and 5 only on dialogs that cannot be open on this page. */
     --shadow-1: none;
-    --shadow-2: none;
+    --shadow-2: 0 0 0 1px var(--border);
     --shadow-3: none;
     --shadow-4: none;
     --shadow-5: none;
