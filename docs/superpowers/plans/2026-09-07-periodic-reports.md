@@ -427,7 +427,7 @@ async fn requires_authentication() {
         eprintln!("skip: DATABASE_URL not set");
         return;
     };
-    let (s, e) = window();
+    let (s, e, _, _) = window();
     let (st, _) = call(
         &router,
         &format!("{REPORT}/GetPeriodReport"),
