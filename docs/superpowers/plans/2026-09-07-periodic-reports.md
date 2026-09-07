@@ -2159,22 +2159,29 @@ export function ReportTotals({
   totals: PeriodTotals;
   prev: PeriodTotals | null;
 }) {
+  /* Each delta lives inside its own stat's cell, not in a second row below.
+     Two sibling grids do NOT interleave: the whole first grid renders, then the
+     second begins beneath all of it. Matching `grid-cols-N` aligns the columns
+     and says nothing about which row lands beside which — so at `sm` the
+     completed delta sat under "Still open", and at one column under "Overdue".
+     A number under the wrong label. Putting the delta in the cell removes the
+     wrap parity there was to keep in sync. */
   return (
-    <div className="space-y-3 print:break-inside-avoid">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 print:break-inside-avoid">
+      <div className="space-y-2">
         <StatCard icon={CheckCircle2} label="Completed" value={totals.completed} />
+        {prev && <Delta now={totals.completed} before={prev.completed} />}
+      </div>
+      <div className="space-y-2">
         <StatCard icon={Plus} label="Created" value={totals.created} />
+        {prev && <Delta now={totals.created} before={prev.created} />}
+      </div>
+      <div className="space-y-2">
         <StatCard icon={ListTodo} label="Still open" value={totals.stillOpen} />
+      </div>
+      <div className="space-y-2">
         <StatCard icon={AlertTriangle} label="Overdue" value={totals.overdue} alert />
       </div>
-      {prev && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Delta now={totals.completed} before={prev.completed} />
-          <Delta now={totals.created} before={prev.created} />
-          <span />
-          <span />
-        </div>
-      )}
     </div>
   );
 }
