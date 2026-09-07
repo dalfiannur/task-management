@@ -1623,7 +1623,8 @@ eq("start is local midnight", w.start.getHours(), 0);
 
 process.exit(failed === 0 ? 0 : 1);
 TS
-cd apps/frontend && bun /tmp/claude-scratch/check-period.ts```
+cd apps/frontend && bun /tmp/claude-scratch/check-period.ts
+```
 
 - [ ] **Step 2: Run the check to verify it fails**
 
