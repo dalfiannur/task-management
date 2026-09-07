@@ -16,6 +16,7 @@ import { Route as RegisterRouteImport } from './routes/register'
 import { Route as SetupRouteImport } from './routes/setup'
 import { Route as AuthedDashboardRouteImport } from './routes/_authed/dashboard'
 import { Route as AuthedMyTasksRouteImport } from './routes/_authed/my-tasks'
+import { Route as AuthedReportsRouteImport } from './routes/_authed/reports'
 import { Route as AuthedAdminUsersRouteImport } from './routes/_authed/admin/users'
 import { Route as AuthedProjectsIndexRouteImport } from './routes/_authed/projects/index'
 import { Route as AuthedProjectsProjectIdRouteImport } from './routes/_authed/projects/$projectId'
@@ -60,6 +61,11 @@ const AuthedDashboardRoute = AuthedDashboardRouteImport.update({
 const AuthedMyTasksRoute = AuthedMyTasksRouteImport.update({
   id: '/my-tasks',
   path: '/my-tasks',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedReportsRoute = AuthedReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
   getParentRoute: () => AuthedRoute,
 } as any)
 const AuthedAdminUsersRoute = AuthedAdminUsersRouteImport.update({
@@ -132,6 +138,7 @@ export interface FileRoutesByFullPath {
   '/setup': typeof SetupRoute
   '/dashboard': typeof AuthedDashboardRoute
   '/my-tasks': typeof AuthedMyTasksRoute
+  '/reports': typeof AuthedReportsRoute
   '/admin/users': typeof AuthedAdminUsersRoute
   '/projects/$projectId': typeof AuthedProjectsProjectIdRouteWithChildren
   '/settings/tokens': typeof AuthedSettingsTokensRoute
@@ -151,6 +158,7 @@ export interface FileRoutesByTo {
   '/setup': typeof SetupRoute
   '/dashboard': typeof AuthedDashboardRoute
   '/my-tasks': typeof AuthedMyTasksRoute
+  '/reports': typeof AuthedReportsRoute
   '/admin/users': typeof AuthedAdminUsersRoute
   '/settings/tokens': typeof AuthedSettingsTokensRoute
   '/projects': typeof AuthedProjectsIndexRoute
@@ -171,6 +179,7 @@ export interface FileRoutesById {
   '/setup': typeof SetupRoute
   '/_authed/dashboard': typeof AuthedDashboardRoute
   '/_authed/my-tasks': typeof AuthedMyTasksRoute
+  '/_authed/reports': typeof AuthedReportsRoute
   '/_authed/admin/users': typeof AuthedAdminUsersRoute
   '/_authed/projects/$projectId': typeof AuthedProjectsProjectIdRouteWithChildren
   '/_authed/settings/tokens': typeof AuthedSettingsTokensRoute
@@ -192,6 +201,7 @@ export interface FileRouteTypes {
     | '/setup'
     | '/dashboard'
     | '/my-tasks'
+    | '/reports'
     | '/admin/users'
     | '/projects/$projectId'
     | '/settings/tokens'
@@ -211,6 +221,7 @@ export interface FileRouteTypes {
     | '/setup'
     | '/dashboard'
     | '/my-tasks'
+    | '/reports'
     | '/admin/users'
     | '/settings/tokens'
     | '/projects'
@@ -230,6 +241,7 @@ export interface FileRouteTypes {
     | '/setup'
     | '/_authed/dashboard'
     | '/_authed/my-tasks'
+    | '/_authed/reports'
     | '/_authed/admin/users'
     | '/_authed/projects/$projectId'
     | '/_authed/settings/tokens'
@@ -300,6 +312,13 @@ declare module '@tanstack/react-router' {
       path: '/my-tasks'
       fullPath: '/my-tasks'
       preLoaderRoute: typeof AuthedMyTasksRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/reports': {
+      id: '/_authed/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof AuthedReportsRouteImport
       parentRoute: typeof AuthedRoute
     }
     '/_authed/admin/users': {
@@ -411,6 +430,7 @@ const AuthedProjectsProjectIdRouteWithChildren =
 interface AuthedRouteChildren {
   AuthedDashboardRoute: typeof AuthedDashboardRoute
   AuthedMyTasksRoute: typeof AuthedMyTasksRoute
+  AuthedReportsRoute: typeof AuthedReportsRoute
   AuthedAdminUsersRoute: typeof AuthedAdminUsersRoute
   AuthedProjectsProjectIdRoute: typeof AuthedProjectsProjectIdRouteWithChildren
   AuthedSettingsTokensRoute: typeof AuthedSettingsTokensRoute
@@ -420,6 +440,7 @@ interface AuthedRouteChildren {
 const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedDashboardRoute: AuthedDashboardRoute,
   AuthedMyTasksRoute: AuthedMyTasksRoute,
+  AuthedReportsRoute: AuthedReportsRoute,
   AuthedAdminUsersRoute: AuthedAdminUsersRoute,
   AuthedProjectsProjectIdRoute: AuthedProjectsProjectIdRouteWithChildren,
   AuthedSettingsTokensRoute: AuthedSettingsTokensRoute,
