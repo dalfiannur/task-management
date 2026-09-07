@@ -4,7 +4,7 @@ export function MemberReportTable({ rows }: { rows: MemberReportRow[] }) {
   if (rows.length === 0) {
     return (
       <p className="rounded-xl bg-surface-raised p-6 text-center text-sm text-text-muted shadow-2">
-        Nobody completed or created anything in this period.
+        No member activity in this period.
       </p>
     );
   }
