@@ -2,7 +2,10 @@
 //! Project/Comment data. See docs/…/dashboard-my-tasks-flow-design.md.
 //! No new entities; scoped to the caller's member projects (admin: all).
 
-mod context;
+/// Shared cross-project aggregation primitive: scope + name maps + every task,
+/// loaded once. `reports` uses the same one, so the dashboard and the period
+/// report cannot drift on what "done" means.
+pub(crate) mod context;
 mod dashboard_service;
 pub(crate) mod mytasks_service;
 mod project_overview;
