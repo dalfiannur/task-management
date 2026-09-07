@@ -169,6 +169,7 @@ async fn empty_scope_reports_zero() {
     assert_eq!(r["totals"]["created"].as_u64().unwrap_or(0), 0, "{r}");
     assert!(r["perProject"].as_array().map(|a| a.is_empty()).unwrap_or(true), "{r}");
     assert!(r["perMember"].as_array().map(|a| a.is_empty()).unwrap_or(true), "{r}");
+    assert_eq!(r["activityTotal"].as_u64().unwrap_or(0), 0, "{r}");
 }
 
 #[tokio::test]
@@ -219,4 +220,117 @@ async fn activity_is_summarised_for_the_window_and_scope() {
     )
     .await;
     assert_eq!(r_old["activityTotal"].as_u64().unwrap_or(0), 0, "{r_old}");
+}
+
+#[tokio::test]
+async fn report_is_member_scoped_and_counts_the_window() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let owner = mk_user(&store).await;
+    let me = mk_user(&store).await;
+    let (to, tm) = (token(&owner), token(&me));
+
+    // P1: owner + me.
+    let p1 = ok(&router, &format!("{PROJECT}/CreateProject"), &to, json!({ "name": format!("RP1-{}", uniq()) })).await
+        ["id"].as_str().unwrap().to_string();
+    ok(&router, &format!("{PROJECT}/AddProjectMember"), &to, json!({ "projectId": p1, "userId": me })).await;
+    let m1 = ok(&router, &format!("{MODULE}/CreateModule"), &to, json!({ "projectId": p1, "name": "M1" })).await
+        ["id"].as_str().unwrap().to_string();
+
+    // A: done and assigned to me -> completed this window, for me.
+    let a = ok(&router, &format!("{TASK}/CreateTask"), &to, json!({ "moduleId": m1, "title": "A", "assigneeIds": [me] })).await
+        ["id"].as_str().unwrap().to_string();
+    ok(&router, &format!("{TASK}/UpdateTask"), &to, json!({ "id": a, "status": "DONE" })).await;
+    // B: open, assigned to me, due long ago -> still_open + overdue now.
+    ok(&router, &format!("{TASK}/CreateTask"), &to, json!({ "moduleId": m1, "title": "B", "assigneeIds": [me], "dueDate": "2020-01-01" })).await;
+    // C: cancelled -> counts nowhere.
+    ok(&router, &format!("{TASK}/CreateTask"), &to, json!({ "moduleId": m1, "title": "C", "status": "CANCELLED" })).await;
+
+    // P2: owner only. Must not appear in me's report at all.
+    let p2 = ok(&router, &format!("{PROJECT}/CreateProject"), &to, json!({ "name": format!("RP2-{}", uniq()) })).await
+        ["id"].as_str().unwrap().to_string();
+    let m2 = ok(&router, &format!("{MODULE}/CreateModule"), &to, json!({ "projectId": p2, "name": "M2" })).await
+        ["id"].as_str().unwrap().to_string();
+    ok(&router, &format!("{TASK}/CreateTask"), &to, json!({ "moduleId": m2, "title": "hidden" })).await;
+
+    let (s, e, ps, pe) = window();
+    let r = ok(
+        &router,
+        &format!("{REPORT}/GetPeriodReport"),
+        &tm,
+        json!({ "periodStart": s, "periodEnd": e, "prevStart": ps, "prevEnd": pe }),
+    )
+    .await;
+
+    assert_eq!(r["totals"]["completed"].as_u64().unwrap(), 1, "A: {r}");
+    assert_eq!(r["totals"]["created"].as_u64().unwrap(), 2, "A and B; C is cancelled: {r}");
+    assert_eq!(r["totals"]["stillOpen"].as_u64().unwrap(), 1, "B: {r}");
+    assert_eq!(r["totals"]["overdue"].as_u64().unwrap(), 1, "B: {r}");
+    assert!(r["prevTotals"].is_object(), "a comparison window was sent: {r}");
+    assert_eq!(r["prevTotals"]["completed"].as_u64().unwrap_or(0), 0, "{r}");
+
+    let projects = r["perProject"].as_array().unwrap();
+    assert_eq!(projects.len(), 1, "P2 is out of scope: {r}");
+    assert_eq!(projects[0]["projectId"], p1);
+    assert_eq!(projects[0]["total"].as_u64().unwrap(), 2, "cancelled excluded: {r}");
+    assert_eq!(projects[0]["doneTotal"].as_u64().unwrap(), 1);
+
+    let members = r["perMember"].as_array().unwrap();
+    let mine = members.iter().find(|m| m["userId"] == me).expect("a row for me");
+    assert_eq!(mine["completed"].as_u64().unwrap(), 1);
+    assert_eq!(mine["openAssigned"].as_u64().unwrap(), 1);
+    assert_eq!(mine["overdueAssigned"].as_u64().unwrap(), 1);
+    assert_eq!(mine["userName"], "R", "display name is joined in");
+
+    let completed = r["completedTasks"].as_array().unwrap();
+    assert_eq!(completed.len(), 1);
+    assert_eq!(completed[0]["task"]["title"], "A");
+    assert_eq!(completed[0]["projectName"], projects[0]["projectName"]);
+    assert!(!r["completedTruncated"].as_bool().unwrap_or(false), "{r}");
+
+    let late = r["overdueTasks"].as_array().unwrap();
+    assert_eq!(late.len(), 1);
+    assert_eq!(late[0]["task"]["title"], "B");
+
+    // No comparison window -> no prevTotals.
+    let no_prev = ok(
+        &router,
+        &format!("{REPORT}/GetPeriodReport"),
+        &tm,
+        json!({ "periodStart": s, "periodEnd": e }),
+    )
+    .await;
+    assert!(no_prev["prevTotals"].is_null(), "{no_prev}");
+}
+
+#[tokio::test]
+async fn list_limit_truncates_and_says_so() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let me = mk_user(&store).await;
+    let tm = token(&me);
+    let p = ok(&router, &format!("{PROJECT}/CreateProject"), &tm, json!({ "name": format!("RL-{}", uniq()) })).await
+        ["id"].as_str().unwrap().to_string();
+    let m = ok(&router, &format!("{MODULE}/CreateModule"), &tm, json!({ "projectId": p, "name": "M" })).await
+        ["id"].as_str().unwrap().to_string();
+    for i in 0..3 {
+        let id = ok(&router, &format!("{TASK}/CreateTask"), &tm, json!({ "moduleId": m, "title": format!("t{i}") })).await
+            ["id"].as_str().unwrap().to_string();
+        ok(&router, &format!("{TASK}/UpdateTask"), &tm, json!({ "id": id, "status": "DONE" })).await;
+    }
+    let (s, e, _, _) = window();
+    let r = ok(
+        &router,
+        &format!("{REPORT}/GetPeriodReport"),
+        &tm,
+        json!({ "periodStart": s, "periodEnd": e, "listLimit": 2 }),
+    )
+    .await;
+    assert_eq!(r["completedTasks"].as_array().unwrap().len(), 2, "{r}");
+    assert_eq!(r["completedTruncated"], true, "{r}");
+    assert_eq!(r["totals"]["completed"].as_u64().unwrap(), 3, "totals are not capped: {r}");
 }

@@ -1,5 +1,6 @@
 //! ReportService: one RPC, one window, four sections.
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use auth::AuthUser;
@@ -8,11 +9,13 @@ use connectrpc_axum::{ConnectError, ConnectRequest, ConnectResponse};
 use persistence::Store;
 
 use super::activity_summary::activity_summary;
+use super::aggregate::{completed_list, overdue_list, per_member, per_project, totals};
 use super::window::Window;
 use super::{internal, require_auth, StoreExt};
-use crate::dashboard::context::Context;
+use crate::dashboard::context::{today, Context};
 use crate::sedjiwa::tasks::reports::v1 as pb;
 use crate::sedjiwa::tasks::reports::v1::report_service_connect::ReportServiceBuilder;
+use crate::users::record::load_all_users;
 
 /// Cap on the task lists. A month of completed work is readable; a year of it
 /// is a data dump, and the page says when it truncated.
@@ -30,18 +33,48 @@ async fn get_period_report(
             "period_start and period_end must be RFC3339 instants with period_start < period_end",
         )
     })?;
-    let _limit = if r.list_limit == 0 { DEFAULT_LIST_LIMIT } else { r.list_limit };
+    // A comparison window is optional, but a malformed one is still an error:
+    // silently dropping it would show the page "no comparison" for a bug.
+    let prev = if r.prev_start.is_empty() && r.prev_end.is_empty() {
+        None
+    } else {
+        Some(Window::parse(&r.prev_start, &r.prev_end).ok_or_else(|| {
+            ConnectError::new_invalid_argument(
+                "prev_start and prev_end must both be empty, or a valid window",
+            )
+        })?)
+    };
+    let limit = if r.list_limit == 0 { DEFAULT_LIST_LIMIT } else { r.list_limit } as usize;
 
     let ctx = Context::load(&store, &auth).await.map_err(internal)?;
+    let today = today();
+    let scoped = ctx.scoped_tasks();
+
+    let names: HashMap<String, String> = load_all_users(&store)
+        .await
+        .map_err(internal)?
+        .into_iter()
+        .map(|u| (u.pid.to_string(), u.display_name))
+        .collect();
+
+    let (completed_tasks, completed_truncated) = completed_list(&ctx, &window, limit);
+    let (overdue_tasks, overdue_truncated) = overdue_list(&ctx, &today, limit);
     let (activity_summary_rows, activity_total) =
         activity_summary(&store, ctx.scope.as_ref(), &window).await.map_err(internal)?;
 
     Ok(ConnectResponse::new(pb::PeriodReport {
         period_start: window.start().to_string(),
         period_end: window.end().to_string(),
+        totals: Some(totals(&scoped, &window, &today)),
+        prev_totals: prev.as_ref().map(|w| totals(&scoped, w, &today)),
+        per_project: per_project(&ctx, &window, &today),
+        per_member: per_member(&ctx, &window, &today, &names),
+        completed_tasks,
+        completed_truncated,
+        overdue_tasks,
+        overdue_truncated,
         activity_summary: activity_summary_rows,
         activity_total,
-        ..Default::default()
     }))
 }
 
