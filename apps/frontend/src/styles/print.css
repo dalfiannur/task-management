@@ -38,9 +38,15 @@
     --warning-subtle: #fbf1e0;
 
     /* Shadows are how the screen separates surfaces. On paper they print as
-       grey smudges, so separation falls to the borders above. */
+       grey smudges, so separation falls to the borders above. --shadow-2 is
+       the one shadow token load-bearing for printed content (raised panels
+       in the report tables/lists carry it and no border class of their
+       own), so it becomes a crisp 1px ring instead of a blur — the only way
+       to give those panels an edge without touching their component files.
+       --shadow-1/3/4/5 are only ever on print-hidden chrome or on dialogs/
+       overlays that cannot be open on this page, so they go to none. */
     --shadow-1: none;
-    --shadow-2: none;
+    --shadow-2: 0 0 0 1px var(--border);
     --shadow-3: none;
     --shadow-4: none;
     --shadow-5: none;
