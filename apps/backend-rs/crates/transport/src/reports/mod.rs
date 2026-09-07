@@ -2,6 +2,7 @@
 //! See docs/superpowers/specs/2026-09-07-periodic-reports-design.md.
 //! No new entities; scope is the dashboard's (member projects, admin: all).
 
+mod activity_summary;
 mod aggregate;
 mod report_service;
 pub(crate) mod window;
@@ -17,7 +18,6 @@ use persistence::Store;
 
 pub(crate) type StoreExt = Extension<Arc<Store>>;
 
-#[allow(dead_code)]
 pub(crate) fn internal(e: impl std::fmt::Display) -> ConnectError {
     ConnectError::new_internal(e.to_string())
 }

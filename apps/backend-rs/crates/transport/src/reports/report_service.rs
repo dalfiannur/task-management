@@ -7,8 +7,10 @@ use axum::Extension;
 use connectrpc_axum::{ConnectError, ConnectRequest, ConnectResponse};
 use persistence::Store;
 
+use super::activity_summary::activity_summary;
 use super::window::Window;
-use super::{require_auth, StoreExt};
+use super::{internal, require_auth, StoreExt};
+use crate::dashboard::context::Context;
 use crate::sedjiwa::tasks::reports::v1 as pb;
 use crate::sedjiwa::tasks::reports::v1::report_service_connect::ReportServiceBuilder;
 
@@ -17,11 +19,11 @@ use crate::sedjiwa::tasks::reports::v1::report_service_connect::ReportServiceBui
 const DEFAULT_LIST_LIMIT: u32 = 50;
 
 async fn get_period_report(
-    Extension(_store): StoreExt,
+    Extension(store): StoreExt,
     user: Option<Extension<AuthUser>>,
     req: ConnectRequest<pb::GetPeriodReportRequest>,
 ) -> Result<ConnectResponse<pb::PeriodReport>, ConnectError> {
-    let _auth = require_auth(user)?;
+    let auth = require_auth(user)?;
     let ConnectRequest(r) = req;
     let window = Window::parse(&r.period_start, &r.period_end).ok_or_else(|| {
         ConnectError::new_invalid_argument(
@@ -30,9 +32,15 @@ async fn get_period_report(
     })?;
     let _limit = if r.list_limit == 0 { DEFAULT_LIST_LIMIT } else { r.list_limit };
 
+    let ctx = Context::load(&store, &auth).await.map_err(internal)?;
+    let (activity_summary_rows, activity_total) =
+        activity_summary(&store, ctx.scope.as_ref(), &window).await.map_err(internal)?;
+
     Ok(ConnectResponse::new(pb::PeriodReport {
         period_start: window.start().to_string(),
         period_end: window.end().to_string(),
+        activity_summary: activity_summary_rows,
+        activity_total,
         ..Default::default()
     }))
 }

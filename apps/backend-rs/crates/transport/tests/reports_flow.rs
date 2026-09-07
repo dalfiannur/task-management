@@ -170,3 +170,53 @@ async fn empty_scope_reports_zero() {
     assert!(r["perProject"].as_array().map(|a| a.is_empty()).unwrap_or(true), "{r}");
     assert!(r["perMember"].as_array().map(|a| a.is_empty()).unwrap_or(true), "{r}");
 }
+
+#[tokio::test]
+async fn activity_is_summarised_for_the_window_and_scope() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let me = mk_user(&store).await;
+    let tm = token(&me);
+
+    // One project, one module, two tasks -> activity rows written by the
+    // mutation handlers themselves.
+    let p = ok(&router, &format!("{PROJECT}/CreateProject"), &tm, json!({ "name": format!("R-{}", uniq()) })).await
+        ["id"].as_str().unwrap().to_string();
+    let m = ok(&router, &format!("{MODULE}/CreateModule"), &tm, json!({ "projectId": p, "name": "M" })).await
+        ["id"].as_str().unwrap().to_string();
+    let t1 = ok(&router, &format!("{TASK}/CreateTask"), &tm, json!({ "moduleId": m, "title": "one" })).await
+        ["id"].as_str().unwrap().to_string();
+    ok(&router, &format!("{TASK}/UpdateTask"), &tm, json!({ "id": t1, "title": "one edited" })).await;
+
+    let (s, e, ps, pe) = window();
+    let r = ok(
+        &router,
+        &format!("{REPORT}/GetPeriodReport"),
+        &tm,
+        json!({ "periodStart": s, "periodEnd": e, "prevStart": ps, "prevEnd": pe }),
+    )
+    .await;
+
+    let total = r["activityTotal"].as_u64().unwrap_or(0);
+    assert!(total >= 3, "module create + task create + task update: {r}");
+    let rows = r["activitySummary"].as_array().unwrap();
+    assert!(!rows.is_empty(), "{r}");
+    assert!(
+        rows.iter().all(|row| row["count"].as_u64().unwrap_or(0) > 0),
+        "zero rows must be dropped: {r}"
+    );
+    let created_tasks = rows.iter().find(|row| row["entityType"] == "TASK" && row["action"] == "CREATED");
+    assert!(created_tasks.is_some(), "a TASK/CREATED row is expected: {r}");
+
+    // A window in the far past sees none of it.
+    let r_old = ok(
+        &router,
+        &format!("{REPORT}/GetPeriodReport"),
+        &tm,
+        json!({ "periodStart": "2020-01-01T00:00:00Z", "periodEnd": "2020-01-08T00:00:00Z" }),
+    )
+    .await;
+    assert_eq!(r_old["activityTotal"].as_u64().unwrap_or(0), 0, "{r_old}");
+}
