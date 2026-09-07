@@ -1,7 +1,11 @@
 //! Task-side aggregation for a period report.
 //!
-//! Everything here reads `Context` — the same scope, the same task set, and the
-//! same cancelled-counts-nowhere rule the dashboard uses.
+//! The counting rules (`totals`, `is_open`, `is_overdue`, `member_rows`) work
+//! over a plain task slice, with no `Context` involved, so they can be
+//! unit-tested without a database. The `Context`-taking wrappers
+//! (`per_project`, `per_member`, `completed_list`, `overdue_list`) apply those
+//! same rules to the caller's scope — the same scope, the same task set, and
+//! the same cancelled-counts-nowhere rule the dashboard uses.
 
 use std::collections::HashMap;
 
@@ -314,12 +318,51 @@ mod tests {
         c.created_by = "8".into();
 
         let rows = member_rows(&[&a, &b, &c], &w(), "2026-09-20", &names());
-        // 7 has two completions, 8 has one, 9 only created outside the window
-        // -> 9 has one `created`, so it stays. Order: by completed desc.
+        // 7 has two completions, 8 has one; 9 is never assigned but is
+        // `created_by` on task 1, whose `created_at` is the helper's default
+        // and lands inside the window -> 9 has one `created`, so it stays.
+        // Order: by completed desc.
         assert_eq!(rows[0].user_id, "7");
         assert_eq!(rows[0].completed, 2);
         assert_eq!(rows[1].user_id, "8");
         assert!(rows.iter().any(|r| r.user_id == "9" && r.created == 1));
+    }
+
+    #[test]
+    fn open_and_overdue_assigned_are_counted_separately() {
+        let today = "2026-09-20";
+        let mut overdue = task(1, TaskStatus::InProgress);
+        overdue.assignee_ids = vec!["7".into()];
+        overdue.due_date = Some("2026-09-01".into()); // past today
+
+        let rows = member_rows(&[&overdue], &w(), today, &names());
+        let seven = rows.iter().find(|r| r.user_id == "7").unwrap();
+        assert_eq!(seven.open_assigned, 1);
+        assert_eq!(seven.overdue_assigned, 1, "open and past its due date");
+
+        let mut not_overdue = task(2, TaskStatus::Todo);
+        not_overdue.assignee_ids = vec!["7".into()];
+        not_overdue.due_date = None; // no due date -> never overdue
+
+        let rows = member_rows(&[&overdue, &not_overdue], &w(), today, &names());
+        let seven = rows.iter().find(|r| r.user_id == "7").unwrap();
+        assert_eq!(seven.open_assigned, 2, "both open tasks are assigned to 7");
+        assert_eq!(seven.overdue_assigned, 1, "only the past-due one is overdue");
+    }
+
+    #[test]
+    fn a_member_with_only_zero_rows_is_dropped() {
+        let mut old = task(1, TaskStatus::Done);
+        old.assignee_ids = vec!["7".into()];
+        old.completed_at = Some("2026-08-01T09:00:00Z".into()); // before the window
+        old.created_at = "2026-08-01T09:00:00Z".into(); // before the window too
+        old.created_by = "9".into(); // not 7, so 7 gets no `created` either
+
+        let rows = member_rows(&[&old], &w(), "2026-09-20", &names());
+        assert!(
+            rows.iter().all(|r| r.user_id != "7"),
+            "an all-zero row must be dropped, not kept: {rows:?}"
+        );
     }
 
     #[test]
