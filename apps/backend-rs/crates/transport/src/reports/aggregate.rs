@@ -11,7 +11,7 @@ use std::collections::HashMap;
 
 use domain::task::TaskStatus;
 
-use super::window::Window;
+use super::window::{DateWindow, Window};
 use crate::dashboard::context::Context;
 use crate::sedjiwa::tasks::dashboard::v1::MyTask;
 use crate::sedjiwa::tasks::reports::v1 as pb;
@@ -29,12 +29,34 @@ pub(crate) fn is_overdue(t: &TaskRecord, today: &str) -> bool {
     is_open(t) && t.due_date.as_ref().is_some_and(|d| d.as_str() < today)
 }
 
-fn counts(t: &TaskRecord, w: &Window, today: &str, into: &mut pb::PeriodTotals) {
+/// Did this task *start* inside the period?
+///
+/// `start_date` when the task has one — that is when the work was scheduled to
+/// begin, which is what a period report is asking about. `created_at` is only
+/// the administrative trace of someone typing the task in.
+///
+/// `start_date` is optional, and a task without one would otherwise fall out of
+/// every period and disappear from the report. So it falls back to `created_at`.
+/// The cost of that choice is stated plainly: this one number mixes two
+/// meanings, and a reader cannot tell which rows came from which.
+///
+/// The two fields are different shapes — a plain local date and a UTC instant —
+/// so each is compared against the boundary of its own type. They are never
+/// compared against each other; see [`DateWindow`] for what goes wrong if they
+/// are.
+fn started(t: &TaskRecord, w: &Window, dw: &DateWindow) -> bool {
+    match t.start_date.as_ref() {
+        Some(d) => dw.contains(d),
+        None => w.contains(&t.created_at),
+    }
+}
+
+fn counts(t: &TaskRecord, w: &Window, dw: &DateWindow, today: &str, into: &mut pb::PeriodTotals) {
     if w.contains_opt(t.completed_at.as_ref()) && t.status == TaskStatus::Done {
         into.completed += 1;
     }
-    if w.contains(&t.created_at) {
-        into.created += 1;
+    if started(t, w, dw) {
+        into.started += 1;
     }
     if is_open(t) {
         into.still_open += 1;
@@ -45,20 +67,30 @@ fn counts(t: &TaskRecord, w: &Window, today: &str, into: &mut pb::PeriodTotals) 
 }
 
 /// The four headline numbers over an already-scoped, already-filtered task set.
-pub(crate) fn totals(tasks: &[&TaskRecord], w: &Window, today: &str) -> pb::PeriodTotals {
+pub(crate) fn totals(
+    tasks: &[&TaskRecord],
+    w: &Window,
+    dw: &DateWindow,
+    today: &str,
+) -> pb::PeriodTotals {
     let mut out = pb::PeriodTotals::default();
     for t in tasks {
         if t.status == TaskStatus::Cancelled {
             continue;
         }
-        counts(t, w, today, &mut out);
+        counts(t, w, dw, today, &mut out);
     }
     out
 }
 
 /// One row per scoped project — including projects with no activity at all,
 /// which appear as zeros so a reader can see they were considered.
-pub(crate) fn per_project(ctx: &Context, w: &Window, today: &str) -> Vec<pb::ProjectReportRow> {
+pub(crate) fn per_project(
+    ctx: &Context,
+    w: &Window,
+    dw: &DateWindow,
+    today: &str,
+) -> Vec<pb::ProjectReportRow> {
     let mut rows: HashMap<String, pb::ProjectReportRow> = ctx
         .scoped_projects()
         .into_iter()
@@ -92,9 +124,9 @@ pub(crate) fn per_project(ctx: &Context, w: &Window, today: &str) -> Vec<pb::Pro
             row.done_total += 1;
         }
         let mut window_counts = pb::PeriodTotals::default();
-        counts(t, w, today, &mut window_counts);
+        counts(t, w, dw, today, &mut window_counts);
         row.completed += window_counts.completed;
-        row.created += window_counts.created;
+        row.started += window_counts.started;
         row.still_open += window_counts.still_open;
         row.overdue += window_counts.overdue;
     }
@@ -114,6 +146,7 @@ pub(crate) fn per_project(ctx: &Context, w: &Window, today: &str) -> Vec<pb::Pro
 pub(crate) fn member_rows(
     tasks: &[&TaskRecord],
     w: &Window,
+    dw: &DateWindow,
     today: &str,
     names: &HashMap<String, String>,
 ) -> Vec<pb::MemberReportRow> {
@@ -144,19 +177,21 @@ pub(crate) fn member_rows(
             }
         }
 
-        if w.contains(&t.created_at) {
+        // Keyed on who created the task, but windowed on when the work
+        // started — the same `started` rule the totals use.
+        if started(t, w, dw) {
             let r = rows.entry(t.created_by.clone()).or_insert_with(|| pb::MemberReportRow {
                 user_id: t.created_by.clone(),
                 user_name: names.get(&t.created_by).cloned().unwrap_or_default(),
                 ..Default::default()
             });
-            r.created += 1;
+            r.started += 1;
         }
     }
 
     let mut out: Vec<pb::MemberReportRow> = rows
         .into_values()
-        .filter(|r| r.completed + r.created + r.open_assigned + r.overdue_assigned > 0)
+        .filter(|r| r.completed + r.started + r.open_assigned + r.overdue_assigned > 0)
         .collect();
     out.sort_by(|a, b| {
         b.completed
@@ -170,10 +205,11 @@ pub(crate) fn member_rows(
 pub(crate) fn per_member(
     ctx: &Context,
     w: &Window,
+    dw: &DateWindow,
     today: &str,
     names: &HashMap<String, String>,
 ) -> Vec<pb::MemberReportRow> {
-    member_rows(&ctx.scoped_tasks(), w, today, names)
+    member_rows(&ctx.scoped_tasks(), w, dw, today, names)
 }
 
 /// Tasks completed inside the window, newest first.
@@ -218,6 +254,22 @@ mod tests {
         Window::parse(START, END).unwrap()
     }
 
+    /// The same period as local calendar dates: Mon 7 Sep through Sun 13 Sep,
+    /// with `end` the first day of the next week.
+    fn dw() -> DateWindow {
+        DateWindow::parse("2026-09-07", "2026-09-14").unwrap()
+    }
+
+    /// `member_rows` with both windows filled in from the fixtures above.
+    fn member_rows_dw(
+        tasks: &[&TaskRecord],
+        w: &Window,
+        today: &str,
+        names: &HashMap<String, String>,
+    ) -> Vec<pb::MemberReportRow> {
+        member_rows(tasks, w, &dw(), today, names)
+    }
+
     fn task(pid: i64, status: TaskStatus) -> TaskRecord {
         TaskRecord {
             pid,
@@ -255,12 +307,75 @@ mod tests {
         open.due_date = Some("2026-09-01".into());
 
         let tasks = vec![&done, &old_done, &open];
-        let t = totals(&tasks, &w(), today);
+        let t = totals(&tasks, &w(), &dw(), today);
 
         assert_eq!(t.completed, 1, "only the in-window completion");
-        assert_eq!(t.created, 2, "done + old_done were created in the window");
+        assert_eq!(t.started, 2, "done + old_done: no start_date, so created_at is used");
         assert_eq!(t.still_open, 1);
         assert_eq!(t.overdue, 1);
+    }
+
+    #[test]
+    fn started_prefers_start_date_over_created_at() {
+        let today = "2026-09-20";
+
+        // Created long before the period, but scheduled to start inside it.
+        // Under the old created_at rule this task was invisible; it is exactly
+        // the case the change exists for.
+        let mut scheduled = task(1, TaskStatus::Todo);
+        scheduled.created_at = "2026-01-01T00:00:00Z".into();
+        scheduled.start_date = Some("2026-09-09".into());
+
+        // Typed in during the period, but scheduled for later. It counted
+        // before and must not now.
+        let mut deferred = task(2, TaskStatus::Todo);
+        deferred.created_at = "2026-09-08T10:00:00Z".into();
+        deferred.start_date = Some("2026-10-01".into());
+
+        let tasks = vec![&scheduled, &deferred];
+        assert_eq!(totals(&tasks, &w(), &dw(), today).started, 1, "only the scheduled one");
+    }
+
+    #[test]
+    fn a_task_without_a_start_date_falls_back_to_created_at() {
+        let today = "2026-09-20";
+
+        let mut inside = task(1, TaskStatus::Todo); // helper default created_at is in-window
+        inside.start_date = None;
+
+        let mut outside = task(2, TaskStatus::Todo);
+        outside.start_date = None;
+        outside.created_at = "2026-01-01T00:00:00Z".into();
+
+        let tasks = vec![&inside, &outside];
+        assert_eq!(totals(&tasks, &w(), &dw(), today).started, 1);
+    }
+
+    #[test]
+    fn start_date_boundaries_are_the_periods_own_days() {
+        // The reason `start_date` is compared against a DateWindow and never
+        // against the instant bounds. Against those, "2026-09-07" is a prefix
+        // of "2026-09-07T00:00:00" and sorts below it, so the period's first
+        // day would vanish — and it sorts below the end bound too, so the next
+        // period's first day would be counted. Both ends wrong, opposite ways.
+        let today = "2026-09-20";
+        let day = |pid: i64, d: &str| {
+            let mut t = task(pid, TaskStatus::Todo);
+            t.created_at = "2026-01-01T00:00:00Z".into(); // keep the fallback out of it
+            t.start_date = Some(d.to_string());
+            t
+        };
+        let first = day(1, "2026-09-07");
+        let last = day(2, "2026-09-13");
+        let next = day(3, "2026-09-14");
+        let prev = day(4, "2026-09-06");
+
+        let tasks = vec![&first, &last, &next, &prev];
+        assert_eq!(
+            totals(&tasks, &w(), &dw(), today).started,
+            2,
+            "the period's first and last day, and neither neighbour"
+        );
     }
 
     #[test]
@@ -269,9 +384,9 @@ mod tests {
         c.completed_at = Some("2026-09-09T09:00:00Z".into());
         c.due_date = Some("2026-09-01".into());
         let tasks = vec![&c];
-        let t = totals(&tasks, &w(), "2026-09-20");
+        let t = totals(&tasks, &w(), &dw(), "2026-09-20");
         assert_eq!(t.completed, 0);
-        assert_eq!(t.created, 0);
+        assert_eq!(t.started, 0);
         assert_eq!(t.still_open, 0);
         assert_eq!(t.overdue, 0);
     }
@@ -282,7 +397,7 @@ mod tests {
         done.due_date = Some("2026-09-01".into());
         done.completed_at = Some("2026-09-09T09:00:00Z".into());
         let tasks = vec![&done];
-        assert_eq!(totals(&tasks, &w(), "2026-09-20").overdue, 0);
+        assert_eq!(totals(&tasks, &w(), &dw(), "2026-09-20").overdue, 0);
     }
 
     #[test]
@@ -300,14 +415,14 @@ mod tests {
         done.completed_at = Some("2026-09-09T09:00:00Z".into());
         done.created_by = "7".into();
 
-        let rows = member_rows(&[&done], &w(), "2026-09-20", &names());
+        let rows = member_rows_dw(&[&done], &w(), "2026-09-20", &names());
         assert_eq!(rows.len(), 2, "one row per assignee: {rows:?}");
         let seven = rows.iter().find(|r| r.user_id == "7").unwrap();
         let eight = rows.iter().find(|r| r.user_id == "8").unwrap();
         assert_eq!(seven.completed, 1);
         assert_eq!(eight.completed, 1);
-        assert_eq!(seven.created, 1, "created keys on created_by");
-        assert_eq!(eight.created, 0);
+        assert_eq!(seven.started, 1, "keyed on created_by, windowed on start");
+        assert_eq!(eight.started, 0);
     }
 
     #[test]
@@ -327,7 +442,7 @@ mod tests {
         c.completed_at = Some("2026-09-11T09:00:00Z".into());
         c.created_by = "8".into();
 
-        let rows = member_rows(&[&a, &b, &c], &w(), "2026-09-20", &names());
+        let rows = member_rows_dw(&[&a, &b, &c], &w(), "2026-09-20", &names());
         // 7 has two completions, 8 has one; 9 is never assigned but is
         // `created_by` on task 1, whose `created_at` is the helper's default
         // and lands inside the window -> 9 has one `created`, so it stays.
@@ -335,7 +450,7 @@ mod tests {
         assert_eq!(rows[0].user_id, "7");
         assert_eq!(rows[0].completed, 2);
         assert_eq!(rows[1].user_id, "8");
-        assert!(rows.iter().any(|r| r.user_id == "9" && r.created == 1));
+        assert!(rows.iter().any(|r| r.user_id == "9" && r.started == 1));
     }
 
     #[test]
@@ -345,7 +460,7 @@ mod tests {
         overdue.assignee_ids = vec!["7".into()];
         overdue.due_date = Some("2026-09-01".into()); // past today
 
-        let rows = member_rows(&[&overdue], &w(), today, &names());
+        let rows = member_rows_dw(&[&overdue], &w(), today, &names());
         let seven = rows.iter().find(|r| r.user_id == "7").unwrap();
         assert_eq!(seven.open_assigned, 1);
         assert_eq!(seven.overdue_assigned, 1, "open and past its due date");
@@ -354,7 +469,7 @@ mod tests {
         not_overdue.assignee_ids = vec!["7".into()];
         not_overdue.due_date = None; // no due date -> never overdue
 
-        let rows = member_rows(&[&overdue, &not_overdue], &w(), today, &names());
+        let rows = member_rows_dw(&[&overdue, &not_overdue], &w(), today, &names());
         let seven = rows.iter().find(|r| r.user_id == "7").unwrap();
         assert_eq!(seven.open_assigned, 2, "both open tasks are assigned to 7");
         assert_eq!(seven.overdue_assigned, 1, "only the past-due one is overdue");
@@ -368,7 +483,7 @@ mod tests {
         old.created_at = "2026-08-01T09:00:00Z".into(); // before the window too
         old.created_by = "9".into(); // not 7, so 7 gets no `created` either
 
-        let rows = member_rows(&[&old], &w(), "2026-09-20", &names());
+        let rows = member_rows_dw(&[&old], &w(), "2026-09-20", &names());
         assert!(
             rows.iter().all(|r| r.user_id != "7"),
             "an all-zero row must be dropped, not kept: {rows:?}"
@@ -380,7 +495,7 @@ mod tests {
         let mut done = task(1, TaskStatus::Done);
         done.assignee_ids = vec!["404".into()];
         done.completed_at = Some("2026-09-09T09:00:00Z".into());
-        let rows = member_rows(&[&done], &w(), "2026-09-20", &names());
+        let rows = member_rows_dw(&[&done], &w(), "2026-09-20", &names());
         let row = rows.iter().find(|r| r.user_id == "404").unwrap();
         assert_eq!(row.user_name, "", "missing user renders blank, not dropped");
     }

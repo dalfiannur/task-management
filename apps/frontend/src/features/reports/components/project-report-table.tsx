@@ -16,7 +16,7 @@ export function ProjectReportTable({ rows }: { rows: ProjectReportRow[] }) {
           <tr className="border-b border-border-subtle">
             <th className="text-label px-4 py-3 text-left">Project</th>
             <th className="text-label px-4 py-3 text-right">Completed</th>
-            <th className="text-label px-4 py-3 text-right">Created</th>
+            <th className="text-label px-4 py-3 text-right">Started</th>
             <th className="text-label px-4 py-3 text-right">Open now</th>
             <th className="text-label px-4 py-3 text-right">Overdue now</th>
             <th className="text-label px-4 py-3 text-right">Progress</th>
@@ -40,7 +40,7 @@ export function ProjectReportTable({ rows }: { rows: ProjectReportRow[] }) {
                   </Link>
                 </td>
                 <td className="text-num px-4 py-3 text-right">{r.completed}</td>
-                <td className="text-num px-4 py-3 text-right">{r.created}</td>
+                <td className="text-num px-4 py-3 text-right">{r.started}</td>
                 <td className="text-num px-4 py-3 text-right">{r.stillOpen}</td>
                 <td className="text-num px-4 py-3 text-right">
                   {r.overdue > 0 ? (

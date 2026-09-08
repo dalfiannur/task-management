@@ -14,6 +14,13 @@ export function usePeriodReport(window: PeriodWindow) {
     periodEnd: window.end.toISOString(),
     prevStart: window.prevStart.toISOString(),
     prevEnd: window.prevEnd.toISOString(),
+    // The same window as local calendar dates, for `start_date`. Required, not
+    // optional: the server cannot derive these from the instants above without
+    // being wrong by a day for any viewer off UTC.
+    periodStartDate: window.startDate,
+    periodEndDate: window.endDate,
+    prevStartDate: window.prevStartDate,
+    prevEndDate: window.prevEndDate,
   });
   const report: PeriodReport | null = result.data ? mapReport(result.data) : null;
   return { ...result, report };

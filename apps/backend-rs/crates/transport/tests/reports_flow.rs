@@ -40,6 +40,30 @@ fn window() -> (String, String, String, String) {
     (fmt(-1), fmt(1), fmt(-3), fmt(-1))
 }
 
+/// The same window as plain calendar dates, for `start_date`. The service
+/// requires these alongside the instants; the tests run in UTC, so here the
+/// two agree, which is exactly why the date bounds cannot be *derived* from
+/// the instants in the real client.
+fn window_dates() -> (String, String, String, String) {
+    let d = |n: i64| {
+        (time::OffsetDateTime::now_utc() + time::Duration::days(n))
+            .date()
+            .to_string()
+    };
+    (d(-1), d(1), d(-3), d(-1))
+}
+
+/// Request body for the common case: the whole window, no list cap.
+fn full_window_body() -> Value {
+    let (s, e, ps, pe) = window();
+    let (sd, ed, psd, ped) = window_dates();
+    json!({
+        "periodStart": s, "periodEnd": e, "prevStart": ps, "prevEnd": pe,
+        "periodStartDate": sd, "periodEndDate": ed,
+        "prevStartDate": psd, "prevEndDate": ped,
+    })
+}
+
 async fn auth_mw(mut req: Request, next: Next) -> Response {
     if let Some(tok) = req
         .headers()
@@ -116,7 +140,8 @@ async fn rejects_a_malformed_window() {
         &router,
         &format!("{REPORT}/GetPeriodReport"),
         Some(&tm),
-        json!({ "periodStart": "2026-09-14T00:00:00Z", "periodEnd": "2026-09-07T00:00:00Z" }),
+        json!({ "periodStart": "2026-09-14T00:00:00Z", "periodEnd": "2026-09-07T00:00:00Z",
+                 "periodStartDate": "2026-09-07", "periodEndDate": "2026-09-14" }),
     )
     .await;
     assert_eq!(st, StatusCode::BAD_REQUEST, "{body}");
@@ -125,7 +150,8 @@ async fn rejects_a_malformed_window() {
         &router,
         &format!("{REPORT}/GetPeriodReport"),
         Some(&tm),
-        json!({ "periodStart": "not-a-time", "periodEnd": "2026-09-07T00:00:00Z" }),
+        json!({ "periodStart": "not-a-time", "periodEnd": "2026-09-07T00:00:00Z",
+                 "periodStartDate": "2026-09-07", "periodEndDate": "2026-09-14" }),
     )
     .await;
     assert_eq!(st, StatusCode::BAD_REQUEST, "{body}");
@@ -142,6 +168,7 @@ async fn rejects_a_malformed_window() {
         Some(&tm),
         json!({
             "periodStart": "2026-09-07T00:00:00Z",
+            "periodStartDate": "2026-09-07", "periodEndDate": "2026-09-14",
             "periodEnd": "2026-09-14T00:00:00Z",
             "prevStart": "2026-08-31T00:00:00Z",
             "prevEnd": "",
@@ -158,11 +185,13 @@ async fn requires_authentication() {
         return;
     };
     let (s, e, _, _) = window();
+    let (sd, ed, _, _) = window_dates();
     let (st, _) = call(
         &router,
         &format!("{REPORT}/GetPeriodReport"),
         None,
-        json!({ "periodStart": s, "periodEnd": e }),
+        json!({ "periodStart": s, "periodEnd": e,
+                 "periodStartDate": sd, "periodEndDate": ed }),
     )
     .await;
     assert_eq!(st, StatusCode::UNAUTHORIZED);
@@ -177,16 +206,15 @@ async fn empty_scope_reports_zero() {
     // A user who is a member of no project: every count is zero and no row
     // leaks from anyone else's projects.
     let me = mk_user(&store).await;
-    let (s, e, ps, pe) = window();
-    let r = ok(
+        let r = ok(
         &router,
         &format!("{REPORT}/GetPeriodReport"),
         &token(&me),
-        json!({ "periodStart": s, "periodEnd": e, "prevStart": ps, "prevEnd": pe }),
+        full_window_body(),
     )
     .await;
     assert_eq!(r["totals"]["completed"].as_u64().unwrap_or(0), 0, "{r}");
-    assert_eq!(r["totals"]["created"].as_u64().unwrap_or(0), 0, "{r}");
+    assert_eq!(r["totals"]["started"].as_u64().unwrap_or(0), 0, "{r}");
     assert!(r["perProject"].as_array().map(|a| a.is_empty()).unwrap_or(true), "{r}");
     assert!(r["perMember"].as_array().map(|a| a.is_empty()).unwrap_or(true), "{r}");
     assert_eq!(r["activityTotal"].as_u64().unwrap_or(0), 0, "{r}");
@@ -211,12 +239,11 @@ async fn activity_is_summarised_for_the_window_and_scope() {
         ["id"].as_str().unwrap().to_string();
     ok(&router, &format!("{TASK}/UpdateTask"), &tm, json!({ "id": t1, "title": "one edited" })).await;
 
-    let (s, e, ps, pe) = window();
-    let r = ok(
+        let r = ok(
         &router,
         &format!("{REPORT}/GetPeriodReport"),
         &tm,
-        json!({ "periodStart": s, "periodEnd": e, "prevStart": ps, "prevEnd": pe }),
+        full_window_body(),
     )
     .await;
 
@@ -242,7 +269,8 @@ async fn activity_is_summarised_for_the_window_and_scope() {
         &router,
         &format!("{REPORT}/GetPeriodReport"),
         &tm,
-        json!({ "periodStart": "2020-01-01T00:00:00Z", "periodEnd": "2020-01-08T00:00:00Z" }),
+        json!({ "periodStart": "2020-01-01T00:00:00Z", "periodEnd": "2020-01-08T00:00:00Z",
+                 "periodStartDate": "2020-01-01", "periodEndDate": "2020-01-08" }),
     )
     .await;
     assert_eq!(r_old["activityTotal"].as_u64().unwrap_or(0), 0, "{r_old}");
@@ -281,17 +309,16 @@ async fn report_is_member_scoped_and_counts_the_window() {
         ["id"].as_str().unwrap().to_string();
     ok(&router, &format!("{TASK}/CreateTask"), &to, json!({ "moduleId": m2, "title": "hidden" })).await;
 
-    let (s, e, ps, pe) = window();
-    let r = ok(
+        let r = ok(
         &router,
         &format!("{REPORT}/GetPeriodReport"),
         &tm,
-        json!({ "periodStart": s, "periodEnd": e, "prevStart": ps, "prevEnd": pe }),
+        full_window_body(),
     )
     .await;
 
     assert_eq!(r["totals"]["completed"].as_u64().unwrap(), 1, "A: {r}");
-    assert_eq!(r["totals"]["created"].as_u64().unwrap(), 2, "A and B; C is cancelled: {r}");
+    assert_eq!(r["totals"]["started"].as_u64().unwrap(), 2, "A and B; C is cancelled: {r}");
     assert_eq!(r["totals"]["stillOpen"].as_u64().unwrap(), 1, "B: {r}");
     assert_eq!(r["totals"]["overdue"].as_u64().unwrap(), 1, "B: {r}");
     assert!(r["prevTotals"].is_object(), "a comparison window was sent: {r}");
@@ -321,11 +348,14 @@ async fn report_is_member_scoped_and_counts_the_window() {
     assert_eq!(late[0]["task"]["title"], "B");
 
     // No comparison window -> no prevTotals.
+    let (s, e, _, _) = window();
+    let (sd, ed, _, _) = window_dates();
     let no_prev = ok(
         &router,
         &format!("{REPORT}/GetPeriodReport"),
         &tm,
-        json!({ "periodStart": s, "periodEnd": e }),
+        json!({ "periodStart": s, "periodEnd": e,
+                 "periodStartDate": sd, "periodEndDate": ed }),
     )
     .await;
     assert!(no_prev["prevTotals"].is_null(), "{no_prev}");
@@ -349,11 +379,13 @@ async fn list_limit_truncates_and_says_so() {
         ok(&router, &format!("{TASK}/UpdateTask"), &tm, json!({ "id": id, "status": "DONE" })).await;
     }
     let (s, e, _, _) = window();
+    let (sd, ed, _, _) = window_dates();
     let r = ok(
         &router,
         &format!("{REPORT}/GetPeriodReport"),
         &tm,
-        json!({ "periodStart": s, "periodEnd": e, "listLimit": 2 }),
+        json!({ "periodStart": s, "periodEnd": e,
+                 "periodStartDate": sd, "periodEndDate": ed, "listLimit": 2 }),
     )
     .await;
     assert_eq!(r["completedTasks"].as_array().unwrap().len(), 2, "{r}");

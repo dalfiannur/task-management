@@ -46,6 +46,13 @@ export function periodWindow(
     ? `${format(start, sameMonth ? "d" : "d MMM")} – ${format(lastDay, "d MMM yyyy")}`
     : format(start, "MMMM yyyy");
 
+  // The same bounds as plain calendar dates, for `start_date` on a task — which
+  // is a local date with no time and no zone. These are formatted from the same
+  // local `Date`s above, NOT derived server-side from the instants: an instant
+  // is local midnight expressed in UTC, so at UTC+7 the Monday-starting week
+  // travels as `…-06T17:00:00` and its date prefix is the previous day.
+  const asDate = (d: Date) => format(d, "yyyy-MM-dd");
+
   return {
     granularity,
     offset,
@@ -53,6 +60,10 @@ export function periodWindow(
     end,
     prevStart,
     prevEnd: start,
+    startDate: asDate(start),
+    endDate: asDate(end),
+    prevStartDate: asDate(prevStart),
+    prevEndDate: asDate(start),
     label,
     isCurrent: offset === 0,
   };

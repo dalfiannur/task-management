@@ -113,6 +113,70 @@ impl Window {
     }
 }
 
+/// The same period expressed as plain local calendar dates, for comparing
+/// against task fields that are themselves plain dates — `start_date`.
+///
+/// This exists as its own type rather than a method on [`Window`] because the
+/// two must never be compared against each other, and a single type holding
+/// both invites exactly that. A plain date against an instant boundary is wrong
+/// at *both* ends, in opposite directions: `"2026-09-07"` is a prefix of
+/// `"2026-09-07T00:00:00"` and so sorts below it, dropping every task that
+/// starts on the period's first day; and it is likewise below the *end*
+/// boundary `"2026-09-14T00:00:00"`, so a task starting on the first day of
+/// the next period is wrongly counted.
+///
+/// Truncating the instant bounds to their date prefix does not fix it either.
+/// Those bounds are local midnight expressed in UTC, so for a viewer at UTC+7
+/// the week starting Monday is sent as `2026-09-06T17:00:00` — whose date
+/// prefix is the *previous* day. The client therefore sends the calendar dates
+/// separately, computed in its own local time, exactly as it already does for
+/// the instants.
+#[derive(Debug, Clone)]
+pub(crate) struct DateWindow {
+    start: String,
+    end: String,
+}
+
+/// A plain `YYYY-MM-DD`, or `None`. Ten characters exactly: trailing anything
+/// is rejected rather than ignored, so a caller that sends an instant here
+/// gets an error instead of a silently truncated date.
+fn plain_date(s: &str) -> Option<String> {
+    let b = s.as_bytes();
+    if b.len() != 10 {
+        return None;
+    }
+    let digit = |i: usize| b[i].is_ascii_digit();
+    let shaped = digit(0)
+        && digit(1)
+        && digit(2)
+        && digit(3)
+        && b[4] == b'-'
+        && digit(5)
+        && digit(6)
+        && b[7] == b'-'
+        && digit(8)
+        && digit(9);
+    shaped.then(|| s.to_string())
+}
+
+impl DateWindow {
+    /// `None` for a malformed date, or a window that is empty or inverted —
+    /// caller errors, which must surface as `invalid_argument`.
+    pub(crate) fn parse(start: &str, end: &str) -> Option<Self> {
+        let (start, end) = (plain_date(start)?, plain_date(end)?);
+        if start >= end {
+            return None;
+        }
+        Some(Self { start, end })
+    }
+
+    /// Is a stored `YYYY-MM-DD` inside `[start, end)`? `end` is the first day
+    /// of the *next* period, so the period's own last day is included.
+    pub(crate) fn contains(&self, date: &str) -> bool {
+        date >= self.start.as_str() && date < self.end.as_str()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -185,5 +249,39 @@ mod tests {
             Window::parse("2026-09-07T00:00:00.1234567890Z", END).is_none(),
             "ten fractional digits — one more than RFC3339 nanosecond precision allows"
         );
+    }
+
+    // ── DateWindow ──────────────────────────────────────────────────────────
+
+    /// Monday 7 Sep to Sunday 13 Sep; `end` is the first day of the next week.
+    fn dw() -> DateWindow {
+        DateWindow::parse("2026-09-07", "2026-09-14").expect("valid date window")
+    }
+
+    #[test]
+    fn the_periods_first_day_is_included_and_the_next_periods_is_not() {
+        // The whole reason DateWindow exists. Compared against the *instant*
+        // bounds, "2026-09-07" is a prefix of "2026-09-07T00:00:00" and sorts
+        // below it, so day one would vanish; and it sorts below the end bound
+        // too, so the next period's first day would be counted. Both ends
+        // wrong, in opposite directions.
+        let w = dw();
+        assert!(w.contains("2026-09-07"), "first day of the period is in");
+        assert!(w.contains("2026-09-13"), "last day of the period is in");
+        assert!(!w.contains("2026-09-14"), "first day of the next period is out");
+        assert!(!w.contains("2026-09-06"), "last day of the previous period is out");
+    }
+
+    #[test]
+    fn date_windows_reject_anything_that_is_not_a_plain_date() {
+        assert!(DateWindow::parse("", "2026-09-14").is_none());
+        assert!(DateWindow::parse("2026-9-7", "2026-09-14").is_none(), "unpadded");
+        assert!(DateWindow::parse("2026-09-077", "2026-09-14").is_none(), "too long");
+        assert!(
+            DateWindow::parse("2026-09-07T00:00:00Z", "2026-09-14").is_none(),
+            "an instant sent where a date belongs is an error, not something to truncate"
+        );
+        assert!(DateWindow::parse("2026-09-14", "2026-09-07").is_none(), "inverted");
+        assert!(DateWindow::parse("2026-09-07", "2026-09-07").is_none(), "empty");
     }
 }

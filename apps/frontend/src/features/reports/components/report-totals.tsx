@@ -4,7 +4,7 @@ import type { PeriodTotals } from "../types";
 
 /** The delta line under a period quantity.
  *
- *  Only `completed` and `created` get one: they are quantities *of the window*,
+ *  Only `completed` and `started` get one: they are quantities *of the window*,
  *  so a previous window is a like-for-like comparison. `stillOpen` and
  *  `overdue` are today's backlog under both windows — comparing them would
  *  always read zero and imply nothing changed. */
@@ -44,8 +44,8 @@ export function ReportTotals({
         {prev && <Delta now={totals.completed} before={prev.completed} />}
       </div>
       <div className="space-y-2">
-        <StatCard icon={Plus} label="Created" value={totals.created} />
-        {prev && <Delta now={totals.created} before={prev.created} />}
+        <StatCard icon={Plus} label="Started" value={totals.started} />
+        {prev && <Delta now={totals.started} before={prev.started} />}
       </div>
       <div className="space-y-2">
         <StatCard icon={ListTodo} label="Still open" value={totals.stillOpen} />
