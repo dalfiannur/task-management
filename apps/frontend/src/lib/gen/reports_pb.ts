@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file reports.proto.
  */
 export const file_reports: GenFile = /*@__PURE__*/
-  fileDesc("Cg1yZXBvcnRzLnByb3RvEhhzZWRqaXdhLnRhc2tzLnJlcG9ydHMudjEifAoWR2V0UGVyaW9kUmVwb3J0UmVxdWVzdBIUCgxwZXJpb2Rfc3RhcnQYASABKAkSEgoKcGVyaW9kX2VuZBgCIAEoCRISCgpwcmV2X3N0YXJ0GAMgASgJEhAKCHByZXZfZW5kGAQgASgJEhIKCmxpc3RfbGltaXQYBSABKA0iVwoMUGVyaW9kVG90YWxzEhEKCWNvbXBsZXRlZBgBIAEoDRIPCgdjcmVhdGVkGAIgASgNEhIKCnN0aWxsX29wZW4YAyABKA0SDwoHb3ZlcmR1ZRgEIAEoDSKoAQoQUHJvamVjdFJlcG9ydFJvdxISCgpwcm9qZWN0X2lkGAEgASgJEhQKDHByb2plY3RfbmFtZRgCIAEoCRIRCgljb21wbGV0ZWQYAyABKA0SDwoHY3JlYXRlZBgEIAEoDRISCgpzdGlsbF9vcGVuGAUgASgNEg8KB292ZXJkdWUYBiABKA0SEgoKZG9uZV90b3RhbBgHIAEoDRINCgV0b3RhbBgIIAEoDSKKAQoPTWVtYmVyUmVwb3J0Um93Eg8KB3VzZXJfaWQYASABKAkSEQoJdXNlcl9uYW1lGAIgASgJEhEKCWNvbXBsZXRlZBgDIAEoDRIPCgdjcmVhdGVkGAQgASgNEhUKDW9wZW5fYXNzaWduZWQYBSABKA0SGAoQb3ZlcmR1ZV9hc3NpZ25lZBgGIAEoDSKaAQoSQWN0aXZpdHlTdW1tYXJ5Um93EjoKC2VudGl0eV90eXBlGAEgASgOMiUuc2Vkaml3YS50YXNrcy5hY3Rpdml0eS52MS5FbnRpdHlUeXBlEjkKBmFjdGlvbhgCIAEoDjIpLnNlZGppd2EudGFza3MuYWN0aXZpdHkudjEuQWN0aXZpdHlBY3Rpb24SDQoFY291bnQYAyABKA0ivQQKDFBlcmlvZFJlcG9ydBIUCgxwZXJpb2Rfc3RhcnQYASABKAkSEgoKcGVyaW9kX2VuZBgCIAEoCRI2CgZ0b3RhbHMYAyABKAsyJi5zZWRqaXdhLnRhc2tzLnJlcG9ydHMudjEuUGVyaW9kVG90YWxzEjsKC3ByZXZfdG90YWxzGAQgASgLMiYuc2Vkaml3YS50YXNrcy5yZXBvcnRzLnYxLlBlcmlvZFRvdGFscxI/CgtwZXJfcHJvamVjdBgFIAMoCzIqLnNlZGppd2EudGFza3MucmVwb3J0cy52MS5Qcm9qZWN0UmVwb3J0Um93Ej0KCnBlcl9tZW1iZXIYBiADKAsyKS5zZWRqaXdhLnRhc2tzLnJlcG9ydHMudjEuTWVtYmVyUmVwb3J0Um93EjsKD2NvbXBsZXRlZF90YXNrcxgHIAMoCzIiLnNlZGppd2EudGFza3MuZGFzaGJvYXJkLnYxLk15VGFzaxI5Cg1vdmVyZHVlX3Rhc2tzGAggAygLMiIuc2Vkaml3YS50YXNrcy5kYXNoYm9hcmQudjEuTXlUYXNrEhsKE2NvbXBsZXRlZF90cnVuY2F0ZWQYCSABKAgSGQoRb3ZlcmR1ZV90cnVuY2F0ZWQYCiABKAgSRgoQYWN0aXZpdHlfc3VtbWFyeRgLIAMoCzIsLnNlZGppd2EudGFza3MucmVwb3J0cy52MS5BY3Rpdml0eVN1bW1hcnlSb3cSFgoOYWN0aXZpdHlfdG90YWwYDCABKA0yfAoNUmVwb3J0U2VydmljZRJrCg9HZXRQZXJpb2RSZXBvcnQSMC5zZWRqaXdhLnRhc2tzLnJlcG9ydHMudjEuR2V0UGVyaW9kUmVwb3J0UmVxdWVzdBomLnNlZGppd2EudGFza3MucmVwb3J0cy52MS5QZXJpb2RSZXBvcnRiBnByb3RvMw", [file_dashboard, file_activity]);
+  fileDesc("Cg1yZXBvcnRzLnByb3RvEhhzZWRqaXdhLnRhc2tzLnJlcG9ydHMudjEi4AEKFkdldFBlcmlvZFJlcG9ydFJlcXVlc3QSFAoMcGVyaW9kX3N0YXJ0GAEgASgJEhIKCnBlcmlvZF9lbmQYAiABKAkSEgoKcHJldl9zdGFydBgDIAEoCRIQCghwcmV2X2VuZBgEIAEoCRISCgpsaXN0X2xpbWl0GAUgASgNEhkKEXBlcmlvZF9zdGFydF9kYXRlGAYgASgJEhcKD3BlcmlvZF9lbmRfZGF0ZRgHIAEoCRIXCg9wcmV2X3N0YXJ0X2RhdGUYCCABKAkSFQoNcHJldl9lbmRfZGF0ZRgJIAEoCSJXCgxQZXJpb2RUb3RhbHMSEQoJY29tcGxldGVkGAEgASgNEg8KB3N0YXJ0ZWQYAiABKA0SEgoKc3RpbGxfb3BlbhgDIAEoDRIPCgdvdmVyZHVlGAQgASgNIqgBChBQcm9qZWN0UmVwb3J0Um93EhIKCnByb2plY3RfaWQYASABKAkSFAoMcHJvamVjdF9uYW1lGAIgASgJEhEKCWNvbXBsZXRlZBgDIAEoDRIPCgdzdGFydGVkGAQgASgNEhIKCnN0aWxsX29wZW4YBSABKA0SDwoHb3ZlcmR1ZRgGIAEoDRISCgpkb25lX3RvdGFsGAcgASgNEg0KBXRvdGFsGAggASgNIooBCg9NZW1iZXJSZXBvcnRSb3cSDwoHdXNlcl9pZBgBIAEoCRIRCgl1c2VyX25hbWUYAiABKAkSEQoJY29tcGxldGVkGAMgASgNEg8KB3N0YXJ0ZWQYBCABKA0SFQoNb3Blbl9hc3NpZ25lZBgFIAEoDRIYChBvdmVyZHVlX2Fzc2lnbmVkGAYgASgNIpoBChJBY3Rpdml0eVN1bW1hcnlSb3cSOgoLZW50aXR5X3R5cGUYASABKA4yJS5zZWRqaXdhLnRhc2tzLmFjdGl2aXR5LnYxLkVudGl0eVR5cGUSOQoGYWN0aW9uGAIgASgOMikuc2Vkaml3YS50YXNrcy5hY3Rpdml0eS52MS5BY3Rpdml0eUFjdGlvbhINCgVjb3VudBgDIAEoDSK9BAoMUGVyaW9kUmVwb3J0EhQKDHBlcmlvZF9zdGFydBgBIAEoCRISCgpwZXJpb2RfZW5kGAIgASgJEjYKBnRvdGFscxgDIAEoCzImLnNlZGppd2EudGFza3MucmVwb3J0cy52MS5QZXJpb2RUb3RhbHMSOwoLcHJldl90b3RhbHMYBCABKAsyJi5zZWRqaXdhLnRhc2tzLnJlcG9ydHMudjEuUGVyaW9kVG90YWxzEj8KC3Blcl9wcm9qZWN0GAUgAygLMiouc2Vkaml3YS50YXNrcy5yZXBvcnRzLnYxLlByb2plY3RSZXBvcnRSb3cSPQoKcGVyX21lbWJlchgGIAMoCzIpLnNlZGppd2EudGFza3MucmVwb3J0cy52MS5NZW1iZXJSZXBvcnRSb3cSOwoPY29tcGxldGVkX3Rhc2tzGAcgAygLMiIuc2Vkaml3YS50YXNrcy5kYXNoYm9hcmQudjEuTXlUYXNrEjkKDW92ZXJkdWVfdGFza3MYCCADKAsyIi5zZWRqaXdhLnRhc2tzLmRhc2hib2FyZC52MS5NeVRhc2sSGwoTY29tcGxldGVkX3RydW5jYXRlZBgJIAEoCBIZChFvdmVyZHVlX3RydW5jYXRlZBgKIAEoCBJGChBhY3Rpdml0eV9zdW1tYXJ5GAsgAygLMiwuc2Vkaml3YS50YXNrcy5yZXBvcnRzLnYxLkFjdGl2aXR5U3VtbWFyeVJvdxIWCg5hY3Rpdml0eV90b3RhbBgMIAEoDTJ8Cg1SZXBvcnRTZXJ2aWNlEmsKD0dldFBlcmlvZFJlcG9ydBIwLnNlZGppd2EudGFza3MucmVwb3J0cy52MS5HZXRQZXJpb2RSZXBvcnRSZXF1ZXN0GiYuc2Vkaml3YS50YXNrcy5yZXBvcnRzLnYxLlBlcmlvZFJlcG9ydGIGcHJvdG8z", [file_dashboard, file_activity]);
 
 /**
  * @generated from message sedjiwa.tasks.reports.v1.GetPeriodReportRequest
@@ -51,6 +51,39 @@ export type GetPeriodReportRequest = Message<"sedjiwa.tasks.reports.v1.GetPeriod
    * @generated from field: uint32 list_limit = 5;
    */
   listLimit: number;
+
+  /**
+   * The same window as plain local calendar dates (yyyy-MM-dd), for the task
+   * fields that are themselves plain dates rather than instants — `start_date`.
+   *
+   * These cannot be derived from the instants above. Those are local midnight
+   * expressed in UTC, so for a viewer at UTC+7 the week beginning Monday
+   * arrives as 2026-09-06T17:00:00, whose date prefix is the previous day.
+   * The client computes these in its own local time, exactly as it does the
+   * instants. Both empty is an error, not a fallback: a report that silently
+   * reverted to created_at would be wrong in a way nothing on the page shows.
+   *
+   * @generated from field: string period_start_date = 6;
+   */
+  periodStartDate: string;
+
+  /**
+   * @generated from field: string period_end_date = 7;
+   */
+  periodEndDate: string;
+
+  /**
+   * The comparison window's dates. Empty when no comparison was requested,
+   * and then required to be empty together with prev_start/prev_end.
+   *
+   * @generated from field: string prev_start_date = 8;
+   */
+  prevStartDate: string;
+
+  /**
+   * @generated from field: string prev_end_date = 9;
+   */
+  prevEndDate: string;
 };
 
 /**
@@ -61,8 +94,13 @@ export const GetPeriodReportRequestSchema: GenMessage<GetPeriodReportRequest> = 
   messageDesc(file_reports, 0);
 
 /**
- * `completed` and `created` are of the window. `still_open` and `overdue` are of
+ * `completed` and `started` are of the window. `still_open` and `overdue` are of
  * *now* — a period cannot have a current backlog.
+ *
+ * `started` counts a task whose `start_date` falls in the window — when the
+ * work was scheduled to begin. A task with no `start_date` falls back to
+ * `created_at`, so nothing disappears from the report; the cost is that this
+ * one number mixes two meanings.
  *
  * @generated from message sedjiwa.tasks.reports.v1.PeriodTotals
  */
@@ -73,9 +111,9 @@ export type PeriodTotals = Message<"sedjiwa.tasks.reports.v1.PeriodTotals"> & {
   completed: number;
 
   /**
-   * @generated from field: uint32 created = 2;
+   * @generated from field: uint32 started = 2;
    */
-  created: number;
+  started: number;
 
   /**
    * @generated from field: uint32 still_open = 3;
@@ -115,9 +153,9 @@ export type ProjectReportRow = Message<"sedjiwa.tasks.reports.v1.ProjectReportRo
   completed: number;
 
   /**
-   * @generated from field: uint32 created = 4;
+   * @generated from field: uint32 started = 4;
    */
-  created: number;
+  started: number;
 
   /**
    * @generated from field: uint32 still_open = 5;
@@ -171,11 +209,11 @@ export type MemberReportRow = Message<"sedjiwa.tasks.reports.v1.MemberReportRow"
   completed: number;
 
   /**
-   * created_by them, in window
+   * created_by them, started in window
    *
-   * @generated from field: uint32 created = 4;
+   * @generated from field: uint32 started = 4;
    */
-  created: number;
+  started: number;
 
   /**
    * @generated from field: uint32 open_assigned = 5;

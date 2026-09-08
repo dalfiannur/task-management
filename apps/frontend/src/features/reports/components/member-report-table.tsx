@@ -15,7 +15,7 @@ export function MemberReportTable({ rows }: { rows: MemberReportRow[] }) {
           <tr className="border-b border-border-subtle">
             <th className="text-label px-4 py-3 text-left">Member</th>
             <th className="text-label px-4 py-3 text-right">Completed</th>
-            <th className="text-label px-4 py-3 text-right">Created</th>
+            <th className="text-label px-4 py-3 text-right">Started</th>
             <th className="text-label px-4 py-3 text-right">Open now</th>
             <th className="text-label px-4 py-3 text-right">Overdue now</th>
           </tr>
@@ -32,7 +32,7 @@ export function MemberReportTable({ rows }: { rows: MemberReportRow[] }) {
                 {r.userName || `User ${r.userId}`}
               </td>
               <td className="text-num px-4 py-3 text-right">{r.completed}</td>
-              <td className="text-num px-4 py-3 text-right">{r.created}</td>
+              <td className="text-num px-4 py-3 text-right">{r.started}</td>
               <td className="text-num px-4 py-3 text-right">{r.openAssigned}</td>
               <td className="text-num px-4 py-3 text-right">
                 {r.overdueAssigned > 0 ? (

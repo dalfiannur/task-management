@@ -21,7 +21,7 @@ the notion of a period, and a page that reads like a report.
 
 A cross-project, organisation-level report over a chosen week or month:
 
-- Throughput: completed and created in the window, against the comparable
+- Throughput: completed and started in the window, against the comparable
   previous window.
 - A per-project table.
 - A per-member table.
@@ -162,6 +162,35 @@ The consequence for the UI is deliberate: the report shows *"Task updated 142×"
 not 142 rows, and links to the activity feed for the detail. A month-long raw
 feed inside a report is not a report.
 
+## Decision: the period counts when work was *scheduled to start*
+
+`started` keys on the task's `start_date`, not on `created_at`. `created_at` is
+the administrative trace of someone typing the task in; `start_date` is when the
+work was meant to begin, and that is the question a period report asks.
+
+`start_date` is optional. A task without one would fall out of every period and
+vanish from the report entirely, so it falls back to `created_at`. The cost is
+paid in full and stated plainly: this single number mixes two meanings, and a
+reader cannot tell which rows came from which. The alternative — dropping
+unscheduled tasks — was rejected because a report that silently omits work is
+worse than one that counts it under a slightly loose definition.
+
+The two fields are different shapes, and that is the trap this decision has to
+handle. `created_at` is a UTC instant; `start_date` is a plain local date with
+no time and no zone. Comparing a plain date against the instant bounds is wrong
+at **both** ends, in opposite directions: `"2026-09-07"` is a prefix of
+`"2026-09-07T00:00:00"` and so sorts below it, dropping every task that starts
+on the period's first day — and it sorts below the end bound too, so a task
+starting on the *next* period's first day is wrongly counted.
+
+Truncating the instant bounds to their date prefix does not fix it either. Those
+bounds are local midnight expressed in UTC, so for a viewer at UTC+7 the week
+beginning Monday is sent as `2026-09-06T17:00:00`, whose prefix is the previous
+day. So the client sends the calendar dates separately, computed in its own
+local time — the same principle as the instants, applied to the other shape.
+`DateWindow` is a distinct type from `Window` for exactly this reason: a single
+type holding both invites the comparison that must never happen.
+
 ## API
 
 `apps/backend-rs/proto/reports.proto`, package `sedjiwa.tasks.reports.v1`:
@@ -182,15 +211,24 @@ message GetPeriodReportRequest {
   // The comparison window. Both empty = no comparison.
   string prev_start   = 3;
   string prev_end     = 4;
+  // The same window as plain local calendar dates, for task fields that are
+  // themselves plain dates rather than instants — `start_date`. They cannot be
+  // derived from the instants: those are local midnight expressed in UTC, so at
+  // UTC+7 the Monday-starting week arrives as 2026-09-06T17:00:00, whose date
+  // prefix is the previous day.
+  string period_start_date = 6;
+  string period_end_date   = 7;
+  string prev_start_date   = 8;
+  string prev_end_date     = 9;
   // Cap on completed_tasks / overdue_tasks. 0 = DEFAULT_LIST_LIMIT (50).
   uint32 list_limit   = 5;
 }
 
-// `completed` and `created` are of the window. `still_open` and `overdue` are
+// `completed` and `started` are of the window. `still_open` and `overdue` are
 // of *now* — a period cannot have a current backlog.
 message PeriodTotals {
   uint32 completed  = 1;
-  uint32 created    = 2;
+  uint32 started    = 2;
   uint32 still_open = 3;
   uint32 overdue    = 4;
 }
@@ -199,7 +237,7 @@ message ProjectReportRow {
   string project_id   = 1;
   string project_name = 2;
   uint32 completed    = 3;
-  uint32 created      = 4;
+  uint32 started      = 4;
   uint32 still_open   = 5;
   uint32 overdue      = 6;
   uint32 done_total   = 7;  // cumulative, matches DashboardStats.per_project
@@ -210,7 +248,7 @@ message MemberReportRow {
   string user_id          = 1;
   string user_name        = 2;
   uint32 completed        = 3;  // completed in window AND assigned to them
-  uint32 created          = 4;  // created_by them, in window
+  uint32 started          = 4;  // created_by them, started in window
   uint32 open_assigned    = 5;
   uint32 overdue_assigned = 6;
 }
@@ -252,11 +290,11 @@ agree on exactly.
 |---|---|
 | Cancelled tasks | Counted nowhere, in any section. Mirrors `Tally::add`, so the report and the dashboard cannot drift. |
 | `completed` | `completed_at` within `[period_start, period_end)` under the 19-character rule. |
-| `created` | `created_at` within the same window. |
+| `started` | `start_date` within `[period_start_date, period_end_date)` when the task has one; otherwise `created_at` within the instant window. See the decision below. |
 | `still_open` | Status `TODO` or `IN_PROGRESS` **now**. Not window-scoped. |
 | `overdue` | `still_open` and `due_date < today()` (UTC), the existing `Tally` rule. Not window-scoped. |
 | Per-project rows | Every project in scope appears, including ones with no activity, as zeros. Sorted by project name, then id — the `DashboardStats` ordering. |
-| Per-member rows | Keyed by user; a task with two assignees counts once for each. `created` keys on `created_by`. Members with nothing in the window and nothing open are dropped. Sorted by `completed` descending, then name. |
+| Per-member rows | Keyed by user; a task with two assignees counts once for each. `started` keys on `created_by` for *who*, and on the `started` rule for *when*. Members with nothing in the window and nothing open are dropped. Sorted by `completed` descending, then name. |
 | `completed_tasks` | Window-completed tasks, newest `completed_at` first, capped at `list_limit`, with `completed_truncated` set when the cap bit. |
 | `overdue_tasks` | Overdue **now**, earliest `due_date` first, same cap semantics. |
 | Activity | Counted per entity_type × action within the window, over scoped projects only. |

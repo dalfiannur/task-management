@@ -17,7 +17,7 @@ import type {
 
 const ZERO: PeriodTotals = {
   completed: 0,
-  created: 0,
+  started: 0,
   stillOpen: 0,
   overdue: 0,
 };
@@ -25,7 +25,7 @@ const ZERO: PeriodTotals = {
 function mapTotals(t: PbTotals): PeriodTotals {
   return {
     completed: t.completed,
-    created: t.created,
+    started: t.started,
     stillOpen: t.stillOpen,
     overdue: t.overdue,
   };
@@ -36,7 +36,7 @@ function mapProjectRow(p: PbProjectRow): ProjectReportRow {
     projectId: p.projectId,
     projectName: p.projectName,
     completed: p.completed,
-    created: p.created,
+    started: p.started,
     stillOpen: p.stillOpen,
     overdue: p.overdue,
     doneTotal: p.doneTotal,
@@ -49,7 +49,7 @@ function mapMemberRow(m: PbMemberRow): MemberReportRow {
     userId: m.userId,
     userName: m.userName,
     completed: m.completed,
-    created: m.created,
+    started: m.started,
     openAssigned: m.openAssigned,
     overdueAssigned: m.overdueAssigned,
   };

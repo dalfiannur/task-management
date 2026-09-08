@@ -14,14 +14,27 @@ export interface PeriodWindow {
   end: Date;
   prevStart: Date;
   prevEnd: Date;
+  /** The same bounds as local calendar dates (yyyy-MM-dd), for the task fields
+   *  that are plain dates rather than instants. They cannot be derived from the
+   *  instants above: those are local midnight expressed in UTC, so at UTC+7 the
+   *  week beginning Monday carries the *previous* day's date prefix. */
+  startDate: string;
+  endDate: string;
+  prevStartDate: string;
+  prevEndDate: string;
   label: string;
   isCurrent: boolean;
 }
 
-/** `completed`/`created` are of the window; `stillOpen`/`overdue` are of now. */
+/** `completed`/`started` are of the window; `stillOpen`/`overdue` are of now.
+ *
+ *  `started` keys on the task's `startDate` — when the work was scheduled to
+ *  begin. A task with no start date falls back to when it was created, so
+ *  nothing drops out of the report; the cost is that the number mixes two
+ *  meanings. */
 export interface PeriodTotals {
   completed: number;
-  created: number;
+  started: number;
   stillOpen: number;
   overdue: number;
 }
@@ -30,7 +43,7 @@ export interface ProjectReportRow {
   projectId: string;
   projectName: string;
   completed: number;
-  created: number;
+  started: number;
   stillOpen: number;
   overdue: number;
   doneTotal: number;
@@ -41,7 +54,7 @@ export interface MemberReportRow {
   userId: string;
   userName: string;
   completed: number;
-  created: number;
+  started: number;
   openAssigned: number;
   overdueAssigned: number;
 }
