@@ -8,7 +8,7 @@ import {
   useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import { Plus, SearchX } from "lucide-react";
+import { Layers, Plus, SearchX } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -301,11 +301,19 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
       )}
 
       {modules.length === 0 ? (
-        <div className="rounded-xl bg-surface-raised p-12 text-center text-text-muted shadow-2">
-          {canManage
-            ? "No modules yet. Add one to start organizing tasks."
-            : "No modules yet."}
-        </div>
+        // The toolbar above (and its "Add module" button) only renders once
+        // there are modules to filter, so on a fresh project this CTA is the
+        // ONLY way to create the first module — it must not depend on it.
+        <EmptyState
+          icon={Layers}
+          title="Organize tasks into modules"
+          body="Modules group this project's tasks by area of work. Create the first one to start adding tasks."
+          action={
+            canManage
+              ? { label: "Add module", onClick: () => setModuleDialog({ open: true }) }
+              : undefined
+          }
+        />
       ) : visibleModules.length === 0 ? (
         // Only reachable while filtering — `visibleModules` is `modules`
         // otherwise. The way out of an over-narrow filter is to widen it, so
