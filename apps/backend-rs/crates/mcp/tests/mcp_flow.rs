@@ -157,6 +157,20 @@ async fn tools_call(router: &Router, token: &str, name: &str, arguments: Value) 
     (is_error, serde_json::from_str(text).unwrap_or(Value::Null))
 }
 
+/// Like `tools_call`, but only a *business* refusal counts: the tool must
+/// exist and answer with an `isError` result. A JSON-RPC error (unknown tool,
+/// bad params) is not a refusal — it is the tool being absent.
+async fn tools_call_refused(router: &Router, token: &str, name: &str, arguments: Value) -> bool {
+    let (_, body) = rpc(
+        router,
+        Some(token),
+        json!({ "jsonrpc": "2.0", "id": 98, "method": "tools/call",
+                "params": { "name": name, "arguments": arguments } }),
+    )
+    .await;
+    body.get("error").is_none() && body["result"]["isError"] == true
+}
+
 #[tokio::test]
 async fn initialize_returns_capabilities() {
     let Some(router) = router().await else { return skipped() };
@@ -437,7 +451,7 @@ async fn tools_list_returns_the_registry() {
     .await;
     assert_eq!(st, StatusCode::OK, "{body:?}");
     let tools = body["result"]["tools"].as_array().unwrap();
-    assert_eq!(tools.len(), 12);
+    assert_eq!(tools.len(), 15);
     let names: Vec<&str> = tools.iter().map(|t| t["name"].as_str().unwrap()).collect();
     assert!(names.contains(&"create_task"));
     assert!(!names.contains(&"delete_task"), "delete sengaja tidak diekspos");
@@ -1215,6 +1229,171 @@ async fn list_modules_returns_a_projects_modules() {
     assert_eq!(doing["name"], "Doing");
     assert_eq!(doing["order"], 1);
     assert_eq!(doing["project_id"], project_id.as_str());
+}
+
+#[tokio::test]
+async fn create_module_appends_to_the_project_and_shows_in_list_modules() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let owner = seed_active_user(&store).await;
+    let (project_id, _backlog) = seed_project_and_module(&store, &owner).await;
+    let token = issue_token(&store, &owner).await;
+
+    let (is_error, created) = tools_call(
+        &router,
+        &token,
+        "create_module",
+        json!({ "project_id": project_id, "name": "  Review  ", "description": "Awaiting QA" }),
+    )
+    .await;
+    assert!(!is_error, "{created:?}");
+    assert_eq!(created["name"], "Review", "name is trimmed like the UI path");
+    assert_eq!(created["description"], "Awaiting QA");
+    // Seeded Backlog is order 0; a new module lands after it.
+    assert_eq!(created["order"], 1);
+    assert_eq!(created["project_id"], project_id.as_str());
+    let new_id = created["id"].as_str().unwrap();
+
+    let (_, listed) =
+        tools_call(&router, &token, "list_modules", json!({ "project_id": project_id })).await;
+    assert_eq!(listed["count"], 2, "{listed:?}");
+    assert!(listed["modules"].as_array().unwrap().iter().any(|m| m["id"] == new_id));
+}
+
+#[tokio::test]
+async fn create_module_refuses_a_blank_name() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let owner = seed_active_user(&store).await;
+    let (project_id, _) = seed_project_and_module(&store, &owner).await;
+    let token = issue_token(&store, &owner).await;
+
+    assert!(
+        tools_call_refused(
+            &router,
+            &token,
+            "create_module",
+            json!({ "project_id": project_id, "name": "   " }),
+        )
+        .await
+    );
+}
+
+#[tokio::test]
+async fn update_module_renames_and_clears_description() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let owner = seed_active_user(&store).await;
+    let (project_id, _) = seed_project_and_module(&store, &owner).await;
+    let token = issue_token(&store, &owner).await;
+    let (_, created) = tools_call(
+        &router,
+        &token,
+        "create_module",
+        json!({ "project_id": project_id, "name": "Old", "description": "to be removed" }),
+    )
+    .await;
+    let module_id = created["id"].as_str().unwrap().to_string();
+
+    // Rename only: description must survive an update that doesn't mention it.
+    let (is_error, renamed) = tools_call(
+        &router,
+        &token,
+        "update_module",
+        json!({ "module_id": module_id, "name": "New" }),
+    )
+    .await;
+    assert!(!is_error, "{renamed:?}");
+    assert_eq!(renamed["name"], "New");
+    assert_eq!(renamed["description"], "to be removed");
+    assert_eq!(renamed["project_id"], project_id.as_str());
+
+    // An explicit empty description clears it (same semantics as the UI).
+    let (is_error, cleared) = tools_call(
+        &router,
+        &token,
+        "update_module",
+        json!({ "module_id": module_id, "description": "" }),
+    )
+    .await;
+    assert!(!is_error, "{cleared:?}");
+    assert_eq!(cleared["name"], "New");
+    assert_eq!(cleared["description"], "");
+}
+
+#[tokio::test]
+async fn delete_module_removes_an_empty_module() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let owner = seed_active_user(&store).await;
+    let (project_id, _backlog) = seed_project_and_module(&store, &owner).await;
+    let empty_id = seed_module(&store, &project_id, "Empty").await;
+    let token = issue_token(&store, &owner).await;
+
+    let (is_error, payload) =
+        tools_call(&router, &token, "delete_module", json!({ "module_id": empty_id })).await;
+    assert!(!is_error, "{payload:?}");
+    assert_eq!(payload["ok"], true);
+
+    let (_, listed) =
+        tools_call(&router, &token, "list_modules", json!({ "project_id": project_id })).await;
+    assert_eq!(listed["count"], 1, "{listed:?}");
+    assert!(!listed["modules"].as_array().unwrap().iter().any(|m| m["id"] == empty_id.as_str()));
+}
+
+#[tokio::test]
+async fn delete_module_refuses_a_module_that_still_has_tasks() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let owner = seed_active_user(&store).await;
+    let (project_id, module_id) = seed_project_and_module(&store, &owner).await;
+    let token = issue_token(&store, &owner).await;
+    let task_id = create_task_via_tool(
+        &router,
+        &token,
+        json!({ "module_id": module_id, "title": "must survive" }),
+    )
+    .await;
+
+    // The Connect handler cascades — deleting a module deletes its tasks. The
+    // MCP spec keeps delete_task out precisely so an agent can't silently drop
+    // work, and this tool must not be a bigger version of that hole.
+    assert!(
+        tools_call_refused(&router, &token, "delete_module", json!({ "module_id": module_id }))
+            .await
+    );
+
+    let (_, listed) =
+        tools_call(&router, &token, "list_modules", json!({ "project_id": project_id })).await;
+    assert_eq!(listed["count"], 1, "module still there: {listed:?}");
+    let (is_error, task) = tools_call(&router, &token, "get_task", json!({ "task_id": task_id })).await;
+    assert!(!is_error, "task still there: {task:?}");
+}
+
+#[tokio::test]
+async fn module_write_tools_refuse_a_plain_member() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let owner = seed_active_user(&store).await;
+    let member = seed_active_user(&store).await;
+    let (project_id, module_id) = seed_project_and_module(&store, &owner).await;
+    store
+        .create((domain::project::ProjectMembership {
+            project_id: project_id.clone(),
+            user_id: member.clone(),
+        },))
+        .await
+        .unwrap();
+    let member_token = issue_token(&store, &member).await;
+
+    // Same owner/admin gate as the UI: a member can read modules but not shape them.
+    let (is_error, _) =
+        tools_call(&router, &member_token, "list_modules", json!({ "project_id": project_id })).await;
+    assert!(!is_error, "member can list");
+    for (name, args) in [
+        ("create_module", json!({ "project_id": project_id, "name": "Nope" })),
+        ("update_module", json!({ "module_id": module_id, "name": "Nope" })),
+        ("delete_module", json!({ "module_id": module_id })),
+    ] {
+        assert!(
+            tools_call_refused(&router, &member_token, name, args).await,
+            "{name} should refuse a plain member"
+        );
+    }
 }
 
 #[tokio::test]

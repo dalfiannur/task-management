@@ -17,7 +17,13 @@
 
 pub use crate::projects::project_service::{get_project_core, list_projects_core};
 pub use crate::sedjiwa::tasks::project::v1 as project_pb;
-pub use crate::work::module_service::list_modules_core;
+// `delete_module_core` cascades to the module's tasks; `module_task_count`
+// exists so the MCP tool can refuse a non-empty module up front instead of
+// exposing that cascade to an agent.
+pub use crate::work::module_service::{
+    create_module_core, delete_module_core, list_modules_core, module_task_count,
+    update_module_core,
+};
 // `ListTasksRequest.project_id` is required, but the `list_tasks` MCP tool also
 // accepts a bare `module_id`. `module_project` is the exact lookup
 // `create_task_core`/`get_task_core`/etc. already use to derive a task's
