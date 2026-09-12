@@ -30,6 +30,7 @@ export function TaskRow({
   userMap,
   labelMap,
   onEdit,
+  dragDisabled = false,
   depth = 0,
   progress,
   blocked,
@@ -41,6 +42,13 @@ export function TaskRow({
   userMap: Record<string, AppUser>;
   labelMap: Record<string, Label>;
   onEdit: (task: Task) => void;
+  /**
+   * Set while the list is filtered. The rendered order is then a subset of
+   * the stored order, so a drop would compute its target index against rows
+   * the backend has never seen — the grip goes inert rather than writing a
+   * wrong `order`.
+   */
+  dragDisabled?: boolean;
   /** 0 = top-level, 1 = subtask (subtasks go one level deep only). */
   depth?: number;
   /** `{ done, total }` for a parent with subtasks — null/omitted otherwise. */
@@ -59,7 +67,7 @@ export function TaskRow({
   const update = useUpdateTask(projectId);
   const del = useDeleteTask();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: task.id });
+    useSortable({ id: task.id, disabled: dragDisabled });
 
   const done = task.status === "done";
   // Optimistically inserted row: it has no server id yet, so every action
@@ -103,11 +111,13 @@ export function TaskRow({
     >
       <button
         type="button"
-        disabled={pending}
-        className="cursor-grab text-text-muted/40 hover:text-text-muted disabled:cursor-default"
+        disabled={pending || dragDisabled}
+        className="cursor-grab text-text-muted/40 hover:text-text-muted disabled:cursor-default disabled:opacity-50"
         {...attributes}
         {...listeners}
-        aria-label="Drag task"
+        aria-label={
+          dragDisabled ? "Reordering is off while filtered" : "Drag task"
+        }
       >
         <GripVertical className="h-4 w-4" />
       </button>

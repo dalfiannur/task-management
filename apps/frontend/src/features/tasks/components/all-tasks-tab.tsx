@@ -8,10 +8,11 @@ import {
   useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import { Plus } from "lucide-react";
+import { Layers, Plus, SearchX } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/shared/empty-state";
 import { currentUserAtom, isAdminAtom } from "@/features/auth";
 import { useProject, useProjectMembers } from "@/features/projects";
 import { useUserMap } from "@/features/users";
@@ -24,8 +25,15 @@ import {
   useMoveTask,
   useReorderModules,
 } from "../api/hooks";
-import { edgeConflicts } from "../task-graph";
+import { buildHierarchy, edgeConflicts, subtaskProgress } from "../task-graph";
+import {
+  filterTasks,
+  hasActiveFilter,
+  parseTaskFilter,
+  type TaskFilter,
+} from "../filter";
 import { ModuleSection } from "./module-section";
+import { TaskFilterBar } from "./task-filter-bar";
 import { ModuleDialog } from "./module-dialog";
 import { TaskDialog } from "./task-dialog";
 
@@ -33,9 +41,13 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
   const me = useAtomValue(currentUserAtom);
   const isAdmin = useAtomValue(isAdminAtom);
   const navigate = useNavigate();
-  const { task: taskParam, comment: commentParam } = useSearch({
-    from: "/_authed/projects/$projectId",
-  });
+  const search = useSearch({ from: "/_authed/projects/$projectId" });
+  const { task: taskParam, comment: commentParam } = search;
+  // Re-parsed rather than spread: `validateSearch` already normalised these,
+  // and going back through the parser keeps the filter object free of the
+  // dialog params that share the same search bag.
+  const filter = parseTaskFilter(search);
+  const filtering = hasActiveFilter(filter);
   const { project } = useProject(projectId);
   const { modules, isLoading: modulesLoading } = useModules(projectId);
   const { tasks, isLoading: tasksLoading } = useTasks(projectId);
@@ -92,6 +104,21 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
     setTaskSearch({ task: undefined, comment: undefined });
   }
 
+  function setFilter(next: Partial<TaskFilter>) {
+    navigate({ to: ".", search: (prev) => ({ ...prev, ...next }) });
+  }
+
+  function clearFilters() {
+    setFilter({
+      status: undefined,
+      priority: undefined,
+      assignee: undefined,
+      label: undefined,
+      from: undefined,
+      to: undefined,
+    });
+  }
+
   // Deleted task / no access, or a task that's moved to another project
   // since the link was made: either way, tell the user and drop the stale
   // param rather than leaving the dialog stuck open on nothing (or on the
@@ -140,21 +167,61 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
     return out;
   }, [tasks]);
 
+  // Destructured so the memo keys off primitives — `filter` itself is a fresh
+  // object on every render.
+  const { status, priority, assignee, label, from, to } = filter;
+  const visibleTasks = useMemo(
+    () => filterTasks(tasks, { status, priority, assignee, label, from, to }),
+    [tasks, status, priority, assignee, label, from, to],
+  );
+
+  // Subtask tallies over the FULL project list, not the filtered one: a
+  // parent kept on screen only because one of its children matched would
+  // otherwise report `1/1` for a task that really has three subtasks.
+  const subtaskStats = useMemo(() => {
+    const { roots, childrenOf } = buildHierarchy(tasks);
+    const out: Record<string, { done: number; total: number }> = {};
+    for (const r of roots) {
+      const p = subtaskProgress(r, childrenOf);
+      if (p) out[r.id] = p;
+    }
+    return out;
+  }, [tasks]);
+
   const tasksByModule = useMemo(() => {
     const map: Record<string, Task[]> = {};
     for (const m of modules) map[m.id] = [];
-    for (const t of tasks) (map[t.moduleId] ??= []).push(t);
+    for (const t of visibleTasks) (map[t.moduleId] ??= []).push(t);
     for (const id of Object.keys(map)) {
       map[id].sort((a, b) => a.order - b.order);
     }
     return map;
-  }, [modules, tasks]);
+  }, [modules, visibleTasks]);
+
+  // Unfiltered counts, kept alongside: a module's delete confirmation has to
+  // name how many tasks really go with it, not how many happen to be on
+  // screen right now.
+  const totalByModule = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const t of tasks) map[t.moduleId] = (map[t.moduleId] ?? 0) + 1;
+    return map;
+  }, [tasks]);
+
+  // A module with nothing left to show is noise while filtering, but it is
+  // still a real (and droppable) module when no filter is on.
+  const visibleModules = filtering
+    ? modules.filter((m) => (tasksByModule[m.id]?.length ?? 0) > 0)
+    : modules;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
 
   function onDragEnd(e: DragEndEvent) {
+    // Belt to the `dragDisabled` braces on the rows: `targetIndex` below is
+    // read off the rendered (filtered) list, so a drop while filtering would
+    // write an `order` computed against a list the backend has never seen.
+    if (filtering) return;
     const { active, over } = e;
     if (!over || active.id === over.id) return;
     const activeTask = tasks.find((t) => t.id === active.id);
@@ -208,46 +275,88 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
 
   return (
     <div className="space-y-4 p-6">
-      {canManage && (
-        <div className="flex justify-end">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setModuleDialog({ open: true })}
-          >
-            <Plus className="mr-1 h-4 w-4" />
-            Add module
-          </Button>
+      {modules.length > 0 && (
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <TaskFilterBar
+            filter={filter}
+            onChange={setFilter}
+            onClear={clearFilters}
+            memberIds={memberIds}
+            userMap={userMap}
+            labelMap={labelMap}
+            matched={visibleTasks.length}
+            total={tasks.length}
+          />
+          {canManage && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setModuleDialog({ open: true })}
+            >
+              <Plus className="mr-1 h-4 w-4" />
+              Add module
+            </Button>
+          )}
         </div>
       )}
 
       {modules.length === 0 ? (
-        <div className="rounded-xl bg-surface-raised p-12 text-center text-text-muted shadow-2">
-          {canManage
-            ? "No modules yet. Add one to start organizing tasks."
-            : "No modules yet."}
-        </div>
+        // The toolbar above (and its "Add module" button) only renders once
+        // there are modules to filter, so on a fresh project this CTA is the
+        // ONLY way to create the first module — it must not depend on it.
+        <EmptyState
+          icon={Layers}
+          title="Organize tasks into modules"
+          body="Modules group this project's tasks by area of work. Create the first one to start adding tasks."
+          action={
+            canManage
+              ? { label: "Add module", onClick: () => setModuleDialog({ open: true }) }
+              : undefined
+          }
+        />
+      ) : visibleModules.length === 0 ? (
+        // Only reachable while filtering — `visibleModules` is `modules`
+        // otherwise. The way out of an over-narrow filter is to widen it, so
+        // that is the one CTA (empty-states.md §4, `no-results`).
+        <EmptyState
+          variant="no-results"
+          icon={SearchX}
+          title="No tasks match these filters"
+          body="Nothing in this project fits every filter at once. Clear them to see the full task list again."
+          action={{ label: "Clear filters", onClick: clearFilters }}
+        />
       ) : (
         <DndContext sensors={sensors} onDragEnd={onDragEnd}>
           <div className="space-y-4">
-            {modules.map((m, i) => (
-              <ModuleSection
-                key={m.id}
-                projectId={projectId}
-                module={m}
-                tasks={tasksByModule[m.id] ?? []}
-                canManage={canManage}
-                userMap={userMap}
-                labelMap={labelMap}
-                blockedMap={blockedMap}
-                onEditTask={(task) => openTask(task.id)}
-                onEditModule={(module) => setModuleDialog({ open: true, module })}
-                onMoveUp={() => moveModule(i, -1)}
-                onMoveDown={() => moveModule(i, 1)}
-                isFirst={i === 0}
-                isLast={i === modules.length - 1}
-              />
-            ))}
+            {visibleModules.map((m) => {
+              // Position in the FULL module list: the reorder arrows move a
+              // module among all of them, so an index into the filtered list
+              // would swap the wrong pair.
+              const i = modules.indexOf(m);
+              return (
+                <ModuleSection
+                  key={m.id}
+                  projectId={projectId}
+                  module={m}
+                  tasks={tasksByModule[m.id] ?? []}
+                  totalCount={totalByModule[m.id] ?? 0}
+                  canManage={canManage}
+                  dragDisabled={filtering}
+                  userMap={userMap}
+                  labelMap={labelMap}
+                  blockedMap={blockedMap}
+                  subtaskStats={subtaskStats}
+                  onEditTask={(task) => openTask(task.id)}
+                  onEditModule={(module) =>
+                    setModuleDialog({ open: true, module })
+                  }
+                  onMoveUp={() => moveModule(i, -1)}
+                  onMoveDown={() => moveModule(i, 1)}
+                  isFirst={i === 0}
+                  isLast={i === modules.length - 1}
+                />
+              );
+            })}
           </div>
         </DndContext>
       )}

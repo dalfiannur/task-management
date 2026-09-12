@@ -24,6 +24,13 @@ export {
   useMoveTask,
 } from "./api/hooks";
 export { AllTasksTab } from "./components/all-tasks-tab";
+export {
+  filterTasks,
+  hasActiveFilter,
+  matchesFilter,
+  parseTaskFilter,
+  type TaskFilter,
+} from "./filter";
 export { useModuleCollapsed } from "./atoms/collapsed-modules";
 export { StatusBadge, PriorityLabel } from "./components/task-badges";
 export {

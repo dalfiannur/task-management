@@ -36,17 +36,20 @@ import type { Label } from "@/features/labels";
 import type { Module, Task } from "../types";
 import { useModuleCollapsed } from "../atoms/collapsed-modules";
 import { useCreateTask, useDeleteModule } from "../api/hooks";
-import { buildHierarchy, subtaskProgress } from "../task-graph";
+import { buildHierarchy } from "../task-graph";
 import { TaskRow } from "./task-row";
 
 export function ModuleSection({
   projectId,
   module,
   tasks,
+  totalCount,
   canManage,
+  dragDisabled,
   userMap,
   labelMap,
   blockedMap,
+  subtaskStats,
   onEditTask,
   onEditModule,
   onMoveUp,
@@ -57,12 +60,19 @@ export function ModuleSection({
   /** The project whose task list the optimistic quick-add writes into. */
   projectId: string;
   module: Module;
+  /** The tasks to render — already filtered by the Tasks-tab filter bar. */
   tasks: Task[];
+  /** How many tasks this module really holds, filter or no filter. */
+  totalCount: number;
   canManage: boolean;
+  /** Set while a filter is on: the rendered order is not the stored order. */
+  dragDisabled: boolean;
   userMap: Record<string, AppUser>;
   labelMap: Record<string, Label>;
   /** taskId → whether a `blockedByIds` entry resolves to a not-done task. */
   blockedMap: Record<string, boolean>;
+  /** taskId → its real subtask tally, counted over the unfiltered list. */
+  subtaskStats: Record<string, { done: number; total: number }>;
   onEditTask: (task: Task) => void;
   onEditModule: (module: Module) => void;
   onMoveUp: () => void;
@@ -136,7 +146,11 @@ export function ModuleSection({
             </Button>
           </CollapsibleTrigger>
           <h3 className="font-medium">{module.name}</h3>
-          <span className="text-num text-xs text-text-muted">{tasks.length}</span>
+          <span className="text-num text-xs text-text-muted">
+            {tasks.length === totalCount
+              ? totalCount
+              : `${tasks.length} / ${totalCount}`}
+          </span>
           <div className="flex-1" />
           {canManage && (
             <div className="flex items-center gap-0.5">
@@ -184,7 +198,7 @@ export function ModuleSection({
                   <AlertDialogHeader>
                     <AlertDialogTitle>Delete “{module.name}”?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This deletes the module and its {tasks.length} task(s). This
+                      This deletes the module and its {totalCount} task(s). This
                       cannot be undone.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
@@ -211,9 +225,10 @@ export function ModuleSection({
                     userMap={userMap}
                     labelMap={labelMap}
                     onEdit={onEditTask}
-                    progress={subtaskProgress(task, childrenOf)}
+                    dragDisabled={dragDisabled}
+                    progress={subtaskStats[task.id] ?? null}
                     blocked={blockedMap[task.id]}
-                    subtaskCount={(childrenOf[task.id] ?? []).length}
+                    subtaskCount={subtaskStats[task.id]?.total ?? 0}
                   />
                   {(childrenOf[task.id] ?? []).map((child) => (
                     <TaskRow
@@ -223,6 +238,7 @@ export function ModuleSection({
                       userMap={userMap}
                       labelMap={labelMap}
                       onEdit={onEditTask}
+                      dragDisabled={dragDisabled}
                       depth={1}
                       blocked={blockedMap[child.id]}
                     />
@@ -230,6 +246,8 @@ export function ModuleSection({
                 </Fragment>
               ))}
             </SortableContext>
+            {/* Reachable only unfiltered: a module the filter empties is
+                dropped from the list upstream, never rendered hollow. */}
             {tasks.length === 0 && (
               <p className="px-4 py-3 text-sm text-text-muted">No tasks yet.</p>
             )}
