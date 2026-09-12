@@ -59,19 +59,18 @@ async fn list_modules(
     ))
 }
 
-async fn create_module(
-    Extension(store): StoreExt,
-    user: Option<Extension<AuthUser>>,
-    req: ConnectRequest<pb::CreateModuleRequest>,
-) -> Result<ConnectResponse<pb::Module>, ConnectError> {
-    let auth = require_auth(user)?;
-    let ConnectRequest(r) = req;
-    require_owner_or_admin(&store, &r.project_id, &auth).await?;
+/// Append a module to a project. Owner/admin-gated.
+pub async fn create_module_core(
+    store: &Store,
+    auth: &AuthUser,
+    r: pb::CreateModuleRequest,
+) -> Result<pb::Module, ConnectError> {
+    require_owner_or_admin(store, &r.project_id, auth).await?;
     let name = r.name.trim();
     if !module_name_ok(name) {
         return Err(ConnectError::new_invalid_argument("name is required"));
     }
-    let existing = modules_for_project(&store, &r.project_id)
+    let existing = modules_for_project(store, &r.project_id)
         .await
         .map_err(internal)?;
     let next_order = existing.iter().map(|m| m.order).max().map(|m| m + 1).unwrap_or(0);
@@ -101,7 +100,7 @@ async fn create_module(
             .map_err(internal)?;
     }
     record(
-        &store,
+        store,
         &r.project_id,
         &auth.id,
         EntityType::Module,
@@ -111,20 +110,32 @@ async fn create_module(
         vec![],
     )
     .await;
-    let m = require_module(&store, pid).await?;
-    Ok(ConnectResponse::new(to_proto(&m)))
+    let m = require_module(store, pid).await?;
+    Ok(to_proto(&m))
 }
 
-async fn update_module(
+async fn create_module(
     Extension(store): StoreExt,
     user: Option<Extension<AuthUser>>,
-    req: ConnectRequest<pb::UpdateModuleRequest>,
+    req: ConnectRequest<pb::CreateModuleRequest>,
 ) -> Result<ConnectResponse<pb::Module>, ConnectError> {
     let auth = require_auth(user)?;
     let ConnectRequest(r) = req;
+    Ok(ConnectResponse::new(
+        create_module_core(&store, &auth, r).await?,
+    ))
+}
+
+/// Rename / re-describe a module. Owner/admin-gated. An explicit empty
+/// description clears it; an absent one is left alone.
+pub async fn update_module_core(
+    store: &Store,
+    auth: &AuthUser,
+    r: pb::UpdateModuleRequest,
+) -> Result<pb::Module, ConnectError> {
     let pid = parse_pid(&r.id)?;
-    let m = require_module(&store, pid).await?;
-    require_owner_or_admin(&store, &m.project_id, &auth).await?;
+    let m = require_module(store, pid).await?;
+    require_owner_or_admin(store, &m.project_id, auth).await?;
 
     if let Some(name) = &r.name {
         if !module_name_ok(name) {
@@ -148,9 +159,9 @@ async fn update_module(
         })
         .await
         .map_err(internal)?;
-    let m = require_module(&store, pid).await?;
+    let m = require_module(store, pid).await?;
     record(
-        &store,
+        store,
         &m.project_id,
         &auth.id,
         EntityType::Module,
@@ -160,32 +171,63 @@ async fn update_module(
         vec![],
     )
     .await;
-    Ok(ConnectResponse::new(to_proto(&m)))
+    Ok(to_proto(&m))
 }
 
-async fn delete_module(
+async fn update_module(
     Extension(store): StoreExt,
     user: Option<Extension<AuthUser>>,
-    req: ConnectRequest<pb::DeleteModuleRequest>,
-) -> Result<ConnectResponse<pb::DeleteModuleResponse>, ConnectError> {
+    req: ConnectRequest<pb::UpdateModuleRequest>,
+) -> Result<ConnectResponse<pb::Module>, ConnectError> {
     let auth = require_auth(user)?;
     let ConnectRequest(r) = req;
+    Ok(ConnectResponse::new(
+        update_module_core(&store, &auth, r).await?,
+    ))
+}
+
+/// How many tasks live in a module (top-level and subtasks alike). Requires
+/// the caller to be a member of the module's project.
+pub async fn module_task_count(
+    store: &Store,
+    auth: &AuthUser,
+    module_id: &str,
+) -> Result<usize, ConnectError> {
+    let pid = parse_pid(module_id)?;
+    let m = require_module(store, pid).await?;
+    require_member(store, &m.project_id, auth).await?;
+    Ok(task_pids_for_module(store, module_id)
+        .await
+        .map_err(internal)?
+        .len())
+}
+
+/// Delete a module **and every task in it**. Owner/admin-gated.
+///
+/// The cascade is the UI contract (the dialog warns with the task count).
+/// Callers that must not drop work silently — the MCP `delete_module` tool —
+/// check `module_task_count` themselves and refuse before reaching here.
+pub async fn delete_module_core(
+    store: &Store,
+    auth: &AuthUser,
+    r: pb::DeleteModuleRequest,
+) -> Result<pb::DeleteModuleResponse, ConnectError> {
     let pid = parse_pid(&r.id)?;
-    let m = require_module(&store, pid).await?;
-    require_owner_or_admin(&store, &m.project_id, &auth).await?;
+    let m = require_module(store, pid).await?;
+    require_owner_or_admin(store, &m.project_id, auth).await?;
     // Cascade: delete the module's tasks, then the module.
-    for tpid in task_pids_for_module(&store, &pid.to_string())
+    for tpid in task_pids_for_module(store, &pid.to_string())
         .await
         .map_err(internal)?
     {
         store.delete(tpid).await.map_err(internal)?;
         // The cascade deletes entities but the index does not follow on its
         // own; without this, every task under a deleted module stays findable.
-        super::deindex_task_and_comments(&store, &tpid.to_string()).await;
+        super::deindex_task_and_comments(store, &tpid.to_string()).await;
     }
     store.delete(pid).await.map_err(internal)?;
     record(
-        &store,
+        store,
         &m.project_id,
         &auth.id,
         EntityType::Module,
@@ -195,7 +237,19 @@ async fn delete_module(
         vec![],
     )
     .await;
-    Ok(ConnectResponse::new(pb::DeleteModuleResponse { ok: true }))
+    Ok(pb::DeleteModuleResponse { ok: true })
+}
+
+async fn delete_module(
+    Extension(store): StoreExt,
+    user: Option<Extension<AuthUser>>,
+    req: ConnectRequest<pb::DeleteModuleRequest>,
+) -> Result<ConnectResponse<pb::DeleteModuleResponse>, ConnectError> {
+    let auth = require_auth(user)?;
+    let ConnectRequest(r) = req;
+    Ok(ConnectResponse::new(
+        delete_module_core(&store, &auth, r).await?,
+    ))
 }
 
 async fn reorder_modules(

@@ -101,17 +101,22 @@ TokenUsage  { last_used_at: Option<String> }
   bukan snapshot beku di dalam token — jadi token otomatis kehilangan hak saat user
   di-suspend atau dicabut adminnya.
 
-## Tool Surface (12 tool)
+## Tool Surface (15 tool)
 
 | Domain | Tool |
 |---|---|
 | Tasks | `list_tasks`, `get_task`, `create_task`, `update_task`, `move_task` |
-| Projects | `list_projects`, `get_project`, `list_modules` |
+| Projects | `list_projects`, `get_project`, `list_modules`, `create_module`, `update_module`, `delete_module` |
 | Discovery | `search`, `my_tasks` |
 | Comments | `list_comments`, `add_comment` |
 
 Semuanya memakai core fn yang sama dengan UI, sehingga member-gating, validasi assignee,
 activity record, notifikasi, dan search index otomatis ikut.
+
+**Tool modul (ditambahkan 2026-09-12)** memakai gate owner/admin yang sama dengan UI.
+`delete_module` di Connect *cascade* — menghapus semua task di dalamnya — tetapi tool
+MCP-nya **menolak modul yang masih berisi task** dan menyuruh `move_task` dulu, supaya
+aturan "tidak ada penghapusan diam-diam" di bawah tetap berlaku.
 
 **`delete_task` sengaja tidak masuk v1.** Mode gagal terburuk dari agen AI adalah
 menghapus kerjaan orang secara diam-diam, sementara `update_task` ke status batal/selesai
