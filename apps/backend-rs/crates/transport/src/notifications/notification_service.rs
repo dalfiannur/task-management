@@ -6,7 +6,6 @@ use std::sync::Arc;
 use auth::AuthUser;
 use axum::Extension;
 use connectrpc_axum::{ConnectError, ConnectRequest, ConnectResponse, StreamBody};
-use domain::notification::NotificationInfo;
 use persistence::Store;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
@@ -28,15 +27,7 @@ async fn mark_one(store: &Store, pid: i64, recipient: &str) -> Result<(), Connec
     if n.recipient_id != recipient || n.read {
         return Ok(());
     }
-    store
-        .update(pid, move |w, e| {
-            if let Some(info) = w.get::<NotificationInfo>(e).cloned() {
-                w.remove::<NotificationInfo>(e);
-                w.insert(e, NotificationInfo { read: true, ..info });
-            }
-        })
-        .await
-        .map_err(internal)
+    super::record::mark_read(store, pid).await.map_err(internal)
 }
 
 async fn list_notifications(
