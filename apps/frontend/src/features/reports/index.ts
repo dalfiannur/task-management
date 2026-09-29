@@ -20,3 +20,4 @@ export { MemberReportTable } from "./components/member-report-table";
 export { ReportTaskList } from "./components/report-task-list";
 export { ActivitySummary } from "./components/activity-summary";
 export { ReportPrintHeader } from "./components/report-print-header";
+export { ExportExcelButton } from "./components/export-excel-button";

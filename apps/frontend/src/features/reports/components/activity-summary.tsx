@@ -1,22 +1,6 @@
 import { Link } from "@tanstack/react-router";
+import { ACTION_LABEL, ENTITY_LABEL } from "../lib/activity-labels";
 import type { ActivitySummaryRow } from "../types";
-
-const ENTITY_LABEL: Record<string, string> = {
-  task: "Task",
-  module: "Module",
-  membership: "Membership",
-  ownership: "Ownership",
-  page: "Page",
-  media: "Media",
-  other: "Other",
-};
-
-const ACTION_LABEL: Record<string, string> = {
-  created: "created",
-  updated: "updated",
-  deleted: "deleted",
-  other: "changed",
-};
 
 /** Counts, not rows. A month of activity is thousands of entries; the feed is
  *  where those belong, and this links to it. */

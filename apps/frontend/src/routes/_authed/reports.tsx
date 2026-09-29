@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   ActivitySummary,
+  ExportExcelButton,
   MemberReportTable,
   PeriodPicker,
   ProjectReportTable,
@@ -35,9 +36,12 @@ function ReportsPage() {
     <div className="mx-auto max-w-7xl space-y-8 p-6">
       <div className="flex items-center justify-between print:hidden">
         <h1 className="text-2xl font-semibold">Reports</h1>
-        <Button variant="outline" size="sm" onClick={() => window.print()}>
-          <Printer /> Print
-        </Button>
+        <div className="flex items-center gap-2">
+          <ExportExcelButton report={report} window={activeWindow} />
+          <Button variant="outline" size="sm" onClick={() => window.print()}>
+            <Printer /> Print
+          </Button>
+        </div>
       </div>
 
       <ReportPrintHeader window={activeWindow} />
