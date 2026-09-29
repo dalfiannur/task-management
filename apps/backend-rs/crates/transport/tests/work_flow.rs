@@ -458,3 +458,62 @@ async fn deleting_a_parent_strips_its_subtasks_from_other_tasks_dependencies() {
         "dangling dependency on a cascade-deleted subtask removed too"
     );
 }
+
+/// Module descriptions set and clear; id lists keep their order; moving a
+/// parent carries its subtasks; deleting a module takes its tasks with it.
+#[tokio::test]
+async fn module_description_task_lists_move_and_module_cascade() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let owner = mk_user(&store).await;
+    let a = mk_user(&store).await;
+    let b = mk_user(&store).await;
+    let pid = project_with(&router, &owner, &[&a, &b]).await;
+    let to = token(&owner);
+
+    // Description: set on create, absent when empty, cleared by "".
+    let m1 = ok(&router, &format!("{MODULE}/CreateModule"), &to, json!({ "projectId": pid, "name": "One", "description": " first " })).await;
+    assert_eq!(m1["description"], "first");
+    let m1id = m1["id"].as_str().unwrap().to_string();
+    let m2 = ok(&router, &format!("{MODULE}/CreateModule"), &to, json!({ "projectId": pid, "name": "Two", "description": "  " })).await;
+    assert!(m2["description"].is_null(), "blank description is not stored: {m2}");
+    let m2id = m2["id"].as_str().unwrap().to_string();
+    let kept = ok(&router, &format!("{MODULE}/UpdateModule"), &to, json!({ "id": m1id, "name": "Uno" })).await;
+    assert_eq!(kept["description"], "first", "absent description is left alone");
+    let cleared = ok(&router, &format!("{MODULE}/UpdateModule"), &to, json!({ "id": m1id, "description": "" })).await;
+    assert!(cleared["description"].is_null(), "empty description clears: {cleared}");
+
+    // Assignee and label lists come back in the order they were written.
+    let t = ok(&router, &format!("{TASK}/CreateTask"), &to, json!({
+        "moduleId": m1id, "title": "Parent", "assigneeIds": [b, a], "labelIds": ["l2", "l1"]
+    })).await;
+    assert_eq!(t["assigneeIds"], json!([b, a]));
+    assert_eq!(t["labelIds"], json!(["l2", "l1"]));
+    let tid = t["id"].as_str().unwrap().to_string();
+    let t = ok(&router, &format!("{TASK}/UpdateTask"), &to, json!({
+        "id": tid, "labelIds": { "values": ["l3"] }
+    })).await;
+    assert_eq!(t["labelIds"], json!(["l3"]));
+    assert_eq!(t["assigneeIds"], json!([b, a]), "absent assignee list is unchanged");
+    let sub = ok(&router, &format!("{TASK}/CreateTask"), &to, json!({ "moduleId": m1id, "title": "Child", "parentId": tid })).await;
+    let sub_id = sub["id"].as_str().unwrap().to_string();
+
+    // Moving the parent to module two carries the subtask.
+    let moved = ok(&router, &format!("{TASK}/MoveTask"), &to, json!({ "id": tid, "moduleId": m2id, "order": 5 })).await;
+    assert_eq!(moved["moduleId"], m2id);
+    assert_eq!(num(&moved, "order"), 5);
+    let sub = ok(&router, &format!("{TASK}/GetTask"), &to, json!({ "id": sub_id })).await;
+    assert_eq!(sub["moduleId"], m2id, "subtask follows its parent");
+
+    // Deleting module two deletes both tasks.
+    ok(&router, &format!("{MODULE}/DeleteModule"), &to, json!({ "id": m2id })).await;
+    for id in [&tid, &sub_id] {
+        let (st, _) = call(&router, &format!("{TASK}/GetTask"), Some(&to), json!({ "id": id })).await;
+        assert_eq!(st, StatusCode::NOT_FOUND, "task {id} went with its module");
+    }
+    let list = ok(&router, &format!("{MODULE}/ListModules"), &to, json!({ "projectId": pid })).await;
+    let names: Vec<&str> = list["modules"].as_array().unwrap().iter().map(|m| m["name"].as_str().unwrap()).collect();
+    assert_eq!(names, vec!["Uno"]);
+}
