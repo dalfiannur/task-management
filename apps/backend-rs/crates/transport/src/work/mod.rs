@@ -200,21 +200,7 @@ pub(crate) async fn validate_blocked_by(
 
 /// Subtask `pid`s of a parent (for cascade delete and module moves).
 pub(crate) async fn subtask_pids(store: &Store, parent_id: &str) -> anyhow::Result<Vec<i64>> {
-    let p = parent_id.to_string();
-    store
-        .query::<domain::task::TaskParent, i64>(None, move |world, pairs| {
-            pairs
-                .iter()
-                .filter(|(_, e)| {
-                    world
-                        .get::<domain::task::TaskParent>(*e)
-                        .map(|r| r.parent_id == p)
-                        .unwrap_or(false)
-                })
-                .map(|(pid, _)| *pid)
-                .collect()
-        })
-        .await
+    task_record::subtask_pids(store, parent_id).await
 }
 
 /// Remove every id in `gone_ids` from every task in the project that listed
@@ -222,7 +208,7 @@ pub(crate) async fn subtask_pids(store: &Store, parent_id: &str) -> anyhow::Resu
 ///
 /// Called after a task is deleted — and, since a delete cascades to its
 /// subtasks, `gone_ids` covers the task and all of them together, so a parent
-/// with several children costs one project scan rather than one per child.
+/// with several children costs one statement rather than one per child.
 /// Without this, `blocked_by` accumulates ids that resolve to nothing: the
 /// frontend skips them when building conflicts, so they are invisible rather
 /// than broken — which is exactly why they would otherwise never get cleaned
@@ -235,30 +221,12 @@ pub(crate) async fn strip_dependency(
     if gone_ids.is_empty() {
         return Ok(());
     }
-    let gone: std::collections::HashSet<&str> = gone_ids.iter().map(String::as_str).collect();
-    let module_ids: std::collections::HashSet<String> = record::modules_for_project(store, project_id)
+    let module_ids: Vec<String> = record::modules_for_project(store, project_id)
         .await?
         .into_iter()
         .map(|m| m.pid.to_string())
         .collect();
-    for t in task_record::tasks_for_modules(store, module_ids).await? {
-        if !t.blocked_by_ids.iter().any(|b| gone.contains(b.as_str())) {
-            continue;
-        }
-        let kept: Vec<String> = t
-            .blocked_by_ids
-            .iter()
-            .filter(|b| !gone.contains(b.as_str()))
-            .cloned()
-            .collect();
-        store
-            .update(t.pid, move |w, e| {
-                w.remove::<domain::task::TaskBlockedBy>(e);
-                w.insert(e, domain::task::TaskBlockedBy { task_ids: kept });
-            })
-            .await?;
-    }
-    Ok(())
+    task_record::strip_blocked_by(store, &module_ids, gone_ids).await
 }
 
 /// Drop a deleted task and its comments from the search index.

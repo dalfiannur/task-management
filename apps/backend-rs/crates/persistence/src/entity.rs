@@ -13,6 +13,15 @@
 //!
 //! Deleting is `DELETE FROM arke_entities` and needs nothing here: the cascade
 //! removes the component rows.
+//!
+//! **Cast every integer parameter (`$n::int4`).** sqlx caches prepared
+//! statements per connection keyed on the SQL text alone, and arke binds every
+//! integer as `i64` into INSERTs shaped exactly like hand-written ones
+//! (`INSERT INTO cmp_x (pid, value) VALUES ($1, $2)`). Whichever side prepares
+//! the text first fixes its parameter types for that connection, so an `i32`
+//! bound into arke's `int8` slot fails with "insufficient data left in
+//! message". The cast makes the text different and the type explicit. Text,
+//! bool and pid parameters bind the same type on both sides and are safe.
 
 use sqlx::PgConnection;
 

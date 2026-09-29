@@ -8,17 +8,16 @@ use std::sync::Arc;
 use auth::AuthUser;
 use axum::Extension;
 use connectrpc_axum::{ConnectError, ConnectRequest, ConnectResponse};
-use domain::task::{
-    dates_ok, title_ok, TaskAssignees, TaskAudit, TaskBlockedBy, TaskInfo, TaskLabels,
-    TaskModuleRef, TaskParent, TaskPriority, TaskStatus,
-};
+use domain::task::{dates_ok, title_ok, TaskPriority, TaskStatus};
 use persistence::Store;
 
 use super::record::{load_module, modules_for_project};
-use super::task_record::{load_task, tasks_for_module, tasks_for_modules, to_proto, TaskRecord};
+use super::task_record::{
+    self, load_task, tasks_for_modules, to_proto, TaskFields, TaskRecord,
+};
 use super::{
-    internal, parse_pid, require_auth, require_member, strip_dependency, subtask_pids,
-    validate_blocked_by, validate_parent, StoreExt,
+    internal, parse_pid, require_auth, require_member, strip_dependency, validate_blocked_by,
+    validate_parent, StoreExt,
 };
 use crate::activity::record;
 use crate::notifications::{emit, NotifRefs, Notifier};
@@ -81,11 +80,6 @@ async fn validate_assignees(
             "every assignee must be a project member",
         ))
     }
-}
-
-async fn next_order_in_module(store: &Store, module_id: &str) -> Result<i32, ConnectError> {
-    let existing = tasks_for_module(store, module_id).await.map_err(internal)?;
-    Ok(existing.iter().map(|t| t.order).max().map(|m| m + 1).unwrap_or(0))
 }
 
 /// Single task by id — the read a deep-linked dialog needs when no list has
@@ -181,49 +175,30 @@ pub async fn create_task_core(
         ),
         None => (r.module_id.clone(), None),
     };
-    let order = next_order_in_module(store, &module_id).await?;
     let now = now_iso();
     let completed_at = (status == TaskStatus::Done).then(|| now.clone());
     let description_for_index = domain::sanitize::clean_html(&r.description.unwrap_or_default());
 
-    let pid = store
-        .create((
-            TaskInfo {
-                title: title.to_string(),
-                description: description_for_index.clone(),
-                status: status.as_str().to_string(),
-                priority: priority.as_str().to_string(),
-                start_date,
-                due_date,
-                sort_order: order,
-            },
-            TaskModuleRef {
-                module_id: module_id.clone(),
-            },
-            TaskAssignees {
-                user_ids: r.assignee_ids,
-            },
-            TaskLabels {
-                label_ids: r.label_ids,
-            },
-            TaskAudit {
-                created_at: now.clone(),
-                updated_at: now,
-                completed_at,
-                created_by: auth.id.clone(),
-            },
-        ))
-        .await
-        .map_err(internal)?;
-    if let Some(p) = &parent_id {
-        let p = p.clone();
-        store
-            .update(pid, move |w, e| {
-                w.insert(e, TaskParent { parent_id: p });
-            })
-            .await
-            .map_err(internal)?;
-    }
+    let pid = task_record::create_task(
+        store,
+        &module_id,
+        parent_id.as_deref(),
+        &auth.id,
+        TaskFields {
+            title: title.to_string(),
+            description: description_for_index.clone(),
+            status,
+            priority,
+            start_date,
+            due_date,
+            assignee_ids: r.assignee_ids,
+            label_ids: r.label_ids,
+            updated_at: now,
+            completed_at,
+        },
+    )
+    .await
+    .map_err(internal)?;
     // Notify each assignee (emit no-ops on self-assignment).
     if let Some(n) = notifier {
         let refs = NotifRefs::task(&project_id, &pid.to_string());
@@ -410,43 +385,27 @@ pub async fn update_task_core(
     }
     let summary = format!("updated task '{title}'");
 
-    let info = TaskInfo {
-        title,
-        description,
-        status: status.as_str().to_string(),
-        priority: priority.as_str().to_string(),
-        start_date,
-        due_date,
-        sort_order: t.order,
-    };
-    let audit = TaskAudit {
-        created_at: t.created_at.clone(),
-        updated_at: now,
-        completed_at,
-        created_by: t.created_by.clone(),
-    };
     let new_assignees = assignees.clone();
-    store
-        .update(pid, move |w, e| {
-            w.remove::<TaskInfo>(e);
-            w.insert(e, info);
-            w.remove::<TaskAudit>(e);
-            w.insert(e, audit);
-            w.remove::<TaskAssignees>(e);
-            w.insert(e, TaskAssignees { user_ids: assignees });
-            w.remove::<TaskLabels>(e);
-            w.insert(e, TaskLabels { label_ids: labels });
-            w.remove::<TaskBlockedBy>(e);
-            w.insert(e, TaskBlockedBy { task_ids: blocked_by });
-            if let Some(p) = new_parent {
-                w.remove::<TaskParent>(e);
-                if let Some(pid_str) = p {
-                    w.insert(e, TaskParent { parent_id: pid_str });
-                }
-            }
-        })
-        .await
-        .map_err(internal)?;
+    task_record::update_task(
+        store,
+        pid,
+        TaskFields {
+            title,
+            description,
+            status,
+            priority,
+            start_date,
+            due_date,
+            assignee_ids: assignees,
+            label_ids: labels,
+            updated_at: now,
+            completed_at,
+        },
+        blocked_by,
+        new_parent,
+    )
+    .await
+    .map_err(internal)?;
     // Notify only newly-added assignees.
     if let Some(n) = notifier {
         let refs = NotifRefs::task(&project_id, &pid.to_string());
@@ -518,12 +477,10 @@ async fn delete_task(
     // Cascade to subtasks first, so each leaves the search index too. Their
     // ids join the parent's below so the dependency strip covers all of them.
     let mut gone_ids: Vec<String> = vec![pid.to_string()];
-    for spid in subtask_pids(&store, &pid.to_string()).await.map_err(internal)? {
-        store.delete(spid).await.map_err(internal)?;
+    for spid in task_record::delete_task(&store, pid).await.map_err(internal)? {
         super::deindex_task_and_comments(&store, &spid.to_string()).await;
         gone_ids.push(spid.to_string());
     }
-    store.delete(pid).await.map_err(internal)?;
     record(
         &store,
         &project_id,
@@ -564,47 +521,11 @@ pub async fn move_task_core(
             "destination module is in a different project",
         ));
     }
-    let module_id = r.module_id.clone();
-    let order = r.order;
-    let now = now_iso();
-    let info = TaskInfo {
-        title: t.title.clone(),
-        description: t.description.clone(),
-        status: t.status.as_str().to_string(),
-        priority: t.priority.as_str().to_string(),
-        start_date: t.start_date.clone(),
-        due_date: t.due_date.clone(),
-        sort_order: order,
-    };
-    let audit = TaskAudit {
-        created_at: t.created_at.clone(),
-        updated_at: now,
-        completed_at: t.completed_at.clone(),
-        created_by: t.created_by.clone(),
-    };
-    store
-        .update(pid, move |w, e| {
-            w.remove::<TaskInfo>(e);
-            w.insert(e, info);
-            w.remove::<TaskModuleRef>(e);
-            w.insert(e, TaskModuleRef { module_id });
-            w.remove::<TaskAudit>(e);
-            w.insert(e, audit);
-        })
-        .await
-        .map_err(internal)?;
     // A subtask always lives in its parent's module; moving the parent moves
     // the children rather than leaving them behind in the old module.
-    for spid in subtask_pids(store, &pid.to_string()).await.map_err(internal)? {
-        let mid = r.module_id.clone();
-        store
-            .update(spid, move |w, e| {
-                w.remove::<TaskModuleRef>(e);
-                w.insert(e, TaskModuleRef { module_id: mid });
-            })
-            .await
-            .map_err(internal)?;
-    }
+    task_record::move_task(store, pid, &r.module_id, r.order, &now_iso())
+        .await
+        .map_err(internal)?;
     let t = require_task(store, pid).await?;
     // `unwrap_or_default()` here would turn a `None` (module deleted out from
     // under this move — a narrow race) into `Some("")`. An empty string is
