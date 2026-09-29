@@ -206,4 +206,26 @@ mod tests {
         let resp = router.oneshot(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
     }
+
+    /// DbCheck writes a heartbeat and reads it back: a numeric id and the
+    /// timestamp it stored.
+    #[tokio::test]
+    async fn db_check_round_trips_a_heartbeat() {
+        let Some(router) = router().await else {
+            skipped();
+            return;
+        };
+        let req = Request::builder()
+            .method("POST")
+            .uri("/sedjiwa.tasks.health.v1.HealthService/DbCheck")
+            .header(CONTENT_TYPE, "application/json")
+            .body(Body::from(serde_json::json!({}).to_string()))
+            .unwrap();
+        let resp = router.oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), StatusCode::OK);
+        let bytes = axum::body::to_bytes(resp.into_body(), usize::MAX).await.unwrap();
+        let body: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+        assert!(body["heartbeatId"].as_str().unwrap().parse::<i64>().is_ok(), "{body}");
+        assert!(body["ts"].as_str().is_some_and(|t| !t.is_empty()), "{body}");
+    }
 }

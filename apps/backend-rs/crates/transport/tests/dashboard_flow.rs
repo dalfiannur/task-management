@@ -260,3 +260,27 @@ async fn project_overview_counts_and_gating() {
     assert_eq!(num(&z, "moduleCount"), 0);
     assert!(z["perModule"].as_array().map(|a| a.is_empty()).unwrap_or(true), "{z}");
 }
+
+/// Being `@mentioned` in someone else's comment makes a task "involving me";
+/// someone else's comment that doesn't mention me does not.
+#[tokio::test]
+async fn involving_me_includes_mentions() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let owner = mk_user(&store).await;
+    let me = mk_user(&store).await;
+    let (to, tm) = (token(&owner), token(&me));
+    let p = ok(&router, &format!("{PROJECT}/CreateProject"), &to, json!({ "name": format!("P-{}", uniq()) })).await["id"].as_str().unwrap().to_string();
+    ok(&router, &format!("{PROJECT}/AddProjectMember"), &to, json!({ "projectId": p, "userId": me })).await;
+    let m = ok(&router, &format!("{MODULE}/CreateModule"), &to, json!({ "projectId": p, "name": "M" })).await["id"].as_str().unwrap().to_string();
+    let mentioned = create_task(&router, &to, &m, json!({ "title": "Mentioned" })).await;
+    let quiet = create_task(&router, &to, &m, json!({ "title": "Quiet" })).await;
+    ok(&router, &format!("{COMMENT}/CreateComment"), &to, json!({ "taskId": mentioned, "content": "@me look", "mentionedUserIds": [me] })).await;
+    ok(&router, &format!("{COMMENT}/CreateComment"), &to, json!({ "taskId": quiet, "content": "note to self" })).await;
+
+    let involving = ok(&router, &format!("{MY}/ListInvolvingMe"), &tm, json!({})).await;
+    assert_eq!(num(&involving, "total"), 1, "{involving}");
+    assert_eq!(involving["items"][0]["task"]["id"], mentioned);
+}

@@ -50,7 +50,6 @@ use std::sync::Arc;
 use auth::AuthUser;
 use axum::Extension;
 use connectrpc_axum::{ConnectError, ConnectRequest, ConnectResponse};
-use domain::HeartbeatAt;
 use persistence::Store;
 
 use sedjiwa::tasks::health::v1 as pb;
@@ -65,23 +64,30 @@ async fn check(
     }))
 }
 
-/// Prove Arke↔Postgres: write a heartbeat, read it back from the DB.
+/// Prove the database round-trips: write a heartbeat, read it back.
 async fn db_check(
     Extension(store): Extension<Arc<Store>>,
     _req: ConnectRequest<pb::DbCheckRequest>,
 ) -> Result<ConnectResponse<pb::DbCheckResponse>, ConnectError> {
-    let pid = store
-        .create((HeartbeatAt { ts: now_iso() },))
+    let internal = |e: sqlx::Error| ConnectError::new_internal(e.to_string());
+    let mut tx = store.pool().begin().await.map_err(internal)?;
+    let pid = persistence::entity::new_pid(&mut tx).await.map_err(internal)?;
+    sqlx::query("INSERT INTO cmp_heartbeatat (pid, ts) VALUES ($1, $2)")
+        .bind(pid)
+        .bind(now_iso())
+        .execute(&mut *tx)
         .await
-        .map_err(|e| ConnectError::new_internal(e.to_string()))?;
-    let hb = store
-        .get::<HeartbeatAt>(pid)
+        .map_err(internal)?;
+    tx.commit().await.map_err(internal)?;
+    let ts: Option<String> = sqlx::query_scalar("SELECT ts FROM cmp_heartbeatat WHERE pid = $1")
+        .bind(pid)
+        .fetch_optional(store.pool())
         .await
-        .map_err(|e| ConnectError::new_internal(e.to_string()))?
-        .ok_or_else(|| ConnectError::new_internal("heartbeat missing after write"))?;
+        .map_err(internal)?;
+    let ts = ts.ok_or_else(|| ConnectError::new_internal("heartbeat missing after write"))?;
     Ok(ConnectResponse::new(pb::DbCheckResponse {
         heartbeat_id: pid.to_string(),
-        ts: hb.ts,
+        ts,
     }))
 }
 

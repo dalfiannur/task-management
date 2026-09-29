@@ -1,23 +1,16 @@
 //! Store → ProjectSnapshot. Project, members, modules, tasks and activity reuse
 //! the tested project-scoped loaders other services already call. Labels,
 //! comments, pages, media (and its task links), and users stay as inline
-//! `store.query` calls — their record modules are private, or (comments) a
-//! per-task loader would turn one pass into N+1 — but each is now given the SQL
-//! predicate its indexed column already supports, following `activity_for_project`
-//! exactly: `predicate` is interpolated as raw SQL and never bound, so only a
-//! validated integer goes in, and an id that fails to parse is dropped rather
-//! than passed through (matching the old Rust-side comparison, which matched
-//! nothing for a non-numeric id either).
+//! queries — their record modules are private, or (comments) a per-task loader
+//! would turn one pass into N+1 — each filtered in SQL on the indexed column
+//! it has, with bound parameters.
 
 use std::collections::{HashMap, HashSet};
 
 use anyhow::Context;
-use domain::comment::CommentInfo;
-use domain::label::LabelInfo;
-use domain::media::{MediaFileInfo, TaskMediaLinkData};
-use domain::page::{PageAudit, PageInfo};
-use domain::user::UserProfile;
+use domain::media::MediaStatus;
 use persistence::Store;
+use sqlx::Row;
 
 use super::model::{
     ActivityOut, CommentOut, LabelOut, MediaOut, ModuleOut, PageOut, ProjectOut, ProjectSnapshot,
@@ -104,93 +97,75 @@ pub(crate) async fn gather(store: &Store, project_id: &str) -> anyhow::Result<Pr
     // ids instead.
     let task_ids: HashSet<String> = tasks.iter().map(|t| t.id.clone()).collect();
 
+    // The project id as the text the `project_id` columns hold.
+    let project_key = pid.to_string();
+
     // --- labels (inline: LabelService's record module is private and this is
-    // its only cross-module consumer) — filtered in SQL via LabelInfo's indexed
-    // `project_id` column, same as `activity_for_project`. ---------------------
-    let pred = format!("project_id = '{pid}'");
-    let mut labels = store
-        .query::<LabelInfo, LabelOut>(Some(&pred), |w, pairs| {
-            pairs
-                .iter()
-                .filter_map(|(p, e)| {
-                    let l = w.get::<LabelInfo>(*e)?;
-                    Some(LabelOut {
-                        id: p.to_string(),
-                        name: l.name.clone(),
-                        color: l.color.clone(),
-                    })
-                })
-                .collect()
-        })
-        .await?;
+    // its only cross-module consumer). ------------------------------------------
+    let mut labels = Vec::new();
+    for row in sqlx::query("SELECT pid, name, color FROM cmp_labelinfo WHERE project_id = $1")
+        .bind(&project_key)
+        .fetch_all(store.pool())
+        .await?
+    {
+        labels.push(LabelOut {
+            id: row.try_get::<i64, _>("pid")?.to_string(),
+            name: row.try_get("name")?,
+            color: row.try_get("color")?,
+        });
+    }
     labels.sort_by(|a, b| a.name.cmp(&b.name).then(a.id.cmp(&b.id)));
 
     // --- comments (inline: `comments_for_task` is per-task, and looping it over
-    // every task would be N+1 against this one filtered pass) — filtered in SQL
-    // via CommentInfo's indexed `task_id` column, over this project's task ids.
-    // An empty id list would make `IN ()`, a syntax error, so a project with no
-    // tasks skips the query and returns no comments directly. -----------------
-    let comment_task_ids: Vec<String> = task_ids
-        .iter()
-        .filter_map(|id| id.parse::<i64>().ok())
-        .map(|n| format!("'{n}'"))
-        .collect();
-    let mut comments: Vec<CommentOut> = if comment_task_ids.is_empty() {
-        Vec::new()
-    } else {
-        let pred = format!("task_id IN ({})", comment_task_ids.join(", "));
-        store
-            .query::<CommentInfo, CommentOut>(Some(&pred), |w, pairs| {
-                pairs
-                    .iter()
-                    .filter_map(|(p, e)| {
-                        let c = w.get::<CommentInfo>(*e)?;
-                        Some(CommentOut {
-                            id: p.to_string(),
-                            task_id: c.task_id.clone(),
-                            author_id: c.author_id.clone(),
-                            content: c.content.clone(),
-                            mentioned_user_ids: c.mentioned_user_ids.clone(),
-                            created_at: c.created_at.clone(),
-                            updated_at: c.updated_at.clone(),
-                        })
-                    })
-                    .collect()
-            })
-            .await?
-    };
+    // every task would be N+1 against this one pass over the indexed `task_id`
+    // column, for this project's task ids). ------------------------------------
+    let task_id_list: Vec<String> = task_ids.into_iter().collect();
+    let mut comments = Vec::new();
+    for row in sqlx::query(
+        "SELECT pid, task_id, author_id, content, created_at, updated_at,                 ARRAY(SELECT e.x FROM jsonb_array_elements_text(mentioned_user_ids)                       WITH ORDINALITY AS e(x, n) ORDER BY e.n) AS mentioned_user_ids          FROM cmp_commentinfo WHERE task_id = ANY($1)",
+    )
+    .bind(&task_id_list)
+    .fetch_all(store.pool())
+    .await?
+    {
+        comments.push(CommentOut {
+            id: row.try_get::<i64, _>("pid")?.to_string(),
+            task_id: row.try_get("task_id")?,
+            author_id: row.try_get("author_id")?,
+            content: row.try_get("content")?,
+            mentioned_user_ids: row.try_get("mentioned_user_ids")?,
+            created_at: row.try_get("created_at")?,
+            updated_at: row.try_get("updated_at")?,
+        });
+    }
     comments.sort_by(|a, b| a.created_at.cmp(&b.created_at).then(a.id.cmp(&b.id)));
 
     // --- pages (inline, deliberately: `pages::record::read_page` treats
     // `PageAudit` as required and drops a page that is missing it. For an
     // export, a page with blank "created by"/"last edited by" is a better
     // outcome than a page silently vanishing from the archive, so this block
-    // treats the audit component as optional and fills defaults instead of
-    // reusing that stricter reader. Filtered in SQL via PageInfo's indexed
-    // `project_id` column.) ---------------------------------------------------
-    let pred = format!("project_id = '{pid}'");
-    let mut pages = store
-        .query::<PageInfo, PageOut>(Some(&pred), |w, pairs| {
-            pairs
-                .iter()
-                .filter_map(|(p, e)| {
-                    let pg = w.get::<PageInfo>(*e)?;
-                    let a = w.get::<PageAudit>(*e);
-                    Some(PageOut {
-                        id: p.to_string(),
-                        title: pg.title.clone(),
-                        icon: pg.icon.clone(),
-                        content: pg.content.clone(),
-                        sort_order: pg.sort_order,
-                        created_by: a.map(|a| a.created_by.clone()).unwrap_or_default(),
-                        last_edited_by: a.map(|a| a.last_edited_by.clone()).unwrap_or_default(),
-                        created_at: a.map(|a| a.created_at.clone()).unwrap_or_default(),
-                        updated_at: a.map(|a| a.updated_at.clone()).unwrap_or_default(),
-                    })
-                })
-                .collect()
-        })
-        .await?;
+    // treats the audit row as optional — a LEFT JOIN — and fills defaults
+    // instead of reusing that stricter reader.) ---------------------------------
+    let mut pages = Vec::new();
+    for row in sqlx::query(
+        "SELECT i.pid, i.title, i.icon, i.content, i.sort_order,                 COALESCE(a.created_by, '') AS created_by,                 COALESCE(a.last_edited_by, '') AS last_edited_by,                 COALESCE(a.created_at, '') AS created_at,                 COALESCE(a.updated_at, '') AS updated_at          FROM cmp_pageinfo i LEFT JOIN cmp_pageaudit a ON a.pid = i.pid          WHERE i.project_id = $1",
+    )
+    .bind(&project_key)
+    .fetch_all(store.pool())
+    .await?
+    {
+        pages.push(PageOut {
+            id: row.try_get::<i64, _>("pid")?.to_string(),
+            title: row.try_get("title")?,
+            icon: row.try_get("icon")?,
+            content: row.try_get("content")?,
+            sort_order: row.try_get("sort_order")?,
+            created_by: row.try_get("created_by")?,
+            last_edited_by: row.try_get("last_edited_by")?,
+            created_at: row.try_get("created_at")?,
+            updated_at: row.try_get("updated_at")?,
+        });
+    }
     pages.sort_by(|a, b| a.sort_order.cmp(&b.sort_order).then(a.id.cmp(&b.id)));
 
     // --- activity ------------------------------------------------------------
@@ -214,44 +189,42 @@ pub(crate) async fn gather(store: &Store, project_id: &str) -> anyhow::Result<Pr
 
     // --- media (ready only, with their task links; inline: MediaService's
     // record module is private and this is its only cross-module consumer).
-    // Both queries below filter in SQL via the indexed `project_id` column on
-    // TaskMediaLinkData and MediaFileInfo respectively. `status == "ready"`
-    // stays a Rust-side filter — it isn't indexed. -----------------------------
-    let pred = format!("project_id = '{pid}'");
-    let links = store
-        .query::<TaskMediaLinkData, (String, String)>(Some(&pred), |w, pairs| {
-            pairs
-                .iter()
-                .filter_map(|(_, e)| w.get::<TaskMediaLinkData>(*e))
-                .map(|l| (l.media_file_id.clone(), l.task_id.clone()))
-                .collect()
-        })
-        .await?;
+    // Both filter on the indexed `project_id` column. Links keep their creation
+    // order within each file. ---------------------------------------------------
     let mut links_by_media: HashMap<String, Vec<String>> = HashMap::new();
-    for (media_id, task_id) in links {
-        links_by_media.entry(media_id).or_default().push(task_id);
+    for row in sqlx::query(
+        "SELECT media_file_id, task_id FROM cmp_taskmedialinkdata WHERE project_id = $1 ORDER BY pid",
+    )
+    .bind(&project_key)
+    .fetch_all(store.pool())
+    .await?
+    {
+        links_by_media
+            .entry(row.try_get("media_file_id")?)
+            .or_default()
+            .push(row.try_get("task_id")?);
     }
 
-    let mut media = store
-        .query::<MediaFileInfo, MediaOut>(Some(&pred), |w, pairs| {
-            pairs
-                .iter()
-                .filter_map(|(p, e)| {
-                    let m = w.get::<MediaFileInfo>(*e)?;
-                    (m.status == "ready").then(|| MediaOut {
-                        id: p.to_string(),
-                        file_name: m.original_file_name.clone(),
-                        mime_type: m.mime_type.clone(),
-                        size: m.size,
-                        uploaded_by: m.uploaded_by.clone(),
-                        created_at: m.created_at.clone(),
-                        task_ids: vec![],
-                        storage_key: m.storage_key.clone(),
-                    })
-                })
-                .collect()
-        })
-        .await?;
+    let mut media = Vec::new();
+    for row in sqlx::query(
+        "SELECT pid, original_file_name, mime_type, size, uploaded_by, created_at, storage_key          FROM cmp_mediafileinfo WHERE project_id = $1 AND status = $2",
+    )
+    .bind(&project_key)
+    .bind(MediaStatus::Ready.as_str())
+    .fetch_all(store.pool())
+    .await?
+    {
+        media.push(MediaOut {
+            id: row.try_get::<i64, _>("pid")?.to_string(),
+            file_name: row.try_get("original_file_name")?,
+            mime_type: row.try_get("mime_type")?,
+            size: row.try_get("size")?,
+            uploaded_by: row.try_get("uploaded_by")?,
+            created_at: row.try_get("created_at")?,
+            task_ids: vec![],
+            storage_key: row.try_get("storage_key")?,
+        });
+    }
     for m in &mut media {
         m.task_ids = links_by_media.remove(&m.id).unwrap_or_default();
     }
@@ -280,37 +253,24 @@ pub(crate) async fn gather(store: &Store, project_id: &str) -> anyhow::Result<Pr
     }
     referenced.remove("");
 
-    // Filtered in SQL via `pid IN (...)` over the referenced-id set, rather than
-    // hydrating every user in the deployment — this query was previously the
-    // worst offender here because it wasn't project-scoped at all. `pid` is the
-    // entity's own bigint primary key (as in `load_project`'s `pid = {pid}`), so
-    // the list is unquoted, unlike the text `project_id`/`task_id` columns above.
-    // An empty referenced set would make `IN ()`, a syntax error, so that case
-    // skips the query and returns no users directly.
-    let user_pids: Vec<String> = referenced
+    // Only the referenced users, by pid — not every user in the deployment.
+    // A referenced id that is not numeric names no user.
+    let user_pids: Vec<i64> = referenced
         .iter()
         .filter_map(|id| id.parse::<i64>().ok())
-        .map(|n| n.to_string())
         .collect();
-    let mut users: Vec<UserOut> = if user_pids.is_empty() {
-        Vec::new()
-    } else {
-        let pred = format!("pid IN ({})", user_pids.join(", "));
-        store
-            .query::<UserProfile, UserOut>(Some(&pred), |w, pairs| {
-                pairs
-                    .iter()
-                    .filter_map(|(p, e)| {
-                        // Id and name only. No phone, no email — the PII decision.
-                        Some(UserOut {
-                            id: p.to_string(),
-                            name: w.get::<UserProfile>(*e)?.display_name.clone(),
-                        })
-                    })
-                    .collect()
-            })
-            .await?
-    };
+    let mut users = Vec::new();
+    // Id and name only. No phone, no email — the PII decision.
+    for row in sqlx::query("SELECT pid, display_name FROM cmp_userprofile WHERE pid = ANY($1)")
+        .bind(&user_pids)
+        .fetch_all(store.pool())
+        .await?
+    {
+        users.push(UserOut {
+            id: row.try_get::<i64, _>("pid")?.to_string(),
+            name: row.try_get("display_name")?,
+        });
+    }
     users.sort_by(|a, b| a.id.cmp(&b.id));
 
     Ok(ProjectSnapshot {
