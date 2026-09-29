@@ -58,7 +58,7 @@ async fn auth_mw(mut req: Request, next: Next) -> Response {
 
 async fn setup() -> Option<(Router, Arc<Store>)> {
     let url = std::env::var("DATABASE_URL").ok()?;
-    let store = Arc::new(Store::connect(&url, domain::register_all).await.unwrap());
+    let store = Arc::new(Store::connect(&url).await.unwrap());
     let jwt = Arc::new(transport::JwtConfig {
         secret: SECRET.to_string(),
         ttl_secs: 3600,

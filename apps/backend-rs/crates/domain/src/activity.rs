@@ -2,37 +2,24 @@
 //! types. "Is an activity" = has [`ActivityInfo`]. `summary` is a snapshot;
 //! `changes` (diff) is only populated for updates.
 
-use arke_postgres::PgComponent;
-
-/// One changed field in an update diff (JSONB payload — `arke::Serialize`).
-#[derive(arke::Serialize, Debug, Clone, PartialEq)]
+/// One changed field in an update diff, stored as a JSONB
+/// `{"field", "from", "to"}` object in `cmp_activitychanges`.
+#[derive(Debug, Clone, PartialEq)]
 pub struct FieldChange {
     pub field: String,
     pub from: Option<String>,
     pub to: Option<String>,
 }
 
-#[derive(PgComponent, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct ActivityInfo {
-    #[pg(index)]
     pub project_id: String,
-    #[pg(index)]
     pub actor_id: String,
-    #[pg(index)]
     pub entity_type: String, // EntityType::as_str
-    #[pg(index)]
     pub entity_id: String,
-    #[pg(index)]
     pub action: String, // ActivityAction::as_str
     pub summary: String,
-    #[pg(index)]
     pub created_at: String,
-}
-
-/// Update diff (JSONB); empty for create/delete.
-#[derive(PgComponent, Debug, Clone)]
-pub struct ActivityChanges {
-    pub changes: Vec<FieldChange>,
 }
 
 /// What the activity is about. Mirrors proto (TASK=1 … MEDIA=6).

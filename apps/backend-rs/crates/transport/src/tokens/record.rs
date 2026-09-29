@@ -1,7 +1,7 @@
 //! PAT rows. A single flat `TokenRecord` so handlers and the `mcp` crate don't
 //! have to touch the component tables one by one.
 //!
-//! Plain sqlx over the component tables arke-postgres created (see
+//! Plain sqlx over the component tables of `persistence/src/schema.sql` (see
 //! `persistence::entity`). A token is one entity carrying `cmp_tokensecret`,
 //! `cmp_tokenowner` and `cmp_tokeninfo`, optionally `cmp_tokenusage`.
 

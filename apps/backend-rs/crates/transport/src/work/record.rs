@@ -1,6 +1,6 @@
 //! Module rows ↔ proto, plus every read and write the module flows make.
 //!
-//! Plain sqlx over the component tables arke-postgres created (see
+//! Plain sqlx over the component tables of `persistence/src/schema.sql` (see
 //! `persistence::entity`). A module is one entity carrying `cmp_modulename`,
 //! `cmp_moduleprojectref` and `cmp_moduleorder`, optionally
 //! `cmp_moduledescription`.

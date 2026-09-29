@@ -26,25 +26,14 @@ async fn main() -> Result<()> {
     let password = std::env::var("SEED_USER_PASSWORD").unwrap_or_else(|_| "user12345".into());
     let name = std::env::var("SEED_USER_NAME").unwrap_or_else(|_| "Test User".into());
 
-    let store = Store::connect(&database_url, domain::register_all).await?;
+    let store = Store::connect(&database_url).await?;
 
     // Idempotent: skip if a user with this phone already exists.
-    let phone_q = phone.clone();
-    let existing = store
-        .query::<UserPhone, i64>(None, move |world, pairs| {
-            pairs
-                .iter()
-                .filter(|(_, e)| {
-                    world
-                        .get::<UserPhone>(*e)
-                        .map(|p| p.value == phone_q)
-                        .unwrap_or(false)
-                })
-                .map(|(pid, _)| *pid)
-                .collect()
-        })
+    let existing: Option<i64> = sqlx::query_scalar("SELECT pid FROM cmp_userphone WHERE value = $1")
+        .bind(&phone)
+        .fetch_optional(store.pool())
         .await?;
-    if let Some(pid) = existing.first() {
+    if let Some(pid) = existing {
         println!("seed_user: user already exists (pid {pid}, phone {phone}) — nothing to do");
         return Ok(());
     }

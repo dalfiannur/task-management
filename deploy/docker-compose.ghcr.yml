@@ -1,5 +1,5 @@
 # Run the stack from published images — no source checkout, no Rust toolchain,
-# no sibling arke repo. The counterpart to docker-compose.yml, which builds
+# no sibling repos. The counterpart to docker-compose.yml, which builds
 # everything locally.
 #
 #   podman login ghcr.io -u <user>          # only if the packages are private

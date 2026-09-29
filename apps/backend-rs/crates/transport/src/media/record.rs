@@ -1,7 +1,7 @@
 //! Media and task↔media link rows ↔ proto, plus every read and write the
 //! media flows make.
 //!
-//! Plain sqlx over the component tables arke-postgres created (see
+//! Plain sqlx over the component tables of `persistence/src/schema.sql` (see
 //! `persistence::entity`). A file is one entity with a `cmp_mediafileinfo`
 //! row; a link is its own entity with a `cmp_taskmedialinkdata` row.
 

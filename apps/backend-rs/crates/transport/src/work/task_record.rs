@@ -1,6 +1,6 @@
 //! Task rows ↔ proto, plus every read and write the task flows make.
 //!
-//! Plain sqlx over the component tables arke-postgres created (see
+//! Plain sqlx over the component tables of `persistence/src/schema.sql` (see
 //! `persistence::entity`). A task is one entity carrying `cmp_taskinfo`,
 //! `cmp_taskmoduleref` and `cmp_taskaudit`, optionally `cmp_taskassignees`,
 //! `cmp_tasklabels`, `cmp_taskparent` and `cmp_taskblockedby`. The id lists
@@ -71,7 +71,7 @@ fn ids(row: &PgRow, col: &str) -> sqlx::Result<Vec<String>> {
 }
 
 /// `None` for a stored status or priority this build does not know, which
-/// drops the row the same way the arke reader did.
+/// drops the row.
 fn read_task(row: &PgRow) -> sqlx::Result<Option<TaskRecord>> {
     let status: String = row.try_get("status")?;
     let priority: String = row.try_get("priority")?;

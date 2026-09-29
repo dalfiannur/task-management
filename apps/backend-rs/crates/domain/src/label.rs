@@ -1,13 +1,9 @@
 //! Label: per-project categorization vocabulary (name + hex color). "Is a label"
 //! = has [`LabelInfo`]. Delete is tolerant — tasks keep dangling `label_ids`.
 
-use arke_postgres::PgComponent;
-
-#[derive(PgComponent, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct LabelInfo {
-    #[pg(index)]
     pub project_id: String,
-    #[pg(index)]
     pub name: String,
     pub color: String, // hex, e.g. "#4f46e5"
 }

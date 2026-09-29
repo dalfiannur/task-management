@@ -15,7 +15,7 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     let cfg = Config::from_env()?;
-    let store = Arc::new(Store::connect(&cfg.database_url, domain::register_all).await?);
+    let store = Arc::new(Store::connect(&cfg.database_url).await?);
     let media_storage: Arc<dyn storage::Storage> = Arc::new(storage::S3Storage::from_env()?);
     let notifier = Arc::new(transport::Notifier::new());
     let app = router::build_router(&cfg, store, media_storage, notifier);

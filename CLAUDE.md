@@ -12,7 +12,7 @@ Sedjiwa Portal Task Management — a project/task management tool with a React S
 task-management/
 ├── apps/
 │   ├── frontend/     # Vite + React 19 + TanStack Router/Query + Connect (gRPC-web) + Jotai + Tailwind
-│   ├── backend-rs/   # Rust + Arke (custom ECS) + arke-postgres + connectrpc-axum — the backend the frontend consumes
+│   ├── backend-rs/   # Rust + sqlx (Postgres) + connectrpc-axum — the backend the frontend consumes
 │   └── backend/      # Bun + Bunsane (legacy ECS/GraphQL backend, being retired)
 ```
 
@@ -154,7 +154,17 @@ Flat FE types live in the feature's `types.ts`. Cross-feature imports go through
 - `ApolloClient`/GraphQL are gone — do not reintroduce them. Server access is Connect only.
 - Don't hand-edit `src/routeTree.gen.ts` or `src/lib/gen/*_pb.ts` — both are generated.
 
-### Backend
+### Backend (`backend-rs`)
+
+**Stack:** Rust workspace (`crates/`: `app` binaries, `transport` Connect handlers, `persistence`, `domain`, `auth`, `mcp`, `storage`), sqlx on PostgreSQL, connectrpc-axum. No ORM.
+
+**Data model:** every thing is an entity — a `pid` allocated in `arke_entities` (one sequence for all kinds; the name is historical) — with one `cmp_<component>` row per aspect, keyed by `pid`, `ON DELETE CASCADE`. The schema is `crates/persistence/src/schema.sql`: idempotent DDL run on every `Store::connect` under an advisory lock, one statement at a time. Change it by **appending** statements, never by editing a `CREATE … IF NOT EXISTS`.
+
+**Where SQL lives:** each domain's `crates/transport/src/<domain>/record.rs` (reads + writes, bound parameters only). Every write goes through `persistence::entity` (`new_pid` inside the insert transaction, `touch` to bump `version`, `delete` cascades). JSONB string lists travel as `text[]` (`jsonb_array_elements_text … WITH ORDINALITY` / `to_jsonb($n::text[])`) — sqlx's `json` feature is deliberately off. Seeds and test fixtures write rows with `Store::create((A, B, …))` / `Store::attach(pid, X)` (`persistence::rows`), not the request paths.
+
+**Tests:** `cargo test --workspace` with `DATABASE_URL` (flow tests) and `PERSISTENCE_TEST_DATABASE_URL` (persistence unit tests) pointing at a throwaway Postgres; unset, the tests print `skip:` and pass without testing anything.
+
+### Backend (legacy `backend`)
 
 **Stack:** Bun runtime, `bunsane` (custom in-house ECS framework), PostgreSQL.
 

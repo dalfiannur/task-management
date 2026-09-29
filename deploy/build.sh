@@ -7,15 +7,13 @@
 # Pushing needs a prior `podman login ghcr.io -u <user>` with a token carrying
 # write:packages. This script never handles the token.
 #
-# Unlike the previous scheme, nothing is compiled on the host: the Rust binaries
-# and the SPA are both produced inside their builder stages. The one thing the
-# host still does is stage the backend's build context, because backend-rs
-# depends on the arke crates that live in a sibling checkout outside this repo.
+# Nothing is compiled on the host: the Rust binaries and the SPA are both
+# produced inside their builder stages, each with the repository root as its
+# build context.
 set -euo pipefail
 
 DEPLOY_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$DEPLOY_DIR/.." && pwd)"
-ARKE="${ARKE_DIR:-$(cd "$ROOT/../rust-ecs" && pwd)}"
 
 REGISTRY="${REGISTRY:-ghcr.io/dalfiannur/task-management}"
 ENGINE="${ENGINE:-podman}"
@@ -29,41 +27,20 @@ SHA="$(git -C "$ROOT" rev-parse --short HEAD)"
 # at is what ships. When that differs from the commit, the tag has to say so —
 # a bare SHA on an image containing uncommitted work is a lie that outlives the
 # session that produced it.
-if [[ -n "$(git -C "$ROOT" status --porcelain -- apps deploy)" \
-   || -n "$(git -C "$ARKE" status --porcelain)" ]]; then
+if [[ -n "$(git -C "$ROOT" status --porcelain -- apps deploy)" ]]; then
     SHA="${SHA}-dirty"
 fi
 
 echo "==> Building ${REGISTRY}/{backend,frontend}:${SHA}"
 
-# ── Backend context ──────────────────────────────────────────────────────────
-# Two checkouts side by side, which is what makes the manifest's relative
-# `../../../rust-ecs` resolve inside the image.
-#
-# Copied via `git ls-files`, not `git archive`: ls-files walks the index but
-# reads the files as they are on disk, so uncommitted edits ship, while
-# everything git ignores — target/, node_modules/ — stays out. `git archive`
-# would export HEAD instead and silently omit work in progress.
-CTX="$DEPLOY_DIR/.build-context"
-echo "==> Staging backend build context -> ${CTX}"
-rm -rf "$CTX"
-mkdir -p "$CTX/rust-ecs" "$CTX/task-management"
-# -C must precede -T: GNU tar applies directory changes positionally, and a -C
-# after -T silently does nothing.
-git -C "$ARKE" ls-files -z \
-    | tar -c -C "$ARKE" -f - --null -T - \
-    | tar -x -C "$CTX/rust-ecs"
-git -C "$ROOT" ls-files -z -- apps/backend-rs \
-    | tar -c -C "$ROOT" -f - --null -T - \
-    | tar -x -C "$CTX/task-management"
-
+# ── Backend ──────────────────────────────────────────────────────────────────
 echo "==> Building backend image (compiles Rust from scratch — expect minutes)…"
 "$ENGINE" build \
     -f "$DEPLOY_DIR/backend.Dockerfile" \
     -t "${REGISTRY}/backend:${SHA}" \
     -t "${REGISTRY}/backend:latest" \
     -t "taskmgmt/backend-rs:local" \
-    "$CTX"
+    "$ROOT"
 
 # ── Frontend ─────────────────────────────────────────────────────────────────
 # Context is the repo root; the root .dockerignore keeps target/ and
@@ -76,8 +53,6 @@ echo "==> Building frontend image…"
     -t "${REGISTRY}/frontend:latest" \
     -t "taskmgmt/frontend:local" \
     "$ROOT"
-
-rm -rf "$CTX"
 
 if [[ "$PUSH" -eq 1 ]]; then
     echo "==> Pushing to ${REGISTRY}…"

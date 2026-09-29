@@ -68,7 +68,7 @@ async fn auth_mw(mut req: Request, next: Next) -> Response {
 
 async fn setup() -> Option<(Router, Arc<Store>, Arc<FakeStorage>)> {
     let url = std::env::var("DATABASE_URL").ok()?;
-    let store = Arc::new(Store::connect(&url, domain::register_all).await.unwrap());
+    let store = Arc::new(Store::connect(&url).await.unwrap());
     let fake = Arc::new(FakeStorage::default());
     let storage: Arc<dyn Storage> = fake.clone();
     let router = transport::project_router(store.clone())

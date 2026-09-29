@@ -1,40 +1,35 @@
 //! User identity: persisted ECS components + pure rules (persistence-agnostic).
 //!
-//! Design note: `arke-postgres`'s `PgComponent` derive rejects zero-field structs,
-//! so the spec's `UserTag`/`AdminTag` markers become: "is a user" = has [`UserPhone`],
-//! and admin = presence of [`AdminMark`]. `UserStatus` is stored as an indexed
+//! Design note: every struct here is one row of its `cmp_*` table, so a marker
+//! carries at least one column: "is a user" = has [`UserPhone`], and admin =
+//! presence of [`AdminMark`]. `UserStatus` is stored as an indexed
 //! `String` (see [`UserStatus::as_str`]), not an enum column.
 
-use arke_postgres::PgComponent;
-
 /// Login identity. Phone is unique (the login handle).
-#[derive(PgComponent, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct UserPhone {
-    #[pg(index, unique)]
     pub value: String,
     pub verified: bool,
 }
 
 /// Argon2id PHC string. Never exposed over the wire.
-#[derive(PgComponent, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct UserPassword {
     pub hash: String,
     pub changed_at: String,
 }
 
 /// Display profile.
-#[derive(PgComponent, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct UserProfile {
-    #[pg(index)]
     pub display_name: String,
     pub avatar_url: String,
     pub email: String,
 }
 
 /// Account lifecycle. `status` = [`UserStatus::as_str`].
-#[derive(PgComponent, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct UserStatusComponent {
-    #[pg(index)]
     pub status: String,
     pub created_at: String,
     pub last_login_at: Option<String>,
@@ -42,7 +37,7 @@ pub struct UserStatusComponent {
 
 /// **Presence = admin** (derive rejects 0-field structs, so carry a timestamp).
 /// `SetAdmin(true)` inserts it, `SetAdmin(false)` removes it.
-#[derive(PgComponent, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct AdminMark {
     pub granted_at: String,
 }

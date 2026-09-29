@@ -15,13 +15,13 @@ touch the wider sedjiwa podman stack (`sedjiwa-net`).
 
 Admin login (seeded): phone **0800000000** / password **admin12345**.
 
-## Why the binary is built on the host
+## How the images are built
 
-`apps/backend-rs/Cargo.toml` uses local **path** dependencies that live outside
-this repo (`arke`, `arke-postgres` under `~/Workspace/personal/rust-ecs`). An
-isolated Docker build context can't see them, so the release binary is compiled
-on the host and copied into a thin `debian:bookworm-slim` image. The SPA is built
-on the host the same way (bun) and served by nginx.
+Both images compile from source inside their builder stages, with the
+repository root as the build context (`.dockerignore` keeps `target/` and
+`node_modules/` out): the backend with `cargo build --release --locked` into a
+thin `debian:bookworm-slim` image, the SPA with bun, served by nginx. `backend-rs`
+has no dependencies outside this repo.
 
 ## Usage
 

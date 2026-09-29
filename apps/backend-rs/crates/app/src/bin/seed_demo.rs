@@ -1478,13 +1478,17 @@ fn created_on(start: &str, lead: i64) -> String {
 async fn main() -> Result<()> {
     let _ = dotenvy::dotenv();
     let database_url = std::env::var("DATABASE_URL").map_err(|_| anyhow!("DATABASE_URL not set"))?;
-    let store = Store::connect(&database_url, domain::register_all).await?;
+    let store = Store::connect(&database_url).await?;
 
     // This seed is not idempotent — every run creates a fresh set of entities,
     // so a second run silently doubles the dataset instead of failing. Refuse
     // to start on a database that already holds users or projects.
-    let users = store.count::<UserPhone>(None).await?;
-    let projects = store.count::<ProjectName>(None).await?;
+    let users: i64 = sqlx::query_scalar("SELECT count(*) FROM cmp_userphone")
+        .fetch_one(store.pool())
+        .await?;
+    let projects: i64 = sqlx::query_scalar("SELECT count(*) FROM cmp_projectname")
+        .fetch_one(store.pool())
+        .await?;
     if users > 0 || projects > 0 {
         if std::env::var("SEED_DEMO_FORCE").is_err() {
             return Err(anyhow!(
@@ -1536,11 +1540,13 @@ async fn main() -> Result<()> {
             ))
             .await?;
         if *is_admin {
-            let granted = created.clone();
             store
-                .update(pid, move |w, e| {
-                    w.insert(e, AdminMark { granted_at: granted });
-                })
+                .attach(
+                    pid,
+                    AdminMark {
+                        granted_at: created.clone(),
+                    },
+                )
                 .await?;
         }
         user_pids.push(pid);
@@ -1623,11 +1629,13 @@ async fn main() -> Result<()> {
                 ))
                 .await?;
             if !m.desc.is_empty() {
-                let d = m.desc.to_string();
                 store
-                    .update(module_pid, move |w, e| {
-                        w.insert(e, ModuleDescription { value: d });
-                    })
+                    .attach(
+                        module_pid,
+                        ModuleDescription {
+                            value: m.desc.to_string(),
+                        },
+                    )
                     .await?;
             }
             let module_id = module_pid.to_string();
@@ -1748,18 +1756,15 @@ async fn main() -> Result<()> {
                             created_at: created_at.clone(),
                         },))
                         .await?;
-                    let (pid_ref, task_ref) = (project_id.clone(), task_pid.to_string());
                     store
-                        .update(notif_pid, move |w, e| {
-                            w.insert(
-                                e,
-                                NotificationRefs {
-                                    project_id: Some(pid_ref),
-                                    task_id: Some(task_ref),
-                                    comment_id: None,
-                                },
-                            );
-                        })
+                        .attach(
+                            notif_pid,
+                            NotificationRefs {
+                                project_id: Some(project_id.clone()),
+                                task_id: Some(task_pid.to_string()),
+                                comment_id: None,
+                            },
+                        )
                         .await?;
                     n_notifs += 1;
                 }
@@ -1791,9 +1796,7 @@ async fn main() -> Result<()> {
                     .map(|pid| pid.to_string())
                     .collect();
                 store
-                    .update(task_pid, move |w, e| {
-                        w.insert(e, TaskBlockedBy { task_ids: deps });
-                    })
+                    .attach(task_pid, TaskBlockedBy { task_ids: deps })
                     .await?;
             }
         }
@@ -1831,19 +1834,16 @@ async fn main() -> Result<()> {
                     sort_order: pi as i32,
                 },))
                 .await?;
-            let (created_by, edited_by) = (uid(*author), uid(*author));
             store
-                .update(page_pid, move |w, e| {
-                    w.insert(
-                        e,
-                        PageAudit {
-                            created_by,
-                            last_edited_by: edited_by,
-                            created_at: ts("2026-08-03", "10:00:00"),
-                            updated_at: ts("2026-08-19", "16:20:00"),
-                        },
-                    );
-                })
+                .attach(
+                    page_pid,
+                    PageAudit {
+                        created_by: uid(*author),
+                        last_edited_by: uid(*author),
+                        created_at: ts("2026-08-03", "10:00:00"),
+                        updated_at: ts("2026-08-19", "16:20:00"),
+                    },
+                )
                 .await?;
             n_pages += 1;
         }

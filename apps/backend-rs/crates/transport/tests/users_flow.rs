@@ -37,7 +37,7 @@ async fn auth_mw(mut req: Request, next: Next) -> Response {
 
 async fn setup() -> Option<(Router, Arc<Store>)> {
     let url = std::env::var("DATABASE_URL").ok()?;
-    let store = Arc::new(Store::connect(&url, domain::register_all).await.unwrap());
+    let store = Arc::new(Store::connect(&url).await.unwrap());
     let jwt = Arc::new(JwtConfig {
         secret: SECRET.into(),
         ttl_secs: 3_600,
@@ -87,13 +87,8 @@ async fn seed_admin(store: &Store, phone: &str) -> String {
                 created_at: now.clone(),
                 last_login_at: None,
             },
+            AdminMark { granted_at: now },
         ))
-        .await
-        .unwrap();
-    store
-        .update(pid, move |w, e| {
-            w.insert(e, AdminMark { granted_at: now });
-        })
         .await
         .unwrap();
     let admin: AuthUser = AuthUser {
@@ -539,7 +534,7 @@ async fn setup_creates_the_first_admin_and_signs_it_in() {
         eprintln!("skip: SETUP_TEST_DATABASE_URL not set");
         return;
     };
-    let store = Arc::new(Store::connect(&url, domain::register_all).await.unwrap());
+    let store = Arc::new(Store::connect(&url).await.unwrap());
     let jwt = Arc::new(JwtConfig {
         secret: SECRET.into(),
         ttl_secs: 3_600,

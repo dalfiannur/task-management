@@ -1,59 +1,45 @@
 //! Project identity: persisted ECS components + pure rules (delivery-only).
 //!
-//! Design notes (mirrors `user`): the derive rejects zero-field structs, so "is a
-//! project" = has [`ProjectName`] (no marker). `ProjectStatus` is stored as a
-//! `String` ([`ProjectStatus::as_str`]). Membership is its own entity keyed by
-//! string ids (per-op relations are unsupported), not an `EntityRef`.
-
-use arke_postgres::PgComponent;
+//! Design notes (mirrors `user`): "is a project" = has [`ProjectName`] (no
+//! marker). `ProjectStatus` is stored as a `String` ([`ProjectStatus::as_str`]).
+//! Membership is its own entity keyed by string ids.
 
 /// Project name (required — also the "is a project" signal).
-#[derive(PgComponent, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct ProjectName {
     pub value: String,
 }
 
 /// Optional description (component absent when empty).
-#[derive(PgComponent, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct ProjectDescription {
     pub value: String,
 }
 
 /// Owner user id (the `pid` string of the owning user). Owner has authority.
-#[derive(PgComponent, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct ProjectOwnerId {
-    #[pg(index)]
     pub value: String,
 }
 
 /// Work status = [`ProjectStatus::as_str`].
-#[derive(PgComponent, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct ProjectStatusComponent {
     pub value: String,
 }
 
 /// Timeline dates (ISO-8601 `yyyy-MM-dd`). Set in a later flow, not at create.
-#[derive(PgComponent, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct ProjectDates {
     pub start_date: Option<String>,
     pub end_date: Option<String>,
 }
 
-/// **Legacy.** Core Portal project id — never set for new projects; kept for the
-/// data-migration transition.
-#[derive(PgComponent, Debug, Clone)]
-pub struct ProjectCoreRef {
-    #[pg(index)]
-    pub value: String,
-}
-
 /// One membership row (its own entity): user `user_id` belongs to project
 /// `project_id` (both are `pid` strings).
-#[derive(PgComponent, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct ProjectMembership {
-    #[pg(index)]
     pub project_id: String,
-    #[pg(index)]
     pub user_id: String,
 }
 

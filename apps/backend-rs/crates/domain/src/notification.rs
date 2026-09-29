@@ -2,24 +2,18 @@
 //! notification" = has [`NotificationInfo`]. `message` is a snapshot rendered at
 //! emit time (stays correct if the task/user changes later).
 
-use arke_postgres::PgComponent;
-
-#[derive(PgComponent, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct NotificationInfo {
-    #[pg(index)]
     pub recipient_id: String,
-    #[pg(index)]
     pub kind: String, // NotificationType::as_str
     pub actor_id: String,
     pub message: String,
-    #[pg(index)]
     pub read: bool,
-    #[pg(index)]
     pub created_at: String,
 }
 
 /// Deep-link targets (for navigation when clicked).
-#[derive(PgComponent, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct NotificationRefs {
     pub project_id: Option<String>,
     pub task_id: Option<String>,

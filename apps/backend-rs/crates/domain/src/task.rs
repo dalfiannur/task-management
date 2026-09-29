@@ -1,40 +1,34 @@
 //! Task: the unit of work inside a module. Status/priority stored as indexed
 //! `String`; assignees/labels as JSONB `Vec<String>`.
 
-use arke_postgres::PgComponent;
-
 /// Core task fields.
-#[derive(PgComponent, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct TaskInfo {
     pub title: String,
     pub description: String,
-    #[pg(index)]
     pub status: String, // TaskStatus::as_str
-    #[pg(index)]
     pub priority: String, // TaskPriority::as_str
     pub start_date: Option<String>,
     pub due_date: Option<String>,
     /// Sort order within the module. Named `sort_order` (not `order`) because
     /// `order` is a reserved SQL keyword and the derive doesn't quote identifiers.
-    #[pg(index)]
     pub sort_order: i32,
 }
 
 /// Owning module (`pid` string); project is derived through the module.
-#[derive(PgComponent, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct TaskModuleRef {
-    #[pg(index)]
     pub module_id: String,
 }
 
 /// Assignee user ids (JSONB). Must be members of the task's project.
-#[derive(PgComponent, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct TaskAssignees {
     pub user_ids: Vec<String>,
 }
 
 /// Label references (JSONB). Palette management is a separate flow.
-#[derive(PgComponent, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct TaskLabels {
     pub label_ids: Vec<String>,
 }
@@ -44,9 +38,8 @@ pub struct TaskLabels {
 /// Exactly one level is allowed: a task carrying this component may not itself
 /// be a parent. That rule lives in the handler, and it is what makes cycles
 /// structurally impossible rather than merely unlikely.
-#[derive(PgComponent, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct TaskParent {
-    #[pg(index)]
     pub parent_id: String,
 }
 
@@ -54,13 +47,13 @@ pub struct TaskParent {
 /// one starts. Stored one-directional — the reverse index ("what do I block")
 /// is built in the frontend from the project's already-loaded task list, so
 /// there is nothing to keep in sync here.
-#[derive(PgComponent, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct TaskBlockedBy {
     pub task_ids: Vec<String>,
 }
 
 /// Audit trail.
-#[derive(PgComponent, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct TaskAudit {
     pub created_at: String,
     pub updated_at: String,

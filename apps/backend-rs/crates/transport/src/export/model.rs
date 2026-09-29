@@ -1,5 +1,5 @@
 //! What one project looks like on its way out of the app. Deliberately neither
-//! proto nor Arke components: this is the shape that lands on disk and is read
+//! proto nor component rows: this is the shape that lands on disk and is read
 //! by people who do not have this codebase.
 
 use serde::Serialize;
