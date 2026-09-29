@@ -5,13 +5,13 @@ use std::sync::Arc;
 use auth::AuthUser;
 use axum::Extension;
 use connectrpc_axum::{ConnectError, ConnectRequest, ConnectResponse};
-use domain::media::{MediaFileInfo, MediaStatus, TaskMediaLinkData};
+use domain::media::MediaStatus;
 use persistence::Store;
 use storage::{new_storage_key, Storage};
 
 use super::record::{
-    link_exists, link_pids_for_media, link_pids_for_task_media, load_media, media_ids_for_task,
-    ready_media_for_project, to_proto, MediaRecord,
+    self as media_record, load_media, media_ids_for_task, ready_media_for_project, to_proto,
+    MediaRecord, NewMedia,
 };
 use super::{
     internal, parse_pid, require_auth, require_member, require_uploader_owner_or_admin, StorageExt,
@@ -55,20 +55,20 @@ async fn create_media_upload(
         return Err(ConnectError::new_invalid_argument("file_name is required"));
     }
     let storage_key = new_storage_key(&r.project_id, file_name);
-    let pid = store
-        .create((MediaFileInfo {
-            project_id: r.project_id.clone(),
-            file_name: file_name.to_string(),
-            original_file_name: file_name.to_string(),
-            mime_type: r.mime_type.clone(),
+    let pid = media_record::create_media(
+        &store,
+        NewMedia {
+            project_id: &r.project_id,
+            file_name,
+            mime_type: &r.mime_type,
             size: r.size,
-            storage_key: storage_key.clone(),
-            uploaded_by: auth.id.clone(),
-            created_at: now_iso(),
-            status: MediaStatus::Pending.as_str().to_string(),
-        },))
-        .await
-        .map_err(internal)?;
+            storage_key: &storage_key,
+            uploaded_by: &auth.id,
+            created_at: &now_iso(),
+        },
+    )
+    .await
+    .map_err(internal)?;
     let upload_url = storage
         .presign_put(&storage_key, &r.mime_type, PUT_TTL_SECS)
         .await
@@ -98,20 +98,7 @@ async fn complete_media_upload(
         .map_err(internal)?
         .ok_or_else(|| ConnectError::new_failed_precondition("upload not found in storage"))?
         as i64;
-    store
-        .update(pid, move |w, e| {
-            if let Some(info) = w.get::<MediaFileInfo>(e).cloned() {
-                w.remove::<MediaFileInfo>(e);
-                w.insert(
-                    e,
-                    MediaFileInfo {
-                        status: MediaStatus::Ready.as_str().to_string(),
-                        size,
-                        ..info
-                    },
-                );
-            }
-        })
+    media_record::mark_ready(&store, pid, size)
         .await
         .map_err(internal)?;
     let m = require_media(&store, pid).await?;
@@ -181,13 +168,9 @@ async fn delete_media_file(
     let m = require_media(&store, pid).await?;
     require_uploader_owner_or_admin(&store, &m, &auth).await?;
     storage.delete(&m.storage_key).await.map_err(internal)?;
-    for lpid in link_pids_for_media(&store, &pid.to_string())
+    media_record::delete_media(&store, pid)
         .await
-        .map_err(internal)?
-    {
-        store.delete(lpid).await.map_err(internal)?;
-    }
-    store.delete(pid).await.map_err(internal)?;
+        .map_err(internal)?;
     record(
         &store,
         &m.project_id,
@@ -222,19 +205,9 @@ async fn link_task_media(
             "task and media are in different projects",
         ));
     }
-    if !link_exists(&store, &r.task_id, &r.media_file_id)
+    media_record::link(&store, &r.task_id, &r.media_file_id, &m.project_id)
         .await
-        .map_err(internal)?
-    {
-        store
-            .create((TaskMediaLinkData {
-                media_file_id: r.media_file_id.clone(),
-                task_id: r.task_id.clone(),
-                project_id: m.project_id.clone(),
-            },))
-            .await
-            .map_err(internal)?;
-    }
+        .map_err(internal)?;
     Ok(ConnectResponse::new(pb::LinkTaskMediaResponse { ok: true }))
 }
 
@@ -249,12 +222,9 @@ async fn unlink_task_media(
     let mpid = parse_pid(&r.media_file_id)?;
     let m = require_media(&store, mpid).await?;
     require_member(&store, &m.project_id, &auth).await?;
-    for lpid in link_pids_for_task_media(&store, &r.task_id, &r.media_file_id)
+    media_record::unlink(&store, &r.task_id, &r.media_file_id)
         .await
-        .map_err(internal)?
-    {
-        store.delete(lpid).await.map_err(internal)?;
-    }
+        .map_err(internal)?;
     Ok(ConnectResponse::new(pb::UnlinkTaskMediaResponse { ok: true }))
 }
 
