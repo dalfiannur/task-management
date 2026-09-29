@@ -8,13 +8,10 @@ use std::sync::Arc;
 use auth::AuthUser;
 use axum::Extension;
 use connectrpc_axum::{ConnectError, ConnectRequest, ConnectResponse};
-use domain::token::{
-    generate_token, hash_token, is_expired, now_iso, preview_of, TokenInfo, TokenOwner,
-    TokenSecret, TokenUsage,
-};
+use domain::token::{generate_token, hash_token, is_expired, now_iso, preview_of};
 use persistence::Store;
 
-use super::record::{load_token, tokens_for_owner, TokenRecord};
+use super::record::{self as token_record, load_token, tokens_for_owner, NewToken, TokenRecord};
 use crate::sedjiwa::tasks::token::v1 as pb;
 use crate::sedjiwa::tasks::token::v1::access_token_service_connect::AccessTokenServiceBuilder;
 
@@ -76,24 +73,19 @@ async fn create_token(
     }
     let plaintext = generate_token();
     let now = now_iso();
-    let pid = store
-        .create((
-            TokenSecret {
-                hash: hash_token(&plaintext),
-                preview: preview_of(&plaintext),
-            },
-            TokenOwner {
-                user_id: auth.id.clone(),
-            },
-            TokenInfo {
-                name: name.to_string(),
-                created_at: now.clone(),
-                expires_at: expiry_from_days(r.expires_in_days),
-            },
-            TokenUsage { last_used_at: None },
-        ))
-        .await
-        .map_err(internal)?;
+    let pid = token_record::create_token(
+        &store,
+        NewToken {
+            hash: &hash_token(&plaintext),
+            preview: &preview_of(&plaintext),
+            user_id: &auth.id,
+            name,
+            created_at: &now,
+            expires_at: expiry_from_days(r.expires_in_days),
+        },
+    )
+    .await
+    .map_err(internal)?;
     let rec = load_token(&store, pid)
         .await
         .map_err(internal)?
@@ -136,7 +128,7 @@ async fn revoke_token(
         .map_err(internal)?
         .filter(|t| t.user_id == auth.id)
         .ok_or_else(|| ConnectError::new_not_found("token not found"))?;
-    store.delete(rec.pid).await.map_err(internal)?;
+    token_record::delete_token(&store, rec.pid).await.map_err(internal)?;
     Ok(ConnectResponse::new(pb::RevokeTokenResponse { ok: true }))
 }
 
