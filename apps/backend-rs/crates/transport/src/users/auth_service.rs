@@ -5,13 +5,13 @@ use std::sync::Arc;
 use auth::{hash_password, sign_jwt, verify_password, AuthUser};
 use axum::Extension;
 use connectrpc_axum::{ConnectError, ConnectRequest, ConnectResponse};
-use domain::user::{
-    password_ok, permissions_for, AdminMark, UserPassword, UserPhone, UserProfile, UserStatus,
-    UserStatusComponent,
-};
+use domain::user::{password_ok, permissions_for, UserStatus};
 use persistence::Store;
 
-use super::record::{find_by_phone, load_user, to_proto};
+use super::record::{
+    create_user, find_by_phone, load_user, set_last_login, set_password, to_proto,
+    update_profile, NewUser,
+};
 use super::{internal, now_iso, now_unix, parse_pid, JwtConfig};
 use crate::search::{index, user_doc};
 use crate::sedjiwa::tasks::auth::v1 as pb;
@@ -26,9 +26,8 @@ fn require_auth(user: Option<Extension<AuthUser>>) -> Result<AuthUser, ConnectEr
 /// Serialises the check-then-create in [`setup_first_admin`].
 ///
 /// Counting users and creating the first one are two round trips, and between
-/// them a second caller can see the same zero. `Store` exposes neither a
-/// transaction nor an advisory lock, so the mutual exclusion lives here, in the
-/// process. That is sufficient for the single-instance deployment this serves
+/// them a second caller can see the same zero, so the mutual exclusion lives
+/// here, in the process. That is sufficient for the single-instance deployment this serves
 /// and **only** that: several backends against one database would each hold
 /// their own lock and could both pass. Closing it there needs a database-level
 /// guarantee, which means changing `persistence`.
@@ -38,7 +37,7 @@ pub struct SetupGate(tokio::sync::Mutex<()>);
 /// Whether the instance has no accounts at all. A COUNT, so it hydrates
 /// nothing — this runs on every visit to the login page.
 async fn users_exist(store: &Store) -> Result<bool, ConnectError> {
-    Ok(store.count::<UserPhone>(None).await.map_err(internal)? > 0)
+    super::record::users_exist(store).await.map_err(internal)
 }
 
 /// Public. Reports whether first-run setup is still available.
@@ -91,38 +90,21 @@ async fn setup_first_admin(
         ));
     }
 
-    let now = now_iso();
     let hash = hash_password(&r.password).map_err(internal)?;
-    let granted_at = now.clone();
-    let pid = store
-        .create((
-            UserPhone {
-                value: phone.to_string(),
-                verified: true,
-            },
-            UserPassword {
-                hash,
-                changed_at: now.clone(),
-            },
-            UserProfile {
-                display_name: display_name.to_string(),
-                avatar_url: String::new(),
-                email: String::new(),
-            },
-            UserStatusComponent {
-                status: UserStatus::Active.as_str().to_string(),
-                created_at: now,
-                last_login_at: None,
-            },
-        ))
-        .await
-        .map_err(internal)?;
-    store
-        .update(pid, move |w, e| {
-            w.insert(e, AdminMark { granted_at });
-        })
-        .await
-        .map_err(internal)?;
+    let pid = create_user(
+        &store,
+        NewUser {
+            phone,
+            verified: true,
+            password_hash: hash,
+            display_name,
+            status: UserStatus::Active,
+            created_at: now_iso(),
+            admin: true,
+        },
+    )
+    .await
+    .map_err(internal)?;
 
     let u = load_user(&store, pid)
         .await
@@ -165,30 +147,20 @@ async fn register(
         return Err(ConnectError::new_already_exists("phone already registered"));
     }
     let hash = hash_password(&r.password).map_err(internal)?;
-    let now = now_iso();
-    let pid = store
-        .create((
-            UserPhone {
-                value: phone.to_string(),
-                verified: false,
-            },
-            UserPassword {
-                hash,
-                changed_at: now.clone(),
-            },
-            UserProfile {
-                display_name: display_name.to_string(),
-                avatar_url: String::new(),
-                email: String::new(),
-            },
-            UserStatusComponent {
-                status: UserStatus::Pending.as_str().to_string(),
-                created_at: now,
-                last_login_at: None,
-            },
-        ))
-        .await
-        .map_err(internal)?;
+    let pid = create_user(
+        &store,
+        NewUser {
+            phone,
+            verified: false,
+            password_hash: hash,
+            display_name,
+            status: UserStatus::Pending,
+            created_at: now_iso(),
+            admin: false,
+        },
+    )
+    .await
+    .map_err(internal)?;
     let user = load_user(&store, pid)
         .await
         .map_err(internal)?
@@ -227,20 +199,7 @@ async fn login(
         sign_jwt(&jwt.secret, &user.pid.to_string(), &perms, exp).map_err(internal)?;
 
     // Stamp last_login_at.
-    let now = now_iso();
-    store
-        .update(user.pid, move |w, e| {
-            if let Some(st) = w.get::<UserStatusComponent>(e).cloned() {
-                w.remove::<UserStatusComponent>(e);
-                w.insert(
-                    e,
-                    UserStatusComponent {
-                        last_login_at: Some(now),
-                        ..st
-                    },
-                );
-            }
-        })
+    set_last_login(&store, user.pid, now_iso())
         .await
         .map_err(internal)?;
 
@@ -278,20 +237,7 @@ async fn update_my_profile(
     let auth = require_auth(user)?;
     let pid = parse_pid(&auth.id)?;
     let ConnectRequest(r) = req;
-    store
-        .update(pid, move |w, e| {
-            if let Some(p) = w.get::<UserProfile>(e).cloned() {
-                w.remove::<UserProfile>(e);
-                w.insert(
-                    e,
-                    UserProfile {
-                        display_name: r.display_name.unwrap_or(p.display_name),
-                        avatar_url: r.avatar_url.unwrap_or(p.avatar_url),
-                        email: r.email.unwrap_or(p.email),
-                    },
-                );
-            }
-        })
+    update_profile(&store, pid, r.display_name, r.avatar_url, r.email)
         .await
         .map_err(internal)?;
     let u = load_user(&store, pid)
@@ -326,18 +272,7 @@ async fn change_my_password(
         ));
     }
     let hash = hash_password(&r.new_password).map_err(internal)?;
-    let now = now_iso();
-    store
-        .update(pid, move |w, e| {
-            w.remove::<UserPassword>(e);
-            w.insert(
-                e,
-                UserPassword {
-                    hash,
-                    changed_at: now,
-                },
-            );
-        })
+    set_password(&store, pid, hash, now_iso())
         .await
         .map_err(internal)?;
     Ok(ConnectResponse::new(pb::ChangeMyPasswordResponse { ok: true }))
