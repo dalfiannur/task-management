@@ -7,15 +7,12 @@ use auth::AuthUser;
 use axum::Extension;
 use connectrpc_axum::{ConnectError, ConnectRequest, ConnectResponse};
 use domain::notification::NotificationType;
-use domain::project::{
-    project_name_ok, ProjectDescription, ProjectMembership, ProjectName, ProjectOwnerId,
-    ProjectStatus, ProjectStatusComponent,
-};
+use domain::project::{project_name_ok, ProjectStatus};
 use persistence::Store;
 
 use super::record::{
-    is_member, load_all_projects, load_project, member_project_ids, membership_pids_for_project,
-    membership_pids_for_project_user, project_member_ids, to_proto, user_exists, ProjectRecord,
+    self as project_record, is_member, load_all_projects, load_project, member_project_ids,
+    project_member_ids, to_proto, user_exists, ProjectRecord,
 };
 use super::{internal, parse_pid};
 use crate::activity::record;
@@ -50,7 +47,7 @@ async fn require_project(store: &Store, pid: i64) -> Result<ProjectRecord, Conne
 }
 
 /// Create a local delivery project: one owner, auto owner membership, status
-/// Active. Project and membership rows are separate per-op creates (not atomic).
+/// Active. Project and memberships are written in one transaction.
 async fn create_project(
     Extension(store): Extension<Arc<Store>>,
     user: Option<Extension<AuthUser>>,
@@ -71,51 +68,19 @@ async fn create_project(
         .filter(|s| !s.is_empty())
         .unwrap_or_else(|| auth.id.clone());
 
-    let pid = store
-        .create((
-            ProjectName {
-                value: name.to_string(),
-            },
-            ProjectOwnerId {
-                value: owner_id.clone(),
-            },
-            ProjectStatusComponent {
-                value: ProjectStatus::Active.as_str().to_string(),
-            },
-        ))
-        .await
-        .map_err(internal)?;
-
-    if let Some(desc) = r
+    let description = r
         .description
         .map(|d| d.trim().to_string())
-        .filter(|d| !d.is_empty())
-    {
-        store
-            .update(pid, move |w, e| {
-                w.insert(e, ProjectDescription { value: desc });
-            })
-            .await
-            .map_err(internal)?;
-    }
-
-    let project_id = pid.to_string();
-    store
-        .create((ProjectMembership {
-            project_id: project_id.clone(),
-            user_id: owner_id.clone(),
-        },))
-        .await
-        .map_err(internal)?;
-    if owner_id != auth.id {
-        store
-            .create((ProjectMembership {
-                project_id,
-                user_id: auth.id.clone(),
-            },))
-            .await
-            .map_err(internal)?;
-    }
+        .filter(|d| !d.is_empty());
+    let pid = project_record::create_project(
+        &store,
+        name,
+        description.as_deref(),
+        &owner_id,
+        &auth.id,
+    )
+    .await
+    .map_err(internal)?;
 
     let p = require_project(&store, pid).await?;
     index(
@@ -226,16 +191,7 @@ async fn set_project_status(
     require_owner_or_admin(&auth, &p)?;
     let status = ProjectStatus::from_proto(r.status)
         .ok_or_else(|| ConnectError::new_invalid_argument("invalid status"))?;
-    store
-        .update(pid, move |w, e| {
-            w.remove::<ProjectStatusComponent>(e);
-            w.insert(
-                e,
-                ProjectStatusComponent {
-                    value: status.as_str().to_string(),
-                },
-            );
-        })
+    project_record::set_status(&store, pid, status)
         .await
         .map_err(internal)?;
     let updated = require_project(&store, pid).await?;
@@ -258,26 +214,9 @@ async fn transfer_project_ownership(
     if new_owner.is_empty() {
         return Err(ConnectError::new_invalid_argument("new_owner_id is required"));
     }
-    let no = new_owner.clone();
-    store
-        .update(pid, move |w, e| {
-            w.remove::<ProjectOwnerId>(e);
-            w.insert(e, ProjectOwnerId { value: no });
-        })
+    project_record::transfer_owner(&store, pid, &new_owner)
         .await
         .map_err(internal)?;
-    if !is_member(&store, &pid.to_string(), &new_owner)
-        .await
-        .map_err(internal)?
-    {
-        store
-            .create((ProjectMembership {
-                project_id: pid.to_string(),
-                user_id: new_owner.clone(),
-            },))
-            .await
-            .map_err(internal)?;
-    }
     // Notify the new owner.
     if let Some(Extension(n)) = notifier {
         emit(
@@ -318,13 +257,9 @@ async fn delete_project(
     let pid = parse_pid(&r.id)?;
     let p = require_project(&store, pid).await?;
     require_owner_or_admin(&auth, &p)?;
-    store.delete(pid).await.map_err(internal)?;
-    for mpid in membership_pids_for_project(&store, &pid.to_string())
+    project_record::delete_project(&store, pid)
         .await
-        .map_err(internal)?
-    {
-        store.delete(mpid).await.map_err(internal)?;
-    }
+        .map_err(internal)?;
     deindex_project(&store, &pid.to_string()).await;
     Ok(ConnectResponse::new(pb::DeleteProjectResponse { ok: true }))
 }
@@ -390,17 +325,10 @@ async fn add_project_member(
     if !user_exists(&store, &uid).await.map_err(internal)? {
         return Err(ConnectError::new_not_found("user not found"));
     }
-    if !is_member(&store, &pid.to_string(), &uid)
+    if project_record::add_member(&store, &pid.to_string(), &uid)
         .await
         .map_err(internal)?
     {
-        store
-            .create((ProjectMembership {
-                project_id: pid.to_string(),
-                user_id: uid.clone(),
-            },))
-            .await
-            .map_err(internal)?;
         // Notify the newly-added member.
         if let Some(Extension(n)) = notifier {
             emit(
@@ -449,13 +377,9 @@ async fn remove_project_member(
             "cannot remove the owner; transfer ownership first",
         ));
     }
-    let removed = membership_pids_for_project_user(&store, &pid.to_string(), &uid)
+    let was_member = project_record::remove_member(&store, &pid.to_string(), &uid)
         .await
         .map_err(internal)?;
-    let was_member = !removed.is_empty();
-    for mpid in removed {
-        store.delete(mpid).await.map_err(internal)?;
-    }
     if was_member {
         record(
             &store,
@@ -495,12 +419,9 @@ async fn leave_project(
             "owner cannot leave; transfer ownership first",
         ));
     }
-    for mpid in membership_pids_for_project_user(&store, &pid.to_string(), &auth.id)
+    project_record::remove_member(&store, &pid.to_string(), &auth.id)
         .await
-        .map_err(internal)?
-    {
-        store.delete(mpid).await.map_err(internal)?;
-    }
+        .map_err(internal)?;
     Ok(ConnectResponse::new(pb::LeaveProjectResponse { ok: true }))
 }
 
