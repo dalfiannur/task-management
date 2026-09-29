@@ -37,7 +37,7 @@ function ReportsPage() {
       <div className="flex items-center justify-between print:hidden">
         <h1 className="text-2xl font-semibold">Reports</h1>
         <div className="flex items-center gap-2">
-          <ExportExcelButton report={report} window={activeWindow} />
+          <ExportExcelButton window={activeWindow} />
           <Button variant="outline" size="sm" onClick={() => window.print()}>
             <Printer /> Print
           </Button>

@@ -19,6 +19,7 @@ auth = { path = "../auth" }
 persistence = { path = "../persistence" }
 domain = { path = "../domain" }
 storage = { path = "../storage" }
+rust_xlsxwriter = "0.99"
 
 [dev-dependencies]
 tower = { workspace = true }
@@ -26,6 +27,8 @@ serde_json = { workspace = true }
 async-trait = { workspace = true }
 anyhow = { workspace = true }
 time = { workspace = true }
+calamine = "0.36.1"
+base64 = "0.23.1"
 
 [build-dependencies]
 connectrpc-axum-build = { workspace = true }

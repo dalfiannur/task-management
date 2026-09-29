@@ -392,3 +392,85 @@ async fn list_limit_truncates_and_says_so() {
     assert_eq!(r["completedTruncated"], true, "{r}");
     assert_eq!(r["totals"]["completed"].as_u64().unwrap(), 3, "totals are not capped: {r}");
 }
+
+/// The xlsx export: every section as a sheet, and the task lists complete
+/// where the page caps them at 50.
+#[tokio::test]
+async fn xlsx_export_has_every_sheet_and_every_row() {
+    use base64::Engine;
+    use calamine::{Data, Reader, Xlsx};
+
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let me = mk_user(&store).await;
+    let tm = token(&me);
+    let p = ok(&router, &format!("{PROJECT}/CreateProject"), &tm, json!({ "name": format!("XP-{}", uniq()) })).await
+        ["id"].as_str().unwrap().to_string();
+    let m = ok(&router, &format!("{MODULE}/CreateModule"), &tm, json!({ "projectId": p, "name": "M" })).await
+        ["id"].as_str().unwrap().to_string();
+    for i in 0..55 {
+        ok(&router, &format!("{TASK}/CreateTask"), &tm, json!({ "moduleId": m, "title": format!("done {i}"), "status": "DONE", "dueDate": "2026-03-05" })).await;
+    }
+    ok(&router, &format!("{TASK}/CreateTask"), &tm, json!({ "moduleId": m, "title": "late", "priority": "HIGH", "dueDate": "2020-01-01" })).await;
+
+    let r = ok(
+        &router,
+        &format!("{REPORT}/ExportPeriodReportXlsx"),
+        &tm,
+        json!({ "report": full_window_body(), "label": "the label", "granularity": "weekly",
+                "utcOffsetMinutes": 420, "appName": "PM" }),
+    )
+    .await;
+    assert!(r["fileName"].as_str().unwrap().starts_with("report-weekly-"), "{r}");
+    let bytes = base64::engine::general_purpose::STANDARD
+        .decode(r["xlsx"].as_str().unwrap())
+        .unwrap();
+    let mut wb: Xlsx<_> = calamine::open_workbook_from_rs(std::io::Cursor::new(bytes)).unwrap();
+    assert_eq!(
+        wb.sheet_names(),
+        vec!["Summary", "Per project", "Per member", "Completed", "Overdue", "Activity"]
+    );
+
+    let summary = wb.worksheet_range("Summary").unwrap();
+    let cell = |r: u32, c: u32| summary.get_value((r, c)).cloned().unwrap_or(Data::Empty);
+    assert_eq!(cell(0, 0), Data::String("Weekly report".into()));
+    assert_eq!(cell(1, 1), Data::String("the label".into()));
+    assert!(matches!(cell(2, 1), Data::DateTime(_)), "generated is a date: {:?}", cell(2, 1));
+    assert_eq!(cell(3, 1), Data::String("R".into()), "by: the caller's display name");
+    assert_eq!(cell(4, 1), Data::String("PM".into()));
+    assert_eq!(cell(7, 1), Data::Float(55.0), "completed this period");
+
+    let completed = wb.worksheet_range("Completed").unwrap();
+    assert_eq!(completed.height(), 56, "header + all 55 rows, not capped at 50");
+    assert_eq!(completed.get_value((1, 3)), Some(&Data::String("Done".into())));
+    assert!(matches!(completed.get_value((1, 6)), Some(Data::DateTime(_))), "due date is a date");
+    assert!(matches!(completed.get_value((1, 7)), Some(Data::DateTime(_))), "completed at is a date");
+
+    let overdue = wb.worksheet_range("Overdue").unwrap();
+    assert_eq!(overdue.height(), 2);
+    assert_eq!(overdue.get_value((1, 0)), Some(&Data::String("late".into())));
+    assert_eq!(overdue.get_value((1, 4)), Some(&Data::String("High".into())));
+
+    let per_project = wb.worksheet_range("Per project").unwrap();
+    assert!(matches!(per_project.get_value((1, 0)), Some(Data::String(s)) if s.starts_with("XP-")));
+    assert_eq!(per_project.get_value((1, 7)), Some(&Data::Float(55.0 / 56.0)), "progress as a fraction");
+}
+
+#[tokio::test]
+async fn xlsx_export_rejects_a_bad_granularity() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let tm = token(&mk_user(&store).await);
+    let (st, _) = call(
+        &router,
+        &format!("{REPORT}/ExportPeriodReportXlsx"),
+        Some(&tm),
+        json!({ "report": full_window_body(), "granularity": "yearly" }),
+    )
+    .await;
+    assert_ne!(st, StatusCode::OK);
+}
