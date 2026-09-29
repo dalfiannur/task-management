@@ -5,11 +5,11 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 
 use connectrpc_axum::ConnectError;
-use domain::notification::{NotificationInfo, NotificationRefs, NotificationType};
+use domain::notification::NotificationType;
 use persistence::Store;
 use tokio::sync::mpsc::UnboundedSender;
 
-use super::record::load_notification;
+use super::record::{create_notification, load_notification, NewNotification};
 use crate::sedjiwa::tasks::notification::v1 as pb;
 
 /// Item pushed over a `StreamNotifications` channel.
@@ -102,23 +102,20 @@ pub(crate) async fn emit(
         return;
     }
     let now = now_iso();
-    let created = store
-        .create((
-            NotificationInfo {
-                recipient_id: recipient_id.to_string(),
-                kind: kind.as_str().to_string(),
-                actor_id: actor_id.to_string(),
-                message,
-                read: false,
-                created_at: now,
-            },
-            NotificationRefs {
-                project_id: refs.project_id,
-                task_id: refs.task_id,
-                comment_id: refs.comment_id,
-            },
-        ))
-        .await;
+    let created = create_notification(
+        store,
+        NewNotification {
+            recipient_id,
+            kind,
+            actor_id,
+            message: &message,
+            created_at: &now,
+            project_id: refs.project_id,
+            task_id: refs.task_id,
+            comment_id: refs.comment_id,
+        },
+    )
+    .await;
     let pid = match created {
         Ok(pid) => pid,
         Err(e) => {
