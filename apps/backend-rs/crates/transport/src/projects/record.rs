@@ -1,7 +1,7 @@
 //! Project rows ↔ the `Project` proto, plus every read and write the projects
 //! flows make.
 //!
-//! Plain sqlx over the component tables arke-postgres created (see
+//! Plain sqlx over the component tables of `persistence/src/schema.sql` (see
 //! `persistence::entity`). A project is one entity carrying `cmp_projectname`,
 //! `cmp_projectownerid` and `cmp_projectstatuscomponent`, optionally
 //! `cmp_projectdescription` and `cmp_projectdates`. A membership is its own
@@ -26,8 +26,7 @@ pub(crate) struct ProjectRecord {
     pub end_date: Option<String>,
 }
 
-/// Name, owner and status are what make an entity a project — the inner joins,
-/// exactly where arke's `read_project` returned `None`.
+/// Name, owner and status are what make an entity a project — the inner joins.
 const SELECT_PROJECT: &str = "\
     SELECT n.pid, n.value AS name, d.value AS description, s.value AS status, \
            o.value AS owner_id, dt.start_date, dt.end_date \

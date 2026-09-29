@@ -2,34 +2,25 @@
 //! [`MediaFileInfo`]; "is a link" = has [`TaskMediaLinkData`]. Status stored as
 //! an indexed `String`.
 
-use arke_postgres::PgComponent;
-
 /// File metadata (bytes live in S3 under `storage_key`).
-#[derive(PgComponent, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct MediaFileInfo {
-    #[pg(index)]
     pub project_id: String,
     pub file_name: String,
     pub original_file_name: String,
-    #[pg(index)]
     pub mime_type: String,
     pub size: i64,
     pub storage_key: String,
-    #[pg(index)]
     pub uploaded_by: String,
-    #[pg(index)]
     pub created_at: String,
     pub status: String, // MediaStatus::as_str
 }
 
 /// Many-to-many task↔file link.
-#[derive(PgComponent, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct TaskMediaLinkData {
-    #[pg(index)]
     pub media_file_id: String,
-    #[pg(index)]
     pub task_id: String,
-    #[pg(index)]
     pub project_id: String,
 }
 

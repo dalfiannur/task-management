@@ -5,28 +5,24 @@
 //! while Argon2 would add ~50-100 ms to *every* MCP tool call. Password hashing
 //! stays on `user::UserPassword`.
 
-use arke_postgres::PgComponent;
-
 /// Prefix of every token we issue, so a leaked string is easy to grep for.
 pub const TOKEN_PREFIX: &str = "sjw_pat_";
 
 /// Opaque secret, stored only as a digest. `preview` is the plaintext's last 4
 /// characters — the only part the UI is ever allowed to show again.
-#[derive(PgComponent, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct TokenSecret {
-    #[pg(index, unique)]
     pub hash: String,
     pub preview: String,
 }
 
 /// The token's owner. Indexed because every list read filters by it.
-#[derive(PgComponent, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct TokenOwner {
-    #[pg(index)]
     pub user_id: String,
 }
 
-#[derive(PgComponent, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct TokenInfo {
     pub name: String,
     pub created_at: String,
@@ -34,7 +30,7 @@ pub struct TokenInfo {
     pub expires_at: Option<String>,
 }
 
-#[derive(PgComponent, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct TokenUsage {
     pub last_used_at: Option<String>,
 }

@@ -41,7 +41,7 @@ async fn auth_mw(mut req: Request, next: Next) -> Response {
 
 async fn setup() -> Option<(Router, Arc<Store>)> {
     let url = std::env::var("DATABASE_URL").ok()?;
-    let store = Arc::new(Store::connect(&url, domain::register_all).await.unwrap());
+    let store = Arc::new(Store::connect(&url).await.unwrap());
     let router = transport::project_router(store.clone())
         .merge(transport::page_router(store.clone()))
         .layer(from_fn(auth_mw));

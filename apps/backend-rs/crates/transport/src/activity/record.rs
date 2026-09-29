@@ -1,12 +1,11 @@
 //! Activity rows ↔ proto, plus the reads and the one write the activity flows
 //! make.
 //!
-//! Plain sqlx over the component tables arke-postgres created (see
+//! Plain sqlx over the component tables of `persistence/src/schema.sql` (see
 //! `persistence::entity`). An entry is one entity carrying `cmp_activityinfo`
 //! and, optionally, `cmp_activitychanges` — a JSONB array of
-//! `{"field", "from", "to"}` objects (`from`/`to` may be null), the shape
-//! arke's serializer wrote. It crosses the wire as three parallel `text[]`s so
-//! sqlx needs no JSON support.
+//! `{"field", "from", "to"}` objects (`from`/`to` may be null). It crosses the
+//! wire as three parallel `text[]`s so sqlx needs no JSON support.
 
 use std::collections::HashSet;
 

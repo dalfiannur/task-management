@@ -1,7 +1,7 @@
 //! User rows ↔ the `User` proto, plus every read and write the users flows make.
 //!
-//! Plain sqlx over the component tables arke-postgres created (see
-//! `persistence::entity` for the invariants shared with arke while both run).
+//! Plain sqlx over the component tables of `persistence/src/schema.sql` (see
+//! `persistence::entity` for the invariants every write keeps).
 //! A user is one entity carrying `cmp_userphone`, `cmp_userpassword`,
 //! `cmp_userprofile` and `cmp_userstatuscomponent`, and `cmp_adminmark` when it
 //! is an admin. Every value is bound, never formatted into the statement.
@@ -31,8 +31,7 @@ pub(crate) struct UserRecord {
 }
 
 /// The four required components joined, admin as an outer join. The inner
-/// joins are what "is a user" means: an entity missing any of them is not one,
-/// exactly as arke's `read_user` returned `None` for it.
+/// joins are what "is a user" means: an entity missing any of them is not one.
 const SELECT_USER: &str = "\
     SELECT ph.pid, ph.value AS phone, pw.hash, pr.display_name, pr.avatar_url, pr.email, \
            st.status, st.created_at, st.last_login_at, (am.pid IS NOT NULL) AS is_admin \
@@ -42,8 +41,7 @@ const SELECT_USER: &str = "\
     JOIN cmp_userstatuscomponent st ON st.pid = ph.pid \
     LEFT JOIN cmp_adminmark am ON am.pid = ph.pid";
 
-/// `None` for a stored status this build does not know, which drops the row
-/// the same way the arke reader did.
+/// `None` for a stored status this build does not know, which drops the row.
 fn read_user(row: &PgRow) -> sqlx::Result<Option<UserRecord>> {
     let status: String = row.try_get("status")?;
     let Some(status) = UserStatus::parse(&status) else {
@@ -256,7 +254,7 @@ pub(crate) async fn create_user(store: &Store, u: NewUser<'_>) -> anyhow::Result
 }
 
 /// Run one component write against `pid` inside a version-bumping transaction.
-/// Does nothing when the entity does not exist, as arke's `update` did.
+/// Does nothing when the entity does not exist.
 async fn write(
     store: &Store,
     pid: i64,
@@ -316,7 +314,7 @@ pub(crate) async fn set_last_login(store: &Store, pid: i64, at: String) -> anyho
     write(store, pid, q).await
 }
 
-/// Grant (re-granting restamps `granted_at`, as arke's insert-overwrites did)
+/// Grant (re-granting restamps `granted_at`)
 /// or revoke admin. Granting only lands on an entity that is a user.
 pub(crate) async fn set_admin(
     store: &Store,

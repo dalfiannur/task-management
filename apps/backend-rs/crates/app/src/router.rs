@@ -126,7 +126,7 @@ mod tests {
     async fn router() -> Option<Router> {
         let url = std::env::var("DATABASE_URL").ok()?;
         let store = Arc::new(
-            Store::connect(&url, domain::register_all)
+            Store::connect(&url)
                 .await
                 .unwrap(),
         );

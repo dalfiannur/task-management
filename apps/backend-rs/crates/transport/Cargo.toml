@@ -15,7 +15,6 @@ time = { workspace = true }
 tracing = { workspace = true }
 anyhow = { workspace = true }
 sqlx = { workspace = true }
-arke = { workspace = true }
 auth = { path = "../auth" }
 persistence = { path = "../persistence" }
 domain = { path = "../domain" }

@@ -1,7 +1,7 @@
 //! Notification rows ↔ proto, plus the reads and writes the notification flows
 //! make (all scoped to a recipient).
 //!
-//! Plain sqlx over the component tables arke-postgres created (see
+//! Plain sqlx over the component tables of `persistence/src/schema.sql` (see
 //! `persistence::entity`). A notification is one entity carrying
 //! `cmp_notificationinfo`, optionally `cmp_notificationrefs`.
 

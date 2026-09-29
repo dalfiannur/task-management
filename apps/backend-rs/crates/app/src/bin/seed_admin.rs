@@ -25,25 +25,14 @@ async fn main() -> Result<()> {
     let password = std::env::var("SEED_ADMIN_PASSWORD").unwrap_or_else(|_| "admin12345".into());
     let name = std::env::var("SEED_ADMIN_NAME").unwrap_or_else(|_| "Admin".into());
 
-    let store = Store::connect(&database_url, domain::register_all).await?;
+    let store = Store::connect(&database_url).await?;
 
     // Idempotent: skip if a user with this phone already exists.
-    let phone_q = phone.clone();
-    let existing = store
-        .query::<UserPhone, i64>(None, move |world, pairs| {
-            pairs
-                .iter()
-                .filter(|(_, e)| {
-                    world
-                        .get::<UserPhone>(*e)
-                        .map(|p| p.value == phone_q)
-                        .unwrap_or(false)
-                })
-                .map(|(pid, _)| *pid)
-                .collect()
-        })
+    let existing: Option<i64> = sqlx::query_scalar("SELECT pid FROM cmp_userphone WHERE value = $1")
+        .bind(&phone)
+        .fetch_optional(store.pool())
         .await?;
-    if let Some(pid) = existing.first() {
+    if let Some(pid) = existing {
         println!("seed_admin: admin already exists (pid {pid}, phone {phone}) — nothing to do");
         return Ok(());
     }
@@ -70,12 +59,8 @@ async fn main() -> Result<()> {
                 created_at: now.clone(),
                 last_login_at: None,
             },
+            AdminMark { granted_at: now },
         ))
-        .await?;
-    store
-        .update(pid, move |w, e| {
-            w.insert(e, AdminMark { granted_at: now });
-        })
         .await?;
 
     println!("seed_admin: created admin pid {pid} phone {phone} (password from SEED_ADMIN_PASSWORD)");

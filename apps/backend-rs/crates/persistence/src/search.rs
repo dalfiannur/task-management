@@ -1,10 +1,10 @@
 //! Full-text search index. A denormalized document table, deliberately outside
-//! the Arke component model: it is an index, not an entity, and it is the one
+//! the entity/component tables: it is an index, not an entity, and it is the one
 //! place where user-supplied text reaches SQL — so every method here binds its
 //! parameters instead of formatting them into the statement.
 
 use anyhow::Result;
-use sqlx::{PgPool, Row};
+use sqlx::Row;
 
 /// Postgres text-search config. `simple` is the fallback when a deployment's
 /// Postgres lacks the Snowball `indonesian` dictionary; it costs stemming
@@ -51,7 +51,7 @@ pub struct SearchRow {
     pub parent_title: Option<String>,
 }
 
-pub(crate) async fn migrate(pool: &PgPool) -> Result<()> {
+pub(crate) async fn migrate(conn: &mut sqlx::PgConnection) -> Result<()> {
     let ddl = format!(
         "CREATE TABLE IF NOT EXISTS search_doc (
            kind         text NOT NULL,
@@ -70,16 +70,16 @@ pub(crate) async fn migrate(pool: &PgPool) -> Result<()> {
          )",
         cfg = TS_CONFIG
     );
-    sqlx::query(&ddl).execute(pool).await?;
+    sqlx::query(&ddl).execute(&mut *conn).await?;
     sqlx::query("CREATE INDEX IF NOT EXISTS search_doc_vec ON search_doc USING GIN (vec)")
-        .execute(pool)
+        .execute(&mut *conn)
         .await?;
     // CREATE TABLE IF NOT EXISTS does nothing on a database that already has
     // search_doc, so a column added later must be applied separately. Same
     // trap as TS_CONFIG above: the create silently succeeds and the change
     // silently does not happen.
     sqlx::query("ALTER TABLE search_doc ADD COLUMN IF NOT EXISTS parent_id text")
-        .execute(pool)
+        .execute(&mut *conn)
         .await?;
     Ok(())
 }
@@ -204,8 +204,8 @@ mod tests {
     use crate::Store;
 
     async fn store() -> Option<Store> {
-        let url = std::env::var("ARKE_TEST_DATABASE_URL").ok()?;
-        Some(Store::connect(&url, |_| {}).await.unwrap())
+        let url = std::env::var("PERSISTENCE_TEST_DATABASE_URL").ok()?;
+        Some(Store::connect(&url).await.unwrap())
     }
 
     fn doc(kind: &str, id: &str, title: &str, body: &str) -> SearchDoc {
@@ -223,7 +223,7 @@ mod tests {
     #[tokio::test]
     async fn index_search_and_deindex() {
         let Some(s) = store().await else {
-            eprintln!("skip: ARKE_TEST_DATABASE_URL not set");
+            eprintln!("skip: PERSISTENCE_TEST_DATABASE_URL not set");
             return;
         };
         let uniq = std::time::SystemTime::now()
@@ -284,7 +284,7 @@ mod tests {
     #[tokio::test]
     async fn deindex_project_only_drops_its_own_docs() {
         let Some(s) = store().await else {
-            eprintln!("skip: ARKE_TEST_DATABASE_URL not set");
+            eprintln!("skip: PERSISTENCE_TEST_DATABASE_URL not set");
             return;
         };
         let uniq = std::time::SystemTime::now()

@@ -18,7 +18,7 @@ use tower::ServiceExt;
 async fn router_and_store() -> Option<(Router, Arc<persistence::Store>)> {
     let url = std::env::var("DATABASE_URL").ok()?;
     let store = Arc::new(
-        persistence::Store::connect(&url, domain::register_all)
+        persistence::Store::connect(&url)
             .await
             .unwrap(),
     );

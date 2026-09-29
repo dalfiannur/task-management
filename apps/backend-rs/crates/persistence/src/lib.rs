@@ -1,203 +1,212 @@
-//! Generic, per-operation, stateless `Store` over arke-postgres's pid API (RFC-0034).
+//! Postgres access: the connection pool, the schema, and entity bookkeeping.
 //!
-//! Each op builds a fresh `PgStore` (shared pool) + a fresh `World`, does one
-//! pid-addressed operation, and drops. `pid` (DB `BIGSERIAL`) is the persistent id
-//! — decoupled from arke's ephemeral World index — so per-op create yields globally
-//! unique ids (no collisions, no dense-Vec blowup). Postgres is the source of truth;
-//! stateless → multi-replica safe. Writes read the World synchronously before any
-//! `.await`, so handler futures stay `Send` (no unsafe, no actor).
-
-use std::sync::Arc;
+//! The data model is one entity per thing (a pid allocated in `arke_entities`)
+//! with one `cmp_<component>` row per aspect of it — the layout arke-postgres
+//! created, kept as-is when arke was removed (see `schema.sql`). Each domain's
+//! reads and writes live next to its handlers in `transport` as plain sqlx;
+//! this crate owns what they share: [`Store`] (pool + schema), [`entity`] (pid
+//! allocation, version bumps, deletes) and [`rows`] (component structs as rows,
+//! for seeds and fixtures).
 
 use anyhow::Result;
-use arke::{Bundle, Component, Entity, World};
-use arke_postgres::{PgComponent, PgStore};
-
-pub mod entity;
-pub mod search;
-pub use search::{SearchDoc, SearchRow};
-
-/// Re-exported so callers can name a component's table when they build a
-/// `predicate` that references it (a paging subquery, say) without taking a
-/// direct dependency on arke-postgres — this crate is the seam that owns it.
-pub use arke_postgres::PgComponent as PgTable;
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 
+pub mod entity;
+pub mod rows;
+pub mod search;
+pub use rows::{Row, Rows};
+pub use search::{SearchDoc, SearchRow};
+
+/// Idempotent DDL for every component table; runs on each connect.
+const SCHEMA: &str = include_str!("schema.sql");
+
+/// Advisory-lock key serialising schema setup across concurrent connects.
+/// Even an `IF NOT EXISTS` DDL statement takes its locks before it finds the
+/// object already there, so several processes starting at once (replicas, or
+/// the test suite's parallel `Store::connect`s) deadlock without it.
+const SCHEMA_LOCK: i64 = 0x7365_646a_6977_6100; // "sedjiwa\0"
+
+
 pub struct Store {
     pool: PgPool,
-    /// Registers every persisted component type on a fresh `PgStore` each op.
-    register: Arc<dyn Fn(&mut PgStore) + Send + Sync>,
 }
 
 impl Store {
-    /// Connect, register components, reconcile schema once.
-    pub async fn connect(
-        database_url: &str,
-        register: impl Fn(&mut PgStore) + Send + Sync + 'static,
-    ) -> Result<Self> {
+    /// Connect and bring the schema up to date (every statement is idempotent).
+    pub async fn connect(database_url: &str) -> Result<Self> {
         let pool = PgPoolOptions::new()
             .max_connections(5)
             .connect(database_url)
             .await?;
-        let mut pg = PgStore::from_pool(pool.clone());
-        register(&mut pg);
-        pg.migrate().await?;
-        search::migrate(&pool).await?;
-        Ok(Self {
-            pool,
-            register: Arc::new(register),
-        })
+        let mut conn = pool.acquire().await?;
+        sqlx::query("SELECT pg_advisory_lock($1)")
+            .bind(SCHEMA_LOCK)
+            .execute(&mut *conn)
+            .await?;
+        let migrated = async {
+            // One statement at a time, each in its own implicit transaction, so
+            // a statement's locks are released before the next is taken. Run as
+            // one script, every lock would be held to the end while other
+            // connections insert into the same tables in another order.
+            for stmt in schema_statements() {
+                sqlx::query(stmt).execute(&mut *conn).await?;
+            }
+            search::migrate(&mut conn).await
+        }
+        .await;
+        sqlx::query("SELECT pg_advisory_unlock($1)")
+            .bind(SCHEMA_LOCK)
+            .execute(&mut *conn)
+            .await?;
+        migrated?;
+        drop(conn);
+        Ok(Self { pool })
     }
 
-    /// The shared pool, for code ported off arke that queries the component
-    /// tables directly (see [`entity`]).
+    /// The shared pool.
     pub fn pool(&self) -> &PgPool {
         &self.pool
     }
 
-    /// A fresh registered `PgStore` sharing the pool.
-    fn fresh(&self) -> PgStore {
-        let mut pg = PgStore::from_pool(self.pool.clone());
-        (self.register)(&mut pg);
-        pg
+    /// Create an entity from component rows, in one transaction; return its
+    /// `pid`. For seeds and fixtures — request paths write through their
+    /// domain's `record.rs`.
+    pub async fn create(&self, rows: impl Rows) -> Result<i64> {
+        let mut tx = self.pool.begin().await?;
+        let pid = entity::new_pid(&mut tx).await?;
+        for (table, values) in rows.into_rows() {
+            insert(&mut tx, table, pid, values, false).await?;
+        }
+        tx.commit().await?;
+        Ok(pid)
     }
 
-    /// Create an entity from a component bundle; return its persistent `pid`.
-    pub async fn create<B: Bundle>(&self, bundle: B) -> Result<i64> {
-        let pg = self.fresh();
-        let mut world = World::new();
-        let e = world.spawn_bundle(bundle);
-        let staged = pg.stage_insert(&world, e);
-        Ok(pg.commit_insert(staged).await?)
-    }
-
-    /// Read one entity's component `T` by `pid`.
-    pub async fn get<T: PgComponent + Component + Clone>(&self, pid: i64) -> Result<Option<T>> {
-        let pg = self.fresh();
-        let mut world = World::new();
-        Ok(pg
-            .fetch(&mut world, pid)
-            .await?
-            .and_then(|e| world.get::<T>(e).cloned()))
-    }
-
-    /// Load `pid`, run a mutator, persist the change.
-    pub async fn update(&self, pid: i64, mutate: impl FnOnce(&mut World, Entity)) -> Result<()> {
-        let pg = self.fresh();
-        let mut world = World::new();
-        if let Some(e) = pg.fetch(&mut world, pid).await? {
-            mutate(&mut world, e);
-            let staged = pg.stage_update(&world, e);
-            pg.commit_update(pid, staged).await?;
+    /// Add a component row to an existing entity, replacing the one it already
+    /// has of that kind. Does nothing if the entity does not exist.
+    pub async fn attach(&self, pid: i64, row: impl Row) -> Result<()> {
+        let mut tx = self.pool.begin().await?;
+        if entity::touch(&mut tx, pid).await? {
+            insert(&mut tx, row_table(&row), pid, row.into_values(), true).await?;
+            tx.commit().await?;
         }
         Ok(())
     }
 
-    /// Delete an entity by `pid`.
+    /// Delete an entity; its component rows cascade.
     pub async fn delete(&self, pid: i64) -> Result<()> {
-        Ok(self.fresh().remove(pid).await?)
+        let mut conn = self.pool.acquire().await?;
+        entity::delete(&mut conn, pid).await?;
+        Ok(())
     }
+}
 
-    /// Query entities matching `predicate` (trusted SQL `WHERE` over `T`'s table);
-    /// map the loaded `World` + `(pid, Entity)` pairs to results.
-    pub async fn query<T, R>(
-        &self,
-        predicate: Option<&str>,
-        map: impl FnOnce(&World, &[(i64, Entity)]) -> Vec<R>,
-    ) -> Result<Vec<R>>
-    where
-        T: PgComponent,
-    {
-        // `mut`: query_pids now loads through the batched `materialize` path, which
-        // fills the pid<->Entity bridge as it goes and so needs &mut. The PgStore is
-        // per-op (see `fresh`), so nothing is shared across requests.
-        let mut pg = self.fresh();
-        let mut world = World::new();
-        let pairs = pg.query_pids::<T>(&mut world, predicate).await?;
-        Ok(map(&world, &pairs))
-    }
+/// `schema.sql` split into its statements, skipping chunks that are only
+/// comments or whitespace. No statement contains a `;` of its own.
+fn schema_statements() -> impl Iterator<Item = &'static str> {
+    SCHEMA.split(';').filter(|chunk| {
+        chunk.lines().any(|l| {
+            let t = l.trim();
+            !t.is_empty() && !t.starts_with("--")
+        })
+    })
+}
 
-    /// Count rows of `T` matching `predicate` (same trusted-SQL rules as
-    /// [`Store::query`]).
-    ///
-    /// Companion to `query` for callers that select a page in SQL but still owe
-    /// the caller an unpaged total. Without it the only way to learn the total is
-    /// to hydrate every matching row and take `.len()` — and hydrating one row
-    /// costs an existence query plus one query per registered component type, so
-    /// that total is by far the most expensive number in the response.
-    pub async fn count<T>(&self, predicate: Option<&str>) -> Result<u32>
-    where
-        T: PgComponent,
-    {
-        let where_c = predicate.map(|p| format!(" WHERE {p}")).unwrap_or_default();
-        let sql = format!("SELECT count(*) FROM {}{}", T::TABLE, where_c);
-        let n: i64 = sqlx::query_scalar(&sql).fetch_one(&self.pool).await?;
-        Ok(n.max(0) as u32)
+fn row_table<R: Row>(_: &R) -> &'static str {
+    R::TABLE
+}
+
+async fn insert(
+    conn: &mut sqlx::PgConnection,
+    table: &str,
+    pid: i64,
+    values: Vec<(&'static str, rows::Val)>,
+    replace: bool,
+) -> sqlx::Result<()> {
+    let cols: Vec<&str> = values.iter().map(|(c, _)| *c).collect();
+    let placeholders: Vec<String> = values
+        .iter()
+        .enumerate()
+        .map(|(i, (_, v))| v.placeholder(i + 2))
+        .collect();
+    let mut sql = format!(
+        "INSERT INTO {table} (pid, {}) VALUES ($1, {})",
+        cols.join(", "),
+        placeholders.join(", ")
+    );
+    if replace {
+        let set: Vec<String> = cols.iter().map(|c| format!("{c} = EXCLUDED.{c}")).collect();
+        sql.push_str(&format!(" ON CONFLICT (pid) DO UPDATE SET {}", set.join(", ")));
     }
+    let mut q = sqlx::query(&sql).bind(pid);
+    for (_, v) in values {
+        q = match v {
+            rows::Val::Text(s) => q.bind(s),
+            rows::Val::OptText(s) => q.bind(s),
+            rows::Val::Int(n) => q.bind(n),
+            rows::Val::BigInt(n) => q.bind(n),
+            rows::Val::Bool(b) => q.bind(b),
+            rows::Val::TextList(v) => q.bind(v),
+        };
+    }
+    q.execute(conn).await?;
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use arke_postgres::PgComponent;
-
-    #[derive(PgComponent, Debug, Clone, PartialEq)]
-    struct Note {
-        text: String,
-    }
-
-    fn register(pg: &mut PgStore) {
-        pg.register::<Note>();
-    }
+    use domain::HeartbeatAt;
 
     async fn store() -> Option<Store> {
-        let url = std::env::var("ARKE_TEST_DATABASE_URL").ok()?;
-        Some(Store::connect(&url, register).await.unwrap())
+        let url = std::env::var("PERSISTENCE_TEST_DATABASE_URL").ok()?;
+        Some(Store::connect(&url).await.unwrap())
     }
 
-    #[tokio::test]
-    async fn create_get_update_delete() {
-        let Some(s) = store().await else {
-            eprintln!("skip: ARKE_TEST_DATABASE_URL not set");
-            return;
-        };
-        let id = s.create((Note { text: "hello".into() },)).await.unwrap();
-        assert_eq!(s.get::<Note>(id).await.unwrap().unwrap().text, "hello");
-        s.update(id, |w, e| {
-            w.remove::<Note>(e);
-            w.insert(e, Note { text: "world".into() });
-        })
-        .await
-        .unwrap();
-        assert_eq!(s.get::<Note>(id).await.unwrap().unwrap().text, "world");
-        s.delete(id).await.unwrap();
-        assert!(s.get::<Note>(id).await.unwrap().is_none());
-    }
-
-    #[tokio::test]
-    async fn two_creates_have_distinct_pids_and_both_queried() {
-        let Some(s) = store().await else {
-            eprintln!("skip: ARKE_TEST_DATABASE_URL not set");
-            return;
-        };
-        let a = s.create((Note { text: "tc-alpha".into() },)).await.unwrap();
-        let b = s.create((Note { text: "tc-beta".into() },)).await.unwrap();
-        assert_ne!(a, b, "per-op create must yield distinct pids");
-
-        let texts = s
-            .query::<Note, String>(None, |w, pairs| {
-                pairs
-                    .iter()
-                    .filter_map(|(_, e)| w.get::<Note>(*e).map(|n| n.text.clone()))
-                    .collect()
-            })
+    async fn ts(s: &Store, pid: i64) -> Option<String> {
+        sqlx::query_scalar("SELECT ts FROM cmp_heartbeatat WHERE pid = $1")
+            .bind(pid)
+            .fetch_optional(s.pool())
             .await
-            .unwrap();
-        assert!(texts.contains(&"tc-alpha".to_string()));
-        assert!(texts.contains(&"tc-beta".to_string()));
+            .unwrap()
+    }
 
+    #[tokio::test]
+    async fn create_attach_delete() {
+        let Some(s) = store().await else {
+            eprintln!("skip: PERSISTENCE_TEST_DATABASE_URL not set");
+            return;
+        };
+        let id = s.create((HeartbeatAt { ts: "hello".into() },)).await.unwrap();
+        assert_eq!(ts(&s, id).await.as_deref(), Some("hello"));
+        s.attach(id, HeartbeatAt { ts: "world".into() }).await.unwrap();
+        assert_eq!(ts(&s, id).await.as_deref(), Some("world"), "attach replaces the row");
+        s.delete(id).await.unwrap();
+        assert_eq!(ts(&s, id).await, None, "delete cascades");
+    }
+
+    #[tokio::test]
+    async fn two_creates_have_distinct_pids() {
+        let Some(s) = store().await else {
+            eprintln!("skip: PERSISTENCE_TEST_DATABASE_URL not set");
+            return;
+        };
+        let a = s.create((HeartbeatAt { ts: "a".into() },)).await.unwrap();
+        let b = s.create((HeartbeatAt { ts: "b".into() },)).await.unwrap();
+        assert_ne!(a, b);
         s.delete(a).await.unwrap();
         s.delete(b).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn attach_to_a_missing_entity_does_nothing() {
+        let Some(s) = store().await else {
+            eprintln!("skip: PERSISTENCE_TEST_DATABASE_URL not set");
+            return;
+        };
+        let id = s.create((HeartbeatAt { ts: "x".into() },)).await.unwrap();
+        s.delete(id).await.unwrap();
+        s.attach(id, HeartbeatAt { ts: "ghost".into() }).await.unwrap();
+        assert_eq!(ts(&s, id).await, None);
     }
 }

@@ -1,6 +1,6 @@
 //! Page rows ↔ proto, plus every read and write the page flows make.
 //!
-//! Plain sqlx over the component tables arke-postgres created (see
+//! Plain sqlx over the component tables of `persistence/src/schema.sql` (see
 //! `persistence::entity`). A page is one entity carrying `cmp_pageinfo` and
 //! `cmp_pageaudit`.
 

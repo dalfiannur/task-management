@@ -1,31 +1,27 @@
 //! Module: lightweight task grouping within a project (Project → Modules → Tasks).
-//! "Is a module" = has [`ModuleName`] (derive rejects 0-field markers).
-
-use arke_postgres::PgComponent;
+//! "Is a module" = has [`ModuleName`].
 
 /// Module name (required — also the "is a module" signal).
-#[derive(PgComponent, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct ModuleName {
     pub value: String,
 }
 
 /// Optional description (component absent when empty).
-#[derive(PgComponent, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct ModuleDescription {
     pub value: String,
 }
 
 /// Owning project (`pid` string).
-#[derive(PgComponent, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct ModuleProjectRef {
-    #[pg(index)]
     pub project_id: String,
 }
 
 /// Sort order within the project.
-#[derive(PgComponent, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub struct ModuleOrder {
-    #[pg(index)]
     pub value: i32,
 }
 

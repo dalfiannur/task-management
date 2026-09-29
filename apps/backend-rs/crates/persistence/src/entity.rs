@@ -1,27 +1,21 @@
-//! Entity bookkeeping for code that talks to the component tables with plain
-//! sqlx instead of through arke.
+//! Entity bookkeeping shared by every domain's SQL.
 //!
-//! The tables are the ones arke-postgres created and still owns the schema of:
-//! `arke_entities (pid BIGSERIAL, version BIGINT)` plus one `cmp_<name>` table
-//! per component, each keyed by `pid` with `ON DELETE CASCADE`. While both
-//! access paths run side by side, the sqlx side has to keep arke's two
-//! invariants so neither sees a row the other would not have written:
+//! The schema (`schema.sql`) is `arke_entities (pid BIGSERIAL, version BIGINT)`
+//! plus one `cmp_<name>` table per component, each keyed by `pid` with
+//! `ON DELETE CASCADE`. Two invariants hold for every write:
 //!
 //! - every entity has an `arke_entities` row, allocated first — the component
 //!   rows reference it, and the pid sequence is shared across every kind;
-//! - every write bumps `version`, as arke's `commit_update` does.
+//! - every write bumps `version`.
 //!
-//! Deleting is `DELETE FROM arke_entities` and needs nothing here: the cascade
+//! Deleting is `DELETE FROM arke_entities` and needs nothing more: the cascade
 //! removes the component rows.
 //!
-//! **Cast every integer parameter (`$n::int4`).** sqlx caches prepared
-//! statements per connection keyed on the SQL text alone, and arke binds every
-//! integer as `i64` into INSERTs shaped exactly like hand-written ones
-//! (`INSERT INTO cmp_x (pid, value) VALUES ($1, $2)`). Whichever side prepares
-//! the text first fixes its parameter types for that connection, so an `i32`
-//! bound into arke's `int8` slot fails with "insufficient data left in
-//! message". The cast makes the text different and the type explicit. Text,
-//! bool and pid parameters bind the same type on both sides and are safe.
+//! Integer parameters are written with an explicit cast (`$n::int4`). While
+//! arke still ran alongside, that was load-bearing — sqlx caches prepared
+//! statements by SQL text, and arke bound integers as `i64` into INSERTs shaped
+//! exactly like hand-written ones. It is kept because it makes the column type
+//! explicit instead of inferred from whichever caller prepared the text first.
 
 use sqlx::PgConnection;
 
@@ -34,7 +28,7 @@ pub async fn new_pid(conn: &mut PgConnection) -> sqlx::Result<i64> {
         .await
 }
 
-/// Bump `pid`'s version, as every arke write does. Returns whether the entity
+/// Bump `pid`'s version, as every write does. Returns whether the entity
 /// exists, which callers use as their not-found check before touching
 /// component rows.
 pub async fn touch(conn: &mut PgConnection, pid: i64) -> sqlx::Result<bool> {

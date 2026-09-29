@@ -3,11 +3,9 @@
 # Isolated from the wider sedjiwa podman stack: its own postgres, its own rustfs
 # (S3), on a private network. Nothing here touches sedjiwa-net.
 #
-# Both images are built from source inside their own builder stages; the host
-# only stages the backend's build context (backend-rs needs the sibling arke
-# checkout). Run ./build.sh before `podman-compose up` — there is no `build:`
-# section here, because the backend's context is assembled rather than being a
-# directory in this repo.
+# Both images are built from source inside their own builder stages. Run
+# ./build.sh before `podman-compose up` — there is no `build:` section here;
+# build.sh builds and tags both images.
 #
 # Host ports:
 #   3011  -> frontend (open http://localhost:3011)

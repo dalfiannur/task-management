@@ -51,6 +51,7 @@ dependencies = [
  "persistence",
  "serde",
  "serde_json",
+ "sqlx",
  "storage",
  "thiserror 2.0.19",
  "time",
@@ -73,31 +74,6 @@ dependencies = [
  "cpufeatures",
  "password-hash",
 ]
-
-[[package]]
-name = "arke"
-version = "0.6.1"
-dependencies = [
- "arke-derive",
-]
-
-[[package]]
-name = "arke-derive"
-version = "0.3.0"
-
-[[package]]
-name = "arke-postgres"
-version = "0.13.0"
-dependencies = [
- "arke",
- "arke-postgres-derive",
- "async-trait",
- "sqlx",
-]
-
-[[package]]
-name = "arke-postgres-derive"
-version = "0.6.0"
 
 [[package]]
 name = "async-stream"
@@ -540,8 +516,6 @@ name = "domain"
 version = "0.1.0"
 dependencies = [
  "ammonia",
- "arke",
- "arke-postgres",
  "rand",
  "serde",
  "sha2",
@@ -1601,8 +1575,7 @@ name = "persistence"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "arke",
- "arke-postgres",
+ "domain",
  "serde",
  "sqlx",
  "tokio",
@@ -2752,7 +2725,6 @@ name = "transport"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "arke",
  "async-trait",
  "auth",
  "axum",

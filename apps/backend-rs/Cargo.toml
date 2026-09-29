@@ -25,13 +25,6 @@ argon2 = { version = "0.5", features = ["std"] }
 sha2 = "0.10"
 rand = "0.8"
 dotenvy = "0.15"
-# Relative, not absolute: `../../../` from this manifest is the directory that
-# holds both checkouts, so this resolves to the same rust-ecs an absolute path
-# did — while also being satisfiable inside a build context that mirrors the
-# layout (see deploy/build.sh, which stages exactly that for the image build).
-# An absolute /home/<user>/… path was unbuildable on any other machine.
-arke = { path = "../../../rust-ecs" }
-arke-postgres = { path = "../../../rust-ecs/arke-postgres" }
 sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "postgres"] }
 rust-s3 = "0.35"
 async-trait = "0.1"
@@ -39,6 +32,3 @@ uuid = { version = "1", features = ["v4"] }
 time = { version = "0.3", features = ["formatting", "parsing", "macros"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-# NOTE: arke (World: Send fix) + arke-postgres 0.13 (pid-decoupled persistent id +
-# pid-native relations, RFC-0034; async-friendly stage/commit) consumed via local
-# path deps above during co-development. Pin to published versions once released.

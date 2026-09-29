@@ -12,7 +12,6 @@ use axum::http::StatusCode;
 use axum::middleware::{from_fn, Next};
 use axum::response::Response;
 use axum::Router;
-use domain::project::ProjectMembership;
 use domain::user::{UserPassword, UserPhone, UserProfile, UserStatusComponent};
 use persistence::Store;
 use serde_json::{json, Value};
@@ -46,7 +45,7 @@ async fn auth_mw(mut req: Request, next: Next) -> Response {
 
 async fn setup() -> Option<(Router, Arc<Store>)> {
     let url = std::env::var("DATABASE_URL").ok()?;
-    let store = Arc::new(Store::connect(&url, domain::register_all).await.unwrap());
+    let store = Arc::new(Store::connect(&url).await.unwrap());
     let router = transport::project_router(store.clone()).layer(from_fn(auth_mw));
     Some((router, store))
 }
@@ -81,18 +80,12 @@ async fn create(router: &Router, token: &str, body: Value) -> String {
 
 /// Member `user_id`s for a project id.
 async fn members(store: &Store, project_id: &str) -> Vec<String> {
-    let pid = project_id.to_string();
-    let mut v = store
-        .query::<ProjectMembership, String>(None, move |world, pairs| {
-            pairs
-                .iter()
-                .filter_map(|(_, e)| world.get::<ProjectMembership>(*e))
-                .filter(|m| m.project_id == pid)
-                .map(|m| m.user_id.clone())
-                .collect()
-        })
-        .await
-        .unwrap();
+    let mut v: Vec<String> =
+        sqlx::query_scalar("SELECT user_id FROM cmp_projectmembership WHERE project_id = $1")
+            .bind(project_id)
+            .fetch_all(store.pool())
+            .await
+            .unwrap();
     v.sort();
     v
 }
