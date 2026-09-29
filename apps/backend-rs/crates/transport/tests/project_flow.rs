@@ -424,3 +424,35 @@ async fn members_list_add_remove_leave() {
     let (st, _) = call(&router, "LeaveProject", Some(&tc), json!({ "projectId": id })).await;
     assert_ne!(st, StatusCode::OK, "non-member cannot leave");
 }
+
+/// Creating a project for someone else makes both the owner and the creator
+/// members, and deleting it takes every membership with it.
+#[tokio::test]
+async fn create_for_another_owner_then_delete_clears_memberships() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let a = format!("usrA{}", uniq());
+    let b = format!("usrB{}", uniq());
+    let (st, body) = call(
+        &router,
+        "CreateProject",
+        Some(&user_token(&a)),
+        json!({ "name": "Handover", "ownerId": b }),
+    )
+    .await;
+    assert_eq!(st, StatusCode::OK, "create: {body}");
+    assert_eq!(body["ownerId"], b);
+    assert!(body.get("description").is_none(), "no description stored: {body}");
+    let id = body["id"].as_str().unwrap().to_string();
+    let mut both = vec![a.clone(), b.clone()];
+    both.sort();
+    assert_eq!(members(&store, &id).await, both);
+
+    let (st, _) = call(&router, "DeleteProject", Some(&user_token(&b)), json!({ "id": id })).await;
+    assert_eq!(st, StatusCode::OK, "owner deletes");
+    assert!(members(&store, &id).await.is_empty(), "memberships deleted");
+    let (st, _) = call(&router, "GetProject", Some(&admin_token(&a)), json!({ "id": id })).await;
+    assert_eq!(st, StatusCode::NOT_FOUND);
+}
