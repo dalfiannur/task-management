@@ -5,10 +5,10 @@ use std::sync::Arc;
 use auth::AuthUser;
 use axum::Extension;
 use connectrpc_axum::{ConnectError, ConnectRequest, ConnectResponse};
-use domain::page::{PageAudit, PageInfo, DEFAULT_PAGE_TITLE};
+use domain::page::DEFAULT_PAGE_TITLE;
 use persistence::Store;
 
-use super::record::{load_page, pages_for_project, to_proto, PageRecord};
+use super::record::{self as page_record, load_page, pages_for_project, to_proto, PageRecord};
 use super::{internal, parse_pid, require_auth, require_member, StoreExt};
 use crate::activity::record;
 use crate::search::{deindex, index, kind, page_doc};
@@ -77,30 +77,17 @@ async fn create_page(
         .map(|t| t.trim().to_string())
         .filter(|t| !t.is_empty())
         .unwrap_or_else(|| DEFAULT_PAGE_TITLE.to_string());
-    let existing = pages_for_project(&store, &r.project_id)
-        .await
-        .map_err(internal)?;
-    let order = existing.iter().map(|p| p.order).max().map(|m| m + 1).unwrap_or(0);
-    let now = now_iso();
-
-    let pid = store
-        .create((
-            PageInfo {
-                project_id: r.project_id.clone(),
-                title,
-                icon: r.icon.unwrap_or_default(),
-                content: domain::sanitize::clean_html(&r.content.unwrap_or_default()),
-                sort_order: order,
-            },
-            PageAudit {
-                created_by: auth.id.clone(),
-                last_edited_by: auth.id.clone(),
-                created_at: now.clone(),
-                updated_at: now,
-            },
-        ))
-        .await
-        .map_err(internal)?;
+    let pid = page_record::create_page(
+        &store,
+        &r.project_id,
+        &title,
+        &r.icon.unwrap_or_default(),
+        &domain::sanitize::clean_html(&r.content.unwrap_or_default()),
+        &auth.id,
+        &now_iso(),
+    )
+    .await
+    .map_err(internal)?;
     let p = require_page(&store, pid).await?;
     record(
         &store,
@@ -128,28 +115,17 @@ async fn update_page(
     let p = require_page(&store, pid).await?;
     require_member(&store, &p.project_id, &auth).await?;
 
-    let info = PageInfo {
-        project_id: p.project_id.clone(),
-        title: r.title.unwrap_or_else(|| p.title.clone()),
-        icon: r.icon.unwrap_or_else(|| p.icon.clone()),
-        content: domain::sanitize::clean_html(&r.content.unwrap_or_else(|| p.content.clone())),
-        sort_order: p.order,
-    };
-    let audit = PageAudit {
-        created_by: p.created_by.clone(),
-        last_edited_by: auth.id.clone(),
-        created_at: p.created_at.clone(),
-        updated_at: now_iso(),
-    };
-    store
-        .update(pid, move |w, e| {
-            w.remove::<PageInfo>(e);
-            w.insert(e, info);
-            w.remove::<PageAudit>(e);
-            w.insert(e, audit);
-        })
-        .await
-        .map_err(internal)?;
+    page_record::update_page(
+        &store,
+        pid,
+        &r.title.unwrap_or_else(|| p.title.clone()),
+        &r.icon.unwrap_or_else(|| p.icon.clone()),
+        &domain::sanitize::clean_html(&r.content.unwrap_or_else(|| p.content.clone())),
+        &auth.id,
+        &now_iso(),
+    )
+    .await
+    .map_err(internal)?;
     let p = require_page(&store, pid).await?;
     record(
         &store,
@@ -176,7 +152,7 @@ async fn delete_page(
     let pid = parse_pid(&r.id)?;
     let p = require_page(&store, pid).await?;
     require_member(&store, &p.project_id, &auth).await?;
-    store.delete(pid).await.map_err(internal)?;
+    page_record::delete_page(&store, pid).await.map_err(internal)?;
     record(
         &store,
         &p.project_id,
@@ -200,31 +176,10 @@ async fn reorder_pages(
     let auth = require_auth(user)?;
     let ConnectRequest(r) = req;
     require_member(&store, &r.project_id, &auth).await?;
-    for (idx, page_id) in r.page_ids.iter().enumerate() {
-        let Ok(ppid) = page_id.parse::<i64>() else {
-            continue;
-        };
-        match load_page(&store, ppid).await.map_err(internal)? {
-            Some(p) if p.project_id == r.project_id => {
-                let order = idx as i32;
-                let info = PageInfo {
-                    project_id: p.project_id.clone(),
-                    title: p.title.clone(),
-                    icon: p.icon.clone(),
-                    content: p.content.clone(),
-                    sort_order: order,
-                };
-                store
-                    .update(ppid, move |w, e| {
-                        w.remove::<PageInfo>(e);
-                        w.insert(e, info);
-                    })
-                    .await
-                    .map_err(internal)?;
-            }
-            _ => continue,
-        }
-    }
+    // Only pages of this project are reordered.
+    page_record::reorder_pages(&store, &r.project_id, &r.page_ids)
+        .await
+        .map_err(internal)?;
     let pages = pages_for_project(&store, &r.project_id)
         .await
         .map_err(internal)?;
