@@ -1,8 +1,14 @@
-//! Media & link records ↔ proto + store lookups.
+//! Media and task↔media link rows ↔ proto, plus every read and write the
+//! media flows make.
+//!
+//! Plain sqlx over the component tables arke-postgres created (see
+//! `persistence::entity`). A file is one entity with a `cmp_mediafileinfo`
+//! row; a link is its own entity with a `cmp_taskmedialinkdata` row.
 
-use arke::{Entity, World};
-use domain::media::{MediaFileInfo, MediaStatus, TaskMediaLinkData};
-use persistence::Store;
+use domain::media::MediaStatus;
+use persistence::{entity, Store};
+use sqlx::postgres::PgRow;
+use sqlx::Row;
 
 use crate::sedjiwa::tasks::media::v1 as pb;
 
@@ -20,20 +26,29 @@ pub(crate) struct MediaRecord {
     pub status: MediaStatus,
 }
 
-pub(crate) fn read_media(world: &World, e: Entity, pid: i64) -> Option<MediaRecord> {
-    let info = world.get::<MediaFileInfo>(e)?;
-    Some(MediaRecord {
-        pid,
-        project_id: info.project_id.clone(),
-        file_name: info.file_name.clone(),
-        original_file_name: info.original_file_name.clone(),
-        mime_type: info.mime_type.clone(),
-        size: info.size,
-        storage_key: info.storage_key.clone(),
-        uploaded_by: info.uploaded_by.clone(),
-        created_at: info.created_at.clone(),
-        status: MediaStatus::parse(&info.status)?,
-    })
+const SELECT_MEDIA: &str = "\
+    SELECT pid, project_id, file_name, original_file_name, mime_type, size, storage_key, \
+           uploaded_by, created_at, status \
+    FROM cmp_mediafileinfo";
+
+/// `None` for a stored status this build does not know.
+fn read_media(row: &PgRow) -> sqlx::Result<Option<MediaRecord>> {
+    let status: String = row.try_get("status")?;
+    let Some(status) = MediaStatus::parse(&status) else {
+        return Ok(None);
+    };
+    Ok(Some(MediaRecord {
+        pid: row.try_get("pid")?,
+        project_id: row.try_get("project_id")?,
+        file_name: row.try_get("file_name")?,
+        original_file_name: row.try_get("original_file_name")?,
+        mime_type: row.try_get("mime_type")?,
+        size: row.try_get("size")?,
+        storage_key: row.try_get("storage_key")?,
+        uploaded_by: row.try_get("uploaded_by")?,
+        created_at: row.try_get("created_at")?,
+        status,
+    }))
 }
 
 pub(crate) fn to_proto(m: &MediaRecord) -> pb::MediaFile {
@@ -50,133 +65,175 @@ pub(crate) fn to_proto(m: &MediaRecord) -> pb::MediaFile {
     }
 }
 
+// ── Files ────────────────────────────────────────────────────────────────────
+
 pub(crate) async fn load_media(store: &Store, pid: i64) -> anyhow::Result<Option<MediaRecord>> {
-    let pred = format!("pid = {pid}");
-    let mut v = store
-        .query::<MediaFileInfo, MediaRecord>(Some(&pred), |world, pairs| {
-            pairs
-                .iter()
-                .filter_map(|(p, e)| read_media(world, *e, *p))
-                .collect()
-        })
+    let row = sqlx::query(&format!("{SELECT_MEDIA} WHERE pid = $1"))
+        .bind(pid)
+        .fetch_optional(store.pool())
         .await?;
-    Ok(v.pop())
+    Ok(match row {
+        Some(row) => read_media(&row)?,
+        None => None,
+    })
 }
 
-/// Ready files of a project, newest first (by created_at then pid).
+/// Ready files of a project, newest first (by created_at byte-wise, then pid).
 pub(crate) async fn ready_media_for_project(
     store: &Store,
     project_id: &str,
 ) -> anyhow::Result<Vec<MediaRecord>> {
-    let pj = project_id.to_string();
-    let mut v = store
-        .query::<MediaFileInfo, MediaRecord>(None, move |world, pairs| {
-            pairs
-                .iter()
-                .filter_map(|(pid, e)| read_media(world, *e, *pid))
-                .filter(|m| m.project_id == pj && m.status == MediaStatus::Ready)
-                .collect()
-        })
-        .await?;
-    v.sort_by(|a, b| b.created_at.cmp(&a.created_at).then(b.pid.cmp(&a.pid)));
-    Ok(v)
+    let rows = sqlx::query(&format!(
+        "{SELECT_MEDIA} WHERE project_id = $1 AND status = $2 \
+         ORDER BY created_at COLLATE \"C\" DESC, pid DESC"
+    ))
+    .bind(project_id)
+    .bind(MediaStatus::Ready.as_str())
+    .fetch_all(store.pool())
+    .await?;
+    let mut out = Vec::with_capacity(rows.len());
+    for row in &rows {
+        out.extend(read_media(row)?);
+    }
+    Ok(out)
 }
 
-/// How many *ready* files a project has — same filter as `ready_media_for_project`,
-/// counted without materialising the records.
+/// How many *ready* files a project has — a COUNT, no rows loaded.
 pub(crate) async fn ready_media_count_for_project(
     store: &Store,
     project_id: &str,
 ) -> anyhow::Result<u32> {
-    let pj = project_id.to_string();
-    let hits = store
-        .query::<MediaFileInfo, ()>(None, move |world, pairs| {
-            pairs
-                .iter()
-                .filter_map(|(_, e)| world.get::<MediaFileInfo>(*e))
-                .filter(|m| {
-                    m.project_id == pj && MediaStatus::parse(&m.status) == Some(MediaStatus::Ready)
-                })
-                .map(|_| ())
-                .collect()
-        })
-        .await?;
-    Ok(hits.len() as u32)
+    let n: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM cmp_mediafileinfo WHERE project_id = $1 AND status = $2",
+    )
+    .bind(project_id)
+    .bind(MediaStatus::Ready.as_str())
+    .fetch_one(store.pool())
+    .await?;
+    Ok(n.max(0) as u32)
+}
+
+pub(crate) struct NewMedia<'a> {
+    pub project_id: &'a str,
+    pub file_name: &'a str,
+    pub mime_type: &'a str,
+    pub size: i64,
+    pub storage_key: &'a str,
+    pub uploaded_by: &'a str,
+    pub created_at: &'a str,
+}
+
+/// A Pending file row; `original_file_name` starts as the file name.
+pub(crate) async fn create_media(store: &Store, m: NewMedia<'_>) -> anyhow::Result<i64> {
+    let mut tx = store.pool().begin().await?;
+    let pid = entity::new_pid(&mut tx).await?;
+    // `$5::int8`: see `persistence::entity` on integer parameters.
+    sqlx::query(
+        "INSERT INTO cmp_mediafileinfo (pid, project_id, file_name, original_file_name, mime_type, \
+         size, storage_key, uploaded_by, created_at, status) \
+         VALUES ($1, $2, $3, $3, $4, $5::int8, $6, $7, $8, $9)",
+    )
+    .bind(pid)
+    .bind(m.project_id)
+    .bind(m.file_name)
+    .bind(m.mime_type)
+    .bind(m.size)
+    .bind(m.storage_key)
+    .bind(m.uploaded_by)
+    .bind(m.created_at)
+    .bind(MediaStatus::Pending.as_str())
+    .execute(&mut *tx)
+    .await?;
+    tx.commit().await?;
+    Ok(pid)
+}
+
+/// Mark a file Ready with the size storage reported.
+pub(crate) async fn mark_ready(store: &Store, pid: i64, size: i64) -> anyhow::Result<()> {
+    let mut tx = store.pool().begin().await?;
+    if entity::touch(&mut tx, pid).await? {
+        sqlx::query("UPDATE cmp_mediafileinfo SET status = $2, size = $3::int8 WHERE pid = $1")
+            .bind(pid)
+            .bind(MediaStatus::Ready.as_str())
+            .bind(size)
+            .execute(&mut *tx)
+            .await?;
+        tx.commit().await?;
+    }
+    Ok(())
+}
+
+/// Delete a file and every link to it.
+pub(crate) async fn delete_media(store: &Store, pid: i64) -> anyhow::Result<()> {
+    let mut tx = store.pool().begin().await?;
+    sqlx::query(
+        "DELETE FROM arke_entities WHERE pid IN \
+         (SELECT pid FROM cmp_taskmedialinkdata WHERE media_file_id = $1)",
+    )
+    .bind(pid.to_string())
+    .execute(&mut *tx)
+    .await?;
+    entity::delete(&mut tx, pid).await?;
+    tx.commit().await?;
+    Ok(())
 }
 
 // ── Task↔media links ─────────────────────────────────────────────────────────
 
-pub(crate) async fn link_exists(
+/// Link a file to a task unless the link exists.
+pub(crate) async fn link(
     store: &Store,
     task_id: &str,
     media_file_id: &str,
-) -> anyhow::Result<bool> {
-    let (t, m) = (task_id.to_string(), media_file_id.to_string());
-    let hits = store
-        .query::<TaskMediaLinkData, ()>(None, move |world, pairs| {
-            pairs
-                .iter()
-                .filter_map(|(_, e)| world.get::<TaskMediaLinkData>(*e))
-                .filter(|l| l.task_id == t && l.media_file_id == m)
-                .map(|_| ())
-                .collect()
-        })
+    project_id: &str,
+) -> anyhow::Result<()> {
+    let mut tx = store.pool().begin().await?;
+    let exists: bool = sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM cmp_taskmedialinkdata WHERE task_id = $1 AND media_file_id = $2)",
+    )
+    .bind(task_id)
+    .bind(media_file_id)
+    .fetch_one(&mut *tx)
+    .await?;
+    if !exists {
+        let pid = entity::new_pid(&mut tx).await?;
+        sqlx::query(
+            "INSERT INTO cmp_taskmedialinkdata (pid, media_file_id, task_id, project_id) \
+             VALUES ($1, $2, $3, $4)",
+        )
+        .bind(pid)
+        .bind(media_file_id)
+        .bind(task_id)
+        .bind(project_id)
+        .execute(&mut *tx)
         .await?;
-    Ok(!hits.is_empty())
+    }
+    tx.commit().await?;
+    Ok(())
 }
 
-/// Link entity pids matching a predicate over `TaskMediaLinkData`.
-async fn link_pids_where(
-    store: &Store,
-    pred: impl Fn(&TaskMediaLinkData) -> bool + Send + 'static,
-) -> anyhow::Result<Vec<i64>> {
-    store
-        .query::<TaskMediaLinkData, i64>(None, move |world, pairs| {
-            pairs
-                .iter()
-                .filter(|(_, e)| {
-                    world
-                        .get::<TaskMediaLinkData>(*e)
-                        .map(&pred)
-                        .unwrap_or(false)
-                })
-                .map(|(pid, _)| *pid)
-                .collect()
-        })
-        .await
+/// Remove every link between a task and a file.
+pub(crate) async fn unlink(store: &Store, task_id: &str, media_file_id: &str) -> anyhow::Result<()> {
+    sqlx::query(
+        "DELETE FROM arke_entities WHERE pid IN \
+         (SELECT pid FROM cmp_taskmedialinkdata WHERE task_id = $1 AND media_file_id = $2)",
+    )
+    .bind(task_id)
+    .bind(media_file_id)
+    .execute(store.pool())
+    .await?;
+    Ok(())
 }
 
-pub(crate) async fn link_pids_for_media(
-    store: &Store,
-    media_file_id: &str,
-) -> anyhow::Result<Vec<i64>> {
-    let m = media_file_id.to_string();
-    link_pids_where(store, move |l| l.media_file_id == m).await
-}
-
-pub(crate) async fn link_pids_for_task_media(
-    store: &Store,
-    task_id: &str,
-    media_file_id: &str,
-) -> anyhow::Result<Vec<i64>> {
-    let (t, m) = (task_id.to_string(), media_file_id.to_string());
-    link_pids_where(store, move |l| l.task_id == t && l.media_file_id == m).await
-}
-
-/// Media file ids linked to `task_id`.
+/// Media file ids linked to `task_id`, in link order.
 pub(crate) async fn media_ids_for_task(
     store: &Store,
     task_id: &str,
 ) -> anyhow::Result<Vec<String>> {
-    let t = task_id.to_string();
-    store
-        .query::<TaskMediaLinkData, String>(None, move |world, pairs| {
-            pairs
-                .iter()
-                .filter_map(|(_, e)| world.get::<TaskMediaLinkData>(*e))
-                .filter(|l| l.task_id == t)
-                .map(|l| l.media_file_id.clone())
-                .collect()
-        })
-        .await
+    Ok(sqlx::query_scalar(
+        "SELECT media_file_id FROM cmp_taskmedialinkdata WHERE task_id = $1 ORDER BY pid",
+    )
+    .bind(task_id)
+    .fetch_all(store.pool())
+    .await?)
 }
