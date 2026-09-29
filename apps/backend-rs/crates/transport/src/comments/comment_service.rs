@@ -7,7 +7,7 @@ use std::sync::Arc;
 use auth::AuthUser;
 use axum::Extension;
 use connectrpc_axum::{ConnectError, ConnectRequest, ConnectResponse};
-use domain::comment::{content_ok, CommentInfo};
+use domain::comment::content_ok;
 use domain::notification::NotificationType;
 use persistence::Store;
 
@@ -128,15 +128,7 @@ pub async fn create_comment_core(
     let content = domain::sanitize::clean_html(trimmed);
     let mentions = filter_mentions(store, &project_id, r.mentioned_user_ids).await?;
     let now = now_iso();
-    let pid = store
-        .create((CommentInfo {
-            task_id: r.task_id.clone(),
-            author_id: auth.id.clone(),
-            content,
-            mentioned_user_ids: mentions.clone(),
-            created_at: now.clone(),
-            updated_at: now,
-        },))
+    let pid = super::record::create_comment(store, &r.task_id, &auth.id, &content, &mentions, &now)
         .await
         .map_err(internal)?;
     // Notify each mentioned member (emit no-ops on self-mention).
@@ -193,19 +185,7 @@ async fn update_comment(
     let project_id = task_project(&store, &c.task_id).await?;
     let mentions = filter_mentions(&store, &project_id, r.mentioned_user_ids).await?;
 
-    let info = CommentInfo {
-        task_id: c.task_id.clone(),
-        author_id: c.author_id.clone(),
-        content,
-        mentioned_user_ids: mentions.clone(),
-        created_at: c.created_at.clone(),
-        updated_at: now_iso(),
-    };
-    store
-        .update(pid, move |w, e| {
-            w.remove::<CommentInfo>(e);
-            w.insert(e, info);
-        })
+    super::record::update_comment(&store, pid, &content, &mentions, &now_iso())
         .await
         .map_err(internal)?;
     // Notify only newly-added mentions.
@@ -240,7 +220,7 @@ async fn delete_comment(
     let c = require_comment(&store, pid).await?;
     let project_id = task_project(&store, &c.task_id).await?;
     require_author_owner_or_admin(&store, &c, &project_id, &auth).await?;
-    store.delete(pid).await.map_err(internal)?;
+    super::record::delete_comment(&store, pid).await.map_err(internal)?;
     deindex(&store, kind::COMMENT, &pid.to_string()).await;
     Ok(ConnectResponse::new(pb::DeleteCommentResponse { ok: true }))
 }
