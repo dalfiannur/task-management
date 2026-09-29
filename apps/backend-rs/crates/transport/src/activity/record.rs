@@ -1,13 +1,21 @@
-//! Activity records ↔ proto + store lookups.
+//! Activity rows ↔ proto, plus the reads and the one write the activity flows
+//! make.
+//!
+//! Plain sqlx over the component tables arke-postgres created (see
+//! `persistence::entity`). An entry is one entity carrying `cmp_activityinfo`
+//! and, optionally, `cmp_activitychanges` — a JSONB array of
+//! `{"field", "from", "to"}` objects (`from`/`to` may be null), the shape
+//! arke's serializer wrote. It crosses the wire as three parallel `text[]`s so
+//! sqlx needs no JSON support.
 
 use std::collections::HashSet;
 
-use arke::{Entity, World};
-use domain::activity::{ActivityAction, ActivityChanges, ActivityInfo, EntityType, FieldChange};
-use persistence::{PgTable, Store};
+use domain::activity::{ActivityAction, EntityType, FieldChange};
+use persistence::{entity, Store};
+use sqlx::postgres::PgRow;
+use sqlx::Row;
 
 use crate::sedjiwa::tasks::activity::v1 as pb;
-use crate::sql::safe_sql_id;
 
 #[derive(Debug, Clone)]
 pub(crate) struct ActivityRecord {
@@ -22,22 +30,58 @@ pub(crate) struct ActivityRecord {
     pub created_at: String,
 }
 
-pub(crate) fn read_activity(world: &World, e: Entity, pid: i64) -> Option<ActivityRecord> {
-    let info = world.get::<ActivityInfo>(e)?;
-    Some(ActivityRecord {
-        pid,
-        project_id: info.project_id.clone(),
-        actor_id: info.actor_id.clone(),
-        entity_type: EntityType::parse(&info.entity_type)?,
-        entity_id: info.entity_id.clone(),
-        action: ActivityAction::parse(&info.action)?,
-        summary: info.summary.clone(),
-        changes: world
-            .get::<ActivityChanges>(e)
-            .map(|c| c.changes.clone())
-            .unwrap_or_default(),
-        created_at: info.created_at.clone(),
-    })
+const SELECT_ACTIVITY: &str = "\
+    SELECT i.pid, i.project_id, i.actor_id, i.entity_type, i.entity_id, i.action, i.summary, \
+           i.created_at, \
+           ARRAY(SELECT e.c->>'field' FROM jsonb_array_elements(ch.changes) WITH ORDINALITY AS e(c, n) ORDER BY e.n) AS ch_field, \
+           ARRAY(SELECT e.c->>'from' FROM jsonb_array_elements(ch.changes) WITH ORDINALITY AS e(c, n) ORDER BY e.n) AS ch_from, \
+           ARRAY(SELECT e.c->>'to' FROM jsonb_array_elements(ch.changes) WITH ORDINALITY AS e(c, n) ORDER BY e.n) AS ch_to \
+    FROM cmp_activityinfo i LEFT JOIN cmp_activitychanges ch ON ch.pid = i.pid";
+
+/// Newest first, byte-wise on the RFC3339 timestamp.
+const NEWEST_FIRST: &str = "ORDER BY i.created_at COLLATE \"C\" DESC, i.pid DESC";
+
+/// `None` for a stored entity type or action this build does not know.
+fn read_activity(row: &PgRow) -> sqlx::Result<Option<ActivityRecord>> {
+    let entity_type: String = row.try_get("entity_type")?;
+    let action: String = row.try_get("action")?;
+    let (Some(entity_type), Some(action)) =
+        (EntityType::parse(&entity_type), ActivityAction::parse(&action))
+    else {
+        return Ok(None);
+    };
+    let fields: Vec<Option<String>> = row.try_get("ch_field")?;
+    let froms: Vec<Option<String>> = row.try_get("ch_from")?;
+    let tos: Vec<Option<String>> = row.try_get("ch_to")?;
+    let changes = fields
+        .into_iter()
+        .zip(froms)
+        .zip(tos)
+        .map(|((field, from), to)| FieldChange {
+            field: field.unwrap_or_default(),
+            from,
+            to,
+        })
+        .collect();
+    Ok(Some(ActivityRecord {
+        pid: row.try_get("pid")?,
+        project_id: row.try_get("project_id")?,
+        actor_id: row.try_get("actor_id")?,
+        entity_type,
+        entity_id: row.try_get("entity_id")?,
+        action,
+        summary: row.try_get("summary")?,
+        changes,
+        created_at: row.try_get("created_at")?,
+    }))
+}
+
+fn read_all(rows: &[PgRow]) -> sqlx::Result<Vec<ActivityRecord>> {
+    let mut out = Vec::with_capacity(rows.len());
+    for row in rows {
+        out.extend(read_activity(row)?);
+    }
+    Ok(out)
 }
 
 pub(crate) fn to_proto(a: &ActivityRecord) -> pb::Activity {
@@ -62,134 +106,144 @@ pub(crate) fn to_proto(a: &ActivityRecord) -> pb::Activity {
     }
 }
 
-fn desc(mut v: Vec<ActivityRecord>) -> Vec<ActivityRecord> {
-    v.sort_by(|a, b| b.created_at.cmp(&a.created_at).then(b.pid.cmp(&a.pid)));
-    v
-}
+// ── Reads ────────────────────────────────────────────────────────────────────
 
+/// A project's activity, newest first. Project ids are pids rendered as text;
+/// a non-numeric one names no project and returns nothing.
 pub(crate) async fn activity_for_project(
     store: &Store,
     project_id: &str,
 ) -> anyhow::Result<Vec<ActivityRecord>> {
-    // Filter in SQL, not in Rust. `query(None, ..)` selects every pid in
-    // cmp_activityinfo and then hydrates each one individually — and hydrating a
-    // pid costs one existence query PLUS one query per registered component type
-    // (32 of them). The cost therefore scaled with the whole table and with the
-    // size of the domain, not with this project. Measured against a 672-row dev
-    // database: 22,028 round-trips and ~3.2s to return 20 rows.
-    //
-    // idx_cmp_activityinfo_project_id already exists; it was simply never
-    // reachable while the predicate was None.
-    //
-    // `predicate` is interpolated as raw SQL, never bound, so only a validated
-    // integer may go in — same rule as `load_project`. A project id is an entity
-    // pid rendered as text; a non-numeric one matched no row under the old Rust
-    // comparison either, so returning empty preserves that behaviour.
     let Ok(pid) = project_id.parse::<i64>() else {
         return Ok(Vec::new());
     };
-    let pred = format!("project_id = '{pid}'");
-    let v = store
-        .query::<ActivityInfo, ActivityRecord>(Some(&pred), |world, pairs| {
-            pairs
-                .iter()
-                .filter_map(|(pid, e)| read_activity(world, *e, *pid))
-                .collect()
-        })
-        .await?;
-    Ok(desc(v))
+    let rows = sqlx::query(&format!(
+        "{SELECT_ACTIVITY} WHERE i.project_id = $1 {NEWEST_FIRST}"
+    ))
+    .bind(pid.to_string())
+    .fetch_all(store.pool())
+    .await?;
+    Ok(read_all(&rows)?)
 }
 
+/// One entity's activity, newest first.
 pub(crate) async fn activity_for_entity(
     store: &Store,
     entity_type: EntityType,
     entity_id: &str,
 ) -> anyhow::Result<Vec<ActivityRecord>> {
-    // Same reason as `activity_for_project`: the filter belongs in SQL, or every
-    // activity row in the database gets hydrated so that a handful can be kept.
-    // `entity_type` comes from our own enum, so its text is a fixed vocabulary
-    // ("task", "module", …) and never caller-supplied; `entity_id` IS caller
-    // supplied and so must clear `safe_sql_id`.
-    if !safe_sql_id(entity_id) {
-        return Ok(Vec::new());
-    }
-    let pred = format!(
-        "entity_type = '{}' AND entity_id = '{}'",
-        entity_type.as_str(),
-        entity_id
-    );
-    let v = store
-        .query::<ActivityInfo, ActivityRecord>(Some(&pred), |world, pairs| {
-            pairs
-                .iter()
-                .filter_map(|(pid, e)| read_activity(world, *e, *pid))
-                .collect()
-        })
-        .await?;
-    Ok(desc(v))
+    let rows = sqlx::query(&format!(
+        "{SELECT_ACTIVITY} WHERE i.entity_type = $1 AND i.entity_id = $2 {NEWEST_FIRST}"
+    ))
+    .bind(entity_type.as_str())
+    .bind(entity_id)
+    .fetch_all(store.pool())
+    .await?;
+    Ok(read_all(&rows)?)
 }
 
 /// One page of recent activity across `projects` (or all projects if `None`, for
 /// admins), newest first, plus the unpaged total.
 ///
-/// Paged in SQL rather than in Rust. The other two feeds are naturally bounded —
-/// by one project, or by one entity — but this one is not: an admin matches every
-/// row in the table, so no predicate can shrink it and hydrating the full match
-/// set to then keep 30 rows grows without limit as the audit log does. Selecting
-/// the page in a subquery caps hydration at `page_size` rows regardless of table
-/// size; `total` comes from a COUNT that hydrates nothing.
+/// Paged in SQL: an admin matches every row in the table, so the page is the
+/// only bound on how much is read.
 pub(crate) async fn activity_recent_page(
     store: &Store,
     projects: Option<HashSet<String>>,
     page: u32,
     page_size: u32,
 ) -> anyhow::Result<(Vec<ActivityRecord>, u32)> {
-    // Project ids are entity pids rendered as text; parse each so only validated
-    // integers reach the predicate. A caller-supplied id that is not numeric
-    // matched nothing under the old Rust `contains` either.
-    let filter = match projects {
-        None => None, // admin: every row matches
+    // Project ids are entity pids rendered as text; only numeric ones can name
+    // a project. `None` binds as NULL, which the filter reads as "every row".
+    let ids: Option<Vec<String>> = match projects {
+        None => None,
         Some(set) => {
             let ids: Vec<String> = set
                 .iter()
                 .filter_map(|p| p.parse::<i64>().ok())
-                .map(|n| format!("'{n}'"))
+                .map(|n| n.to_string())
                 .collect();
-            // A member of no projects matches nothing — return without querying
-            // rather than emitting `IN ()`, which is a syntax error.
+            // A member of no projects matches nothing.
             if ids.is_empty() {
                 return Ok((Vec::new(), 0));
             }
-            Some(format!("project_id IN ({})", ids.join(", ")))
+            Some(ids)
         }
     };
 
-    let total = store
-        .count::<ActivityInfo>(filter.as_deref())
-        .await?;
+    let total: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM cmp_activityinfo i WHERE $1::text[] IS NULL OR i.project_id = ANY($1)",
+    )
+    .bind(&ids)
+    .fetch_one(store.pool())
+    .await?;
 
     let size = if page_size == 0 { 30 } else { page_size };
-    let start = (page.max(1) - 1).saturating_mul(size);
-    let where_c = filter
-        .as_ref()
-        .map(|f| format!("WHERE {f} "))
-        .unwrap_or_default();
-    // COLLATE "C" so the database orders these RFC3339 strings byte-wise, exactly
-    // as `desc()` does in Rust — the default collation can order punctuation
-    // differently and would then hand back a different page than the one the
-    // caller's ordering implies. The outer query re-sorts by pid, so `desc()`
-    // still establishes the final order of the rows this selects.
-    let pred = format!(
-        "pid IN (SELECT pid FROM {table} {where_c}ORDER BY created_at COLLATE \"C\" DESC, pid DESC LIMIT {size} OFFSET {start})",
-        table = <ActivityInfo as PgTable>::TABLE,
-    );
-    let v = store
-        .query::<ActivityInfo, ActivityRecord>(Some(&pred), |world, pairs| {
-            pairs
-                .iter()
-                .filter_map(|(pid, e)| read_activity(world, *e, *pid))
-                .collect()
-        })
-        .await?;
-    Ok((desc(v), total))
+    let start = i64::from(page.max(1) - 1) * i64::from(size);
+    let rows = sqlx::query(&format!(
+        "{SELECT_ACTIVITY} WHERE $1::text[] IS NULL OR i.project_id = ANY($1) \
+         {NEWEST_FIRST} LIMIT $2 OFFSET $3"
+    ))
+    .bind(&ids)
+    .bind(i64::from(size))
+    .bind(start)
+    .fetch_all(store.pool())
+    .await?;
+    Ok((read_all(&rows)?, total.max(0) as u32))
+}
+
+// ── Write ────────────────────────────────────────────────────────────────────
+
+pub(crate) struct NewActivity<'a> {
+    pub project_id: &'a str,
+    pub actor_id: &'a str,
+    pub entity_type: EntityType,
+    pub entity_id: &'a str,
+    pub action: ActivityAction,
+    pub summary: &'a str,
+    pub changes: Vec<FieldChange>,
+    pub created_at: &'a str,
+}
+
+/// An entry and its changes row, in one transaction.
+pub(crate) async fn create_activity(store: &Store, a: NewActivity<'_>) -> anyhow::Result<i64> {
+    let mut fields = Vec::with_capacity(a.changes.len());
+    let mut froms = Vec::with_capacity(a.changes.len());
+    let mut tos = Vec::with_capacity(a.changes.len());
+    for c in a.changes {
+        fields.push(c.field);
+        froms.push(c.from);
+        tos.push(c.to);
+    }
+    let mut tx = store.pool().begin().await?;
+    let pid = entity::new_pid(&mut tx).await?;
+    sqlx::query(
+        "INSERT INTO cmp_activityinfo \
+         (pid, project_id, actor_id, entity_type, entity_id, action, summary, created_at) \
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
+    )
+    .bind(pid)
+    .bind(a.project_id)
+    .bind(a.actor_id)
+    .bind(a.entity_type.as_str())
+    .bind(a.entity_id)
+    .bind(a.action.as_str())
+    .bind(a.summary)
+    .bind(a.created_at)
+    .execute(&mut *tx)
+    .await?;
+    sqlx::query(
+        "INSERT INTO cmp_activitychanges (pid, changes) VALUES ($1, COALESCE( \
+             (SELECT jsonb_agg(jsonb_build_object('field', u.f, 'from', u.fr, 'to', u.t) ORDER BY u.n) \
+              FROM unnest($2::text[], $3::text[], $4::text[]) WITH ORDINALITY AS u(f, fr, t, n)), \
+             '[]'::jsonb))",
+    )
+    .bind(pid)
+    .bind(fields)
+    .bind(froms)
+    .bind(tos)
+    .execute(&mut *tx)
+    .await?;
+    tx.commit().await?;
+    Ok(pid)
 }
