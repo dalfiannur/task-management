@@ -6,13 +6,12 @@ use auth::{hash_password, AuthUser};
 use axum::Extension;
 use connectrpc_axum::{ConnectError, ConnectRequest, ConnectResponse};
 use domain::notification::NotificationType;
-use domain::user::{
-    password_ok, AdminMark, UserPassword, UserPhone, UserProfile, UserStatus, UserStatusComponent,
-};
+use domain::user::{password_ok, UserStatus};
 use persistence::Store;
 
 use super::record::{
-    find_by_phone, load_all_users, load_user, load_users_page, to_proto, UserRecord,
+    self, find_by_phone, load_all_users, load_user, load_users_page, set_password, to_proto,
+    update_profile, NewUser, UserRecord,
 };
 use super::{internal, now_iso, parse_pid};
 use crate::notifications::{emit, NotifRefs, Notifier};
@@ -78,19 +77,7 @@ async fn set_status(
     pid: i64,
     status: UserStatus,
 ) -> Result<UserRecord, ConnectError> {
-    store
-        .update(pid, move |w, e| {
-            if let Some(st) = w.get::<UserStatusComponent>(e).cloned() {
-                w.remove::<UserStatusComponent>(e);
-                w.insert(
-                    e,
-                    UserStatusComponent {
-                        status: status.as_str().to_string(),
-                        ..st
-                    },
-                );
-            }
-        })
+    record::set_status(store, pid, status)
         .await
         .map_err(internal)?;
     load_user(store, pid)
@@ -201,38 +188,20 @@ async fn create_user(
         return Err(ConnectError::new_already_exists("phone already registered"));
     }
     let hash = hash_password(&r.password).map_err(internal)?;
-    let now = now_iso();
-    let pid = store
-        .create((
-            UserPhone {
-                value: phone.to_string(),
-                verified: false,
-            },
-            UserPassword {
-                hash,
-                changed_at: now.clone(),
-            },
-            UserProfile {
-                display_name: display_name.to_string(),
-                avatar_url: String::new(),
-                email: String::new(),
-            },
-            UserStatusComponent {
-                status: UserStatus::Active.as_str().to_string(),
-                created_at: now.clone(),
-                last_login_at: None,
-            },
-        ))
-        .await
-        .map_err(internal)?;
-    if r.is_admin {
-        store
-            .update(pid, move |w, e| {
-                w.insert(e, AdminMark { granted_at: now });
-            })
-            .await
-            .map_err(internal)?;
-    }
+    let pid = record::create_user(
+        &store,
+        NewUser {
+            phone,
+            verified: false,
+            password_hash: hash,
+            display_name,
+            status: UserStatus::Active,
+            created_at: now_iso(),
+            admin: r.is_admin,
+        },
+    )
+    .await
+    .map_err(internal)?;
     let u = load_user(&store, pid)
         .await
         .map_err(internal)?
@@ -250,20 +219,7 @@ async fn update_user(
     require_admin(&auth)?;
     let ConnectRequest(r) = req;
     let pid = parse_pid(&r.id)?;
-    store
-        .update(pid, move |w, e| {
-            if let Some(p) = w.get::<UserProfile>(e).cloned() {
-                w.remove::<UserProfile>(e);
-                w.insert(
-                    e,
-                    UserProfile {
-                        display_name: r.display_name.unwrap_or(p.display_name),
-                        avatar_url: r.avatar_url.unwrap_or(p.avatar_url),
-                        email: r.email.unwrap_or(p.email),
-                    },
-                );
-            }
-        })
+    update_profile(&store, pid, r.display_name, r.avatar_url, r.email)
         .await
         .map_err(internal)?;
     let u = load_user(&store, pid)
@@ -329,16 +285,7 @@ async fn set_admin(
     // blocks the revoke direction — which is the one that locks you out.
     deny_self(&r.id, &auth, "change the admin flag on")?;
     let pid = parse_pid(&r.id)?;
-    let now = now_iso();
-    let grant = r.is_admin;
-    store
-        .update(pid, move |w, e| {
-            if grant {
-                w.insert(e, AdminMark { granted_at: now });
-            } else {
-                w.remove::<AdminMark>(e);
-            }
-        })
+    record::set_admin(&store, pid, r.is_admin, now_iso())
         .await
         .map_err(internal)?;
     let u = load_user(&store, pid)
@@ -363,18 +310,7 @@ async fn reset_password(
         ));
     }
     let hash = hash_password(&r.new_password).map_err(internal)?;
-    let now = now_iso();
-    store
-        .update(pid, move |w, e| {
-            w.remove::<UserPassword>(e);
-            w.insert(
-                e,
-                UserPassword {
-                    hash,
-                    changed_at: now,
-                },
-            );
-        })
+    set_password(&store, pid, hash, now_iso())
         .await
         .map_err(internal)?;
     Ok(ConnectResponse::new(pb::OkResponse { ok: true }))
@@ -390,7 +326,7 @@ async fn delete_user(
     let ConnectRequest(r) = req;
     deny_self(&r.id, &auth, "delete")?;
     let pid = parse_pid(&r.id)?;
-    store.delete(pid).await.map_err(internal)?;
+    record::delete_user(&store, pid).await.map_err(internal)?;
     deindex(&store, kind::USER, &pid.to_string()).await;
     Ok(ConnectResponse::new(pb::OkResponse { ok: true }))
 }

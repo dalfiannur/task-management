@@ -13,6 +13,7 @@ use anyhow::Result;
 use arke::{Bundle, Component, Entity, World};
 use arke_postgres::{PgComponent, PgStore};
 
+pub mod entity;
 pub mod search;
 pub use search::{SearchDoc, SearchRow};
 
@@ -47,6 +48,12 @@ impl Store {
             pool,
             register: Arc::new(register),
         })
+    }
+
+    /// The shared pool, for code ported off arke that queries the component
+    /// tables directly (see [`entity`]).
+    pub fn pool(&self) -> &PgPool {
+        &self.pool
     }
 
     /// A fresh registered `PgStore` sharing the pool.

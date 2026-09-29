@@ -2764,6 +2764,7 @@ dependencies = [
  "prost",
  "serde",
  "serde_json",
+ "sqlx",
  "storage",
  "time",
  "tokio",

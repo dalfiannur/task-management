@@ -594,3 +594,114 @@ async fn setup_creates_the_first_admin_and_signs_it_in() {
     assert_ne!(st, StatusCode::OK, "only ever once");
     assert_eq!(v["code"], json!("failed_precondition"), "{v}");
 }
+
+/// The admin write paths: create (as admin), edit someone else's profile, edit
+/// your own, reset a password, grant then revoke admin, and delete.
+#[tokio::test]
+async fn admin_create_edit_reset_grant_and_delete_user() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let admin_token = seed_admin(&store, &format!("admin-{}", uniq())).await;
+    let phone = format!("0812{}", uniq());
+
+    // CreateUser as an admin → Active, admin, and able to log in straight away.
+    let (st, body) = call(
+        &router,
+        &format!("{DIR}/CreateUser"),
+        Some(&admin_token),
+        json!({ "phone": phone, "password": "firstpass1", "displayName": "Bob", "isAdmin": true }),
+    )
+    .await;
+    assert_eq!(st, StatusCode::OK, "create: {body}");
+    let id = body["id"].as_str().unwrap().to_string();
+    assert_eq!(body["isAdmin"], true);
+    assert_eq!(body["status"], "ACTIVE");
+
+    // CreateUser again with the same phone → already exists.
+    let (st, _) = call(
+        &router,
+        &format!("{DIR}/CreateUser"),
+        Some(&admin_token),
+        json!({ "phone": phone, "password": "firstpass1", "displayName": "Bob 2" }),
+    )
+    .await;
+    assert_ne!(st, StatusCode::OK, "duplicate phone must be rejected");
+
+    // UpdateUser changes only the fields that are set.
+    let (st, body) = call(
+        &router,
+        &format!("{DIR}/UpdateUser"),
+        Some(&admin_token),
+        json!({ "id": id, "email": "bob@example.com" }),
+    )
+    .await;
+    assert_eq!(st, StatusCode::OK, "update: {body}");
+    assert_eq!(body["email"], "bob@example.com");
+    assert_eq!(body["displayName"], "Bob");
+
+    // ResetPassword, then log in with it; login stamps last_login_at.
+    let (st, _) = call(
+        &router,
+        &format!("{DIR}/ResetPassword"),
+        Some(&admin_token),
+        json!({ "id": id, "newPassword": "resetpass2" }),
+    )
+    .await;
+    assert_eq!(st, StatusCode::OK, "reset password");
+    let (st, body) = call(
+        &router,
+        &format!("{AUTH}/Login"),
+        None,
+        json!({ "phone": phone, "password": "resetpass2" }),
+    )
+    .await;
+    assert_eq!(st, StatusCode::OK, "login after reset: {body}");
+    assert!(body["user"]["lastLoginAt"].as_str().is_some());
+    let bob_token = body["token"].as_str().unwrap().to_string();
+
+    // UpdateMyProfile as Bob.
+    let (st, body) = call(
+        &router,
+        &format!("{AUTH}/UpdateMyProfile"),
+        Some(&bob_token),
+        json!({ "displayName": "Robert" }),
+    )
+    .await;
+    assert_eq!(st, StatusCode::OK, "update my profile: {body}");
+    assert_eq!(body["displayName"], "Robert");
+    assert_eq!(body["email"], "bob@example.com");
+
+    // Revoke, then grant admin again.
+    for grant in [false, true] {
+        let (st, body) = call(
+            &router,
+            &format!("{DIR}/SetAdmin"),
+            Some(&admin_token),
+            json!({ "id": id, "isAdmin": grant }),
+        )
+        .await;
+        assert_eq!(st, StatusCode::OK, "set admin {grant}: {body}");
+        // proto3 JSON omits a false bool, so absent means not admin.
+        assert_eq!(body["isAdmin"].as_bool().unwrap_or(false), grant);
+    }
+
+    // DeleteUser → gone.
+    let (st, _) = call(
+        &router,
+        &format!("{DIR}/DeleteUser"),
+        Some(&admin_token),
+        json!({ "id": id }),
+    )
+    .await;
+    assert_eq!(st, StatusCode::OK, "delete");
+    let (st, _) = call(
+        &router,
+        &format!("{DIR}/GetUser"),
+        Some(&admin_token),
+        json!({ "id": id }),
+    )
+    .await;
+    assert_eq!(st, StatusCode::NOT_FOUND, "deleted user must be gone");
+}
