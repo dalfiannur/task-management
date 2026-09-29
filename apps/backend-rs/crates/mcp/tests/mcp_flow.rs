@@ -1931,3 +1931,24 @@ async fn update_task_refuses_moving_a_task_that_has_subtasks() {
     assert!(!err, "{kid:?}");
     assert_eq!(kid["parent_id"], parent["id"], "{kid:?}");
 }
+
+/// A tool call stamps the token's `last_used_at`, and a second call within the
+/// hour leaves the stamp alone.
+#[tokio::test]
+async fn a_tool_call_records_token_usage_once_per_hour() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let (_, _, token) = seed_user_with_token(&store, domain::user::UserStatus::Active, None).await;
+    let hash = domain::token::hash_token(&token);
+    let before = transport::api::find_by_hash(&store, &hash).await.unwrap().unwrap();
+    assert!(before.last_used_at.is_none());
+
+    let (is_error, _) = tools_call(&router, &token, "list_projects", json!({})).await;
+    assert!(!is_error);
+    let first = transport::api::find_by_hash(&store, &hash).await.unwrap().unwrap();
+    let stamp = first.last_used_at.expect("usage recorded on first call");
+
+    let (is_error, _) = tools_call(&router, &token, "list_projects", json!({})).await;
+    assert!(!is_error);
+    let second = transport::api::find_by_hash(&store, &hash).await.unwrap().unwrap();
+    assert_eq!(second.last_used_at.as_deref(), Some(stamp.as_str()), "throttled within the hour");
+}

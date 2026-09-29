@@ -8,7 +8,7 @@
 use auth::AuthUser;
 use domain::token::{hash_token, is_expired, looks_like_token, now_iso};
 use persistence::Store;
-use transport::api::{auth_user_for, find_by_hash, TokenRecord};
+use transport::api::{auth_user_for, find_by_hash, record_usage, TokenRecord};
 
 /// Why a request was refused.
 ///
@@ -44,8 +44,7 @@ pub async fn authenticate(store: &Store, header: Option<&str>) -> Result<AuthUse
         return Err(AuthFailure::Unauthorized);
     };
     // Screen the shape first: a string we could never have issued never reaches
-    // the database, and that is also what makes the digest safe to interpolate
-    // into `find_by_hash`'s SQL predicate.
+    // the database.
     if !looks_like_token(token) {
         tracing::debug!("mcp: bearer credential is not shaped like a token");
         return Err(AuthFailure::Unauthorized);
@@ -101,19 +100,7 @@ async fn touch(store: &Store, rec: &TokenRecord, now: &str) {
     if fresh {
         return;
     }
-    let stamp = now.to_string();
-    if let Err(e) = store
-        .update(rec.pid, move |w, e| {
-            w.remove::<domain::token::TokenUsage>(e);
-            w.insert(
-                e,
-                domain::token::TokenUsage {
-                    last_used_at: Some(stamp),
-                },
-            );
-        })
-        .await
-    {
+    if let Err(e) = record_usage(store, rec.pid, now).await {
         // Failing to record usage must not fail the tool call itself.
         tracing::warn!(error = %e, token = rec.pid, "failed to record token usage");
     }
