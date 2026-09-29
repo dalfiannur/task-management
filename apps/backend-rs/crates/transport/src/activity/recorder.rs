@@ -1,8 +1,10 @@
 //! The shared `record` helper other services call after a successful mutation.
 //! Best-effort: a failure is logged, never propagated to the triggering action.
 
-use domain::activity::{ActivityAction, ActivityChanges, ActivityInfo, EntityType, FieldChange};
+use domain::activity::{ActivityAction, EntityType, FieldChange};
 use persistence::Store;
+
+use super::record::{create_activity, NewActivity};
 
 fn now_iso() -> String {
     use time::format_description::well_known::Rfc3339;
@@ -24,20 +26,20 @@ pub(crate) async fn record(
     summary: String,
     changes: Vec<FieldChange>,
 ) {
-    let res = store
-        .create((
-            ActivityInfo {
-                project_id: project_id.to_string(),
-                actor_id: actor_id.to_string(),
-                entity_type: entity_type.as_str().to_string(),
-                entity_id: entity_id.to_string(),
-                action: action.as_str().to_string(),
-                summary,
-                created_at: now_iso(),
-            },
-            ActivityChanges { changes },
-        ))
-        .await;
+    let res = create_activity(
+        store,
+        NewActivity {
+            project_id,
+            actor_id,
+            entity_type,
+            entity_id,
+            action,
+            summary: &summary,
+            changes,
+            created_at: &now_iso(),
+        },
+    )
+    .await;
     if let Err(e) = res {
         tracing::warn!(error = %e, "failed to record activity");
     }
