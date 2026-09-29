@@ -5,6 +5,7 @@
 mod activity_summary;
 mod aggregate;
 mod report_service;
+mod xlsx;
 pub(crate) mod window;
 
 pub use report_service::report_router;

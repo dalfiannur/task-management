@@ -10,6 +10,28 @@ import "activity.proto";
 // See docs/superpowers/specs/2026-09-07-periodic-reports-design.md.
 service ReportService {
   rpc GetPeriodReport(GetPeriodReportRequest) returns (PeriodReport);
+  // The same report as an .xlsx workbook — one sheet per section, with the
+  // task lists complete (`list_limit` is ignored; nothing is truncated).
+  rpc ExportPeriodReportXlsx(ExportPeriodReportXlsxRequest) returns (ExportPeriodReportXlsxResponse);
+}
+
+message ExportPeriodReportXlsxRequest {
+  GetPeriodReportRequest report = 1;
+  // How the client names the period ("28 Sep – 4 Oct 2026"); the server does
+  // not know the viewer's calendar.
+  string label = 2;
+  // "weekly" or "monthly" — the sheet title and the file name.
+  string granularity = 3;
+  // The viewer's offset east of UTC in minutes, so the times written into the
+  // workbook are the wall-clock times the viewer sees on the page.
+  int32 utc_offset_minutes = 4;
+  // The app's display name, for the summary sheet.
+  string app_name = 5;
+}
+
+message ExportPeriodReportXlsxResponse {
+  bytes xlsx = 1;
+  string file_name = 2;
 }
 
 message GetPeriodReportRequest {

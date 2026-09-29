@@ -14,7 +14,76 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file reports.proto.
  */
 export const file_reports: GenFile = /*@__PURE__*/
-  fileDesc("Cg1yZXBvcnRzLnByb3RvEhhzZWRqaXdhLnRhc2tzLnJlcG9ydHMudjEi4AEKFkdldFBlcmlvZFJlcG9ydFJlcXVlc3QSFAoMcGVyaW9kX3N0YXJ0GAEgASgJEhIKCnBlcmlvZF9lbmQYAiABKAkSEgoKcHJldl9zdGFydBgDIAEoCRIQCghwcmV2X2VuZBgEIAEoCRISCgpsaXN0X2xpbWl0GAUgASgNEhkKEXBlcmlvZF9zdGFydF9kYXRlGAYgASgJEhcKD3BlcmlvZF9lbmRfZGF0ZRgHIAEoCRIXCg9wcmV2X3N0YXJ0X2RhdGUYCCABKAkSFQoNcHJldl9lbmRfZGF0ZRgJIAEoCSJXCgxQZXJpb2RUb3RhbHMSEQoJY29tcGxldGVkGAEgASgNEg8KB3N0YXJ0ZWQYAiABKA0SEgoKc3RpbGxfb3BlbhgDIAEoDRIPCgdvdmVyZHVlGAQgASgNIqgBChBQcm9qZWN0UmVwb3J0Um93EhIKCnByb2plY3RfaWQYASABKAkSFAoMcHJvamVjdF9uYW1lGAIgASgJEhEKCWNvbXBsZXRlZBgDIAEoDRIPCgdzdGFydGVkGAQgASgNEhIKCnN0aWxsX29wZW4YBSABKA0SDwoHb3ZlcmR1ZRgGIAEoDRISCgpkb25lX3RvdGFsGAcgASgNEg0KBXRvdGFsGAggASgNIooBCg9NZW1iZXJSZXBvcnRSb3cSDwoHdXNlcl9pZBgBIAEoCRIRCgl1c2VyX25hbWUYAiABKAkSEQoJY29tcGxldGVkGAMgASgNEg8KB3N0YXJ0ZWQYBCABKA0SFQoNb3Blbl9hc3NpZ25lZBgFIAEoDRIYChBvdmVyZHVlX2Fzc2lnbmVkGAYgASgNIpoBChJBY3Rpdml0eVN1bW1hcnlSb3cSOgoLZW50aXR5X3R5cGUYASABKA4yJS5zZWRqaXdhLnRhc2tzLmFjdGl2aXR5LnYxLkVudGl0eVR5cGUSOQoGYWN0aW9uGAIgASgOMikuc2Vkaml3YS50YXNrcy5hY3Rpdml0eS52MS5BY3Rpdml0eUFjdGlvbhINCgVjb3VudBgDIAEoDSK9BAoMUGVyaW9kUmVwb3J0EhQKDHBlcmlvZF9zdGFydBgBIAEoCRISCgpwZXJpb2RfZW5kGAIgASgJEjYKBnRvdGFscxgDIAEoCzImLnNlZGppd2EudGFza3MucmVwb3J0cy52MS5QZXJpb2RUb3RhbHMSOwoLcHJldl90b3RhbHMYBCABKAsyJi5zZWRqaXdhLnRhc2tzLnJlcG9ydHMudjEuUGVyaW9kVG90YWxzEj8KC3Blcl9wcm9qZWN0GAUgAygLMiouc2Vkaml3YS50YXNrcy5yZXBvcnRzLnYxLlByb2plY3RSZXBvcnRSb3cSPQoKcGVyX21lbWJlchgGIAMoCzIpLnNlZGppd2EudGFza3MucmVwb3J0cy52MS5NZW1iZXJSZXBvcnRSb3cSOwoPY29tcGxldGVkX3Rhc2tzGAcgAygLMiIuc2Vkaml3YS50YXNrcy5kYXNoYm9hcmQudjEuTXlUYXNrEjkKDW92ZXJkdWVfdGFza3MYCCADKAsyIi5zZWRqaXdhLnRhc2tzLmRhc2hib2FyZC52MS5NeVRhc2sSGwoTY29tcGxldGVkX3RydW5jYXRlZBgJIAEoCBIZChFvdmVyZHVlX3RydW5jYXRlZBgKIAEoCBJGChBhY3Rpdml0eV9zdW1tYXJ5GAsgAygLMiwuc2Vkaml3YS50YXNrcy5yZXBvcnRzLnYxLkFjdGl2aXR5U3VtbWFyeVJvdxIWCg5hY3Rpdml0eV90b3RhbBgMIAEoDTJ8Cg1SZXBvcnRTZXJ2aWNlEmsKD0dldFBlcmlvZFJlcG9ydBIwLnNlZGppd2EudGFza3MucmVwb3J0cy52MS5HZXRQZXJpb2RSZXBvcnRSZXF1ZXN0GiYuc2Vkaml3YS50YXNrcy5yZXBvcnRzLnYxLlBlcmlvZFJlcG9ydGIGcHJvdG8z", [file_dashboard, file_activity]);
+  fileDesc("Cg1yZXBvcnRzLnByb3RvEhhzZWRqaXdhLnRhc2tzLnJlcG9ydHMudjEiswEKHUV4cG9ydFBlcmlvZFJlcG9ydFhsc3hSZXF1ZXN0EkAKBnJlcG9ydBgBIAEoCzIwLnNlZGppd2EudGFza3MucmVwb3J0cy52MS5HZXRQZXJpb2RSZXBvcnRSZXF1ZXN0Eg0KBWxhYmVsGAIgASgJEhMKC2dyYW51bGFyaXR5GAMgASgJEhoKEnV0Y19vZmZzZXRfbWludXRlcxgEIAEoBRIQCghhcHBfbmFtZRgFIAEoCSJBCh5FeHBvcnRQZXJpb2RSZXBvcnRYbHN4UmVzcG9uc2USDAoEeGxzeBgBIAEoDBIRCglmaWxlX25hbWUYAiABKAki4AEKFkdldFBlcmlvZFJlcG9ydFJlcXVlc3QSFAoMcGVyaW9kX3N0YXJ0GAEgASgJEhIKCnBlcmlvZF9lbmQYAiABKAkSEgoKcHJldl9zdGFydBgDIAEoCRIQCghwcmV2X2VuZBgEIAEoCRISCgpsaXN0X2xpbWl0GAUgASgNEhkKEXBlcmlvZF9zdGFydF9kYXRlGAYgASgJEhcKD3BlcmlvZF9lbmRfZGF0ZRgHIAEoCRIXCg9wcmV2X3N0YXJ0X2RhdGUYCCABKAkSFQoNcHJldl9lbmRfZGF0ZRgJIAEoCSJXCgxQZXJpb2RUb3RhbHMSEQoJY29tcGxldGVkGAEgASgNEg8KB3N0YXJ0ZWQYAiABKA0SEgoKc3RpbGxfb3BlbhgDIAEoDRIPCgdvdmVyZHVlGAQgASgNIqgBChBQcm9qZWN0UmVwb3J0Um93EhIKCnByb2plY3RfaWQYASABKAkSFAoMcHJvamVjdF9uYW1lGAIgASgJEhEKCWNvbXBsZXRlZBgDIAEoDRIPCgdzdGFydGVkGAQgASgNEhIKCnN0aWxsX29wZW4YBSABKA0SDwoHb3ZlcmR1ZRgGIAEoDRISCgpkb25lX3RvdGFsGAcgASgNEg0KBXRvdGFsGAggASgNIooBCg9NZW1iZXJSZXBvcnRSb3cSDwoHdXNlcl9pZBgBIAEoCRIRCgl1c2VyX25hbWUYAiABKAkSEQoJY29tcGxldGVkGAMgASgNEg8KB3N0YXJ0ZWQYBCABKA0SFQoNb3Blbl9hc3NpZ25lZBgFIAEoDRIYChBvdmVyZHVlX2Fzc2lnbmVkGAYgASgNIpoBChJBY3Rpdml0eVN1bW1hcnlSb3cSOgoLZW50aXR5X3R5cGUYASABKA4yJS5zZWRqaXdhLnRhc2tzLmFjdGl2aXR5LnYxLkVudGl0eVR5cGUSOQoGYWN0aW9uGAIgASgOMikuc2Vkaml3YS50YXNrcy5hY3Rpdml0eS52MS5BY3Rpdml0eUFjdGlvbhINCgVjb3VudBgDIAEoDSK9BAoMUGVyaW9kUmVwb3J0EhQKDHBlcmlvZF9zdGFydBgBIAEoCRISCgpwZXJpb2RfZW5kGAIgASgJEjYKBnRvdGFscxgDIAEoCzImLnNlZGppd2EudGFza3MucmVwb3J0cy52MS5QZXJpb2RUb3RhbHMSOwoLcHJldl90b3RhbHMYBCABKAsyJi5zZWRqaXdhLnRhc2tzLnJlcG9ydHMudjEuUGVyaW9kVG90YWxzEj8KC3Blcl9wcm9qZWN0GAUgAygLMiouc2Vkaml3YS50YXNrcy5yZXBvcnRzLnYxLlByb2plY3RSZXBvcnRSb3cSPQoKcGVyX21lbWJlchgGIAMoCzIpLnNlZGppd2EudGFza3MucmVwb3J0cy52MS5NZW1iZXJSZXBvcnRSb3cSOwoPY29tcGxldGVkX3Rhc2tzGAcgAygLMiIuc2Vkaml3YS50YXNrcy5kYXNoYm9hcmQudjEuTXlUYXNrEjkKDW92ZXJkdWVfdGFza3MYCCADKAsyIi5zZWRqaXdhLnRhc2tzLmRhc2hib2FyZC52MS5NeVRhc2sSGwoTY29tcGxldGVkX3RydW5jYXRlZBgJIAEoCBIZChFvdmVyZHVlX3RydW5jYXRlZBgKIAEoCBJGChBhY3Rpdml0eV9zdW1tYXJ5GAsgAygLMiwuc2Vkaml3YS50YXNrcy5yZXBvcnRzLnYxLkFjdGl2aXR5U3VtbWFyeVJvdxIWCg5hY3Rpdml0eV90b3RhbBgMIAEoDTKKAgoNUmVwb3J0U2VydmljZRJrCg9HZXRQZXJpb2RSZXBvcnQSMC5zZWRqaXdhLnRhc2tzLnJlcG9ydHMudjEuR2V0UGVyaW9kUmVwb3J0UmVxdWVzdBomLnNlZGppd2EudGFza3MucmVwb3J0cy52MS5QZXJpb2RSZXBvcnQSiwEKFkV4cG9ydFBlcmlvZFJlcG9ydFhsc3gSNy5zZWRqaXdhLnRhc2tzLnJlcG9ydHMudjEuRXhwb3J0UGVyaW9kUmVwb3J0WGxzeFJlcXVlc3QaOC5zZWRqaXdhLnRhc2tzLnJlcG9ydHMudjEuRXhwb3J0UGVyaW9kUmVwb3J0WGxzeFJlc3BvbnNlYgZwcm90bzM", [file_dashboard, file_activity]);
+
+/**
+ * @generated from message sedjiwa.tasks.reports.v1.ExportPeriodReportXlsxRequest
+ */
+export type ExportPeriodReportXlsxRequest = Message<"sedjiwa.tasks.reports.v1.ExportPeriodReportXlsxRequest"> & {
+  /**
+   * @generated from field: sedjiwa.tasks.reports.v1.GetPeriodReportRequest report = 1;
+   */
+  report?: GetPeriodReportRequest | undefined;
+
+  /**
+   * How the client names the period ("28 Sep – 4 Oct 2026"); the server does
+   * not know the viewer's calendar.
+   *
+   * @generated from field: string label = 2;
+   */
+  label: string;
+
+  /**
+   * "weekly" or "monthly" — the sheet title and the file name.
+   *
+   * @generated from field: string granularity = 3;
+   */
+  granularity: string;
+
+  /**
+   * The viewer's offset east of UTC in minutes, so the times written into the
+   * workbook are the wall-clock times the viewer sees on the page.
+   *
+   * @generated from field: int32 utc_offset_minutes = 4;
+   */
+  utcOffsetMinutes: number;
+
+  /**
+   * The app's display name, for the summary sheet.
+   *
+   * @generated from field: string app_name = 5;
+   */
+  appName: string;
+};
+
+/**
+ * Describes the message sedjiwa.tasks.reports.v1.ExportPeriodReportXlsxRequest.
+ * Use `create(ExportPeriodReportXlsxRequestSchema)` to create a new message.
+ */
+export const ExportPeriodReportXlsxRequestSchema: GenMessage<ExportPeriodReportXlsxRequest> = /*@__PURE__*/
+  messageDesc(file_reports, 0);
+
+/**
+ * @generated from message sedjiwa.tasks.reports.v1.ExportPeriodReportXlsxResponse
+ */
+export type ExportPeriodReportXlsxResponse = Message<"sedjiwa.tasks.reports.v1.ExportPeriodReportXlsxResponse"> & {
+  /**
+   * @generated from field: bytes xlsx = 1;
+   */
+  xlsx: Uint8Array;
+
+  /**
+   * @generated from field: string file_name = 2;
+   */
+  fileName: string;
+};
+
+/**
+ * Describes the message sedjiwa.tasks.reports.v1.ExportPeriodReportXlsxResponse.
+ * Use `create(ExportPeriodReportXlsxResponseSchema)` to create a new message.
+ */
+export const ExportPeriodReportXlsxResponseSchema: GenMessage<ExportPeriodReportXlsxResponse> = /*@__PURE__*/
+  messageDesc(file_reports, 1);
 
 /**
  * @generated from message sedjiwa.tasks.reports.v1.GetPeriodReportRequest
@@ -91,7 +160,7 @@ export type GetPeriodReportRequest = Message<"sedjiwa.tasks.reports.v1.GetPeriod
  * Use `create(GetPeriodReportRequestSchema)` to create a new message.
  */
 export const GetPeriodReportRequestSchema: GenMessage<GetPeriodReportRequest> = /*@__PURE__*/
-  messageDesc(file_reports, 0);
+  messageDesc(file_reports, 2);
 
 /**
  * `completed` and `started` are of the window. `still_open` and `overdue` are of
@@ -131,7 +200,7 @@ export type PeriodTotals = Message<"sedjiwa.tasks.reports.v1.PeriodTotals"> & {
  * Use `create(PeriodTotalsSchema)` to create a new message.
  */
 export const PeriodTotalsSchema: GenMessage<PeriodTotals> = /*@__PURE__*/
-  messageDesc(file_reports, 1);
+  messageDesc(file_reports, 3);
 
 /**
  * @generated from message sedjiwa.tasks.reports.v1.ProjectReportRow
@@ -185,7 +254,7 @@ export type ProjectReportRow = Message<"sedjiwa.tasks.reports.v1.ProjectReportRo
  * Use `create(ProjectReportRowSchema)` to create a new message.
  */
 export const ProjectReportRowSchema: GenMessage<ProjectReportRow> = /*@__PURE__*/
-  messageDesc(file_reports, 2);
+  messageDesc(file_reports, 4);
 
 /**
  * @generated from message sedjiwa.tasks.reports.v1.MemberReportRow
@@ -231,7 +300,7 @@ export type MemberReportRow = Message<"sedjiwa.tasks.reports.v1.MemberReportRow"
  * Use `create(MemberReportRowSchema)` to create a new message.
  */
 export const MemberReportRowSchema: GenMessage<MemberReportRow> = /*@__PURE__*/
-  messageDesc(file_reports, 3);
+  messageDesc(file_reports, 5);
 
 /**
  * @generated from message sedjiwa.tasks.reports.v1.ActivitySummaryRow
@@ -258,7 +327,7 @@ export type ActivitySummaryRow = Message<"sedjiwa.tasks.reports.v1.ActivitySumma
  * Use `create(ActivitySummaryRowSchema)` to create a new message.
  */
 export const ActivitySummaryRowSchema: GenMessage<ActivitySummaryRow> = /*@__PURE__*/
-  messageDesc(file_reports, 4);
+  messageDesc(file_reports, 6);
 
 /**
  * @generated from message sedjiwa.tasks.reports.v1.PeriodReport
@@ -335,7 +404,7 @@ export type PeriodReport = Message<"sedjiwa.tasks.reports.v1.PeriodReport"> & {
  * Use `create(PeriodReportSchema)` to create a new message.
  */
 export const PeriodReportSchema: GenMessage<PeriodReport> = /*@__PURE__*/
-  messageDesc(file_reports, 5);
+  messageDesc(file_reports, 7);
 
 /**
  * Cross-project period reporting. Read-only aggregation over existing Task and
@@ -353,6 +422,17 @@ export const ReportService: GenService<{
     methodKind: "unary";
     input: typeof GetPeriodReportRequestSchema;
     output: typeof PeriodReportSchema;
+  },
+  /**
+   * The same report as an .xlsx workbook — one sheet per section, with the
+   * task lists complete (`list_limit` is ignored; nothing is truncated).
+   *
+   * @generated from rpc sedjiwa.tasks.reports.v1.ReportService.ExportPeriodReportXlsx
+   */
+  exportPeriodReportXlsx: {
+    methodKind: "unary";
+    input: typeof ExportPeriodReportXlsxRequestSchema;
+    output: typeof ExportPeriodReportXlsxResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_reports, 0);
