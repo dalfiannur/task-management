@@ -6,7 +6,6 @@ use std::sync::Arc;
 use auth::AuthUser;
 use axum::Extension;
 use connectrpc_axum::{ConnectError, ConnectRequest, ConnectResponse};
-use domain::comment::CommentInfo;
 use domain::task::{TaskPriority, TaskStatus};
 use persistence::Store;
 
@@ -113,20 +112,16 @@ pub async fn list_involving_me_core(
     r: pb::MyTasksRequest,
 ) -> Result<pb::MyTasksResponse, ConnectError> {
     // Task ids where I authored a comment or was mentioned.
-    let me = auth.id.clone();
-    let involved: HashSet<String> = store
-        .query::<CommentInfo, String>(None, move |world, pairs| {
-            pairs
-                .iter()
-                .filter_map(|(_, e)| world.get::<CommentInfo>(*e))
-                .filter(|c| c.author_id == me || c.mentioned_user_ids.contains(&me))
-                .map(|c| c.task_id.clone())
-                .collect()
-        })
-        .await
-        .map_err(internal)?
-        .into_iter()
-        .collect();
+    let involved: HashSet<String> = sqlx::query_scalar::<_, String>(
+        "SELECT DISTINCT task_id FROM cmp_commentinfo \
+         WHERE author_id = $1 OR mentioned_user_ids ? $1",
+    )
+    .bind(&auth.id)
+    .fetch_all(store.pool())
+    .await
+    .map_err(internal)?
+    .into_iter()
+    .collect();
     let ctx = Context::load(store, auth).await.map_err(internal)?;
     let tasks = ctx
         .scoped_tasks()

@@ -1,15 +1,14 @@
 //! Activity counts for a report window.
 //!
-//! Deliberately never loads an activity row. `activity/record.rs` records why:
-//! hydrating a pid costs one existence query plus one per registered component
-//! type — 22,028 round-trips and ~3.2s for 20 rows on a 672-row dev database. A
-//! month of activity is far more than 20 rows, so this counts instead: nineteen
-//! `COUNT`s against columns (`project_id`, `entity_type`, `action`,
-//! `created_at`) that are all already indexed.
+//! Deliberately never loads an activity row: a month of activity can be large,
+//! so this counts instead — one `COUNT(*)` for the total and one grouped count
+//! per (entity type, action), over indexed columns.
 
 use std::collections::HashSet;
 
-use domain::activity::{ActivityAction, ActivityInfo, EntityType};
+use std::collections::HashMap;
+
+use domain::activity::{ActivityAction, EntityType};
 use persistence::Store;
 
 use super::window::Window;
@@ -59,62 +58,72 @@ const ACTIONS: [ActivityAction; 3] = [
 /// `(rows, total)`. Rows with a count of zero are dropped — a report listing
 /// "Page deleted 0×" is noise.
 ///
-/// `scope` is `None` for an admin (every project matches). Every value
-/// interpolated below is either a `&'static str` from `as_str`, an `i64` that
-/// parsed, or a `Window` boundary, which `Window::parse` restricts to digits
-/// and fixed separators — the rule `sql.rs` exists to enforce.
+/// `scope` is `None` for an admin (every project matches).
 pub(crate) async fn activity_summary(
     store: &Store,
     scope: Option<&HashSet<String>>,
     w: &Window,
 ) -> anyhow::Result<(Vec<pb::ActivitySummaryRow>, u32)> {
-    let range = format!(
-        "created_at >= '{}' AND created_at < '{}'",
-        w.start(),
-        w.end()
-    );
-
-    let base = match scope {
-        None => range,
+    // Project ids are entity pids rendered as text; only numeric ones can name
+    // a project. `None` binds as NULL, which the filter reads as "every row".
+    let ids: Option<Vec<String>> = match scope {
+        None => None,
         Some(set) => {
-            // Project ids are entity pids rendered as text; parse each so only
-            // validated integers reach the predicate.
             let ids: Vec<String> = set
                 .iter()
                 .filter_map(|p| p.parse::<i64>().ok())
-                .map(|n| format!("'{n}'"))
+                .map(|n| n.to_string())
                 .collect();
-            // A member of no project matches nothing — return without querying
-            // rather than emitting `IN ()`, which is a syntax error.
+            // A member of no project matches nothing.
             if ids.is_empty() {
                 return Ok((Vec::new(), 0));
             }
-            format!("{range} AND project_id IN ({})", ids.join(", "))
+            Some(ids)
         }
     };
+    let (start, end) = (w.start(), w.end());
+    const IN_SCOPE: &str = "created_at >= $1 AND created_at < $2 \
+                            AND ($3::text[] IS NULL OR project_id = ANY($3))";
 
-    let total = store.count::<ActivityInfo>(Some(&base)).await?;
+    let total: i64 = sqlx::query_scalar(&format!(
+        "SELECT count(*) FROM cmp_activityinfo WHERE {IN_SCOPE}"
+    ))
+    .bind(start)
+    .bind(end)
+    .bind(&ids)
+    .fetch_one(store.pool())
+    .await?;
     if total == 0 {
         return Ok((Vec::new(), 0));
     }
 
+    let counts: HashMap<(String, String), i64> = sqlx::query_as::<_, (String, String, i64)>(&format!(
+        "SELECT entity_type, action, count(*) FROM cmp_activityinfo WHERE {IN_SCOPE} \
+         GROUP BY entity_type, action"
+    ))
+    .bind(start)
+    .bind(end)
+    .bind(&ids)
+    .fetch_all(store.pool())
+    .await?
+    .into_iter()
+    .map(|(e, a, n)| ((e, a), n))
+    .collect();
+
+    // Rows in the fixed ENTITIES × ACTIONS order, zero counts left out.
     let mut rows = Vec::new();
     for entity in ENTITIES {
         for action in ACTIONS {
-            let pred = format!(
-                "{base} AND entity_type = '{}' AND action = '{}'",
-                entity.as_str(),
-                action.as_str()
-            );
-            let count = store.count::<ActivityInfo>(Some(&pred)).await?;
+            let key = (entity.as_str().to_string(), action.as_str().to_string());
+            let count = counts.get(&key).copied().unwrap_or(0);
             if count > 0 {
                 rows.push(pb::ActivitySummaryRow {
                     entity_type: entity.to_proto(),
                     action: action.to_proto(),
-                    count,
+                    count: count as u32,
                 });
             }
         }
     }
-    Ok((rows, total))
+    Ok((rows, total.max(0) as u32))
 }
