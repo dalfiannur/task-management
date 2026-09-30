@@ -81,6 +81,16 @@ message Project {
   string owner_id = 5;
   optional string start_date = 6; // set in a later flow
   optional string end_date = 7;
+  // Task progress. Set by ListProjects only; absent elsewhere. Same rules as
+  // the dashboard's ProjectProgress: cancelled tasks count nowhere.
+  optional TaskCounts tasks = 8;
+}
+
+message TaskCounts {
+  uint32 done = 1;
+  uint32 total = 2;
+  uint32 overdue = 3;                // due before today, not done
+  optional string next_due_date = 4; // earliest due_date >= today among open tasks
 }
 
 enum ProjectStatus {

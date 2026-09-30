@@ -293,3 +293,50 @@ async fn involving_me_includes_mentions() {
     assert_eq!(num(&involving, "total"), 1, "{involving}");
     assert_eq!(involving["items"][0]["task"]["id"], mentioned);
 }
+
+#[tokio::test]
+async fn list_projects_carries_task_counts() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let owner = mk_user(&store).await;
+    let to = token(&owner);
+
+    let name = format!("LC-{}", uniq());
+    let p = ok(&router, &format!("{PROJECT}/CreateProject"), &to, json!({ "name": name })).await["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    // An empty project still carries counts, all zero.
+    let empty = ok(&router, &format!("{PROJECT}/CreateProject"), &to, json!({ "name": format!("{name}-empty") }))
+        .await["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let m = ok(&router, &format!("{MODULE}/CreateModule"), &to, json!({ "projectId": p, "name": "M" })).await["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    // A: overdue. B: due yesterday but DONE. C: due +5, todo → next due. D: cancelled → nowhere.
+    create_task(&router, &to, &m, json!({ "title": "A", "dueDate": date_offset(-1) })).await;
+    create_task(&router, &to, &m, json!({ "title": "B", "status": "DONE", "dueDate": date_offset(-1) })).await;
+    create_task(&router, &to, &m, json!({ "title": "C", "dueDate": date_offset(5) })).await;
+    create_task(&router, &to, &m, json!({ "title": "D", "status": "CANCELLED" })).await;
+
+    let body = ok(&router, &format!("{PROJECT}/ListProjects"), &to, json!({ "search": name })).await;
+    let projects = body["projects"].as_array().unwrap();
+    let find = |id: &str| projects.iter().find(|x| x["id"] == id).unwrap_or_else(|| panic!("{id} missing: {body}"));
+
+    let t = &find(&p)["tasks"];
+    assert_eq!(num(t, "total"), 3, "A,B,C — cancelled D excluded: {t}");
+    assert_eq!(num(t, "done"), 1, "{t}");
+    assert_eq!(num(t, "overdue"), 1, "only A: {t}");
+    assert_eq!(t["nextDueDate"], json!(date_offset(5)), "{t}");
+
+    let e = &find(&empty)["tasks"];
+    assert!(e.is_object(), "empty project still carries counts: {body}");
+    assert_eq!(num(e, "total"), 0);
+    assert!(e.get("nextDueDate").is_none_or(|v| v.is_null()), "{e}");
+}

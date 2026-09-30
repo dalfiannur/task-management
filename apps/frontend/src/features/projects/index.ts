@@ -1,6 +1,6 @@
 // Projects feature barrel.
 
-export type { Project, ProjectStatus } from "./types";
+export type { Project, ProjectStatus, ProjectTasks } from "./types";
 export { PROJECT_STATUSES, STATUS_LABEL } from "./types";
 export {
   mapProject,
@@ -18,6 +18,7 @@ export {
   useDeleteProject,
 } from "./api/hooks";
 export { pinnedProjectIdsAtom, usePinnedProjects } from "./atoms/pins";
+export { projectsViewAtom } from "./atoms/view";
 export { ProjectList } from "./components/project-list";
 export { ProjectShell } from "./components/project-shell";
 export { ProjectStatusBadge } from "./components/project-status-badge";

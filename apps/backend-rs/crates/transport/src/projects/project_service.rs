@@ -1,6 +1,6 @@
 //! ProjectService: create + read (list/get) + owner authority (status/transfer/delete).
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use auth::AuthUser;
@@ -8,6 +8,7 @@ use axum::Extension;
 use connectrpc_axum::{ConnectError, ConnectRequest, ConnectResponse};
 use domain::notification::NotificationType;
 use domain::project::{project_name_ok, ProjectStatus};
+use domain::task::TaskStatus;
 use persistence::Store;
 
 use super::record::{
@@ -16,6 +17,9 @@ use super::record::{
 };
 use super::{internal, parse_pid};
 use crate::activity::record;
+use crate::dashboard::context::{today, Tally};
+use crate::work::record::load_all_modules;
+use crate::work::task_record::load_all_tasks;
 use crate::notifications::{emit, NotifRefs, Notifier};
 use crate::search::{deindex_project, index, project_doc};
 use domain::activity::{ActivityAction, EntityType};
@@ -127,13 +131,57 @@ pub async fn list_projects_core(
     let page = r.page.max(1);
     let limit = if r.limit == 0 { DEFAULT_LIMIT } else { r.limit };
     let start = ((page - 1) as usize).saturating_mul(limit as usize);
-    let projects = filtered
-        .into_iter()
-        .skip(start)
-        .take(limit as usize)
-        .map(|p| to_proto(&p))
+    let page: Vec<ProjectRecord> = filtered.into_iter().skip(start).take(limit as usize).collect();
+    let mut counts = task_counts(store, &page).await.map_err(internal)?;
+    let projects = page
+        .iter()
+        .map(|p| pb::Project {
+            tasks: Some(counts.remove(&p.pid.to_string()).unwrap_or_default()),
+            ..to_proto(p)
+        })
         .collect();
     Ok(pb::ListProjectsResponse { projects, total })
+}
+
+/// Task progress for `projects`, keyed by project id, under the dashboard's
+/// rules: `Tally` decides what is counted and what is overdue.
+async fn task_counts(
+    store: &Store,
+    projects: &[ProjectRecord],
+) -> anyhow::Result<HashMap<String, pb::TaskCounts>> {
+    let mut out: HashMap<String, pb::TaskCounts> = HashMap::new();
+    if projects.is_empty() {
+        return Ok(out);
+    }
+    let wanted: HashSet<String> = projects.iter().map(|p| p.pid.to_string()).collect();
+    let module_to_project: HashMap<String, String> = load_all_modules(store)
+        .await?
+        .into_iter()
+        .filter(|m| wanted.contains(&m.project_id))
+        .map(|m| (m.pid.to_string(), m.project_id))
+        .collect();
+    let today = today();
+    for t in load_all_tasks(store).await? {
+        let Some(pj) = module_to_project.get(&t.module_id) else {
+            continue;
+        };
+        let mut tally = Tally::default();
+        if !tally.add(&t, &today) {
+            continue; // cancelled counts nowhere
+        }
+        let e = out.entry(pj.clone()).or_default();
+        e.total += 1;
+        e.done += tally.done;
+        e.overdue += tally.overdue;
+        if t.status != TaskStatus::Done {
+            if let Some(due) = t.due_date.as_ref().filter(|d| d.as_str() >= today.as_str()) {
+                if e.next_due_date.as_ref().is_none_or(|n| due < n) {
+                    e.next_due_date = Some(due.clone());
+                }
+            }
+        }
+    }
+    Ok(out)
 }
 
 async fn list_projects(

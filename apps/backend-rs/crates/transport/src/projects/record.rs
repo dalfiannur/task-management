@@ -62,6 +62,7 @@ pub(crate) fn to_proto(p: &ProjectRecord) -> pb::Project {
         owner_id: p.owner_id.clone(),
         start_date: p.start_date.clone(),
         end_date: p.end_date.clone(),
+        tasks: None,
     }
 }
 

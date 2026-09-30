@@ -38,6 +38,12 @@ export function mapProject(p: PbProject): Project {
     ownerId: p.ownerId,
     startDate: p.startDate,
     endDate: p.endDate,
+    tasks: p.tasks && {
+      done: p.tasks.done,
+      total: p.tasks.total,
+      overdue: p.tasks.overdue,
+      nextDueDate: p.tasks.nextDueDate,
+    },
   };
 }
 

@@ -2,6 +2,7 @@
 
 export type { DashboardStats, ProjectProgress, MyTaskItem, MyTasksView as MyTasksViewKey } from "./types";
 export { mapStats, mapMyTasks } from "./api/mappers";
+export { dueGroup, dueLabel } from "./due";
 export {
   useDashboardStats,
   useUpcomingDeadlines,
