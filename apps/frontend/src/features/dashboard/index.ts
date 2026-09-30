@@ -6,6 +6,7 @@ export {
   useDashboardStats,
   useUpcomingDeadlines,
   useMyTasks,
+  useAssignedOpenCount,
 } from "./api/hooks";
 export { StatCards } from "./components/stat-cards";
 export { UpcomingDeadlines } from "./components/upcoming-deadlines";

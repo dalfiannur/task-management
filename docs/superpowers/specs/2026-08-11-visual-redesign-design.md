@@ -439,6 +439,23 @@ brand-coloured sidebar above; that text stays for the reasoning.
 - **Breadcrumb.** The action bar now starts with a breadcrumb: the section, plus the project
   name inside a project (read from the query `ProjectShell` already made, so no extra request).
 
+#### 4.11.2 Amendment (2026-09-30) — sidebar menu
+
+- **Order:** Dashboard · My tasks · Projects · Reports (no heading), then **Pinned**, then
+  **Admin**. The nav region scrolls on its own if the pins outgrow the screen.
+- **Item style:** `rounded-md`, `py-1.5`. Active = `--surface-raised` + medium text + brand
+  icon + a 3px `--brand` bar flush with the sidebar edge. Hover changes only the fill, so the
+  two stay distinguishable. Inactive icons are `--text-muted`.
+- **Pinned projects** are a per-browser list of ids (`sedjiwa.pinned-projects`), pinned from
+  the `+` picker (server-side project search) or the Pin button in the project header, and
+  unpinned with the hover × or the same button. Each shows a neutral initial square; the
+  active one gets the fill without the bar, because Projects is active at the same time and
+  two bars would read as equal rank. Projects that fail to load are hidden, not unpinned.
+- **Badge:** My tasks shows open work assigned to the caller (To do + In progress) as a
+  `--text-muted` count; in the rail it becomes a brand dot and the count moves to the
+  tooltip. There is no per-user overdue count in the API, so there is no overdue badge.
+- **Brand:** the name is `text-sm` and may wrap to two lines instead of truncating.
+
 ### 4.10 Timeline (Gantt) — soft container, industrial interior
 
 Deferred by §5 and §7, decided during Phase 3b.

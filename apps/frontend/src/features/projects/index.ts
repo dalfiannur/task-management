@@ -17,6 +17,7 @@ export {
   useTransferOwnership,
   useDeleteProject,
 } from "./api/hooks";
+export { pinnedProjectIdsAtom, usePinnedProjects } from "./atoms/pins";
 export { ProjectList } from "./components/project-list";
 export { ProjectShell } from "./components/project-shell";
 export { ProjectStatusBadge } from "./components/project-status-badge";

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useAtomValue } from "jotai";
-import { ChevronDown, Trash2 } from "lucide-react";
+import { ChevronDown, Pin, PinOff, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -29,6 +29,7 @@ import { ExportDialog } from "@/features/exports";
 import type { Project, ProjectStatus } from "../types";
 import { PROJECT_STATUSES, STATUS_LABEL } from "../types";
 import { useSetProjectStatus, useDeleteProject } from "../api/hooks";
+import { usePinnedProjects } from "../atoms/pins";
 import { formatProjectDateRange, statusToProto } from "../api/mappers";
 import { ProjectStatusBadge } from "./project-status-badge";
 import { TransferOwnershipDialog } from "./transfer-ownership-dialog";
@@ -42,6 +43,8 @@ export function ProjectDetailHeader({ project }: { project: Project }) {
   const del = useDeleteProject();
   const [transferOpen, setTransferOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const pins = usePinnedProjects();
+  const pinned = pins.isPinned(project.id);
 
   const canManage = isAdmin || project.ownerId === me?.id;
   const owner = ownerMap[project.ownerId];
@@ -94,78 +97,92 @@ export function ProjectDetailHeader({ project }: { project: Project }) {
         </div>
       </div>
 
-      {canManage && (
-        <div className="flex items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                Status <ChevronDown className="ml-1 h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {PROJECT_STATUSES.map((s) => (
-                <DropdownMenuItem
-                  key={s}
-                  disabled={s === project.status}
-                  onClick={() => changeStatus(s)}
-                >
-                  {STATUS_LABEL[s]}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+      <div className="flex items-center gap-2">
+        {/* Pinning is a personal sidebar preference, so every member gets it —
+            unlike the management actions after it. */}
+        <Button
+          variant="outline"
+          size="sm"
+          aria-pressed={pinned}
+          onClick={() => pins.toggle(project.id)}
+        >
+          {pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
+          {pinned ? "Unpin" : "Pin"}
+        </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setTransferOpen(true)}
-          >
-            Transfer
-          </Button>
+        {canManage && (
+          <>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  Status <ChevronDown className="ml-1 h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {PROJECT_STATUSES.map((s) => (
+                  <DropdownMenuItem
+                    key={s}
+                    disabled={s === project.status}
+                    onClick={() => changeStatus(s)}
+                  >
+                    {STATUS_LABEL[s]}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setExportOpen(true)}
-          >
-            Export
-          </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setTransferOpen(true)}
+            >
+              Transfer
+            </Button>
 
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Delete this project?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  This permanently removes “{project.name}” and its memberships.
-                  This cannot be undone.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={onDelete}>Delete</AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setExportOpen(true)}
+            >
+              Export
+            </Button>
 
-          <TransferOwnershipDialog
-            projectId={project.id}
-            currentOwnerId={project.ownerId}
-            open={transferOpen}
-            onOpenChange={setTransferOpen}
-          />
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete this project?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This permanently removes “{project.name}” and its memberships.
+                    This cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={onDelete}>Delete</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
 
-          <ExportDialog
-            projectId={project.id}
-            open={exportOpen}
-            onOpenChange={setExportOpen}
-          />
-        </div>
-      )}
+            <TransferOwnershipDialog
+              projectId={project.id}
+              currentOwnerId={project.ownerId}
+              open={transferOpen}
+              onOpenChange={setTransferOpen}
+            />
+
+            <ExportDialog
+              projectId={project.id}
+              open={exportOpen}
+              onOpenChange={setExportOpen}
+            />
+          </>
+        )}
+      </div>
     </div>
   );
 }

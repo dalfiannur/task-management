@@ -53,3 +53,21 @@ export function useMyTasks(
   const items: MyTaskItem[] = mapMyTasks(result.data?.items ?? []);
   return { ...result, items, total: result.data?.total ?? 0 };
 }
+
+/** Open work assigned to the caller (To do + In progress), for the sidebar
+ *  badge. The RPC filters on one status at a time, so it is two counts; each
+ *  asks for a single row because only `total` is read. */
+export function useAssignedOpenCount() {
+  const todo = useQuery(MyTasksService.method.listAssignedToMe, {
+    status: statusToProto("todo"),
+    page: 1,
+    pageSize: 1,
+  });
+  const inProgress = useQuery(MyTasksService.method.listAssignedToMe, {
+    status: statusToProto("in_progress"),
+    page: 1,
+    pageSize: 1,
+  });
+  if (!todo.data || !inProgress.data) return null;
+  return todo.data.total + inProgress.data.total;
+}

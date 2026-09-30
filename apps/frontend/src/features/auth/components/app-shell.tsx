@@ -1,4 +1,11 @@
-import { Fragment, useEffect, useState, type ReactElement } from "react";
+import {
+  Fragment,
+  useEffect,
+  useRef,
+  useState,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 import {
   Link,
   Outlet,
@@ -8,6 +15,7 @@ import {
 } from "@tanstack/react-router";
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import {
+  Check,
   ChevronsUpDown,
   FileBarChart,
   FolderKanban,
@@ -18,8 +26,10 @@ import {
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
+  Plus,
   Search,
   ShieldCheck,
+  X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -39,6 +49,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import {
   Tooltip,
@@ -50,7 +69,13 @@ import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { cn, getInitials } from "@/lib/utils";
 import { APP_NAME } from "@/lib/app-config";
 import { NotificationBell } from "@/features/notifications";
-import { useProject } from "@/features/projects";
+import { useAssignedOpenCount } from "@/features/dashboard";
+import {
+  PROJECT_STATUSES,
+  useProject,
+  useProjects,
+  usePinnedProjects,
+} from "@/features/projects";
 import { SearchOverlay, searchOpenAtom } from "@/features/search";
 import { currentUserAtom, isAdminAtom } from "../atoms/session";
 import { mobileNavOpenAtom, sidebarCollapsedAtom } from "../atoms/sidebar";
@@ -58,10 +83,10 @@ import { useLogout } from "../api/hooks";
 
 type NavItem = { to: string; label: string; icon: LucideIcon };
 
-const WORKSPACE_NAV: NavItem[] = [
+const MAIN_NAV: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/projects", label: "Projects", icon: FolderKanban },
   { to: "/my-tasks", label: "My tasks", icon: ListTodo },
+  { to: "/projects", label: "Projects", icon: FolderKanban },
   { to: "/reports", label: "Reports", icon: FileBarChart },
 ];
 
@@ -75,7 +100,7 @@ const ADMIN_NAV: NavItem[] = [
 // Access tokens lives in the user menu, not the nav, but still needs a
 // breadcrumb label.
 const SECTIONS: { to: string; label: string }[] = [
-  ...WORKSPACE_NAV,
+  ...MAIN_NAV,
   ...ADMIN_NAV,
   { to: "/settings/tokens", label: "Access tokens" },
 ];
@@ -195,8 +220,8 @@ export function AppShell() {
   );
 }
 
-/** Brand, grouped nav, collapse toggle and user menu. Rendered twice: in the
- *  desktop aside and in the mobile drawer (never collapsed there). */
+/** Brand, nav, pinned projects, collapse toggle and user menu. Rendered twice:
+ *  in the desktop aside and in the mobile drawer (never collapsed there). */
 function SidebarContent({
   collapsed,
   onNavigate,
@@ -206,6 +231,7 @@ function SidebarContent({
 }) {
   const isAdmin = useAtomValue(isAdminAtom);
   const setCollapsed = useSetAtom(sidebarCollapsedAtom);
+  const openCount = useAssignedOpenCount();
   // The toggle only exists on the desktop aside; the drawer has no rail mode.
   const collapsible = !onNavigate;
 
@@ -214,7 +240,7 @@ function SidebarContent({
       <div
         className={cn(
           "flex h-14 shrink-0 items-center gap-2.5",
-          collapsed ? "justify-center" : "px-5",
+          collapsed ? "justify-center" : "px-4",
         )}
       >
         <span
@@ -223,9 +249,10 @@ function SidebarContent({
         >
           {APP_NAME.charAt(0)}
         </span>
+        {/* Dua baris, bukan truncate: "Project Management" terpotong di w-56. */}
         <span
           className={cn(
-            "truncate font-semibold text-text",
+            "line-clamp-2 text-sm font-semibold leading-tight text-text",
             collapsed && "sr-only",
           )}
         >
@@ -233,26 +260,37 @@ function SidebarContent({
         </span>
       </div>
 
-      <nav className="flex flex-col gap-4 px-3 pt-2 text-sm">
-        <NavGroup
-          label="Workspace"
-          items={WORKSPACE_NAV}
-          collapsed={collapsed}
-          onNavigate={onNavigate}
-        />
+      <nav className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-3 pt-2 text-sm">
+        <div className="flex flex-col gap-0.5">
+          {MAIN_NAV.map((item) => (
+            <NavLink
+              key={item.to}
+              item={item}
+              collapsed={collapsed}
+              onNavigate={onNavigate}
+              badge={item.to === "/my-tasks" ? openCount : undefined}
+            />
+          ))}
+        </div>
+
+        <PinnedSection collapsed={collapsed} onNavigate={onNavigate} />
+
         {isAdmin && (
-          <NavGroup
-            label="Admin"
-            items={ADMIN_NAV}
-            collapsed={collapsed}
-            onNavigate={onNavigate}
-          />
+          <div className="flex flex-col gap-0.5">
+            <SectionHeading label="Admin" collapsed={collapsed} />
+            {ADMIN_NAV.map((item) => (
+              <NavLink
+                key={item.to}
+                item={item}
+                collapsed={collapsed}
+                onNavigate={onNavigate}
+              />
+            ))}
+          </div>
         )}
       </nav>
 
-      <div className="flex-1" />
-
-      <div className="flex flex-col gap-1 p-3">
+      <div className="flex flex-col gap-0.5 p-3">
         {collapsible && (
           <NavTooltip label="Expand sidebar" enabled={collapsed}>
             <button
@@ -261,8 +299,8 @@ function SidebarContent({
               aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
               aria-expanded={!collapsed}
               className={cn(
-                "flex items-center gap-2.5 rounded-full py-2 text-sm text-text-muted transition-colors [transition-duration:var(--duration-fast)] hover:bg-surface-raised hover:text-text",
-                collapsed ? "justify-center px-0" : "px-3",
+                "flex items-center gap-2.5 rounded-md py-1.5 text-sm text-text-muted transition-colors [transition-duration:var(--duration-fast)] hover:bg-surface-raised hover:text-text",
+                collapsed ? "justify-center px-0" : "px-2.5",
               )}
             >
               {collapsed ? (
@@ -280,51 +318,242 @@ function SidebarContent({
   );
 }
 
-function NavGroup({
+/** Group heading; the collapsed rail has no room for text, so a hairline keeps
+ *  the grouping visible. --text-muted, not --text-subtle: it sits on
+ *  --surface-sunken. */
+function SectionHeading({
   label,
-  items,
+  collapsed,
+  action,
+}: {
+  label: string;
+  collapsed: boolean;
+  action?: ReactNode;
+}) {
+  if (collapsed) {
+    return <div aria-hidden="true" className="mx-2 mb-1.5 h-px bg-border" />;
+  }
+  return (
+    <div className="flex h-6 items-center justify-between pr-1 pb-0.5 pl-2.5">
+      <span className="text-xs font-medium text-text-muted">{label}</span>
+      {action}
+    </div>
+  );
+}
+
+// Aktif = --surface-raised + bar brand 3px yang menempel di tepi sidebar
+// (before:-left-3 membatalkan px-3 milik nav), ikon brand, teks medium. Hover
+// hanya mengganti latar, jadi aktif dan hover tetap bisa dibedakan.
+const ITEM_BASE =
+  "relative flex items-center gap-2.5 rounded-md py-1.5 transition-colors [transition-duration:var(--duration-fast)]";
+const ITEM_ACTIVE =
+  "bg-surface-raised text-text font-medium [&>svg]:text-brand before:absolute before:inset-y-1.5 before:-left-3 before:w-[3px] before:rounded-r-full before:bg-brand";
+const ITEM_INACTIVE = "text-text hover:bg-surface-raised [&>svg]:text-text-muted";
+
+function NavLink({
+  item: { to, label, icon: Icon },
+  collapsed,
+  onNavigate,
+  badge,
+}: {
+  item: NavItem;
+  collapsed: boolean;
+  onNavigate?: () => void;
+  badge?: number | null;
+}) {
+  const count = badge ?? 0;
+  return (
+    <NavTooltip label={count > 0 ? `${label} · ${count}` : label} enabled={collapsed}>
+      <Link
+        to={to}
+        onClick={onNavigate}
+        aria-label={collapsed ? label : undefined}
+        // Semua WARNA di activeProps/inactiveProps, tidak satu pun di
+        // className dasar — TanStack Router MENGGABUNGKAN keduanya, jadi
+        // utility berspesifisitas sama diadu oleh urutan sumber CSS.
+        className={cn(ITEM_BASE, collapsed ? "justify-center px-0" : "px-2.5")}
+        activeProps={{ className: ITEM_ACTIVE }}
+        inactiveProps={{ className: ITEM_INACTIVE }}
+      >
+        <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+        {!collapsed && <span className="min-w-0 flex-1 truncate">{label}</span>}
+        {count > 0 &&
+          (collapsed ? (
+            <span
+              aria-hidden="true"
+              className="absolute top-1 right-2 h-1.5 w-1.5 rounded-full bg-brand"
+            />
+          ) : (
+            <span className="text-num text-xs text-text-muted">
+              {count > 99 ? "99+" : count}
+              <span className="sr-only"> open</span>
+            </span>
+          ))}
+      </Link>
+    </NavTooltip>
+  );
+}
+
+function PinnedSection({
   collapsed,
   onNavigate,
 }: {
-  label: string;
-  items: NavItem[];
   collapsed: boolean;
   onNavigate?: () => void;
 }) {
+  const { ids } = usePinnedProjects();
+  // Nothing to show in the rail, and the rail has no room for the picker.
+  if (collapsed && ids.length === 0) return null;
+
   return (
-    <div className="flex flex-col gap-1">
-      {/* Collapsed rail has no room for a heading; a hairline keeps the
-          grouping visible. --text-muted, not --text-subtle: it sits on
-          --surface-sunken. */}
-      {collapsed ? (
-        <div aria-hidden="true" className="mx-2 mb-1 h-px bg-border" />
+    <div className="flex flex-col gap-0.5">
+      <SectionHeading
+        label="Pinned"
+        collapsed={collapsed}
+        action={<PinProjectPicker />}
+      />
+      {ids.length === 0 ? (
+        <p className="px-2.5 text-xs text-text-muted">
+          Pin a project for one-click access.
+        </p>
       ) : (
-        <span className="px-3 pb-1 text-xs font-medium text-text-muted">
-          {label}
-        </span>
+        ids.map((id) => (
+          <PinnedProjectLink
+            key={id}
+            id={id}
+            collapsed={collapsed}
+            onNavigate={onNavigate}
+          />
+        ))
       )}
-      {items.map(({ to, label: itemLabel, icon: Icon }) => (
-        <NavTooltip key={to} label={itemLabel} enabled={collapsed}>
-          <Link
-            to={to}
-            onClick={onNavigate}
-            aria-label={collapsed ? itemLabel : undefined}
-            // Semua WARNA di activeProps/inactiveProps, tidak satu pun di
-            // className dasar — TanStack Router MENGGABUNGKAN keduanya, jadi
-            // utility berspesifisitas sama diadu oleh urutan sumber CSS.
-            className={cn(
-              "flex items-center gap-2.5 rounded-full py-2 transition-colors [transition-duration:var(--duration-fast)]",
-              collapsed ? "justify-center px-0" : "px-3",
-            )}
-            activeProps={{ className: "bg-brand-subtle text-brand-text font-semibold" }}
-            inactiveProps={{ className: "text-text hover:bg-surface-raised" }}
-          >
-            <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-            {!collapsed && itemLabel}
-          </Link>
-        </NavTooltip>
-      ))}
     </div>
+  );
+}
+
+function PinnedProjectLink({
+  id,
+  collapsed,
+  onNavigate,
+}: {
+  id: string;
+  collapsed: boolean;
+  onNavigate?: () => void;
+}) {
+  const { project, isError } = useProject(id);
+  const { unpin } = usePinnedProjects();
+  // Deleted, or no longer a member: hide it rather than show a dead link. The
+  // id stays pinned, so it comes back if access does.
+  if (isError) return null;
+  const name = project?.name ?? "…";
+
+  return (
+    <div className="group relative">
+      <NavTooltip label={name} enabled={collapsed}>
+        <Link
+          to="/projects/$projectId"
+          params={{ projectId: id }}
+          onClick={onNavigate}
+          aria-label={collapsed ? name : undefined}
+          // Long names truncate in w-56; the rail already has a tooltip.
+          title={collapsed ? undefined : name}
+          // The unpin button only takes room while it can be seen.
+          className={cn(
+            ITEM_BASE,
+            collapsed
+              ? "justify-center px-0"
+              : "px-2.5 group-focus-within:pr-8 group-hover:pr-8",
+          )}
+          // Tanpa bar: menu Projects di atas ikut aktif di dalam project, dan
+          // dua bar sekaligus membuat keduanya tampak sama penting.
+          activeProps={{ className: "bg-surface-raised text-text font-medium" }}
+          inactiveProps={{ className: "text-text hover:bg-surface-raised" }}
+        >
+          <span
+            aria-hidden="true"
+            className="flex h-4 w-4 shrink-0 items-center justify-center rounded-sm bg-surface-raised text-[10px] font-semibold text-text-muted ring-1 ring-border"
+          >
+            {project ? getInitials(project.name).charAt(0) : ""}
+          </span>
+          {!collapsed && <span className="min-w-0 flex-1 truncate">{name}</span>}
+        </Link>
+      </NavTooltip>
+      {!collapsed && (
+        <button
+          type="button"
+          onClick={() => unpin(id)}
+          aria-label={`Unpin ${name}`}
+          className="absolute inset-y-0 right-1 my-auto flex h-6 w-6 items-center justify-center rounded-md text-text-muted opacity-0 transition-opacity [transition-duration:var(--duration-fast)] group-hover:opacity-100 hover:text-text focus-visible:opacity-100"
+        >
+          <X className="h-3.5 w-3.5" aria-hidden="true" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** "+" in the Pinned heading: search projects server-side and toggle pins.
+ *  cmdk's own filter is off — the list is already the server's search result. */
+function PinProjectPicker() {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const { isPinned, toggle } = usePinnedProjects();
+  const { data, isLoading } = useProjects({
+    statuses: PROJECT_STATUSES,
+    search: search.trim() || undefined,
+    page: 1,
+  });
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (!o) setSearch("");
+      }}
+    >
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label="Pin a project"
+          className="flex h-6 w-6 items-center justify-center rounded-md text-text-muted transition-colors [transition-duration:var(--duration-fast)] hover:bg-surface-raised hover:text-text"
+        >
+          <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent side="right" align="start" className="w-64 p-0">
+        <Command shouldFilter={false}>
+          <CommandInput
+            ref={inputRef}
+            placeholder="Find a project…"
+            value={search}
+            onValueChange={setSearch}
+          />
+          <CommandList>
+            {!isLoading && <CommandEmpty>No projects found.</CommandEmpty>}
+            <CommandGroup>
+              {data.projects.map((p) => (
+                <CommandItem
+                  key={p.id}
+                  value={p.id}
+                  onSelect={() => {
+                    toggle(p.id);
+                    // A mouse pick moves focus off the input, and the next
+                    // keystroke (Enter included) would then act on the list.
+                    inputRef.current?.focus();
+                  }}
+                >
+                  <span className="min-w-0 flex-1 truncate">{p.name}</span>
+                  {isPinned(p.id) && (
+                    <Check className="h-4 w-4 text-brand" aria-label="Pinned" />
+                  )}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 }
 
