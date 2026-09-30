@@ -18,6 +18,9 @@ function invalidateMedia() {
       schema: MediaService,
       cardinality: "finite",
     }),
+    // Preview urls stay valid until their TTL; refetching them on every
+    // upload would reload every thumbnail on the page.
+    predicate: (q) => !q.meta?.preview,
   });
 }
 
@@ -69,6 +72,25 @@ export function useUnlinkTaskMedia() {
 /** Fetches a fresh presigned GET url on demand (not cached). */
 export function useDownloadUrl() {
   return useMutation(MediaService.method.getMediaDownloadUrl);
+}
+
+/**
+ * A presigned GET url for showing a file inline (image thumbnails). Cached
+ * well inside the server's 5-minute TTL so a url is never used after expiry.
+ */
+export function useMediaPreviewUrl(mediaFileId: string, enabled = true) {
+  const result = useQuery(
+    MediaService.method.getMediaDownloadUrl,
+    { mediaFileId },
+    {
+      enabled: enabled && !!mediaFileId,
+      staleTime: 4 * 60_000,
+      gcTime: 4 * 60_000,
+      refetchInterval: 4 * 60_000,
+      meta: { preview: true },
+    },
+  );
+  return { ...result, url: result.data?.url };
 }
 
 /**
