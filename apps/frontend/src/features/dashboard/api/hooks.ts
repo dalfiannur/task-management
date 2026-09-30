@@ -20,9 +20,15 @@ export function useDashboardStats() {
   return { ...result, stats };
 }
 
-export function useUpcomingDeadlines(withinDays = 7) {
+/** My open tasks due within N days; `includeOverdue` also returns the ones
+ *  already past due (the server sorts by date, so they come first). */
+export function useUpcomingDeadlines(
+  withinDays = 7,
+  { includeOverdue = false }: { includeOverdue?: boolean } = {},
+) {
   const result = useQuery(DashboardService.method.getUpcomingDeadlines, {
     withinDays,
+    includeOverdue,
   });
   const items: MyTaskItem[] = mapMyTasks(result.data?.items ?? []);
   return { ...result, items };

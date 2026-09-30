@@ -34,6 +34,8 @@ message ProjectProgress {
   string project_name = 2;
   uint32 done = 3;
   uint32 total = 4;
+  uint32 overdue = 5;                // same rule as DashboardStats.overdue_tasks
+  optional string next_due_date = 6; // earliest due_date >= today among open (not done/cancelled) tasks
 }
 message DashboardStats {
   uint32 total_tasks = 1;
@@ -43,7 +45,10 @@ message DashboardStats {
   repeated ProjectProgress per_project = 5;
 }
 
-message GetUpcomingDeadlinesRequest { uint32 within_days = 1; } // default 7
+message GetUpcomingDeadlinesRequest {
+  uint32 within_days = 1;   // default 7
+  bool include_overdue = 2; // also return my open tasks due before today (sorted first)
+}
 message TaskListResponse { repeated MyTask items = 1; }
 
 message MyTasksRequest {

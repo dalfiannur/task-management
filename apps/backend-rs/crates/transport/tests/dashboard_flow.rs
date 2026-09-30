@@ -125,7 +125,7 @@ async fn dashboard_and_my_tasks_scoped() {
     let m1 = ok(&router, &format!("{MODULE}/CreateModule"), &to, json!({ "projectId": p1, "name": "M1" })).await["id"].as_str().unwrap().to_string();
 
     // A: assigned me, due yesterday, todo (overdue). B: assigned me, due +3, todo (upcoming).
-    let _a = create_task(&router, &to, &m1, json!({ "title": "A", "assigneeIds": [me], "dueDate": date_offset(-1) })).await;
+    let a = create_task(&router, &to, &m1, json!({ "title": "A", "assigneeIds": [me], "dueDate": date_offset(-1) })).await;
     let b = create_task(&router, &to, &m1, json!({ "title": "B", "assigneeIds": [me], "dueDate": date_offset(3) })).await;
     // C: created by me, done. D: in_progress (me will comment). E: cancelled.
     let _c = create_task(&router, &tm, &m1, json!({ "title": "C", "status": "DONE" })).await;
@@ -150,6 +150,8 @@ async fn dashboard_and_my_tasks_scoped() {
     assert_eq!(pp[0]["projectId"], p1);
     assert_eq!(num(&pp[0], "total"), 4);
     assert_eq!(num(&pp[0], "done"), 1);
+    assert_eq!(num(&pp[0], "overdue"), 1, "A is P1's only overdue task");
+    assert_eq!(pp[0]["nextDueDate"], date_offset(3), "B is P1's next open deadline; A is past");
 
     // Upcoming deadlines (within 7): only B (A is in the past).
     let up = ok(&router, &format!("{DASH}/GetUpcomingDeadlines"), &tm, json!({ "withinDays": 7 })).await;
@@ -157,6 +159,13 @@ async fn dashboard_and_my_tasks_scoped() {
     assert_eq!(items.len(), 1);
     assert_eq!(items[0]["task"]["id"], b);
     assert_eq!(items[0]["projectId"], p1);
+
+    // With includeOverdue: A (overdue) first, then B.
+    let up = ok(&router, &format!("{DASH}/GetUpcomingDeadlines"), &tm, json!({ "withinDays": 7, "includeOverdue": true })).await;
+    let items = up["items"].as_array().unwrap();
+    assert_eq!(items.len(), 2, "{up}");
+    assert_eq!(items[0]["task"]["id"], a);
+    assert_eq!(items[1]["task"]["id"], b);
 
     // My-Tasks: assigned {A,B}=2, created {C}=1, involving {D}=1.
     let assigned = ok(&router, &format!("{MY}/ListAssignedToMe"), &tm, json!({})).await;

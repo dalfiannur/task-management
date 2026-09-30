@@ -17,6 +17,14 @@ use crate::sedjiwa::tasks::dashboard::v1::dashboard_service_connect::DashboardSe
 
 const DEFAULT_WITHIN_DAYS: u32 = 7;
 
+#[derive(Default)]
+struct PerProject {
+    done: u32,
+    total: u32,
+    overdue: u32,
+    next_due: Option<String>,
+}
+
 async fn get_dashboard_stats(
     Extension(store): StoreExt,
     user: Option<Extension<AuthUser>>,
@@ -27,14 +35,15 @@ async fn get_dashboard_stats(
     let today = today();
 
     let mut tally = Tally::default();
-    // per-project (done, total), seeded with every scoped project (so empty ones show 0/0).
-    let mut per: HashMap<String, (u32, u32)> = ctx
+    // per-project progress, seeded with every scoped project (so empty ones show 0/0).
+    let mut per: HashMap<String, PerProject> = ctx
         .scoped_projects()
         .into_iter()
-        .map(|p| (p, (0, 0)))
+        .map(|p| (p, PerProject::default()))
         .collect();
 
     for t in ctx.scoped_tasks() {
+        let overdue_before = tally.overdue;
         if !tally.add(t, &today) {
             continue; // cancelled counts nowhere
         }
@@ -43,21 +52,29 @@ async fn get_dashboard_stats(
             // `reports::aggregate::per_project`'s `row.total`/`row.done_total`
             // — deliberately not shared, since the report must not modify
             // dashboard code. Keep the two in sync by hand if this rule changes.
-            let e = per.entry(pj.clone()).or_insert((0, 0));
-            e.1 += 1;
+            let e = per.entry(pj.clone()).or_default();
+            e.total += 1;
             if t.status == TaskStatus::Done {
-                e.0 += 1;
+                e.done += 1;
+            } else if let Some(due) = t.due_date.as_ref().filter(|d| d.as_str() >= today.as_str()) {
+                if e.next_due.as_ref().is_none_or(|n| due < n) {
+                    e.next_due = Some(due.clone());
+                }
             }
+            // Tally owns the overdue rule; take its delta rather than restate it.
+            e.overdue += tally.overdue - overdue_before;
         }
     }
 
     let mut per_project: Vec<pb::ProjectProgress> = per
         .into_iter()
-        .map(|(project_id, (d, tot))| pb::ProjectProgress {
+        .map(|(project_id, p)| pb::ProjectProgress {
             project_name: ctx.project_name(&project_id),
             project_id,
-            done: d,
-            total: tot,
+            done: p.done,
+            total: p.total,
+            overdue: p.overdue,
+            next_due_date: p.next_due,
         })
         .collect();
     per_project.sort_by(|a, b| a.project_name.cmp(&b.project_name).then(a.project_id.cmp(&b.project_id)));
@@ -86,7 +103,9 @@ async fn get_upcoming_deadlines(
     let ctx = Context::load(&store, &auth).await.map_err(internal)?;
     let (today, cutoff) = (today(), date_plus(within));
 
-    // Tasks assigned to me, due within [today, cutoff], not done/cancelled.
+    // Tasks assigned to me, due within [today, cutoff] — or anything up to
+    // cutoff with include_overdue — not done/cancelled. Date order puts
+    // overdue first.
     let mut due_tasks: Vec<_> = ctx
         .scoped_tasks()
         .into_iter()
@@ -95,7 +114,9 @@ async fn get_upcoming_deadlines(
         .filter_map(|t| {
             t.due_date
                 .as_ref()
-                .filter(|d| d.as_str() >= today.as_str() && d.as_str() <= cutoff.as_str())
+                .filter(|d| {
+                    (r.include_overdue || d.as_str() >= today.as_str()) && d.as_str() <= cutoff.as_str()
+                })
                 .map(|d| (d.clone(), t))
         })
         .collect();

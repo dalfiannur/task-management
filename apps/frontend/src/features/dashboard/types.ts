@@ -7,6 +7,9 @@ export interface ProjectProgress {
   projectName: string;
   done: number;
   total: number;
+  overdue: number;
+  /** Earliest open deadline on or after today (ISO date), if any. */
+  nextDueDate: string | null;
 }
 
 export interface DashboardStats {

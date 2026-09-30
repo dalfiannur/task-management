@@ -65,7 +65,7 @@ export function ActivityFeed({
     );
   }
   return (
-    /* Panel yang berdiri sendiri, sama seperti UpcomingDeadlines: kartu putih
+    /* Panel yang berdiri sendiri, sama seperti NeedsAttention: kartu putih
        di atas kanvas bertint. Baris kehilangan radius sendiri — sudut membulat
        di dalam sudut membulat menghasilkan kurva ganda; container yang
        memotong. */

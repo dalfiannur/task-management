@@ -16,6 +16,8 @@ export function mapStats(s: PbStats): DashboardStats {
       projectName: p.projectName,
       done: p.done,
       total: p.total,
+      overdue: p.overdue,
+      nextDueDate: p.nextDueDate ?? null,
     })),
   };
 }

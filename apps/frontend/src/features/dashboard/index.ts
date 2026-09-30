@@ -8,7 +8,8 @@ export {
   useMyTasks,
   useAssignedOpenCount,
 } from "./api/hooks";
-export { StatCards } from "./components/stat-cards";
-export { UpcomingDeadlines } from "./components/upcoming-deadlines";
+export { KpiStrip } from "./components/kpi-strip";
+export { NeedsAttention } from "./components/needs-attention";
+export { ProjectProgressList } from "./components/project-progress-list";
 export { MyTasksView } from "./components/my-tasks-view";
 export { MyTaskRow } from "./components/my-task-row";
