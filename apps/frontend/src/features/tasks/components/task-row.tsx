@@ -21,7 +21,8 @@ import { LabelChips, type Label } from "@/features/labels";
 import type { Task } from "../types";
 import { statusToProto } from "../api/mappers";
 import { isOptimisticTaskId, useUpdateTask, useDeleteTask } from "../api/hooks";
-import { StatusBadge, PriorityLabel } from "./task-badges";
+import { DueDate, PriorityLabel } from "./task-badges";
+import { StatusMenu } from "./status-menu";
 import { AssigneeAvatars } from "./assignee-picker";
 
 export function TaskRow({
@@ -99,20 +100,20 @@ export function TaskRow({
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(
-        "group flex items-center gap-2 border-b border-border-subtle py-3 last:border-b-0",
+        "group relative flex items-center gap-3 border-b border-border-subtle py-2.5 last:border-b-0",
         // Subtasks (depth 1) get one extra indent step (24px, `pl-6`) on top
         // of the row's own 16px inset — pl-10 is that sum. Subtasks go one
         // level deep only, so this never needs to compound further.
         depth ? "pl-10 pr-4" : "px-4",
         "transition-colors [transition-duration:var(--duration-fast)] hover:bg-surface-hover",
-        isDragging && "opacity-50",
+        isDragging && "z-20 bg-surface-raised opacity-80 shadow-2",
         pending && "opacity-60",
       )}
     >
       <button
         type="button"
         disabled={pending || dragDisabled}
-        className="cursor-grab text-text-muted/40 hover:text-text-muted disabled:cursor-default disabled:opacity-50"
+        className="relative z-10 -mx-1 cursor-grab text-text-muted/40 hover:text-text-muted disabled:cursor-default disabled:opacity-50"
         {...attributes}
         {...listeners}
         aria-label={
@@ -126,48 +127,71 @@ export function TaskRow({
         disabled={pending}
         onCheckedChange={(c) => toggleDone(c === true)}
         onClick={(e) => e.stopPropagation()}
+        className="relative z-10"
+        aria-label={done ? "Mark as to do" : "Mark as done"}
       />
-      <button
-        type="button"
-        disabled={pending}
-        onClick={() => onEdit(task)}
-        className="flex flex-1 items-center gap-3 text-left"
-      >
-        <span
-          className={cn(
-            "flex-1 truncate text-sm",
-            done && "text-text-muted line-through",
+
+      <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 items-center gap-2">
+          {/* Stretched over the whole row (`after:inset-0`), so a click
+              anywhere that isn't another control opens the task. Every other
+              control sits above it on `z-10`. */}
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => onEdit(task)}
+            className={cn(
+              "min-w-0 line-clamp-2 text-left text-sm outline-none md:line-clamp-1",
+              "after:absolute after:inset-0 after:content-[''] focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus",
+              depth ? "text-text-muted" : "font-medium text-text",
+              done && "text-text-muted line-through",
+            )}
+          >
+            {task.title}
+          </button>
+          {progress && (
+            <span
+              className="text-num shrink-0 rounded-full bg-surface-sunken px-1.5 text-xs text-text-muted"
+              title="Subtasks done"
+            >
+              {progress.done}/{progress.total}
+            </span>
           )}
-        >
-          {task.title}
-        </span>
-        {progress && (
-          <span className="text-num text-xs text-text-muted">
-            {progress.done}/{progress.total}
+          {blocked && (
+            <span className="shrink-0 rounded-full bg-danger-subtle px-2 py-0.5 text-xs font-medium text-danger">
+              Blocked
+            </span>
+          )}
+          <span className="hidden shrink-0 lg:inline-flex">
+            <LabelChips ids={task.labelIds} labelMap={labelMap} max={2} />
           </span>
+        </div>
+        {/* Below md the columns fold under the title. */}
+        {(task.dueDate || task.priority !== "none" || task.assigneeIds.length > 0) && (
+          <div className="mt-1 flex items-center gap-3 md:hidden">
+            <DueDate task={task} />
+            <PriorityLabel priority={task.priority} />
+            <AssigneeAvatars ids={task.assigneeIds} userMap={userMap} />
+          </div>
         )}
-        <LabelChips ids={task.labelIds} labelMap={labelMap} max={2} />
-        <PriorityLabel priority={task.priority} />
-        {task.dueDate && (
-          <span className="text-num text-xs text-text-muted">
-            {task.dueDate}
-          </span>
-        )}
+      </div>
+
+      <div className={cn(TASK_COLS.assignee, "hidden md:flex")}>
         <AssigneeAvatars ids={task.assigneeIds} userMap={userMap} />
-        <StatusBadge status={task.status} />
-      </button>
-      {blocked && (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onEdit(task);
-          }}
-          className="inline-flex items-center gap-1 rounded-full bg-danger-subtle px-2.5 py-0.5 text-xs font-medium text-danger transition-colors [transition-duration:var(--duration-fast)] hover:opacity-80"
-        >
-          Blocked
-        </button>
-      )}
+      </div>
+      <div className={cn(TASK_COLS.due, "hidden md:block")}>
+        <DueDate task={task} />
+      </div>
+      <div className={cn(TASK_COLS.priority, "hidden md:block")}>
+        {task.priority === "none" ? (
+          <span className="text-xs text-text-subtle">—</span>
+        ) : (
+          <PriorityLabel priority={task.priority} />
+        )}
+      </div>
+      <div className={cn(TASK_COLS.status, "relative z-10 flex")}>
+        <StatusMenu projectId={projectId} task={task} />
+      </div>
       {subtaskCount > 0 ? (
         <AlertDialog>
           <AlertDialogTrigger asChild>
@@ -175,7 +199,7 @@ export function TaskRow({
               variant="ghost"
               size="icon"
               disabled={pending}
-              className="h-7 w-7 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+              className="relative z-10 h-7 w-7 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
               onClick={(e) => e.stopPropagation()}
               aria-label="Delete task"
             >
@@ -201,13 +225,41 @@ export function TaskRow({
           variant="ghost"
           size="icon"
           disabled={pending}
-          className="h-7 w-7 opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+          className="relative z-10 h-7 w-7 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
           onClick={onDelete}
           aria-label="Delete task"
         >
           <Trash2 className="h-4 w-4" />
         </Button>
       )}
+    </div>
+  );
+}
+
+/** Fixed widths shared by the row cells and the column header above them. */
+const TASK_COLS = {
+  assignee: "w-20 shrink-0",
+  due: "w-24 shrink-0",
+  priority: "w-16 shrink-0",
+  status: "shrink-0 justify-start md:w-32",
+  actions: "w-7 shrink-0",
+};
+
+/** Column captions for a module's task list — md and up, where the columns
+ *  exist. The leading spacer stands in for the grip and the checkbox. */
+export function TaskListHeader() {
+  return (
+    <div
+      aria-hidden="true"
+      className="hidden items-center gap-3 border-b border-border-subtle bg-surface-sunken/40 px-4 py-1.5 text-label md:flex"
+    >
+      <span className="w-[2.25rem] shrink-0" />
+      <span className="flex-1">Task</span>
+      <span className={TASK_COLS.assignee}>Assignee</span>
+      <span className={TASK_COLS.due}>Due</span>
+      <span className={TASK_COLS.priority}>Priority</span>
+      <span className={TASK_COLS.status}>Status</span>
+      <span className={TASK_COLS.actions} />
     </div>
   );
 }

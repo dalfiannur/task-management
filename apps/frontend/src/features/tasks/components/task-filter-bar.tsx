@@ -1,5 +1,7 @@
+import { useEffect, useState } from "react";
 import { format } from "date-fns";
-import { X } from "lucide-react";
+import { Search, SlidersHorizontal, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -40,6 +42,8 @@ export function TaskFilterBar({
   labelMap,
   matched,
   total,
+  reorderNote = true,
+  actions,
 }: {
   filter: TaskFilter;
   onChange: (next: Partial<TaskFilter>) => void;
@@ -50,22 +54,66 @@ export function TaskFilterBar({
   /** Tasks passing the filter, and the project's total — for the count line. */
   matched: number;
   total: number;
+  /** Whether to mention that drag-reordering is off while filtered (list
+   *  view only — the board has no manual order to protect). */
+  reorderNote?: boolean;
+  /** Trailing controls on the search row (view toggle, "Add module"). */
+  actions?: React.ReactNode;
 }) {
   const active = hasActiveFilter(filter);
+  // Typed locally, written to the URL a beat later: a navigate per keystroke
+  // would push a history entry per letter and re-filter mid-word.
+  const [q, setQ] = useState(filter.q ?? "");
+  const urlQ = filter.q ?? "";
+  const [lastUrlQ, setLastUrlQ] = useState(urlQ);
+  if (urlQ !== lastUrlQ) {
+    // The URL moved on its own (Clear filters, Back) — follow it.
+    setLastUrlQ(urlQ);
+    setQ(urlQ);
+  }
+  useEffect(() => {
+    if (q.trim() === urlQ.trim()) return;
+    const id = setTimeout(() => onChange({ q: q.trim() || undefined }), 250);
+    return () => clearTimeout(id);
+    // onChange is a fresh closure every render; it writes through a
+    // functional navigate, so the latest one is not needed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [q, urlQ]);
   const labels = Object.values(labelMap).sort((a, b) =>
     a.name.localeCompare(b.name),
   );
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
+        <div className="relative w-full sm:w-auto sm:min-w-0 sm:max-w-xs sm:flex-1">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-text-subtle" />
+          <Input
+            type="search"
+            placeholder="Search tasks…"
+            aria-label="Search tasks"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            className="!pl-8" /* beats the module's padding shorthand */
+          />
+        </div>
+        {actions && (
+          <div className="ml-auto flex items-center gap-2">{actions}</div>
+        )}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <SlidersHorizontal
+          aria-hidden="true"
+          className="h-4 w-4 text-text-subtle"
+        />
         <Select
           value={filter.status ?? ALL}
           onValueChange={(v) =>
             onChange({ status: v === ALL ? undefined : (v as TaskFilter["status"]) })
           }
         >
-          <SelectTrigger className="w-36" aria-label="Filter by status">
+          <SelectTrigger className="w-36 h-8" aria-label="Filter by status">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -86,7 +134,7 @@ export function TaskFilterBar({
             })
           }
         >
-          <SelectTrigger className="w-36" aria-label="Filter by priority">
+          <SelectTrigger className="w-36 h-8" aria-label="Filter by priority">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -103,7 +151,7 @@ export function TaskFilterBar({
           value={filter.assignee ?? ALL}
           onValueChange={(v) => onChange({ assignee: v === ALL ? undefined : v })}
         >
-          <SelectTrigger className="w-44" aria-label="Filter by assignee">
+          <SelectTrigger className="w-44 h-8" aria-label="Filter by assignee">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -120,7 +168,7 @@ export function TaskFilterBar({
           value={filter.label ?? ALL}
           onValueChange={(v) => onChange({ label: v === ALL ? undefined : v })}
         >
-          <SelectTrigger className="w-40" aria-label="Filter by label">
+          <SelectTrigger className="w-40 h-8" aria-label="Filter by label">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -135,7 +183,7 @@ export function TaskFilterBar({
 
         {/* One range over the task's lifetime: a task shows when its
             start…due span overlaps these bounds. Either end stands alone. */}
-        <div className="flex items-center gap-1 rounded-md border border-border-subtle px-1">
+        <div className="flex h-8 items-center gap-1 rounded-md border border-border-subtle px-1">
           <DatePickerField
             value={isoToDate(filter.from)}
             onChange={(d) => onChange({ from: dateToIso(d) })}
@@ -153,20 +201,19 @@ export function TaskFilterBar({
         </div>
 
         {active && (
-          <Button variant="ghost" size="sm" onClick={onClear}>
-            <X className="mr-1 h-4 w-4" />
-            Clear filters
-          </Button>
+          <>
+            <Button variant="ghost" size="sm" onClick={onClear}>
+              <X className="mr-1 h-4 w-4" />
+              Clear
+            </Button>
+            <p className="ml-auto text-sm text-text-muted">
+              <span className="text-num font-medium text-text">{matched}</span>{" "}
+              of <span className="text-num">{total}</span> task(s)
+              {reorderNote && " · reordering is off while filtered"}
+            </p>
+          </>
         )}
       </div>
-
-      {active && (
-        <p className="text-sm text-text-muted">
-          <span className="text-num">{matched}</span> of{" "}
-          <span className="text-num">{total}</span> task(s) — reordering is off
-          while filtered.
-        </p>
-      )}
     </div>
   );
 }

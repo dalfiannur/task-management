@@ -8,6 +8,7 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
+  MoreHorizontal,
   Pencil,
   Plus,
   Trash2,
@@ -24,8 +25,15 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
 import {
   Collapsible,
   CollapsibleContent,
@@ -37,13 +45,15 @@ import type { Module, Task } from "../types";
 import { useModuleCollapsed } from "../atoms/collapsed-modules";
 import { useCreateTask, useDeleteModule } from "../api/hooks";
 import { buildHierarchy } from "../task-graph";
-import { TaskRow } from "./task-row";
+import type { ModuleStats } from "../task-stats";
+import { TaskListHeader, TaskRow } from "./task-row";
 
 export function ModuleSection({
   projectId,
   module,
   tasks,
   totalCount,
+  stats,
   canManage,
   dragDisabled,
   userMap,
@@ -64,6 +74,8 @@ export function ModuleSection({
   tasks: Task[];
   /** How many tasks this module really holds, filter or no filter. */
   totalCount: number;
+  /** Done/total/overdue over the module's unfiltered tasks. */
+  stats: ModuleStats;
   canManage: boolean;
   /** Set while a filter is on: the rendered order is not the stored order. */
   dragDisabled: boolean;
@@ -85,6 +97,8 @@ export function ModuleSection({
   const [quick, setQuick] = useState("");
   const { setNodeRef } = useDroppable({ id: `mod:${module.id}` });
   const [collapsed, setCollapsed] = useModuleCollapsed(projectId, module.id);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const pct = stats.total ? Math.round((stats.done / stats.total) * 100) : 0;
 
   // Parent and children always share a module (the backend enforces it), so
   // hierarchy can be built from this module's own task slice.
@@ -134,66 +148,92 @@ export function ModuleSection({
         ref={setNodeRef}
         className="overflow-hidden rounded-xl bg-surface-raised shadow-2"
       >
-        <header className="flex items-center gap-2 border-b border-border-subtle px-4 py-2">
+        <header className="flex items-center gap-3 border-b border-border-subtle px-4 py-2.5">
           <CollapsibleTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
-              className="-ml-1 h-7 w-7 [&[data-state=open]>svg]:rotate-90"
+              className="-ml-1.5 h-7 w-7 shrink-0 [&[data-state=open]>svg]:rotate-90"
               aria-label={`Toggle ${module.name}`}
             >
               <ChevronRight className="h-4 w-4 transition-transform" />
             </Button>
           </CollapsibleTrigger>
-          <h3 className="font-medium">{module.name}</h3>
-          <span className="text-num text-xs text-text-muted">
-            {tasks.length === totalCount
-              ? totalCount
-              : `${tasks.length} / ${totalCount}`}
-          </span>
-          <div className="flex-1" />
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
+            <h3 className="truncate font-semibold">{module.name}</h3>
+            <span className="text-num rounded-full bg-surface-sunken px-2 text-xs text-text-muted">
+              {tasks.length === totalCount
+                ? totalCount
+                : `${tasks.length} / ${totalCount}`}
+            </span>
+            {stats.overdue > 0 && (
+              <span className="text-xs font-medium text-danger">
+                <span className="text-num">{stats.overdue}</span> overdue
+              </span>
+            )}
+          </div>
+          {stats.total > 0 && (
+            <div className="hidden shrink-0 items-center gap-2 sm:flex">
+              <div
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={pct}
+                aria-label={`${module.name}: tasks done`}
+                className="h-1.5 w-28 overflow-hidden rounded-full bg-surface-sunken"
+              >
+                <div
+                  className={cn(
+                    "h-full rounded-full",
+                    pct === 100 ? "bg-success" : "bg-brand",
+                  )}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              <span className="text-num min-w-[5.5rem] whitespace-nowrap text-xs text-text-muted">
+                {stats.done}/{stats.total} · {pct}%
+              </span>
+            </div>
+          )}
           {canManage && (
-            <div className="flex items-center gap-0.5">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                disabled={isFirst}
-                onClick={onMoveUp}
-                aria-label="Move module up"
-              >
-                <ChevronUp className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                disabled={isLast}
-                onClick={onMoveDown}
-                aria-label="Move module down"
-              >
-                <ChevronDown className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => onEditModule(module)}
-                aria-label="Edit module"
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
+            <>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-7 w-7"
-                    aria-label="Delete module"
+                    className="h-7 w-7 shrink-0"
+                    aria-label={`${module.name} actions`}
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onSelect={() => onEditModule(module)}>
+                    <Pencil className="h-4 w-4" />
+                    Edit module
+                  </DropdownMenuItem>
+                  <DropdownMenuItem disabled={isFirst} onSelect={onMoveUp}>
+                    <ChevronUp className="h-4 w-4" />
+                    Move up
+                  </DropdownMenuItem>
+                  <DropdownMenuItem disabled={isLast} onSelect={onMoveDown}>
+                    <ChevronDown className="h-4 w-4" />
+                    Move down
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    variant="destructive"
+                    onSelect={() => setConfirmDelete(true)}
                   >
                     <Trash2 className="h-4 w-4" />
-                  </Button>
-                </AlertDialogTrigger>
+                    Delete module
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              {/* Controlled from the menu item: an AlertDialogTrigger inside
+                  the menu would unmount with it the moment the menu closes. */}
+              <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>Delete “{module.name}”?</AlertDialogTitle>
@@ -210,12 +250,13 @@ export function ModuleSection({
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
-            </div>
+            </>
           )}
         </header>
 
         <CollapsibleContent>
           <div className="min-h-[0.5rem]">
+            {tasks.length > 0 && <TaskListHeader />}
             <SortableContext items={orderedIds} strategy={verticalListSortingStrategy}>
               {roots.map((task) => (
                 <Fragment key={task.id}>
@@ -257,12 +298,14 @@ export function ModuleSection({
             onSubmit={addTask}
             className="flex items-center gap-2 border-t border-border-subtle px-4 py-2"
           >
-            <Plus className="h-4 w-4 text-text-muted" />
+            <Plus className="h-4 w-4 shrink-0 text-text-muted" />
             <Input
               value={quick}
               onChange={(e) => setQuick(e.target.value)}
               placeholder="Add a task…"
-              className="h-8 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+              aria-label={`Add a task to ${module.name}`}
+              /* `!` beats the Input module's own border/padding shorthand. */
+              className="!h-8 !border-0 !bg-transparent !px-0 !shadow-none !outline-none focus-visible:ring-0"
             />
           </form>
         </CollapsibleContent>

@@ -14,6 +14,8 @@ import type { Task, TaskPriority, TaskStatus } from "./types";
 import { TASK_PRIORITIES, TASK_STATUSES } from "./types";
 
 export interface TaskFilter {
+  /** Free text, matched case-insensitively against the task title. */
+  q?: string;
   status?: TaskStatus;
   priority?: TaskPriority;
   /** A single user id; a task matches when it is among its assignees. */
@@ -26,7 +28,7 @@ export interface TaskFilter {
 }
 
 export function hasActiveFilter(f: TaskFilter): boolean {
-  return !!(f.status || f.priority || f.assignee || f.label || f.from || f.to);
+  return !!(f.q?.trim() || f.status || f.priority || f.assignee || f.label || f.from || f.to);
 }
 
 function datePart(v?: string): string | undefined {
@@ -52,6 +54,8 @@ function matchesDateRange(task: Task, from?: string, to?: string): boolean {
 }
 
 export function matchesFilter(task: Task, f: TaskFilter): boolean {
+  const q = f.q?.trim().toLowerCase();
+  if (q && !task.title.toLowerCase().includes(q)) return false;
   if (f.status && task.status !== f.status) return false;
   if (f.priority && task.priority !== f.priority) return false;
   if (f.assignee && !task.assigneeIds.includes(f.assignee)) return false;
@@ -128,6 +132,7 @@ export function parseTaskFilter(search: Record<string, unknown>): TaskFilter {
   const date = (v: unknown) =>
     typeof v === "string" && PLAIN_DATE_RE.test(v) ? v : undefined;
   return {
+    q: coerceSearchParam(search.q),
     status: oneOf(search.status, TASK_STATUSES),
     priority: oneOf(search.priority, TASK_PRIORITIES),
     assignee: coerceSearchParam(search.assignee),

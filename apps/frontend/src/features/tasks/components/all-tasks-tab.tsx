@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useAtomValue } from "jotai";
+import { useAtom, useAtomValue } from "jotai";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import {
   DndContext,
@@ -8,10 +8,11 @@ import {
   useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import { Layers, Plus, SearchX } from "lucide-react";
+import { Columns3, Layers, List, Plus, SearchX } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/shared/empty-state";
 import { currentUserAtom, isAdminAtom } from "@/features/auth";
 import { useProject, useProjectMembers } from "@/features/projects";
@@ -26,6 +27,8 @@ import {
   useReorderModules,
 } from "../api/hooks";
 import { buildHierarchy, edgeConflicts, subtaskProgress } from "../task-graph";
+import { statsByModule } from "../task-stats";
+import { tasksViewAtom, type TasksView } from "../atoms/view";
 import {
   filterTasks,
   hasActiveFilter,
@@ -34,8 +37,16 @@ import {
 } from "../filter";
 import { ModuleSection } from "./module-section";
 import { TaskFilterBar } from "./task-filter-bar";
+import { TaskBoard } from "./task-board";
 import { ModuleDialog } from "./module-dialog";
 import { TaskDialog } from "./task-dialog";
+
+const VIEWS: { key: TasksView; label: string; icon: typeof List }[] = [
+  { key: "list", label: "List", icon: List },
+  { key: "board", label: "Board", icon: Columns3 },
+];
+
+const EMPTY_STATS = { done: 0, total: 0, overdue: 0 };
 
 export function AllTasksTab({ projectId }: { projectId: string }) {
   const me = useAtomValue(currentUserAtom);
@@ -56,6 +67,7 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
   const labelMap = useLabelMap(projectId);
   const move = useMoveTask();
   const reorder = useReorderModules();
+  const [view, setView] = useAtom(tasksViewAtom);
 
   const canManage = isAdmin || (!!project && project.ownerId === me?.id);
 
@@ -110,6 +122,7 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
 
   function clearFilters() {
     setFilter({
+      q: undefined,
       status: undefined,
       priority: undefined,
       assignee: undefined,
@@ -169,10 +182,10 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
 
   // Destructured so the memo keys off primitives — `filter` itself is a fresh
   // object on every render.
-  const { status, priority, assignee, label, from, to } = filter;
+  const { q, status, priority, assignee, label, from, to } = filter;
   const visibleTasks = useMemo(
-    () => filterTasks(tasks, { status, priority, assignee, label, from, to }),
-    [tasks, status, priority, assignee, label, from, to],
+    () => filterTasks(tasks, { q, status, priority, assignee, label, from, to }),
+    [tasks, q, status, priority, assignee, label, from, to],
   );
 
   // Subtask tallies over the FULL project list, not the filtered one: a
@@ -206,6 +219,8 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
     for (const t of tasks) map[t.moduleId] = (map[t.moduleId] ?? 0) + 1;
     return map;
   }, [tasks]);
+
+  const moduleStats = useMemo(() => statsByModule(tasks), [tasks]);
 
   // A module with nothing left to show is noise while filtering, but it is
   // still a real (and droppable) module when no filter is on.
@@ -266,7 +281,8 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
 
   if (modulesLoading || tasksLoading) {
     return (
-      <div className="space-y-3 p-6">
+      <div className="space-y-3 p-4 sm:p-6">
+        <Skeleton className="h-9 w-full max-w-xs rounded-md" />
         <Skeleton className="h-24 w-full rounded-xl shadow-2" />
         <Skeleton className="h-24 w-full rounded-xl shadow-2" />
       </div>
@@ -274,30 +290,53 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
   }
 
   return (
-    <div className="space-y-4 p-6">
+    <div className="space-y-4 p-4 sm:p-6">
       {modules.length > 0 && (
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <TaskFilterBar
-            filter={filter}
-            onChange={setFilter}
-            onClear={clearFilters}
-            memberIds={memberIds}
-            userMap={userMap}
-            labelMap={labelMap}
-            matched={visibleTasks.length}
-            total={tasks.length}
-          />
-          {canManage && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setModuleDialog({ open: true })}
-            >
-              <Plus className="mr-1 h-4 w-4" />
-              Add module
-            </Button>
-          )}
-        </div>
+        <TaskFilterBar
+          filter={filter}
+          onChange={setFilter}
+          onClear={clearFilters}
+          memberIds={memberIds}
+          userMap={userMap}
+          labelMap={labelMap}
+          matched={visibleTasks.length}
+          total={tasks.length}
+          reorderNote={view === "list"}
+          actions={
+            <>
+              <div
+                role="group"
+                aria-label="Layout"
+                className="inline-flex gap-1 rounded-full bg-surface-sunken p-[3px]"
+              >
+                {VIEWS.map(({ key, label, icon: Icon }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setView(key)}
+                    aria-pressed={view === key}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm",
+                      "[transition:background-color_var(--duration-fast)_var(--ease-out),color_var(--duration-fast)_var(--ease-out)]",
+                      view === key
+                        ? "bg-surface-raised font-medium text-text shadow-1"
+                        : "text-text-muted hover:text-text",
+                    )}
+                  >
+                    <Icon aria-hidden="true" className="h-4 w-4" />
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {canManage && (
+                <Button size="sm" onClick={() => setModuleDialog({ open: true })}>
+                  <Plus className="mr-1 h-4 w-4" />
+                  Module
+                </Button>
+              )}
+            </>
+          }
+        />
       )}
 
       {modules.length === 0 ? (
@@ -314,16 +353,27 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
               : undefined
           }
         />
-      ) : visibleModules.length === 0 ? (
-        // Only reachable while filtering — `visibleModules` is `modules`
-        // otherwise. The way out of an over-narrow filter is to widen it, so
-        // that is the one CTA (empty-states.md §4, `no-results`).
+      ) : filtering && visibleTasks.length === 0 ? (
+        // The way out of an over-narrow filter is to widen it, so that is the
+        // one CTA (empty-states.md §4, `no-results`).
         <EmptyState
           variant="no-results"
           icon={SearchX}
           title="No tasks match these filters"
           body="Nothing in this project fits every filter at once. Clear them to see the full task list again."
           action={{ label: "Clear filters", onClick: clearFilters }}
+        />
+      ) : view === "board" ? (
+        <TaskBoard
+          projectId={projectId}
+          modules={modules}
+          tasks={visibleTasks}
+          allTasks={tasks}
+          userMap={userMap}
+          labelMap={labelMap}
+          blockedMap={blockedMap}
+          subtaskStats={subtaskStats}
+          onOpenTask={openTask}
         />
       ) : (
         <DndContext sensors={sensors} onDragEnd={onDragEnd}>
@@ -340,6 +390,7 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
                   module={m}
                   tasks={tasksByModule[m.id] ?? []}
                   totalCount={totalByModule[m.id] ?? 0}
+                  stats={moduleStats[m.id] ?? EMPTY_STATS}
                   canManage={canManage}
                   dragDisabled={filtering}
                   userMap={userMap}
