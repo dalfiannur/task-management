@@ -418,6 +418,27 @@ the border the design refuses to draw.
 that is not yet needed, and "Dashboard" versus "My tasks" is exactly the pair that resists
 a distinguishable icon. Worth revisiting past five or six destinations.
 
+#### 4.11.1 Amendment (2026-09-30) — neutral, collapsible, responsive
+
+Chosen by the user after weighing the chrome trade-off again. This supersedes the
+brand-coloured sidebar above; that text stays for the reasoning.
+
+- **Neutral again.** The sidebar sits on `--surface-sunken` with the pairings measured in
+  `4b3fbb8`: hover `--surface-raised`, avatar chip `--surface-raised`, secondary text
+  `--text-muted` (never `--text-subtle`), active pill `--brand-subtle` + `--brand-text` like
+  everywhere else. §3.6 holds once more: the primary button is the only blue fill besides the
+  small brand mark. The `--surface-chrome*` tokens stay; other components still use them.
+- **Collapsible.** A toggle at the bottom switches `w-56` ↔ a `w-14` icon rail, persisted per
+  browser (`sedjiwa.sidebar-collapsed`). In the rail, labels move into right-side tooltips and
+  group headings become hairlines. No keyboard shortcut: `⌘B` belongs to the rich-text editor.
+- **Grouped nav.** Workspace (Dashboard · Projects · My tasks · Reports) and Admin (Users,
+  admins only). Access tokens moved into the user menu, which now opens with name + phone.
+- **Mobile.** Below `md` the aside is hidden; a hamburger in the action bar opens the same
+  content in a left `Sheet` on `--surface-sunken` (so the pairings above still hold). It
+  closes on navigation. The search button drops to icon-only below `sm`.
+- **Breadcrumb.** The action bar now starts with a breadcrumb: the section, plus the project
+  name inside a project (read from the query `ProjectShell` already made, so no extra request).
+
 ### 4.10 Timeline (Gantt) — soft container, industrial interior
 
 Deferred by §5 and §7, decided during Phase 3b.

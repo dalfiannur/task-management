@@ -1,0 +1,28 @@
+# Local Postgres for backend-rs development.
+#
+#   docker compose -f compose.dev.yml up -d
+#
+# The password comes from DEV_POSTGRES_PASSWORD in the sibling .env (compose
+# reads it automatically), and DATABASE_URL in that same .env must match it.
+name: taskmgmt-dev
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: taskmgmt
+      POSTGRES_PASSWORD: ${DEV_POSTGRES_PASSWORD:?set DEV_POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: sedjiwa_tasks_rs
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U taskmgmt -d sedjiwa_tasks_rs"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  pgdata:
