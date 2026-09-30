@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { addDays, parseISO } from "date-fns";
+import { addDays, differenceInCalendarDays, format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
-import type { Task } from "@/features/tasks";
-import { TASK_STATUS_CONFIG } from "@/features/tasks";
+import type { Task, TaskStatus } from "@/features/tasks";
+import { TASK_STATUS_CONFIG, isOverdue } from "@/features/tasks";
 import { ROW_HEIGHT, toIso } from "../timeline-utils";
 
 export interface ReschedulePatch {
@@ -12,8 +12,29 @@ export interface ReschedulePatch {
 
 type Mode = "move" | "resize-left" | "resize-right";
 
-/** A task bar: drag body to shift (preserving duration), drag ends to resize.
- *  Commits on pointer-up via onReschedule; preview is local during drag. */
+const BAR_H = 22;
+
+// Status drives the fill, strongest for what is moving right now. "To do" is
+// the calm default, done/cancelled are history and step back (aturan 4).
+// Overdue overrides the status fill below — it is the one thing on this chart
+// that asks for action.
+const STATUS_BAR: Record<TaskStatus, string> = {
+  todo: "bg-brand-subtle text-brand-text",
+  in_progress: "bg-brand text-text-on-brand",
+  done: "bg-surface-hover text-text-muted",
+  cancelled: "bg-surface-sunken text-text-subtle line-through",
+};
+
+function rangeLabel(span: { start: Date; end: Date }) {
+  const days = differenceInCalendarDays(span.end, span.start) + 1;
+  const start = format(span.start, "MMM d");
+  if (days === 1) return start;
+  return `${start} – ${format(span.end, "MMM d")} · ${days}d`;
+}
+
+/** A task bar: drag body to shift (preserving duration), drag ends to resize,
+ *  click to open. Commits on pointer-up via onReschedule; preview is local
+ *  during drag. */
 export function GanttBar({
   task,
   span,
@@ -22,6 +43,7 @@ export function GanttBar({
   pxPerDay,
   canEdit,
   onReschedule,
+  onOpen,
   conflict,
 }: {
   task: Task;
@@ -31,6 +53,7 @@ export function GanttBar({
   pxPerDay: number;
   canEdit: boolean;
   onReschedule: (taskId: string, patch: ReschedulePatch) => void;
+  onOpen: (taskId: string) => void;
   /** True when this task sits on a conflicting dependency edge, either side. */
   conflict?: boolean;
 }) {
@@ -40,7 +63,7 @@ export function GanttBar({
 
   function down(mode: Mode) {
     return (e: React.PointerEvent) => {
-      if (!canEdit) return;
+      if (e.button !== 0) return;
       e.preventDefault();
       e.stopPropagation();
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
@@ -49,7 +72,7 @@ export function GanttBar({
   }
 
   function move(e: React.PointerEvent) {
-    if (!drag) return;
+    if (!drag || !canEdit) return;
     const delta = Math.round((e.clientX - drag.startX) / pxPerDay);
     if (delta !== drag.delta) setDrag({ ...drag, delta });
   }
@@ -58,7 +81,12 @@ export function GanttBar({
     if (!drag) return;
     const { mode, delta } = drag;
     setDrag(null);
-    if (delta === 0) return;
+    // No movement: a click. Opening from a resize handle would be a surprise,
+    // so only the body opens the task.
+    if (delta === 0) {
+      if (mode === "move") onOpen(task.id);
+      return;
+    }
 
     if (mode === "move") {
       const patch: ReschedulePatch = {};
@@ -92,53 +120,79 @@ export function GanttBar({
     }
   }
 
-  const done = task.status === "done";
+  const overdue = isOverdue(task);
+  // A bar narrower than its label shows the title beside it instead of a
+  // truncated "…" — at month zoom a one-day task is 5px wide.
+  const narrow = pWidth < 48;
 
   return (
     <div
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen(task.id);
+        }
+      }}
       onPointerMove={move}
       onPointerUp={up}
+      onPointerCancel={() => setDrag(null)}
       onPointerDown={down("move")}
       style={{
         left: pLeft,
         width: pWidth,
-        top: (ROW_HEIGHT - 22) / 2,
-        height: 22,
+        top: (ROW_HEIGHT - BAR_H) / 2,
+        height: BAR_H,
       }}
       className={cn(
         // z-20 milik urutan lapis yang didefinisikan di gantt-chart.tsx: di
         // ATAS fade tepi kanan, di BAWAH kolom nama yang sticky. Tanpa angka
         // eksplisit bar jatuh ke z-auto dan fade yang ber-z-index menang.
-        "absolute z-20 flex items-center rounded-full px-2.5 text-xs",
-        canEdit ? "cursor-grab active:cursor-grabbing" : "cursor-default",
-        // Task selesai adalah riwayat, bukan sinyal — ia diredupkan, bukan
-        // diberi warna kedua yang ikut bersaing (aturan 4). Maknanya tetap
-        // dibawa label sr-only di bawah, bukan warna saja (accessibility §5).
-        done
-          ? "bg-surface-hover text-text-muted"
-          : "bg-brand text-text-on-brand",
+        "group absolute z-20 flex items-center rounded-md px-2 text-xs font-medium",
+        "outline-none focus-visible:ring-2 focus-visible:ring-focus",
+        "[transition:box-shadow_var(--duration-fast)_var(--ease-out)] hover:shadow-1",
+        canEdit ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
+        overdue ? "bg-danger text-text-on-danger" : STATUS_BAR[task.status],
         // Conflict ring loses to the drag ring — mid-drag feedback is the
         // more urgent signal, and the conflict is still visible once released.
-        conflict && "ring-2 ring-danger",
+        // The offset keeps it legible on an overdue (danger-filled) bar.
+        conflict &&
+          "ring-2 ring-danger ring-offset-1 ring-offset-surface-raised",
         drag && "ring-2 ring-focus",
       )}
-      title={conflict ? `${task.title} — dependency conflict` : task.title}
+      title={[
+        task.title,
+        rangeLabel(span),
+        TASK_STATUS_CONFIG[task.status].label,
+        overdue && "Overdue",
+        conflict && "Dependency conflict",
+      ]
+        .filter(Boolean)
+        .join(" · ")}
     >
       {canEdit && (
         <span
           onPointerDown={down("resize-left")}
-          className="absolute left-0 top-0 h-full w-1.5 cursor-ew-resize rounded-l-full bg-current opacity-30"
+          className="absolute left-0 top-0 h-full w-1.5 cursor-ew-resize rounded-l-md bg-current opacity-0 group-hover:opacity-30"
         />
       )}
-      <span className="truncate">{task.title}</span>
+      {narrow ? (
+        <span className="pointer-events-none absolute left-full ml-1.5 whitespace-nowrap text-text-muted">
+          {task.title}
+        </span>
+      ) : (
+        <span className="truncate">{task.title}</span>
+      )}
       {canEdit && (
         <span
           onPointerDown={down("resize-right")}
-          className="absolute right-0 top-0 h-full w-1.5 cursor-ew-resize rounded-r-full bg-current opacity-30"
+          className="absolute right-0 top-0 h-full w-1.5 cursor-ew-resize rounded-r-md bg-current opacity-0 group-hover:opacity-30"
         />
       )}
       <span className="sr-only">
         {TASK_STATUS_CONFIG[task.status].label}
+        {overdue && " · Overdue"}
         {conflict && " · Dependency conflict"}
       </span>
     </div>

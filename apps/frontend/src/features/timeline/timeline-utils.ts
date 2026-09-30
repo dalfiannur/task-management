@@ -7,6 +7,7 @@ import {
   differenceInCalendarDays,
   eachDayOfInterval,
   format,
+  isWeekend,
   parseISO,
 } from "date-fns";
 import type { Task } from "@/features/tasks";
@@ -42,7 +43,9 @@ export function isScheduled(task: Task): boolean {
   return !!task.startDate || !!task.dueDate;
 }
 
-/** Window spanning all scheduled tasks + padding; ±2 weeks around today if none. */
+/** Window spanning all scheduled tasks AND today, plus padding; ±2 weeks
+ *  around today if nothing is scheduled. Today is always inside, so the
+ *  today marker and the "Today" button never point off the grid. */
 export function computeRange(tasks: Task[], today: Date): DateRange {
   const spans = tasks.map(effectiveSpan).filter(Boolean) as {
     start: Date;
@@ -51,8 +54,8 @@ export function computeRange(tasks: Task[], today: Date): DateRange {
   if (spans.length === 0) {
     return { start: addDays(today, -14), end: addDays(today, 14) };
   }
-  let min = spans[0].start;
-  let max = spans[0].end;
+  let min = today;
+  let max = today;
   for (const s of spans) {
     if (s.start < min) min = s.start;
     if (s.end > max) max = s.end;
@@ -88,7 +91,8 @@ export interface Tick {
   major: boolean; // major gridline (month/week boundary)
 }
 
-/** Header ticks for the current zoom. */
+/** Lower header row + vertical gridlines for the current zoom. Labels are
+ *  short on purpose: the month/year sits in the upper row (buildGroups). */
 export function buildTicks(range: DateRange, zoom: Zoom): Tick[] {
   const days = rangeDays(range);
   const ticks: Tick[] = [];
@@ -97,15 +101,47 @@ export function buildTicks(range: DateRange, zoom: Zoom): Tick[] {
       ticks.push({ offset: i, label: format(d, "d"), major: d.getDate() === 1 });
     } else if (zoom === "week") {
       if (d.getDay() === 1) {
-        ticks.push({ offset: i, label: format(d, "MMM d"), major: d.getDate() <= 7 });
+        ticks.push({ offset: i, label: format(d, "d"), major: d.getDate() <= 7 });
       }
     } else {
       if (d.getDate() === 1) {
-        ticks.push({ offset: i, label: format(d, "MMM yyyy"), major: true });
+        ticks.push({ offset: i, label: format(d, "MMM"), major: d.getMonth() === 0 });
       }
     }
   });
   return ticks;
+}
+
+export interface Group {
+  offset: number; // day offset from range start
+  days: number; // width in days
+  label: string;
+}
+
+/** Upper header row: months (day/week zoom) or years (month zoom). The first
+ *  and last group are clipped to the range, so a label always has a home. */
+export function buildGroups(range: DateRange, zoom: Zoom): Group[] {
+  const key = zoom === "month" ? "yyyy" : "yyyy-MM";
+  const label = zoom === "month" ? "yyyy" : "MMMM yyyy";
+  const groups: Group[] = [];
+  rangeDays(range).forEach((d, i) => {
+    const last = groups[groups.length - 1];
+    if (last && format(d, key) === last.label) last.days += 1;
+    else groups.push({ offset: i, days: 1, label: format(d, key) });
+  });
+  return groups.map((g) => ({
+    ...g,
+    label: format(addDays(range.start, g.offset), label),
+  }));
+}
+
+/** Day offsets of Saturdays/Sundays in the range (shaded at day zoom). */
+export function weekendOffsets(range: DateRange): number[] {
+  const out: number[] = [];
+  rangeDays(range).forEach((d, i) => {
+    if (isWeekend(d)) out.push(i);
+  });
+  return out;
 }
 
 export function toIso(date: Date): string {

@@ -24,6 +24,7 @@ export {
   useMoveTask,
 } from "./api/hooks";
 export { AllTasksTab } from "./components/all-tasks-tab";
+export { TaskDialog } from "./components/task-dialog";
 export {
   filterTasks,
   hasActiveFilter,
@@ -31,7 +32,11 @@ export {
   parseTaskFilter,
   type TaskFilter,
 } from "./filter";
-export { useModuleCollapsed } from "./atoms/collapsed-modules";
+export {
+  useModuleCollapsed,
+  collapsedModulesAtom,
+} from "./atoms/collapsed-modules";
+export { isOverdue, statsByModule, type ModuleStats } from "./task-stats";
 export { StatusBadge, PriorityLabel } from "./components/task-badges";
 export {
   buildHierarchy,
