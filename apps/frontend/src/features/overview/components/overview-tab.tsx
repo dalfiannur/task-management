@@ -1,37 +1,41 @@
-import { AlertTriangle, CheckCircle2, Clock, LayoutDashboard, ListTodo } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { LayoutDashboard } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StatCard } from "@/components/shared/stat-card";
+import { KpiStrip } from "@/components/shared/kpi-strip";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ProjectActivity } from "@/features/activity";
 import { useProject } from "@/features/projects";
 import { useProjectOverview } from "../api/hooks";
-import { ModuleProgressList } from "./module-progress-list";
+import { ProjectAttention } from "./project-attention";
+import { ProjectProgress } from "./project-progress";
 import { ProjectInfoCard } from "./project-info-card";
 
 /** Overview: tab pertama dan tujuan default project detail. Read-only —
- *  setiap mutasi tetap tinggal di tabnya masing-masing. */
+ *  setiap mutasi tetap tinggal di tabnya masing-masing.
+ *
+ *  Tata letaknya meniru dashboard (routes/_authed/dashboard.tsx) dengan
+ *  cakupan satu project: strip KPI, lalu kolom utama untuk yang menuntut
+ *  tindakan (Needs attention, Progress) dan rail kanan untuk konteks (About,
+ *  Recent activity). Heading polos di kanvas, komponen berkartu di bawahnya. */
 export function OverviewTab({ projectId }: { projectId: string }) {
   const { overview, isLoading, isError, error } = useProjectOverview(projectId);
   const { project } = useProject(projectId);
 
   if (isLoading) {
     return (
-      /* Skeleton mengikuti bentuk akhirnya — satu baris empat kartu, dua
-         kolom, lalu blok activity — supaya tidak ada lompatan layout saat
-         data masuk. */
-      <div className="space-y-4 p-6">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-20 w-full rounded-xl shadow-2" />
-          ))}
-        </div>
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
-          <Skeleton className="h-56 w-full rounded-xl shadow-2" />
-          <Skeleton className="h-56 w-full rounded-xl shadow-2" />
-        </div>
-        <div className="space-y-3">
-          <Skeleton className="h-4 w-32 rounded-xl shadow-2" />
-          <Skeleton className="h-48 w-full rounded-xl shadow-2" />
+      /* Skeleton mengikuti bentuk akhirnya supaya tidak ada lompatan layout
+         saat data masuk. */
+      <div className="space-y-6 p-4 sm:p-6">
+        <Skeleton className="h-[88px] w-full rounded-xl shadow-2" />
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="min-w-0 space-y-6 lg:col-span-2">
+            <Skeleton className="h-64 w-full rounded-xl shadow-2" />
+            <Skeleton className="h-56 w-full rounded-xl shadow-2" />
+          </div>
+          <div className="space-y-6">
+            <Skeleton className="h-48 w-full rounded-xl shadow-2" />
+            <Skeleton className="h-64 w-full rounded-xl shadow-2" />
+          </div>
         </div>
       </div>
     );
@@ -66,55 +70,63 @@ export function OverviewTab({ projectId }: { projectId: string }) {
     );
   }
 
-  const pct =
+  const donePct =
     overview.totalTasks > 0
       ? Math.round((overview.doneTasks / overview.totalTasks) * 100)
       : 0;
 
   return (
-    <div className="space-y-4 p-6">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard icon={ListTodo} label="Total tasks" value={overview.totalTasks} />
-        <StatCard icon={Clock} label="In progress" value={overview.inProgressTasks} />
-        <StatCard icon={CheckCircle2} label="Done" value={overview.doneTasks} />
-        <StatCard
-          icon={AlertTriangle}
-          label="Overdue"
-          value={overview.overdueTasks}
-          alert
-        />
-      </div>
+    <div className="space-y-6 p-4 sm:p-6">
+      <KpiStrip
+        cells={[
+          { label: "Total tasks", value: overview.totalTasks },
+          { label: "In progress", value: overview.inProgressTasks },
+          { label: "Done", value: overview.doneTasks, hint: `${donePct}%` },
+          {
+            label: "Overdue",
+            value: overview.overdueTasks,
+            alert: overview.overdueTasks > 0,
+          },
+        ]}
+      />
 
-      {/* Kolom kanan dipatok 20rem: panel About isinya label+nilai pendek, dan
-          membiarkannya ikut melar membuat barisnya renggang tak keruan. */}
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <div className="rounded-xl bg-surface-raised p-4 shadow-2">
-          <h2 className="text-label mb-3">Progress</h2>
-          <div className="flex items-center gap-3">
-            <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface-sunken">
-              <div
-                className="h-full rounded-full bg-brand"
-                style={{ width: `${pct}%` }}
-              />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="min-w-0 space-y-6 lg:col-span-2">
+          <section>
+            <div className="mb-3 flex items-baseline justify-between">
+              <h2 className="text-label">Needs attention</h2>
+              <Link
+                to="/projects/$projectId/all-tasks"
+                params={{ projectId }}
+                className="text-xs text-text-muted hover:text-text"
+              >
+                All tasks →
+              </Link>
             </div>
-            <span className="text-num text-sm font-semibold">{pct}%</span>
-          </div>
-          <ModuleProgressList modules={overview.perModule} />
+            <ProjectAttention projectId={projectId} withinDays={7} />
+          </section>
+
+          <section>
+            <h2 className="text-label mb-3">Progress</h2>
+            <ProjectProgress projectId={projectId} overview={overview} />
+          </section>
         </div>
 
-        {project && <ProjectInfoCard project={project} overview={overview} />}
+        <aside className="min-w-0 space-y-6">
+          {project && (
+            <section>
+              <h2 className="text-label mb-3">About</h2>
+              <ProjectInfoCard project={project} overview={overview} />
+            </section>
+          )}
+          {/* Tanpa kartu pembungkus: ProjectActivity (lewat ActivityFeed)
+              sudah membawa kartu raised-nya sendiri untuk ketiga state-nya. */}
+          <section>
+            <h2 className="text-label mb-3">Recent activity</h2>
+            <ProjectActivity projectId={projectId} pageSize={8} />
+          </section>
+        </aside>
       </div>
-
-      {/* Tanpa kartu pembungkus di sini: ProjectActivity (lewat ActivityFeed)
-          sudah membawa kartu raised-nya sendiri untuk ketiga state-nya (loading,
-          kosong, terisi). Menambah satu lagi di sini menghasilkan kartu di
-          dalam kartu — bahasa yang sama sekali tidak dipakai di dashboard, yang
-          menaruh heading polos di kanvas lalu komponennya langsung di
-          bawahnya (lihat routes/_authed/dashboard.tsx). */}
-      <section>
-        <h2 className="text-label mb-3">Recent activity</h2>
-        <ProjectActivity projectId={projectId} pageSize={10} />
-      </section>
     </div>
   );
 }

@@ -55,9 +55,8 @@ export function ProjectInfoCard({
   const range = formatProjectDateRange(project) ?? "No dates set";
 
   return (
-    <div className="rounded-xl bg-surface-raised p-4 shadow-2">
-      <h2 className="text-label mb-3">About</h2>
-      {/* Sekat pakai border-subtle, bukan border: di dalam permukaan raised
+    <div className="rounded-xl bg-surface-raised px-4 py-1 shadow-2">
+      {/* Heading "About" ada di kanvas (overview-tab), bukan di sini. Sekat pakai border-subtle, bukan border: di dalam permukaan raised
           `--border` terbaca sebagai jahitan (lihat catatan di members-tab). */}
       <div className="divide-y divide-border-subtle">
         <Row label="Owner">
