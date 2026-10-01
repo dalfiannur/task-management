@@ -24,6 +24,9 @@ export interface RichTextEditorProps {
   extensions?: Parameters<typeof useEditor>[0]["extensions"];
   /** Give the caller the editor instance (e.g. to extract mentions on submit). */
   onEditorReady?: (editor: Editor) => void;
+  /** "document": no frame, a sticky toolbar and body-size text — for a page
+   *  that IS the document (wiki pages) rather than a field inside a form. */
+  variant?: "field" | "document";
 }
 
 function ToolbarButton({
@@ -60,7 +63,9 @@ export function RichTextEditor({
   className,
   extensions = [],
   onEditorReady,
+  variant = "field",
 }: RichTextEditorProps) {
+  const doc = variant === "document";
   const editor = useEditor({
     editable,
     // In v3, StarterKit bundles the Link extension, so register it through
@@ -78,7 +83,8 @@ export function RichTextEditor({
     editorProps: {
       attributes: {
         class: cn(
-          "prose min-h-[6rem] max-w-none px-3 py-2 text-sm focus:outline-none",
+          "prose max-w-none focus:outline-none",
+          doc ? "min-h-[40vh] py-4 text-base" : "min-h-[6rem] px-3 py-2 text-sm",
         ),
       },
     },
@@ -99,9 +105,16 @@ export function RichTextEditor({
   if (!editor) return null;
 
   return (
-    <div className={cn("rounded-md border", className)}>
+    <div className={cn(!doc && "rounded-md border", className)}>
       {editable && (
-        <div className="flex flex-wrap items-center gap-0.5 border-b p-1">
+        <div
+          className={cn(
+            "flex flex-wrap items-center gap-0.5 p-1",
+            doc
+              ? "sticky top-0 z-10 -mx-1 border-b border-border-subtle bg-surface-raised"
+              : "border-b",
+          )}
+        >
           <ToolbarButton
             label="Bold"
             active={editor.isActive("bold")}
