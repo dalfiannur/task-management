@@ -218,7 +218,7 @@ export function MediaTab({ projectId }: { projectId: string }) {
       {dragging && (
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-3 z-20 flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-brand bg-brand-subtle/80 text-brand-text"
+          className="pointer-events-none absolute inset-3 z-20 flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-brand-text bg-brand-subtle/80 text-brand-text"
         >
           <CloudUpload className="h-10 w-10" strokeWidth={1.5} />
           <p className="text-sm font-medium">Drop files to upload</p>

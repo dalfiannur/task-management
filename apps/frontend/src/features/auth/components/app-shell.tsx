@@ -347,7 +347,7 @@ function SectionHeading({
 const ITEM_BASE =
   "relative flex items-center gap-2.5 rounded-md py-1.5 transition-colors [transition-duration:var(--duration-fast)]";
 const ITEM_ACTIVE =
-  "bg-surface-raised text-text font-medium [&>svg]:text-brand before:absolute before:inset-y-1.5 before:-left-3 before:w-[3px] before:rounded-r-full before:bg-brand";
+  "bg-surface-raised text-text font-medium [&>svg]:text-brand-text before:absolute before:inset-y-1.5 before:-left-3 before:w-[3px] before:rounded-r-full before:bg-brand-text";
 const ITEM_INACTIVE = "text-text hover:bg-surface-raised [&>svg]:text-text-muted";
 
 function NavLink({
@@ -381,7 +381,7 @@ function NavLink({
           (collapsed ? (
             <span
               aria-hidden="true"
-              className="absolute top-1 right-2 h-1.5 w-1.5 rounded-full bg-brand"
+              className="absolute top-1 right-2 h-1.5 w-1.5 rounded-full bg-brand-text"
             />
           ) : (
             <span className="text-num text-xs text-text-muted">
@@ -545,7 +545,7 @@ function PinProjectPicker() {
                 >
                   <span className="min-w-0 flex-1 truncate">{p.name}</span>
                   {isPinned(p.id) && (
-                    <Check className="h-4 w-4 text-brand" aria-label="Pinned" />
+                    <Check className="h-4 w-4 text-brand-text" aria-label="Pinned" />
                   )}
                 </CommandItem>
               ))}

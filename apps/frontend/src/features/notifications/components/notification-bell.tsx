@@ -107,7 +107,7 @@ export function NotificationBell() {
                   <span
                     className={cn(
                       "mt-1.5 h-2 w-2 shrink-0 rounded-full",
-                      n.read ? "bg-transparent" : "bg-brand",
+                      n.read ? "bg-transparent" : "bg-brand-text",
                     )}
                   />
                   <span className="min-w-0 flex-1">

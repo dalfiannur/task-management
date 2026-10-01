@@ -599,7 +599,7 @@ export function GanttChart({ projectId }: { projectId: string }) {
                       />
                     ))}
                     <div
-                      className="absolute inset-y-0 w-0.5 -translate-x-1/2 bg-brand"
+                      className="absolute inset-y-0 w-0.5 -translate-x-1/2 bg-brand-text"
                       style={{ left: todayX }}
                     />
                   </div>

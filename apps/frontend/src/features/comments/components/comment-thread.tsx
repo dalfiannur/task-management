@@ -115,7 +115,7 @@ export function CommentThread({
                   // is exactly what ui-design's "no grey on color" rule
                   // forbids. The border accent carries the "this one" signal
                   // instead.
-                  highlighted && "-mx-2 border-l-2 border-brand bg-surface-hover p-2",
+                  highlighted && "-mx-2 border-l-2 border-brand-text bg-surface-hover p-2",
                 )}
               >
                 <Avatar className="h-7 w-7">

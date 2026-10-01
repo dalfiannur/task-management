@@ -61,9 +61,12 @@ a.badge[data-variant="secondary"]:hover {
 }
 
 /* variant: destructive */
+/* Fill --danger penuh + --text-on-danger: pasangan yang sudah diukur di
+   tokens.css (6.04 light / 5.78 dark). Fill 60% transparan dengan label putih
+   yang lama hanya mencapai 3.31:1 di light. */
 .badge[data-variant="destructive"] {
-  background-color: color-mix(in srgb, var(--danger) 60%, transparent);
-  color: white;
+  background-color: var(--danger);
+  color: var(--text-on-danger);
 }
 
 a.badge[data-variant="destructive"]:hover {

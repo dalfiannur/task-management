@@ -108,6 +108,11 @@
   /* --brand sebagai TEKS gagal di dark (2.01:1). Pakai --brand-text untuk
      teks berwarna brand; --brand hanya untuk fill. */
   --brand-text:   var(--brand-600);
+  /* Fill brand sekunder — segmen "sedang berjalan" di samping fill --brand
+     ("selesai") pada progress bertumpuk. brand-300 di KEDUA tema: lebih terang
+     dari --brand di keduanya, jadi terbaca berbeda dari fill penuh maupun track
+     --surface-sunken. Dulu --brand/35, yang di dark nyaris lebur ke track. */
+  --brand-soft:   var(--brand-300);
 
   --border:        var(--grey-200);
   /* Hairline PEMISAH DI DALAM permukaan raised (baris tabel, sekat seksi).
@@ -239,6 +244,7 @@
   --brand-hover:  var(--brand-600);
   --brand-subtle: var(--brand-900);
   --brand-text:   var(--brand-300);
+  --brand-soft:   var(--brand-300);
 
   --border:        var(--grey-800);
   /* Di dark, pemisah halus justru LEBIH TERANG dari --border: di atas

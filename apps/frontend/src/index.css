@@ -47,6 +47,7 @@
   --color-brand-hover: var(--brand-hover);
   --color-brand-subtle: var(--brand-subtle);
   --color-brand-text: var(--brand-text);
+  --color-brand-soft: var(--brand-soft);
 
   /* Batas & focus */
   --color-border: var(--border);

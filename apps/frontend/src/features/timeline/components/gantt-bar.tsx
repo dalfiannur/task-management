@@ -22,7 +22,7 @@ const STATUS_BAR: Record<TaskStatus, string> = {
   todo: "bg-brand-subtle text-brand-text",
   in_progress: "bg-brand text-text-on-brand",
   done: "bg-surface-hover text-text-muted",
-  cancelled: "bg-surface-sunken text-text-subtle line-through",
+  cancelled: "bg-surface-sunken text-text-muted line-through",
 };
 
 function rangeLabel(span: { start: Date; end: Date }) {

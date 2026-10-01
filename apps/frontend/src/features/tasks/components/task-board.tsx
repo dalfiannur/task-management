@@ -167,7 +167,7 @@ function BoardColumn({
           <DraggableCard key={t.id} task={t} ctx={ctx} />
         ))}
         {tasks.length === 0 && (
-          <p className="rounded-lg border border-dashed border-border-subtle px-3 py-6 text-center text-xs text-text-subtle">
+          <p className="rounded-lg border border-dashed border-border-subtle px-3 py-6 text-center text-xs text-text-muted">
             No tasks
           </p>
         )}
