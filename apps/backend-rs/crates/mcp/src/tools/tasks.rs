@@ -48,6 +48,24 @@ fn priority_arg(args: &Value) -> Result<Option<i32>, ToolError> {
     }
 }
 
+/// `create_task`'s optional initial `status`. Validated at this boundary for
+/// the same reason as `priority_arg`: `create_task_core` reads an
+/// unrecognized status as "unspecified" and silently defaults it to Todo, so a
+/// typo like "in-progress" would create the task in the wrong state instead
+/// of failing.
+fn status_arg(args: &Value) -> Result<Option<i32>, ToolError> {
+    match opt_str(args, "status") {
+        None => Ok(None),
+        Some(s) => domain::task::TaskStatus::parse(&s)
+            .map(|st| Some(st.to_proto()))
+            .ok_or_else(|| {
+                ToolError::BadArgs(format!(
+                    "`status` must be one of todo, in_progress, done, cancelled (got `{s}`)"
+                ))
+            }),
+    }
+}
+
 /// The inverse of `status_label`, for `update_task`'s optional `status` field.
 /// Unlike priority, `0` is never a valid status to send: an unrecognized label
 /// is deliberately mapped to it anyway (rather than silently dropped) so
@@ -206,6 +224,7 @@ pub const CREATE_TASK: ToolMeta = ToolMeta {
                 "title": { "type": "string" },
                 "description": { "type": "string" },
                 "parent_id": { "type": "string", "description": "Make this a subtask of that task. The parent must be in the same project and must not itself be a subtask — nesting is one level deep." },
+                "status": { "type": "string", "enum": ["todo", "in_progress", "done", "cancelled"], "description": "Initial status. Omit to start the task as todo." },
                 "priority": { "type": "string", "enum": ["none", "low", "medium", "high", "urgent"] },
                 "start_date": { "type": "string", "description": "ISO-8601 date, yyyy-MM-dd" },
                 "due_date": { "type": "string", "description": "ISO-8601 date, yyyy-MM-dd" },
@@ -222,9 +241,9 @@ pub async fn create_task(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
         module_id: str_arg(args, "module_id")?,
         title: str_arg(args, "title")?,
         description: opt_str(args, "description"),
-        // Always UNSPECIFIED: `create_task_core` defaults it to Todo, and this
-        // tool doesn't expose an initial status to the model.
-        status: 0,
+        // `status_arg` already rejects a misspelled status; `0` here only ever
+        // means "not supplied", which `create_task_core` defaults to Todo.
+        status: status_arg(args)?.unwrap_or(0),
         // `priority_arg` already rejects a misspelled priority; `0` here only
         // ever means "not supplied", which `create_task_core` treats as no
         // priority.

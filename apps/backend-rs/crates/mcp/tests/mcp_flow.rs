@@ -800,6 +800,55 @@ async fn create_task_rejects_a_misspelled_priority() {
 }
 
 #[tokio::test]
+async fn create_task_sets_an_initial_status() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    let (_project_id, module_id) = seed_project_and_module(&store, &user).await;
+
+    let (_, created) = rpc(
+        &router,
+        Some(&token),
+        json!({ "jsonrpc": "2.0", "id": 36, "method": "tools/call",
+                "params": { "name": "create_task",
+                            "arguments": {
+                                "module_id": module_id,
+                                "title": "already started",
+                                "status": "in_progress"
+                            } } }),
+    )
+    .await;
+    assert_eq!(created["result"]["isError"], false, "{created:?}");
+    let payload: Value =
+        serde_json::from_str(created["result"]["content"][0]["text"].as_str().unwrap()).unwrap();
+    assert_eq!(payload["status"], "in_progress");
+}
+
+#[tokio::test]
+async fn create_task_rejects_a_misspelled_status() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    let (_project_id, module_id) = seed_project_and_module(&store, &user).await;
+
+    let (_, body) = rpc(
+        &router,
+        Some(&token),
+        json!({ "jsonrpc": "2.0", "id": 37, "method": "tools/call",
+                "params": { "name": "create_task",
+                            "arguments": {
+                                "module_id": module_id,
+                                "title": "typo'd status",
+                                "status": "in-progress"
+                            } } }),
+    )
+    .await;
+    // `create_task_core` would otherwise default the unknown status to Todo.
+    assert_eq!(body["error"]["code"], -32602, "{body:?}");
+    assert!(body.get("result").is_none());
+}
+
+#[tokio::test]
 async fn update_task_round_trips_title_description_and_priority() {
     let Some((router, store)) = router_and_store().await else { return skipped() };
     let user = seed_active_user(&store).await;
