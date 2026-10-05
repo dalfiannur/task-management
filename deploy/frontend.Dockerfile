@@ -46,6 +46,12 @@ COPY --from=builder /build/apps/frontend/dist /usr/share/nginx/html
 # targets the retired Bun backend and the wider sedjiwa stack.
 COPY deploy/nginx.conf /etc/nginx/nginx.conf
 
+# The entrypoint fills NGINX_LOCAL_RESOLVERS from /etc/resolv.conf and renders
+# this into /etc/nginx/conf.d/resolver.conf, which nginx.conf includes — so
+# backend-rs is re-resolved after the backend container is recreated.
+ENV NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1
+COPY deploy/nginx-resolver.conf.template /etc/nginx/templates/resolver.conf.template
+
 EXPOSE 80
 
 CMD ["nginx", "-g", "daemon off;"]
