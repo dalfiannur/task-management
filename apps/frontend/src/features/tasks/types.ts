@@ -30,6 +30,8 @@ export interface Task {
   parentId?: string;
   /** Tasks that should finish before this one starts (finish-to-start). */
   blockedByIds: string[];
+  /** Sequential within the project (#1, #2, …); stable across moves. */
+  number: number;
 }
 
 export const TASK_STATUSES: TaskStatus[] = [

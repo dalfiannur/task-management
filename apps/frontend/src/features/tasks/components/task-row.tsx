@@ -21,7 +21,7 @@ import { LabelChips, type Label } from "@/features/labels";
 import type { Task } from "../types";
 import { statusToProto } from "../api/mappers";
 import { isOptimisticTaskId, useUpdateTask, useDeleteTask } from "../api/hooks";
-import { DueDate, PriorityLabel } from "./task-badges";
+import { DueDate, PriorityLabel, TaskNumber } from "./task-badges";
 import { StatusMenu } from "./status-menu";
 import { AssigneeAvatars } from "./assignee-picker";
 
@@ -147,6 +147,7 @@ export function TaskRow({
               done && "text-text-muted line-through",
             )}
           >
+            <TaskNumber number={task.number} />
             {task.title}
           </button>
           {progress && (

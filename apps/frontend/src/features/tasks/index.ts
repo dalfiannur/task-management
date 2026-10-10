@@ -37,7 +37,7 @@ export {
   collapsedModulesAtom,
 } from "./atoms/collapsed-modules";
 export { isOverdue, statsByModule, type ModuleStats } from "./task-stats";
-export { StatusBadge, PriorityLabel } from "./components/task-badges";
+export { StatusBadge, PriorityLabel, TaskNumber } from "./components/task-badges";
 export {
   buildHierarchy,
   subtaskProgress,

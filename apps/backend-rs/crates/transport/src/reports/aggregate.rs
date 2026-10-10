@@ -289,6 +289,7 @@ mod tests {
             created_by: "1".into(),
             parent_id: None,
             blocked_by_ids: Vec::new(),
+            number: 0,
         }
     }
 

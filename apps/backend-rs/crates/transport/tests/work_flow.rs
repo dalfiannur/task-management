@@ -11,6 +11,7 @@ use axum::http::StatusCode;
 use axum::middleware::{from_fn, Next};
 use axum::response::Response;
 use axum::Router;
+use domain::task::{TaskAudit, TaskInfo, TaskModuleRef};
 use domain::user::{UserPassword, UserPhone, UserProfile, UserStatusComponent};
 use persistence::Store;
 use serde_json::{json, Value};
@@ -516,4 +517,73 @@ async fn module_description_task_lists_move_and_module_cascade() {
     let list = ok(&router, &format!("{MODULE}/ListModules"), &to, json!({ "projectId": pid })).await;
     let names: Vec<&str> = list["modules"].as_array().unwrap().iter().map(|m| m["name"].as_str().unwrap()).collect();
     assert_eq!(names, vec!["Uno"]);
+}
+
+#[tokio::test]
+async fn task_numbers_count_per_project_and_are_backfilled() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let owner = mk_user(&store).await;
+    let to = token(&owner);
+    let pa = project_with(&router, &owner, &[]).await;
+    let pb = project_with(&router, &owner, &[]).await;
+    let module = |p: String| {
+        let (router, to) = (router.clone(), to.clone());
+        async move {
+            ok(&router, &format!("{MODULE}/CreateModule"), &to, json!({ "projectId": p, "name": "M" })).await["id"]
+                .as_str()
+                .unwrap()
+                .to_string()
+        }
+    };
+    let (a1, a2, b1) = (module(pa.clone()).await, module(pa.clone()).await, module(pb.clone()).await);
+    let create = |m: &str, extra: Value| {
+        let mut body = json!({ "moduleId": m, "title": "T" });
+        body.as_object_mut().unwrap().extend(extra.as_object().unwrap().clone());
+        let (router, to) = (router.clone(), to.clone());
+        async move { ok(&router, &format!("{TASK}/CreateTask"), &to, body).await }
+    };
+
+    // Numbers run per project, across its modules, subtasks included.
+    let t1 = create(&a1, json!({})).await;
+    assert_eq!(num(&t1, "number"), 1);
+    assert_eq!(num(&create(&a2, json!({})).await, "number"), 2);
+    let sub = create(&a1, json!({ "parentId": t1["id"] })).await;
+    assert_eq!(num(&sub, "number"), 3);
+    assert_eq!(num(&create(&b1, json!({})).await, "number"), 1, "another project starts at 1");
+
+    // Moving keeps the number; deleting a lower one does not free it.
+    let moved = ok(&router, &format!("{TASK}/MoveTask"), &to, json!({ "id": t1["id"], "moduleId": a2, "order": 0 })).await;
+    assert_eq!(num(&moved, "number"), 1);
+    ok(&router, &format!("{TASK}/DeleteTask"), &to, json!({ "id": sub["id"] })).await;
+    let t4 = create(&a1, json!({})).await;
+    assert_eq!(num(&t4, "number"), 3, "next after the highest live number");
+
+    // A task written without a number (seed/fixture path) gets the next one on connect.
+    let raw = store
+        .create((
+            TaskInfo {
+                title: "Raw".into(),
+                description: String::new(),
+                status: "todo".into(),
+                priority: "none".into(),
+                start_date: None,
+                due_date: None,
+                sort_order: 9,
+            },
+            TaskModuleRef { module_id: a1.clone() },
+            TaskAudit {
+                created_at: "2026-01-01T00:00:00Z".into(),
+                updated_at: "2026-01-01T00:00:00Z".into(),
+                completed_at: None,
+                created_by: owner.clone(),
+            },
+        ))
+        .await
+        .unwrap();
+    Store::connect(&std::env::var("DATABASE_URL").unwrap()).await.unwrap();
+    let got = ok(&router, &format!("{TASK}/GetTask"), &to, json!({ "id": raw.to_string() })).await;
+    assert_eq!(num(&got, "number"), 4);
 }

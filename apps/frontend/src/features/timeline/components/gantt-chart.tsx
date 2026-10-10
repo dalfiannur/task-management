@@ -27,6 +27,7 @@ import {
   useModules,
   useTasks,
   useUpdateTask,
+  TaskNumber,
   type ModuleStats,
   type Task,
 } from "@/features/tasks";
@@ -487,6 +488,7 @@ export function GanttChart({ projectId }: { projectId: string }) {
                           r.task.status === "cancelled" && "line-through",
                         )}
                       >
+                        <TaskNumber number={r.task.number} />
                         {r.name}
                       </span>
                       <span className="sr-only">

@@ -4,6 +4,28 @@ import { dueGroup, dueLabel } from "@/features/dashboard";
 import type { Task, TaskPriority, TaskStatus } from "../types";
 import { TASK_PRIORITY_CONFIG, TASK_STATUS_CONFIG } from "../config";
 
+/** "#12" before a task title. Inline-block, so a done title's line-through
+ *  skips it. */
+export function TaskNumber({
+  number,
+  className,
+}: {
+  number: number;
+  className?: string;
+}) {
+  if (!number) return null;
+  return (
+    <span
+      className={cn(
+        "text-num mr-1.5 inline-block font-normal text-text-muted",
+        className,
+      )}
+    >
+      #{number}
+    </span>
+  );
+}
+
 export function StatusBadge({ status }: { status: TaskStatus }) {
   const c = TASK_STATUS_CONFIG[status];
   return (

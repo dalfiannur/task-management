@@ -65,6 +65,8 @@ message Task {
   string created_by = 15;
   optional string parent_id = 16;
   repeated string blocked_by_ids = 17;
+  // Sequential within the project (#1, #2, …); stable across moves.
+  int32 number = 18;
 }
 
 enum TaskStatus {

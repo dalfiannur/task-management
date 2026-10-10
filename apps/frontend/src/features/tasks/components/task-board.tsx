@@ -19,7 +19,7 @@ import { TASK_STATUS_CONFIG } from "../config";
 import { statusToProto } from "../api/mappers";
 import { isOptimisticTaskId, useUpdateTask } from "../api/hooks";
 import { AssigneeAvatars } from "./assignee-picker";
-import { DueDate, PriorityLabel } from "./task-badges";
+import { DueDate, PriorityLabel, TaskNumber } from "./task-badges";
 import { StatusMenu } from "./status-menu";
 
 interface CardContext {
@@ -248,6 +248,7 @@ function BoardCard({
           done && "text-text-muted line-through",
         )}
       >
+        <TaskNumber number={task.number} />
         {task.title}
       </button>
 

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { CalendarOff, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DatePickerField } from "@/components/shared/date-picker-field";
-import { TASK_STATUS_CONFIG, type Task } from "@/features/tasks";
+import { TASK_STATUS_CONFIG, TaskNumber, type Task } from "@/features/tasks";
 
 /** Tasks with no dates. Picking a date schedules them (start = due = pick). */
 export function UnscheduledPanel({
@@ -66,6 +66,7 @@ export function UnscheduledPanel({
                 onClick={() => onOpen(t.id)}
                 className="min-w-0 truncate text-left text-sm hover:underline"
               >
+                <TaskNumber number={t.number} />
                 {t.title}
                 <span className="sr-only">
                   {" "}

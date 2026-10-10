@@ -3,7 +3,7 @@ import { CheckCircle2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/shared/empty-state";
 import { cn } from "@/lib/utils";
-import { PriorityLabel } from "@/features/tasks";
+import { PriorityLabel, TaskNumber } from "@/features/tasks";
 import { useUpcomingDeadlines } from "../api/hooks";
 import { dueGroup, dueLabel, type DueGroup } from "../due";
 import type { MyTaskItem } from "../types";
@@ -89,7 +89,10 @@ function AttentionRow({ item, late }: { item: MyTaskItem; late: boolean }) {
         className="flex items-center gap-3 px-4 py-2.5 transition-colors [transition-duration:var(--duration-fast)] hover:bg-surface-hover"
       >
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm">{task.title}</span>
+          <span className="block truncate text-sm">
+          <TaskNumber number={task.number} />
+          {task.title}
+        </span>
           <span className="block truncate text-xs text-text-muted">
             {item.projectName} · {item.moduleName}
           </span>

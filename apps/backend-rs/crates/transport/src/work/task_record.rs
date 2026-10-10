@@ -2,7 +2,7 @@
 //!
 //! Plain sqlx over the component tables of `persistence/src/schema.sql` (see
 //! `persistence::entity`). A task is one entity carrying `cmp_taskinfo`,
-//! `cmp_taskmoduleref` and `cmp_taskaudit`, optionally `cmp_taskassignees`,
+//! `cmp_taskmoduleref`, `cmp_taskaudit` and `cmp_tasknumber`, optionally `cmp_taskassignees`,
 //! `cmp_tasklabels`, `cmp_taskparent` and `cmp_taskblockedby`. The id lists
 //! are JSONB arrays of strings; they cross the wire as `text[]` (see
 //! [`ids_sql`] and [`upsert_ids`]) so no sqlx JSON support is needed.
@@ -35,6 +35,7 @@ pub(crate) struct TaskRecord {
     pub created_by: String,
     pub parent_id: Option<String>,
     pub blocked_by_ids: Vec<String>,
+    pub number: i32,
 }
 
 /// A JSONB string array as `text[]`, in array order; empty when the row is
@@ -53,7 +54,8 @@ macro_rules! ids_sql {
 const SELECT_TASK: &str = concat!(
     "SELECT i.pid, m.module_id, i.title, i.description, i.status, i.priority, \
            i.start_date, i.due_date, i.sort_order, \
-           a.created_at, a.updated_at, a.completed_at, a.created_by, par.parent_id, ",
+           a.created_at, a.updated_at, a.completed_at, a.created_by, par.parent_id, \
+           COALESCE(num.value, 0) AS number, ",
     ids_sql!("asg.user_ids"), " AS user_ids, ",
     ids_sql!("lab.label_ids"), " AS label_ids, ",
     ids_sql!("blk.task_ids"), " AS task_ids \
@@ -63,7 +65,8 @@ const SELECT_TASK: &str = concat!(
     LEFT JOIN cmp_taskassignees asg ON asg.pid = i.pid \
     LEFT JOIN cmp_tasklabels lab ON lab.pid = i.pid \
     LEFT JOIN cmp_taskparent par ON par.pid = i.pid \
-    LEFT JOIN cmp_taskblockedby blk ON blk.pid = i.pid"
+    LEFT JOIN cmp_taskblockedby blk ON blk.pid = i.pid \
+    LEFT JOIN cmp_tasknumber num ON num.pid = i.pid"
 );
 
 fn ids(row: &PgRow, col: &str) -> sqlx::Result<Vec<String>> {
@@ -97,6 +100,7 @@ fn read_task(row: &PgRow) -> sqlx::Result<Option<TaskRecord>> {
         created_by: row.try_get("created_by")?,
         parent_id: row.try_get("parent_id")?,
         blocked_by_ids: ids(row, "task_ids")?,
+        number: row.try_get("number")?,
     }))
 }
 
@@ -127,6 +131,7 @@ pub(crate) fn to_proto(t: &TaskRecord) -> pb::Task {
         created_by: t.created_by.clone(),
         parent_id: t.parent_id.clone(),
         blocked_by_ids: t.blocked_by_ids.clone(),
+        number: t.number,
     }
 }
 
@@ -242,7 +247,26 @@ pub(crate) async fn create_task(
     .bind(module_id)
     .fetch_one(&mut *tx)
     .await?;
+    // Serialise numbering per project so concurrent creates never collide.
+    let project_id: String = sqlx::query_scalar(
+        "SELECT project_id FROM cmp_moduleprojectref WHERE pid::text = $1",
+    )
+    .bind(module_id)
+    .fetch_one(&mut *tx)
+    .await?;
+    sqlx::query("SELECT pg_advisory_xact_lock(hashtext('cmp_tasknumber:' || $1))")
+        .bind(&project_id)
+        .execute(&mut *tx)
+        .await?;
     let pid = entity::new_pid(&mut tx).await?;
+    sqlx::query(
+        "INSERT INTO cmp_tasknumber (pid, project_id, value) \
+         SELECT $1, $2, COALESCE(MAX(value), 0) + 1 FROM cmp_tasknumber WHERE project_id = $2",
+    )
+    .bind(pid)
+    .bind(&project_id)
+    .execute(&mut *tx)
+    .await?;
     sqlx::query(
         "INSERT INTO cmp_taskinfo (pid, title, description, status, priority, start_date, due_date, sort_order) \
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8::int4)",

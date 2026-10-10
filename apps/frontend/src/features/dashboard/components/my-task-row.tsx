@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { StatusBadge, PriorityLabel } from "@/features/tasks";
+import { StatusBadge, PriorityLabel, TaskNumber } from "@/features/tasks";
 import type { MyTaskItem } from "../types";
 
 /** One task row with project/module context — links to the owning project. */
@@ -12,7 +12,10 @@ export function MyTaskRow({ item }: { item: MyTaskItem }) {
       className="flex items-center gap-3 border-b border-border-subtle px-4 py-3 transition-colors [transition-duration:var(--duration-fast)] last:border-b-0 hover:bg-surface-hover"
     >
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm">{task.title}</span>
+        <span className="block truncate text-sm">
+          <TaskNumber number={task.number} />
+          {task.title}
+        </span>
         <span className="block truncate text-xs text-text-muted">
           {item.projectName} · {item.moduleName}
         </span>

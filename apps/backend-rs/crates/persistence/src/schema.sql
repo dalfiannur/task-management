@@ -300,3 +300,27 @@ CREATE TABLE IF NOT EXISTS cmp_userstatuscomponent (
     last_login_at TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_cmp_userstatuscomponent_status ON cmp_userstatuscomponent USING btree (status);
+
+-- A task's number within its project (#1, #2, …): assigned on create, never
+-- reused while a higher one is live, kept across moves (they stay in-project).
+CREATE TABLE IF NOT EXISTS cmp_tasknumber (
+    pid BIGINT PRIMARY KEY REFERENCES arke_entities(pid) ON DELETE CASCADE,
+    project_id TEXT NOT NULL,
+    value INTEGER NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_cmp_tasknumber_project_value ON cmp_tasknumber USING btree (project_id, value);
+
+-- Number every task that has none (tasks from before numbering, seeds and
+-- fixtures), in creation order after the project's highest number.
+INSERT INTO cmp_tasknumber (pid, project_id, value)
+SELECT t.pid, t.project_id,
+       COALESCE(mx.top, 0) + ROW_NUMBER() OVER (PARTITION BY t.project_id ORDER BY t.pid)
+FROM (
+    SELECT i.pid, p.project_id
+    FROM cmp_taskinfo i
+    JOIN cmp_taskmoduleref m ON m.pid = i.pid
+    JOIN cmp_moduleprojectref p ON p.pid::text = m.module_id
+    WHERE NOT EXISTS (SELECT 1 FROM cmp_tasknumber n WHERE n.pid = i.pid)
+) t
+LEFT JOIN (SELECT project_id, MAX(value) AS top FROM cmp_tasknumber GROUP BY project_id) mx
+    ON mx.project_id = t.project_id;

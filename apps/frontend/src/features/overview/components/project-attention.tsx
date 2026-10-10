@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { EmptyState } from "@/components/shared/empty-state";
 import { cn, getInitials } from "@/lib/utils";
 import { dueGroup, dueLabel, type DueGroup } from "@/features/dashboard";
-import { PriorityLabel, useModules, useTasks, type Task } from "@/features/tasks";
+import { PriorityLabel, TaskNumber, useModules, useTasks, type Task } from "@/features/tasks";
 import { useUserMap } from "@/features/users";
 
 const GROUPS: { key: DueGroup; label: string }[] = [
@@ -144,7 +144,10 @@ function AttentionRow({
         className="flex items-center gap-3 px-4 py-2.5 transition-colors [transition-duration:var(--duration-fast)] hover:bg-surface-hover"
       >
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm">{task.title}</span>
+          <span className="block truncate text-sm">
+          <TaskNumber number={task.number} />
+          {task.title}
+        </span>
           {moduleName && (
             <span className="block truncate text-xs text-text-muted">
               {moduleName}

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { addDays, differenceInCalendarDays, format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { Task, TaskStatus } from "@/features/tasks";
-import { TASK_STATUS_CONFIG, isOverdue } from "@/features/tasks";
+import { TASK_STATUS_CONFIG, TaskNumber, isOverdue } from "@/features/tasks";
 import { ROW_HEIGHT, toIso } from "../timeline-utils";
 
 export interface ReschedulePatch {
@@ -162,7 +162,7 @@ export function GanttBar({
         drag && "ring-2 ring-focus",
       )}
       title={[
-        task.title,
+        task.number ? `#${task.number} ${task.title}` : task.title,
         rangeLabel(span),
         TASK_STATUS_CONFIG[task.status].label,
         overdue && "Overdue",
@@ -179,10 +179,14 @@ export function GanttBar({
       )}
       {narrow ? (
         <span className="pointer-events-none absolute left-full ml-1.5 whitespace-nowrap text-text-muted">
+          <TaskNumber number={task.number} />
           {task.title}
         </span>
       ) : (
-        <span className="truncate">{task.title}</span>
+        <span className="truncate">
+          <TaskNumber number={task.number} className="text-current opacity-75" />
+          {task.title}
+        </span>
       )}
       {canEdit && (
         <span
