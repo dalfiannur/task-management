@@ -66,7 +66,7 @@ const HEADER_H = GROUP_H + TICK_H;
 const NAME_INDENT_BASE = 12;
 const NAME_INDENT_STEP = 24;
 const SUMMARY_H = 6;
-const EMPTY_STATS: ModuleStats = { done: 0, total: 0, overdue: 0 };
+const EMPTY_STATS: ModuleStats = { done: 0, total: 0, overdue: 0, openEstimate: 0 };
 
 type Span = { start: Date; end: Date };
 

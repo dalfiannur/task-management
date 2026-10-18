@@ -18,7 +18,7 @@ use domain::project::{
 };
 use domain::task::{
     TaskAssignees, TaskAudit, TaskBlockedBy, TaskInfo, TaskLabels, TaskModuleRef, TaskParent,
-    TaskStatusDef, TaskStatusRef,
+    TaskEstimate, TaskStatusDef, TaskStatusRef,
 };
 use domain::token::{TokenInfo, TokenOwner, TokenSecret, TokenUsage};
 use domain::user::{AdminMark, UserPassword, UserPhone, UserProfile, UserStatusComponent};
@@ -150,6 +150,7 @@ row!(TaskBlockedBy, "cmp_taskblockedby", task_ids);
 row!(TaskAudit, "cmp_taskaudit", created_at, updated_at, completed_at, created_by);
 row!(TaskStatusDef, "cmp_taskstatusdef", project_id, name, color, category, sort_order);
 row!(TaskStatusRef, "cmp_taskstatusref", status_id);
+row!(TaskEstimate, "cmp_taskestimate", minutes);
 row!(PageInfo, "cmp_pageinfo", project_id, title, icon, content, sort_order);
 row!(PageAudit, "cmp_pageaudit", created_by, last_edited_by, created_at, updated_at);
 row!(LabelInfo, "cmp_labelinfo", project_id, name, color);

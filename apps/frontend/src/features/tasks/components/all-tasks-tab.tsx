@@ -47,7 +47,7 @@ const VIEWS: { key: TasksView; label: string; icon: typeof List }[] = [
   { key: "board", label: "Board", icon: Columns3 },
 ];
 
-const EMPTY_STATS = { done: 0, total: 0, overdue: 0 };
+const EMPTY_STATS = { done: 0, total: 0, overdue: 0, openEstimate: 0 };
 
 export function AllTasksTab({ projectId }: { projectId: string }) {
   const me = useAtomValue(currentUserAtom);

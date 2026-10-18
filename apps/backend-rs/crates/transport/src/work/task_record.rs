@@ -41,6 +41,7 @@ pub(crate) struct TaskRecord {
     pub status_id: String,
     pub status_name: String,
     pub status_color: String,
+    pub estimate_minutes: Option<i32>,
 }
 
 /// A JSONB string array as `text[]`, in array order; empty when the row is
@@ -62,7 +63,7 @@ const SELECT_TASK: &str = concat!(
            a.created_at, a.updated_at, a.completed_at, a.created_by, par.parent_id, \
            COALESCE(num.value, 0) AS number, \
            COALESCE(sd.pid::text, '') AS status_id, COALESCE(sd.name, '') AS status_name, \
-           COALESCE(sd.color, '') AS status_color, ",
+           COALESCE(sd.color, '') AS status_color, est.minutes AS estimate_minutes, ",
     ids_sql!("asg.user_ids"), " AS user_ids, ",
     ids_sql!("lab.label_ids"), " AS label_ids, ",
     ids_sql!("blk.task_ids"), " AS task_ids \
@@ -74,6 +75,7 @@ const SELECT_TASK: &str = concat!(
     LEFT JOIN cmp_taskparent par ON par.pid = i.pid \
     LEFT JOIN cmp_taskblockedby blk ON blk.pid = i.pid \
     LEFT JOIN cmp_tasknumber num ON num.pid = i.pid \
+    LEFT JOIN cmp_taskestimate est ON est.pid = i.pid \
     LEFT JOIN cmp_moduleprojectref mp ON mp.pid::text = m.module_id \
     LEFT JOIN cmp_taskstatusref sr ON sr.pid = i.pid \
     LEFT JOIN LATERAL ( \
@@ -119,6 +121,7 @@ fn read_task(row: &PgRow) -> sqlx::Result<Option<TaskRecord>> {
         status_id: row.try_get("status_id")?,
         status_name: row.try_get("status_name")?,
         status_color: row.try_get("status_color")?,
+        estimate_minutes: row.try_get("estimate_minutes")?,
     }))
 }
 
@@ -153,6 +156,7 @@ pub(crate) fn to_proto(t: &TaskRecord) -> pb::Task {
         status_id: t.status_id.clone(),
         status_name: t.status_name.clone(),
         status_color: t.status_color.clone(),
+        estimate_minutes: t.estimate_minutes,
     }
 }
 
@@ -227,6 +231,8 @@ pub(crate) struct TaskFields {
     /// The status `status` is the category of; `None` writes no pointer (the
     /// task falls back to its category's first status).
     pub status_id: Option<String>,
+    /// `None` = not estimated (any stored estimate is removed).
+    pub estimate_minutes: Option<i32>,
     pub priority: TaskPriority,
     pub start_date: Option<String>,
     pub due_date: Option<String>,
@@ -268,6 +274,22 @@ async fn upsert_status_ref(
     )
     .bind(pid)
     .bind(status_id)
+    .execute(conn)
+    .await?;
+    Ok(())
+}
+
+/// Store `minutes` as the task's estimate, or remove it on `None`.
+async fn write_estimate(conn: &mut PgConnection, pid: i64, minutes: Option<i32>) -> sqlx::Result<()> {
+    match minutes {
+        Some(m) => sqlx::query(
+            "INSERT INTO cmp_taskestimate (pid, minutes) VALUES ($1, $2::int4) \
+             ON CONFLICT (pid) DO UPDATE SET minutes = EXCLUDED.minutes",
+        )
+        .bind(pid)
+        .bind(m),
+        None => sqlx::query("DELETE FROM cmp_taskestimate WHERE pid = $1").bind(pid),
+    }
     .execute(conn)
     .await?;
     Ok(())
@@ -332,6 +354,7 @@ pub(crate) async fn create_task(
     upsert_ids(&mut tx, "cmp_taskassignees", "user_ids", pid, f.assignee_ids).await?;
     upsert_ids(&mut tx, "cmp_tasklabels", "label_ids", pid, f.label_ids).await?;
     upsert_status_ref(&mut tx, pid, f.status_id).await?;
+    write_estimate(&mut tx, pid, f.estimate_minutes).await?;
     sqlx::query(
         "INSERT INTO cmp_taskaudit (pid, created_at, updated_at, completed_at, created_by) \
          VALUES ($1, $2, $2, $3, $4)",
@@ -389,6 +412,7 @@ pub(crate) async fn update_task(
     upsert_ids(&mut tx, "cmp_tasklabels", "label_ids", pid, f.label_ids).await?;
     upsert_ids(&mut tx, "cmp_taskblockedby", "task_ids", pid, blocked_by).await?;
     upsert_status_ref(&mut tx, pid, f.status_id).await?;
+    write_estimate(&mut tx, pid, f.estimate_minutes).await?;
     match parent {
         None => {}
         Some(None) => {

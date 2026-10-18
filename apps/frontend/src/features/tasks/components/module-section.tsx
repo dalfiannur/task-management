@@ -28,6 +28,7 @@ import { useModuleCollapsed } from "../atoms/collapsed-modules";
 import { useCreateTask, useDeleteModule } from "../api/hooks";
 import { buildHierarchy } from "../task-graph";
 import type { ModuleStats } from "../task-stats";
+import { formatMinutes } from "../estimate";
 import { TaskListHeader, TaskRow } from "./task-row";
 
 export function ModuleSection({
@@ -151,6 +152,14 @@ export function ModuleSection({
             {stats.overdue > 0 && (
               <span className="text-xs font-medium text-destructive">
                 <span className="text-num">{stats.overdue}</span> overdue
+              </span>
+            )}
+            {stats.openEstimate > 0 && (
+              <span
+                className="text-xs text-muted-foreground"
+                title="Estimated effort of the open tasks"
+              >
+                <span className="text-num">{formatMinutes(stats.openEstimate)}</span> left
               </span>
             )}
           </div>

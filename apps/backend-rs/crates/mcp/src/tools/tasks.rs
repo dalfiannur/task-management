@@ -48,6 +48,22 @@ fn priority_arg(args: &Value) -> Result<Option<i32>, ToolError> {
     }
 }
 
+/// `estimate_minutes`: absent = not sent; otherwise a whole number of minutes
+/// (0 clears on update). Range-checked by the core fn; a non-integer is
+/// refused here rather than silently dropped.
+fn estimate_arg(args: &Value) -> Result<Option<i32>, ToolError> {
+    match args.get("estimate_minutes") {
+        None | Some(Value::Null) => Ok(None),
+        Some(v) => v
+            .as_i64()
+            .and_then(|n| i32::try_from(n).ok())
+            .map(Some)
+            .ok_or_else(|| {
+                ToolError::BadArgs("`estimate_minutes` must be a whole number of minutes".into())
+            }),
+    }
+}
+
 const STATUS_HELP: &str = "a category (todo, in_progress, done, cancelled) or the \
                            name of one of the project's statuses";
 
@@ -111,6 +127,7 @@ pub(crate) fn flatten(t: &work_pb::Task) -> Value {
         "description": truncate(&t.description),
         "status": status_label(t.status),
         "status_name": t.status_name,
+        "estimate_minutes": t.estimate_minutes,
         "priority": priority_label(t.priority),
         "module_id": t.module_id,
         "assignee_ids": t.assignee_ids,
@@ -226,6 +243,7 @@ pub const CREATE_TASK: ToolMeta = ToolMeta {
                 "priority": { "type": "string", "enum": ["none", "low", "medium", "high", "urgent"] },
                 "start_date": { "type": "string", "description": "ISO-8601 date, yyyy-MM-dd" },
                 "due_date": { "type": "string", "description": "ISO-8601 date, yyyy-MM-dd" },
+                "estimate_minutes": { "type": "integer", "minimum": 0, "maximum": 60000, "description": "Estimated effort in minutes (e.g. 90 for 1h 30m). Omit if unknown." },
                 "assignee_ids": { "type": "array", "items": { "type": "string" } }
             },
             "required": ["module_id", "title"]
@@ -255,6 +273,7 @@ pub async fn create_task(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
         // `create_task_core` defaults to Todo.
         status,
         status_id,
+        estimate_minutes: estimate_arg(args)?,
         // `priority_arg` already rejects a misspelled priority; `0` here only
         // ever means "not supplied", which `create_task_core` treats as no
         // priority.
@@ -290,6 +309,7 @@ pub const UPDATE_TASK: ToolMeta = ToolMeta {
                 "priority": { "type": "string", "enum": ["none", "low", "medium", "high", "urgent"] },
                 "start_date": { "type": "string", "description": "ISO-8601 date, yyyy-MM-dd" },
                 "due_date": { "type": "string", "description": "ISO-8601 date, yyyy-MM-dd" },
+                "estimate_minutes": { "type": "integer", "minimum": 0, "maximum": 60000, "description": "Estimated effort in minutes; 0 removes the estimate." },
                 "assignee_ids": { "type": "array", "items": { "type": "string" } }
             },
             "required": ["task_id"]
@@ -319,6 +339,7 @@ pub async fn update_task(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
         description: opt_str(args, "description"),
         status,
         status_id,
+        estimate_minutes: estimate_arg(args)?,
         // Validated up front rather than left to `update_task_core`'s own
         // re-parse: it happens to reject an invalid code, but that's a more
         // fragile guarantee to lean on than checking at the boundary the way

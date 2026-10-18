@@ -8,7 +8,7 @@ use std::sync::Arc;
 use auth::AuthUser;
 use axum::Extension;
 use connectrpc_axum::{ConnectError, ConnectRequest, ConnectResponse};
-use domain::task::{dates_ok, title_ok, TaskPriority, TaskStatus};
+use domain::task::{dates_ok, estimate_ok, title_ok, TaskPriority, TaskStatus};
 use persistence::Store;
 
 use super::record::{load_module, modules_for_project};
@@ -58,6 +58,16 @@ async fn require_task(store: &Store, pid: i64) -> Result<TaskRecord, ConnectErro
         .await
         .map_err(internal)?
         .ok_or_else(|| ConnectError::new_not_found("task not found"))
+}
+
+/// A requested estimate, range-checked; `None` when not sent.
+fn estimate_arg(minutes: Option<i32>) -> Result<Option<i32>, ConnectError> {
+    match minutes {
+        Some(m) if !estimate_ok(m) => Err(ConnectError::new_invalid_argument(
+            "estimate must be between 0 and 1000 hours",
+        )),
+        other => Ok(other),
+    }
 }
 
 /// Every assignee must be a member of `project_id`.
@@ -169,6 +179,7 @@ pub async fn create_task_core(
             "start_date must be on or before due_date",
         ));
     }
+    let estimate_minutes = estimate_arg(r.estimate_minutes)?.filter(|m| *m > 0);
     // A subtask lives in its parent's module; the request's module_id is
     // ignored rather than trusted, so the invariant cannot be bypassed.
     let (module_id, parent_id) = match r.parent_id.as_deref().filter(|s| !s.is_empty()) {
@@ -192,6 +203,7 @@ pub async fn create_task_core(
             description: description_for_index.clone(),
             status,
             status_id: Some(st.pid.to_string()),
+            estimate_minutes,
             priority,
             start_date,
             due_date,
@@ -318,6 +330,13 @@ pub async fn update_task_core(
         ));
     }
 
+    // Estimate: absent keeps, 0 clears, else sets.
+    let estimate_minutes = match estimate_arg(r.estimate_minutes)? {
+        Some(0) => None,
+        Some(m) => Some(m),
+        None => t.estimate_minutes,
+    };
+
     // Assignees / labels: present wrapper = replace, absent = unchanged.
     let assignees = match r.assignee_ids {
         Some(list) => list.values,
@@ -381,6 +400,13 @@ pub async fn update_task_core(
             to: Some(priority.as_str().into()),
         });
     }
+    if estimate_minutes != t.estimate_minutes {
+        changes.push(FieldChange {
+            field: "estimate".into(),
+            from: t.estimate_minutes.map(domain::task::format_minutes),
+            to: estimate_minutes.map(domain::task::format_minutes),
+        });
+    }
     if title != t.title {
         changes.push(FieldChange {
             field: "title".into(),
@@ -413,6 +439,7 @@ pub async fn update_task_core(
             description,
             status,
             status_id: new_status.map(|s| s.pid.to_string()),
+            estimate_minutes,
             priority,
             start_date,
             due_date,

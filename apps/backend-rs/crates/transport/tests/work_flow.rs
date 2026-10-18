@@ -587,3 +587,43 @@ async fn task_numbers_count_per_project_and_are_backfilled() {
     let got = ok(&router, &format!("{TASK}/GetTask"), &to, json!({ "id": raw.to_string() })).await;
     assert_eq!(num(&got, "number"), 4);
 }
+
+#[tokio::test]
+async fn estimates_are_set_kept_cleared_and_bounded() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let owner = mk_user(&store).await;
+    let to = token(&owner);
+    let pid = project_with(&router, &owner, &[]).await;
+    let m = ok(&router, &format!("{MODULE}/CreateModule"), &to, json!({ "projectId": pid, "name": "M" })).await["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    // Unestimated by default; 0 on create also means "not estimated".
+    let t = ok(&router, &format!("{TASK}/CreateTask"), &to, json!({ "moduleId": m, "title": "A" })).await;
+    assert!(t["estimateMinutes"].is_null());
+    let z = ok(&router, &format!("{TASK}/CreateTask"), &to, json!({ "moduleId": m, "title": "Z", "estimateMinutes": 0 })).await;
+    assert!(z["estimateMinutes"].is_null());
+    let e = ok(&router, &format!("{TASK}/CreateTask"), &to, json!({ "moduleId": m, "title": "E", "estimateMinutes": 90 })).await;
+    assert_eq!(num(&e, "estimateMinutes"), 90);
+    let id = t["id"].clone();
+
+    // Set, keep across an unrelated edit, clear with 0.
+    let t = ok(&router, &format!("{TASK}/UpdateTask"), &to, json!({ "id": id, "estimateMinutes": 120 })).await;
+    assert_eq!(num(&t, "estimateMinutes"), 120);
+    let t = ok(&router, &format!("{TASK}/UpdateTask"), &to, json!({ "id": id, "title": "A2" })).await;
+    assert_eq!(num(&t, "estimateMinutes"), 120, "absent keeps");
+    let t = ok(&router, &format!("{TASK}/UpdateTask"), &to, json!({ "id": id, "estimateMinutes": 0 })).await;
+    assert!(t["estimateMinutes"].is_null(), "0 clears");
+
+    // Out of range, either way.
+    for bad in [-1, 1000 * 60 + 1] {
+        let (st, _) = call(&router, &format!("{TASK}/UpdateTask"), Some(&to), json!({ "id": id, "estimateMinutes": bad })).await;
+        assert_ne!(st, StatusCode::OK, "{bad} must be refused");
+        let (st, _) = call(&router, &format!("{TASK}/CreateTask"), Some(&to), json!({ "moduleId": m, "title": "X", "estimateMinutes": bad })).await;
+        assert_ne!(st, StatusCode::OK, "{bad} must be refused on create");
+    }
+}

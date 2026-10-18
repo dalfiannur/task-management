@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils";
 import { dueGroup, dueLabel } from "@/features/dashboard";
 import type { Task, TaskPriority, TaskStatus } from "../types";
 import { TASK_PRIORITY_CONFIG, TASK_STATUS_CONFIG, statusLabel } from "../config";
+import { formatMinutes } from "../estimate";
 
 /** "#12" before a task title. Inline-block, so a done title's line-through
  *  skips it. */
@@ -65,6 +66,25 @@ export function StatusBadge({ task }: { task: StatusFields }) {
     >
       <StatusDot status={task.status} color={task.statusColor} />
       {statusLabel(task)}
+    </span>
+  );
+}
+
+/** A task's estimate (`1h 30m`), or a quiet dash when there is none. */
+export function EstimateLabel({
+  minutes,
+  dash = true,
+}: {
+  minutes?: number;
+  /** Show `—` for no estimate (list columns); off where absence is silent. */
+  dash?: boolean;
+}) {
+  if (!minutes) {
+    return dash ? <span className="text-xs text-muted-foreground">—</span> : null;
+  }
+  return (
+    <span className="text-num text-xs whitespace-nowrap text-muted-foreground" title="Estimate">
+      {formatMinutes(minutes)}
     </span>
   );
 }

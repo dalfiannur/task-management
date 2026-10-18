@@ -96,6 +96,7 @@ export function mapTask(t: PbTask): Task {
     statusId: t.statusId,
     statusName: t.statusName,
     statusColor: t.statusColor,
+    estimateMinutes: t.estimateMinutes,
   };
 }
 

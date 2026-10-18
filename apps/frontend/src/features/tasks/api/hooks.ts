@@ -276,6 +276,7 @@ function optimisticTask(
     statusId: def?.id ?? "",
     statusName: def?.name ?? "",
     statusColor: def?.color ?? "",
+    estimateMinutes: input.estimateMinutes || undefined,
   });
 }
 
@@ -372,6 +373,10 @@ function applyUpdate(
     placeOn(next, statuses.find((s) => s.category === input.status));
   }
   if (input.priority !== undefined) next.priority = input.priority;
+  // Estimate: absent keeps, 0 clears.
+  if (input.estimateMinutes !== undefined) {
+    next.estimateMinutes = input.estimateMinutes || undefined;
+  }
   // Dates: "" clears, a value sets, absent keeps.
   if (input.startDate !== undefined) next.startDate = input.startDate || undefined;
   if (input.dueDate !== undefined) next.dueDate = input.dueDate || undefined;

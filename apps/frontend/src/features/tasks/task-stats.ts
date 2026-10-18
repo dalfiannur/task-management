@@ -10,6 +10,8 @@ export interface ModuleStats {
   done: number;
   total: number;
   overdue: number;
+  /** Estimated minutes still to do: open tasks only. */
+  openEstimate: number;
 }
 
 export function isOverdue(task: Task, today = new Date().toISOString().slice(0, 10)) {
@@ -22,9 +24,10 @@ export function statsByModule(tasks: Task[]): Record<string, ModuleStats> {
   const out: Record<string, ModuleStats> = {};
   for (const t of tasks) {
     if (t.status === "cancelled") continue;
-    const s = (out[t.moduleId] ??= { done: 0, total: 0, overdue: 0 });
+    const s = (out[t.moduleId] ??= { done: 0, total: 0, overdue: 0, openEstimate: 0 });
     s.total += 1;
     if (t.status === "done") s.done += 1;
+    else s.openEstimate += t.estimateMinutes ?? 0;
     if (isOverdue(t, today)) s.overdue += 1;
   }
   return out;

@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Button, Skeleton, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "sedjiwa-ui";
+import { Button, Input, Skeleton, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "sedjiwa-ui";
 import { RichTextEditor } from "@/components/shared/rich-text-editor";
 import { DatePickerField } from "@/components/shared/date-picker-field";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,7 @@ import { priorityToProto } from "../api/mappers";
 import { useCreateTask, useStatuses, useUpdateTask } from "../api/hooks";
 import { StatusDot } from "./task-badges";
 import { buildHierarchy } from "../task-graph";
+import { formatMinutes, parseEstimate } from "../estimate";
 import { AssigneePicker } from "./assignee-picker";
 import { SubtaskSection } from "./subtask-section";
 import { DependencyPicker } from "./dependency-picker";
@@ -120,6 +121,9 @@ export function TaskDialog({
   const [priority, setPriority] = useState<TaskPriority>("none");
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [dueDate, setDueDate] = useState<Date | undefined>();
+  // As typed ("1h 30m"); parsed on submit. Blank = no estimate.
+  const [estimate, setEstimate] = useState("");
+  const estimateMinutes = parseEstimate(estimate);
   const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [labelIds, setLabelIds] = useState<string[]>([]);
 
@@ -145,6 +149,7 @@ export function TaskDialog({
     setPriority(t?.priority ?? "none");
     setStartDate(isoToDate(t?.startDate));
     setDueDate(isoToDate(t?.dueDate));
+    setEstimate(t?.estimateMinutes ? formatMinutes(t.estimateMinutes) : "");
     setAssigneeIds(t?.assigneeIds ?? []);
     setLabelIds(t?.labelIds ?? []);
   }, [open, task?.id]);
@@ -177,6 +182,7 @@ export function TaskDialog({
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
+    if (estimateMinutes === null) return;
     const start = dateToIso(startDate);
     const due = dateToIso(dueDate);
     // Mirrors the backend's dates_ok. Checked here because the dialog now
@@ -204,6 +210,8 @@ export function TaskDialog({
         priority: priorityToProto(priority),
         startDate: start,
         dueDate: due,
+        // 0 clears a stored estimate.
+        estimateMinutes,
         assigneeIds: { values: assigneeIds },
         labelIds: { values: labelIds },
       });
@@ -220,6 +228,7 @@ export function TaskDialog({
         priority: priorityToProto(priority),
         startDate: start,
         dueDate: due,
+        estimateMinutes: estimateMinutes || undefined,
         assigneeIds,
         labelIds,
       });
@@ -352,6 +361,25 @@ export function TaskDialog({
                       minDate={startDate}
                     />
                   </Property>
+                  <Property label="Estimate">
+                    <Input.Root aria-invalid={estimateMinutes === null || undefined}>
+                      <Input.Field
+                        value={estimate}
+                        onChange={(e) => setEstimate(e.target.value)}
+                        onBlur={() => {
+                          // Normalise what was typed ("90m" → "1h 30m").
+                          if (estimateMinutes) setEstimate(formatMinutes(estimateMinutes));
+                        }}
+                        placeholder="e.g. 2h 30m"
+                        aria-label="Estimate"
+                      />
+                    </Input.Root>
+                    {estimateMinutes === null && (
+                      <p className="text-xs text-destructive">
+                        Use hours and minutes, like 2h, 45m or 1.5 (up to 1000h).
+                      </p>
+                    )}
+                  </Property>
                   <Property label="Assignees">
                     <AssigneePicker
                       memberIds={memberIds}
@@ -436,7 +464,7 @@ export function TaskDialog({
               <Button
                 type="submit"
                 form={formId}
-                disabled={pending || !title.trim()}
+                disabled={pending || !title.trim() || estimateMinutes === null}
               >
                 {pending ? "Saving…" : editing ? "Save" : "Create"}
               </Button>

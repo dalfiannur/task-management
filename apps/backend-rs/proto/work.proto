@@ -82,6 +82,8 @@ message Task {
   string status_id = 19;
   string status_name = 20;
   string status_color = 21;
+  // Estimated effort; absent = not estimated.
+  optional int32 estimate_minutes = 22;
 }
 
 enum TaskStatus {
@@ -121,6 +123,8 @@ message CreateTaskRequest {
   // Wins over `status` when set; otherwise the first status of `status`'s
   // category (TODO when that is unspecified).
   optional string status_id = 11;
+  // 0 or absent = not estimated.
+  optional int32 estimate_minutes = 12;
 }
 // Wrapper so a repeated field can be distinguished from "absent" on update
 // (proto3 can't tell an omitted `repeated` from an empty one).
@@ -145,6 +149,8 @@ message UpdateTaskRequest {
   optional StringList parent_id_set = 11;
   // Wins over `status`; `status` alone picks the category's first status.
   optional string status_id = 12;
+  // Absent = unchanged, 0 = clear, else set (minutes, up to 1000 hours).
+  optional int32 estimate_minutes = 13;
 }
 message DeleteTaskRequest { string id = 1; }
 message DeleteTaskResponse { bool ok = 1; }

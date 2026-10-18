@@ -193,6 +193,29 @@ pub fn required_category(c: TaskStatus) -> bool {
     matches!(c, TaskStatus::Todo | TaskStatus::Done)
 }
 
+/// A task's estimate in minutes. Absent = not estimated.
+#[derive(Debug, Clone)]
+pub struct TaskEstimate {
+    pub minutes: i32,
+}
+
+/// Largest estimate accepted: 1000 hours.
+pub const MAX_ESTIMATE_MINUTES: i32 = 1000 * 60;
+
+/// An estimate is valid iff it is within `0..=MAX_ESTIMATE_MINUTES` (0 clears).
+pub fn estimate_ok(minutes: i32) -> bool {
+    (0..=MAX_ESTIMATE_MINUTES).contains(&minutes)
+}
+
+/// Minutes as the UI writes them: `1h 30m`, `2h`, `45m`.
+pub fn format_minutes(minutes: i32) -> String {
+    match (minutes / 60, minutes % 60) {
+        (0, m) => format!("{m}m"),
+        (h, 0) => format!("{h}h"),
+        (h, m) => format!("{h}h {m}m"),
+    }
+}
+
 /// A task title is valid iff it has non-whitespace content.
 pub fn title_ok(title: &str) -> bool {
     !title.trim().is_empty()
@@ -211,6 +234,15 @@ pub fn dates_ok(start: Option<&str>, due: Option<&str>) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn estimates_format_and_bound() {
+        assert_eq!(format_minutes(45), "45m");
+        assert_eq!(format_minutes(120), "2h");
+        assert_eq!(format_minutes(90), "1h 30m");
+        assert!(estimate_ok(0) && estimate_ok(MAX_ESTIMATE_MINUTES));
+        assert!(!estimate_ok(-1) && !estimate_ok(MAX_ESTIMATE_MINUTES + 1));
+    }
 
     #[test]
     fn status_round_trip_and_proto() {

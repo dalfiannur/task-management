@@ -9,7 +9,7 @@ import { LabelChips, type Label } from "@/features/labels";
 import type { Task } from "../types";
 import { statusToProto } from "../api/mappers";
 import { isOptimisticTaskId, useUpdateTask, useDeleteTask } from "../api/hooks";
-import { DueDate, PriorityLabel, TaskNumber } from "./task-badges";
+import { DueDate, EstimateLabel, PriorityLabel, TaskNumber } from "./task-badges";
 import { StatusMenu } from "./status-menu";
 import { AssigneeAvatars } from "./assignee-picker";
 
@@ -171,6 +171,9 @@ export function TaskRow({
       <div className={cn(TASK_COLS.due, "hidden md:block")}>
         <DueDate task={task} />
       </div>
+      <div className={cn(TASK_COLS.estimate, "hidden md:block")}>
+        <EstimateLabel minutes={task.estimateMinutes} />
+      </div>
       <div className={cn(TASK_COLS.priority, "hidden md:block")}>
         {task.priority === "none" ? (
           <span className="text-xs text-muted-foreground">—</span>
@@ -229,6 +232,7 @@ export function TaskRow({
 const TASK_COLS = {
   assignee: "w-20 shrink-0",
   due: "w-24 shrink-0",
+  estimate: "w-16 shrink-0",
   priority: "w-16 shrink-0",
   status: "shrink-0 justify-start md:w-32",
   actions: "w-7 shrink-0",
@@ -246,6 +250,7 @@ export function TaskListHeader() {
       <span className="flex-1">Task</span>
       <span className={TASK_COLS.assignee}>Assignee</span>
       <span className={TASK_COLS.due}>Due</span>
+      <span className={TASK_COLS.estimate}>Estimate</span>
       <span className={TASK_COLS.priority}>Priority</span>
       <span className={TASK_COLS.status}>Status</span>
       <span className={TASK_COLS.actions} />

@@ -367,3 +367,9 @@ ent AS (
 INSERT INTO cmp_taskstatusdef (pid, project_id, name, color, category, sort_order)
 SELECT m.pid, m.project_id, m.name, m.color, m.category, m.sort_order
 FROM missing m JOIN ent e ON e.pid = m.pid;
+
+-- A task's estimate, in minutes. Absent = not estimated.
+CREATE TABLE IF NOT EXISTS cmp_taskestimate (
+    pid BIGINT PRIMARY KEY REFERENCES arke_entities(pid) ON DELETE CASCADE,
+    minutes INTEGER NOT NULL
+);

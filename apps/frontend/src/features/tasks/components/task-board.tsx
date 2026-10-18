@@ -17,7 +17,7 @@ import { LabelChips, type Label } from "@/features/labels";
 import type { Module, Task, WorkflowStatus } from "../types";
 import { isOptimisticTaskId, useStatuses, useUpdateTask } from "../api/hooks";
 import { AssigneeAvatars } from "./assignee-picker";
-import { DueDate, PriorityLabel, StatusDot, TaskNumber } from "./task-badges";
+import { DueDate, EstimateLabel, PriorityLabel, StatusDot, TaskNumber } from "./task-badges";
 import { StatusMenu } from "./status-menu";
 
 interface CardContext {
@@ -287,6 +287,7 @@ function BoardCard({
       <div className="flex items-center gap-3">
         <PriorityLabel priority={task.priority} />
         <DueDate task={task} />
+        <EstimateLabel minutes={task.estimateMinutes} dash={false} />
         {progress && (
           <span className="text-num text-xs text-muted-foreground" title="Subtasks done">
             {progress.done}/{progress.total}

@@ -293,6 +293,7 @@ mod tests {
             status_id: String::new(),
             status_name: String::new(),
             status_color: String::new(),
+            estimate_minutes: None,
         }
     }
 

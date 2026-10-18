@@ -43,6 +43,7 @@ export {
   collapsedModulesAtom,
 } from "./atoms/collapsed-modules";
 export { isOverdue, statsByModule, type ModuleStats } from "./task-stats";
+export { formatMinutes, parseEstimate } from "./estimate";
 export {
   StatusBadge,
   StatusDot,
