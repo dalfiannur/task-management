@@ -248,3 +248,13 @@
     flex: 1;
   }
 }
+
+/* sedjiwa-ui's SidebarInset is a flex item left at `min-width: auto`, so a
+   wide child (the workload grid, a long table) widened it past the viewport
+   and the whole page scrolled sideways instead of that child's own scroller.
+   Let it shrink to the space beside the sidebar. */
+@layer components {
+  [data-slot="sidebar-inset"] {
+    min-width: 0;
+  }
+}
