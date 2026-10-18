@@ -5,7 +5,7 @@
 //! links (parent, blocked-by) that point at copied tasks. Assignees, comments,
 //! time, media and pages stay behind.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use domain::task::TaskStatus;
 use domain::template::{shift_date, TemplateSubtask};
@@ -491,11 +491,16 @@ pub(crate) async fn subtask_titles(conn: &Store, parent_id: &str) -> anyhow::Res
     .await?)
 }
 
-/// Template project ids (to keep them out of the workload).
-pub(crate) async fn template_project_ids(store: &Store) -> anyhow::Result<Vec<String>> {
-    Ok(sqlx::query_scalar("SELECT pid::text FROM cmp_projecttemplatemark")
+/// THE definition of "template project" for every read about real work
+/// (dashboard, reports, My tasks, workload, search, automations): their
+/// tasks are blueprints, not work anyone is doing. Views of the template
+/// itself, copying, exports and the activity log do not use this.
+pub(crate) async fn template_project_ids(store: &Store) -> anyhow::Result<HashSet<String>> {
+    Ok(sqlx::query_scalar::<_, String>("SELECT pid::text FROM cmp_projecttemplatemark")
         .fetch_all(store.pool())
-        .await?)
+        .await?
+        .into_iter()
+        .collect())
 }
 
 /// Remove `project_id`'s task templates, inside the caller's delete

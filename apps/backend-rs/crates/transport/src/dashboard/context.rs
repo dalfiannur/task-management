@@ -7,12 +7,15 @@ use domain::task::TaskStatus;
 use persistence::Store;
 
 use crate::projects::record::{load_all_projects, member_project_ids};
+use crate::templates::record::template_project_ids;
 use crate::sedjiwa::tasks::dashboard::v1 as pb;
 use crate::work::record::load_all_modules;
 use crate::work::task_record::{load_all_tasks, to_proto as task_to_proto, TaskRecord};
 
 pub(crate) struct Context {
-    /// Member project ids; `None` = admin (all projects).
+    /// Project ids the caller's aggregates cover: their member projects (all
+    /// projects for an admin), never templates. `None` is no longer produced
+    /// but still reads as "every project".
     pub scope: Option<HashSet<String>>,
     pub module_to_project: HashMap<String, String>,
     pub module_names: HashMap<String, String>,
@@ -22,24 +25,21 @@ pub(crate) struct Context {
 
 impl Context {
     pub async fn load(store: &Store, auth: &AuthUser) -> anyhow::Result<Self> {
-        let scope = if auth.is_admin() {
-            None
+        let templates = template_project_ids(store).await?;
+        let all_projects = load_all_projects(store).await?;
+        let visible: Vec<String> = if auth.is_admin() {
+            all_projects.iter().map(|p| p.pid.to_string()).collect()
         } else {
-            Some(
-                member_project_ids(store, &auth.id)
-                    .await?
-                    .into_iter()
-                    .collect(),
-            )
+            member_project_ids(store, &auth.id).await?
         };
+        let scope = Some(visible.into_iter().filter(|p| !templates.contains(p)).collect());
         let mut module_to_project = HashMap::new();
         let mut module_names = HashMap::new();
         for m in load_all_modules(store).await? {
             module_to_project.insert(m.pid.to_string(), m.project_id);
             module_names.insert(m.pid.to_string(), m.name);
         }
-        let project_names = load_all_projects(store)
-            .await?
+        let project_names = all_projects
             .into_iter()
             .map(|p| (p.pid.to_string(), p.name))
             .collect();
