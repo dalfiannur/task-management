@@ -1,0 +1,52 @@
+syntax = "proto3";
+package sedjiwa.tasks.view.v1;
+
+// Saved views of a project's Tasks tab: a name over a filter (the tab's URL
+// query string, stored verbatim) and a layout. Personal unless shared with the
+// project. All member-gated; a view is edited by its owner, and a shared one
+// also by the project owner or an admin.
+
+service SavedViewService {
+  rpc ListSavedViews(ListSavedViewsRequest) returns (ListSavedViewsResponse);
+  rpc CreateSavedView(CreateSavedViewRequest) returns (SavedView);
+  rpc UpdateSavedView(UpdateSavedViewRequest) returns (SavedView);
+  rpc DeleteSavedView(DeleteSavedViewRequest) returns (DeleteSavedViewResponse);
+}
+
+enum ViewLayout {
+  VIEW_LAYOUT_UNSPECIFIED = 0;
+  LIST = 1;
+  BOARD = 2;
+}
+
+message SavedView {
+  string id = 1;
+  string project_id = 2;
+  string owner_id = 3;
+  string name = 4;
+  // URL query string without the leading `?`, e.g. `status=12&priority=high`.
+  string query = 5;
+  ViewLayout layout = 6;
+  bool shared = 7;
+  string created_at = 8;
+}
+
+// The caller's own views plus every shared one, oldest first.
+message ListSavedViewsRequest { string project_id = 1; }
+message ListSavedViewsResponse { repeated SavedView views = 1; }
+message CreateSavedViewRequest {
+  string project_id = 1;
+  string name = 2;
+  string query = 3;
+  ViewLayout layout = 4; // unspecified = LIST
+  bool shared = 5;
+}
+message UpdateSavedViewRequest {
+  string id = 1;
+  optional string name = 2;
+  optional string query = 3;
+  optional ViewLayout layout = 4;
+  optional bool shared = 5; // owner (or admin) only
+}
+message DeleteSavedViewRequest { string id = 1; }
+message DeleteSavedViewResponse { bool ok = 1; }

@@ -518,18 +518,28 @@ async fn delete_task(
     let auth = require_auth(user)?;
     let ConnectRequest(r) = req;
     let pid = parse_pid(&r.id)?;
-    let t = require_task(&store, pid).await?;
-    let (_mpid, project_id) = module_project(&store, &t.module_id).await?;
-    require_member(&store, &project_id, &auth).await?;
+    delete_task_core(&store, &auth, pid).await?;
+    Ok(ConnectResponse::new(pb::DeleteTaskResponse { ok: true }))
+}
+
+/// Delete a task and its subtasks; returns every id removed. Member-gated.
+async fn delete_task_core(
+    store: &Store,
+    auth: &AuthUser,
+    pid: i64,
+) -> Result<Vec<String>, ConnectError> {
+    let t = require_task(store, pid).await?;
+    let (_mpid, project_id) = module_project(store, &t.module_id).await?;
+    require_member(store, &project_id, auth).await?;
     // Cascade to subtasks first, so each leaves the search index too. Their
     // ids join the parent's below so the dependency strip covers all of them.
     let mut gone_ids: Vec<String> = vec![pid.to_string()];
-    for spid in task_record::delete_task(&store, pid).await.map_err(internal)? {
-        super::deindex_task_and_comments(&store, &spid.to_string()).await;
+    for spid in task_record::delete_task(store, pid).await.map_err(internal)? {
+        super::deindex_task_and_comments(store, &spid.to_string()).await;
         gone_ids.push(spid.to_string());
     }
     record(
-        &store,
+        store,
         &project_id,
         &auth.id,
         EntityType::Task,
@@ -539,15 +549,15 @@ async fn delete_task(
         vec![],
     )
     .await;
-    super::deindex_task_and_comments(&store, &pid.to_string()).await;
+    super::deindex_task_and_comments(store, &pid.to_string()).await;
     // Drop these ids from every task that listed one as a blocker, or those
     // lists accumulate ids that resolve to nothing and cannot be rendered.
     // One pass over the project covers the parent and every cascaded
     // subtask, rather than re-scanning once per child.
-    strip_dependency(&store, &project_id, &gone_ids)
+    strip_dependency(store, &project_id, &gone_ids)
         .await
         .map_err(internal)?;
-    Ok(ConnectResponse::new(pb::DeleteTaskResponse { ok: true }))
+    Ok(gone_ids)
 }
 
 /// Move a task (and its subtasks) to another module in the same project, and
@@ -612,6 +622,228 @@ async fn move_task(
     Ok(ConnectResponse::new(move_task_core(&store, &auth, r).await?))
 }
 
+/// Most tasks one bulk call may touch.
+const MAX_BULK: usize = 200;
+
+/// The bulk ids, de-duplicated in order, with their tasks and shared project —
+/// or an error for the whole call: none at all, too many, one missing, or more
+/// than one project. Member-gated on that project.
+async fn bulk_targets(
+    store: &Store,
+    auth: &AuthUser,
+    ids: &[String],
+) -> Result<(String, Vec<TaskRecord>), ConnectError> {
+    let mut seen = HashSet::new();
+    let ids: Vec<&String> = ids.iter().filter(|id| seen.insert(id.as_str())).collect();
+    if ids.is_empty() {
+        return Err(ConnectError::new_invalid_argument("task_ids is required"));
+    }
+    if ids.len() > MAX_BULK {
+        return Err(ConnectError::new_invalid_argument(format!(
+            "at most {MAX_BULK} tasks at once"
+        )));
+    }
+    let mut project: Option<String> = None;
+    let mut tasks = Vec::with_capacity(ids.len());
+    for id in ids {
+        let t = require_task(store, parse_pid(id)?).await?;
+        let (_, p) = module_project(store, &t.module_id).await?;
+        match &project {
+            None => project = Some(p),
+            Some(q) if *q != p => {
+                return Err(ConnectError::new_invalid_argument(
+                    "every task must be in the same project",
+                ))
+            }
+            Some(_) => {}
+        }
+        tasks.push(t);
+    }
+    let project = project.unwrap_or_default();
+    require_member(store, &project, auth).await?;
+    Ok((project, tasks))
+}
+
+/// `current` with `add` appended (once each) and `remove` taken out.
+fn edit_ids(current: &[String], add: &[String], remove: &[String]) -> Vec<String> {
+    let mut out: Vec<String> = current.iter().filter(|x| !remove.contains(x)).cloned().collect();
+    for a in add {
+        if !out.contains(a) && !remove.contains(a) {
+            out.push(a.clone());
+        }
+    }
+    out
+}
+
+async fn bulk_update_tasks(
+    Extension(store): StoreExt,
+    notifier: Option<Extension<Arc<Notifier>>>,
+    user: Option<Extension<AuthUser>>,
+    req: ConnectRequest<pb::BulkUpdateTasksRequest>,
+) -> Result<ConnectResponse<pb::BulkUpdateTasksResponse>, ConnectError> {
+    let auth = require_auth(user)?;
+    let ConnectRequest(r) = req;
+    let n = notifier.as_ref().map(|Extension(n)| n);
+    let (project_id, tasks) = bulk_targets(&store, &auth, &r.task_ids).await?;
+
+    // What can be checked once is checked once, so a bad value fails the
+    // call instead of every task in turn.
+    let status_id = match r.status_id.as_deref().filter(|s| !s.is_empty()) {
+        Some(id) => Some(
+            resolve_status(&store, &project_id, Some(id), TaskStatus::Todo)
+                .await?
+                .pid
+                .to_string(),
+        ),
+        None => None,
+    };
+    if let Some(code) = r.priority {
+        TaskPriority::from_proto(code)
+            .ok_or_else(|| ConnectError::new_invalid_argument("invalid priority"))?;
+    }
+    validate_assignees(&store, &project_id, &r.add_assignee_ids).await?;
+    let target_module = match r.module_id.as_deref().filter(|s| !s.is_empty()) {
+        Some(m) => {
+            let (_, p) = module_project(&store, m).await?;
+            if p != project_id {
+                return Err(ConnectError::new_invalid_argument(
+                    "destination module is in a different project",
+                ));
+            }
+            Some(m.to_string())
+        }
+        None => None,
+    };
+    let selected: HashSet<String> = tasks.iter().map(|t| t.pid.to_string()).collect();
+    // Moved tasks append after the destination's current last one.
+    let mut next_order = match &target_module {
+        Some(m) => tasks_for_modules(&store, HashSet::from([m.clone()]))
+            .await
+            .map_err(internal)?
+            .iter()
+            .map(|t| t.order + 1)
+            .max()
+            .unwrap_or(0),
+        None => 0,
+    };
+
+    let mut saved = Vec::with_capacity(tasks.len());
+    let mut failed = Vec::new();
+    for t in tasks {
+        let id = t.pid.to_string();
+        let result: Result<pb::Task, ConnectError> = async {
+            let assignees = (!r.add_assignee_ids.is_empty() || !r.remove_assignee_ids.is_empty())
+                .then(|| pb::StringList {
+                    values: edit_ids(&t.assignee_ids, &r.add_assignee_ids, &r.remove_assignee_ids),
+                });
+            let labels = (!r.add_label_ids.is_empty() || !r.remove_label_ids.is_empty())
+                .then(|| pb::StringList {
+                    values: edit_ids(&t.label_ids, &r.add_label_ids, &r.remove_label_ids),
+                });
+            let edits = status_id.is_some()
+                || r.priority.is_some()
+                || r.due_date.is_some()
+                || assignees.is_some()
+                || labels.is_some();
+            // A move-only call leaves no empty "updated" entry in the log.
+            let mut task = if edits {
+                update_task_core(
+                    &store,
+                    n,
+                    &auth,
+                    pb::UpdateTaskRequest {
+                        id: id.clone(),
+                        status_id: status_id.clone(),
+                        priority: r.priority,
+                        due_date: r.due_date.clone(),
+                        assignee_ids: assignees,
+                        label_ids: labels,
+                        ..Default::default()
+                    },
+                )
+                .await?
+            } else {
+                to_proto(&t)
+            };
+            if let Some(m) = target_module.as_ref().filter(|m| **m != t.module_id) {
+                match &t.parent_id {
+                    // Carried along by its parent's move.
+                    Some(p) if selected.contains(p) => {}
+                    Some(_) => {
+                        return Err(ConnectError::new_failed_precondition(
+                            "a subtask moves with its parent",
+                        ))
+                    }
+                    None => {
+                        let order = next_order;
+                        next_order += 1;
+                        task = move_task_core(
+                            &store,
+                            &auth,
+                            pb::MoveTaskRequest { id: id.clone(), module_id: m.clone(), order },
+                        )
+                        .await?;
+                    }
+                }
+            }
+            Ok(task)
+        }
+        .await;
+        match result {
+            Ok(task) => saved.push(task),
+            Err(e) => failed.push(pb::BulkFailure {
+                id,
+                message: e.message().unwrap_or("failed").to_string(),
+            }),
+        }
+    }
+    // A subtask's module moved with its parent after it was saved above;
+    // re-read so every returned row is current.
+    if target_module.is_some() {
+        for task in saved.iter_mut() {
+            if let Ok(pid) = task.id.parse::<i64>() {
+                if let Some(t) = load_task(&store, pid).await.map_err(internal)? {
+                    *task = to_proto(&t);
+                }
+            }
+        }
+    }
+    Ok(ConnectResponse::new(pb::BulkUpdateTasksResponse {
+        tasks: saved,
+        failed,
+    }))
+}
+
+async fn bulk_delete_tasks(
+    Extension(store): StoreExt,
+    user: Option<Extension<AuthUser>>,
+    req: ConnectRequest<pb::BulkDeleteTasksRequest>,
+) -> Result<ConnectResponse<pb::BulkDeleteTasksResponse>, ConnectError> {
+    let auth = require_auth(user)?;
+    let ConnectRequest(r) = req;
+    let (_project, tasks) = bulk_targets(&store, &auth, &r.task_ids).await?;
+    let mut deleted: Vec<String> = Vec::new();
+    let mut failed = Vec::new();
+    for t in tasks {
+        let id = t.pid.to_string();
+        // Already removed with a parent deleted earlier in this call.
+        if deleted.contains(&id) {
+            continue;
+        }
+        match delete_task_core(&store, &auth, t.pid).await {
+            Ok(gone) => deleted.extend(gone),
+            Err(e) => failed.push(pb::BulkFailure {
+                id,
+                message: e.message().unwrap_or("failed").to_string(),
+            }),
+        }
+    }
+    Ok(ConnectResponse::new(pb::BulkDeleteTasksResponse {
+        deleted_ids: deleted,
+        failed,
+    }))
+}
+
 /// TaskService router; injects the Store as a request extension.
 pub fn task_router(store: Arc<Store>) -> axum::Router<()> {
     type A = Option<Extension<AuthUser>>;
@@ -623,6 +855,12 @@ pub fn task_router(store: Arc<Store>) -> axum::Router<()> {
         .update_task::<_, (StoreExt, N, A, ConnectRequest<pb::UpdateTaskRequest>)>(update_task)
         .delete_task::<_, (StoreExt, A, ConnectRequest<pb::DeleteTaskRequest>)>(delete_task)
         .move_task::<_, (StoreExt, A, ConnectRequest<pb::MoveTaskRequest>)>(move_task)
+        .bulk_update_tasks::<_, (StoreExt, N, A, ConnectRequest<pb::BulkUpdateTasksRequest>)>(
+            bulk_update_tasks,
+        )
+        .bulk_delete_tasks::<_, (StoreExt, A, ConnectRequest<pb::BulkDeleteTasksRequest>)>(
+            bulk_delete_tasks,
+        )
         .build()
         .layer(Extension(store))
 }

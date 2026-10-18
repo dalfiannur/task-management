@@ -14,6 +14,7 @@ pub mod sanitize;
 pub mod task;
 pub mod token;
 pub mod user;
+pub mod view;
 
 /// A single timestamp, used only to prove the database round-trips (DbCheck).
 #[derive(Debug, Clone)]

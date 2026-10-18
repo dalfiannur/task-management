@@ -14,7 +14,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Button, Input, AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "sedjiwa-ui";
+import { Button, Checkbox, Input, AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "sedjiwa-ui";
 import { cn } from "@/lib/utils";
 import {
   Collapsible,
@@ -30,6 +30,7 @@ import { buildHierarchy } from "../task-graph";
 import type { ModuleStats } from "../task-stats";
 import { formatMinutes } from "../estimate";
 import { TaskListHeader, TaskRow } from "./task-row";
+import type { TaskSelection } from "./bulk-action-bar";
 
 export function ModuleSection({
   projectId,
@@ -49,6 +50,7 @@ export function ModuleSection({
   onMoveDown,
   isFirst,
   isLast,
+  selection,
 }: {
   /** The project whose task list the optimistic quick-add writes into. */
   projectId: string;
@@ -74,6 +76,8 @@ export function ModuleSection({
   onMoveDown: () => void;
   isFirst: boolean;
   isLast: boolean;
+  /** Select mode: rows pick tasks, and the header picks the whole module. */
+  selection?: TaskSelection;
 }) {
   const create = useCreateTask(projectId);
   const del = useDeleteModule();
@@ -143,6 +147,25 @@ export function ModuleSection({
             </Button>
           </CollapsibleTrigger>
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
+            {selection && (
+              <Checkbox
+                checked={
+                  tasks.length > 0 && tasks.every((t) => selection.has(t.id))
+                    ? true
+                    : tasks.some((t) => selection.has(t.id))
+                      ? "indeterminate"
+                      : false
+                }
+                disabled={tasks.length === 0}
+                onCheckedChange={(c) =>
+                  selection.set(
+                    tasks.map((t) => t.id),
+                    c === true,
+                  )
+                }
+                aria-label={`Select every task in ${module.name}`}
+              />
+            )}
             <h3 className="truncate font-semibold">{module.name}</h3>
             <span className="text-num rounded-full bg-muted px-2 text-xs text-muted-foreground">
               {tasks.length === totalCount
@@ -261,6 +284,7 @@ export function ModuleSection({
                     progress={subtaskStats[task.id] ?? null}
                     blocked={blockedMap[task.id]}
                     subtaskCount={subtaskStats[task.id]?.total ?? 0}
+                    selection={selection}
                   />
                   {(childrenOf[task.id] ?? []).map((child) => (
                     <TaskRow
@@ -273,6 +297,7 @@ export function ModuleSection({
                       dragDisabled={dragDisabled}
                       depth={1}
                       blocked={blockedMap[child.id]}
+                      selection={selection}
                     />
                   ))}
                 </Fragment>

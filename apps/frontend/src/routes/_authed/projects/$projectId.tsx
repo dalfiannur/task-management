@@ -11,9 +11,11 @@ import { coerceSearchParam } from "@/lib/utils";
 export const Route = createFileRoute("/_authed/projects/$projectId")({
   validateSearch: (
     search: Record<string, unknown>,
-  ): { task?: string; comment?: string } & TaskFilter => ({
+  ): { task?: string; comment?: string; view?: string } & TaskFilter => ({
     task: coerceSearchParam(search.task),
     comment: coerceSearchParam(search.comment),
+    // The saved view the filter came from (Tasks tab).
+    view: coerceSearchParam(search.view),
     ...parseTaskFilter(search),
   }),
   component: DetailShell,

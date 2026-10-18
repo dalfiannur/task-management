@@ -147,3 +147,36 @@ export function parseTaskFilter(search: Record<string, unknown>): TaskFilter {
     to: date(search.to),
   };
 }
+
+/** Filter keys in the order a saved query writes them. */
+const FILTER_KEYS = ["q", "status", "priority", "assignee", "label", "from", "to"] as const;
+
+/**
+ * A filter as a URL query string (no `?`), keys in a fixed order and empty
+ * fields left out — the form a saved view stores, so two filters that mean
+ * the same thing produce the same string.
+ */
+export function filterToQuery(f: TaskFilter): string {
+  const params = new URLSearchParams();
+  for (const key of FILTER_KEYS) {
+    const v = key === "q" ? f.q?.trim() : f[key];
+    if (v) params.set(key, v);
+  }
+  return params.toString();
+}
+
+/** A saved query back into a filter, through the same checks as the URL. */
+export function queryToFilter(query: string): TaskFilter {
+  return parseTaskFilter(Object.fromEntries(new URLSearchParams(query)));
+}
+
+/** Every filter field cleared — for a navigate that replaces the filter. */
+export const EMPTY_FILTER: Record<keyof TaskFilter, undefined> = {
+  q: undefined,
+  status: undefined,
+  priority: undefined,
+  assignee: undefined,
+  label: undefined,
+  from: undefined,
+  to: undefined,
+};

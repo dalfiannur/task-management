@@ -19,6 +19,13 @@ service TaskService {
   rpc UpdateTask(UpdateTaskRequest) returns (Task);
   rpc DeleteTask(DeleteTaskRequest) returns (DeleteTaskResponse);
   rpc MoveTask(MoveTaskRequest) returns (Task);
+  // Several tasks of one project at once (at most 200). Every id is checked
+  // first — all must exist and share a project the caller is a member of —
+  // then each task goes through the same path as its single-task RPC, so
+  // activity, notifications and search stay identical. Not one transaction:
+  // a task that fails mid-way is reported in `failed`, the rest still apply.
+  rpc BulkUpdateTasks(BulkUpdateTasksRequest) returns (BulkUpdateTasksResponse);
+  rpc BulkDeleteTasks(BulkDeleteTasksRequest) returns (BulkDeleteTasksResponse);
 }
 
 // A project's workflow: its own task statuses, each in a fixed category (the
@@ -192,4 +199,33 @@ message DeleteTaskStatusResponse { bool ok = 1; }
 message ReorderTaskStatusesRequest {
   string project_id = 1;
   repeated string status_ids = 2; // new order; must list every status
+}
+
+// Each field applies to every task; absent = unchanged.
+message BulkUpdateTasksRequest {
+  repeated string task_ids = 1;
+  optional string status_id = 2;
+  optional TaskPriority priority = 3;
+  repeated string add_assignee_ids = 4;
+  repeated string remove_assignee_ids = 5;
+  repeated string add_label_ids = 6;
+  repeated string remove_label_ids = 7;
+  optional string due_date = 8; // "" clears
+  // Move to the end of this module (same project). Subtasks follow their
+  // parent, so a subtask whose parent is not moved with it is refused.
+  optional string module_id = 9;
+}
+message BulkFailure {
+  string id = 1;
+  string message = 2;
+}
+message BulkUpdateTasksResponse {
+  repeated Task tasks = 1; // as saved
+  repeated BulkFailure failed = 2;
+}
+message BulkDeleteTasksRequest { repeated string task_ids = 1; }
+message BulkDeleteTasksResponse {
+  // Includes subtasks removed along with a selected parent.
+  repeated string deleted_ids = 1;
+  repeated BulkFailure failed = 2;
 }

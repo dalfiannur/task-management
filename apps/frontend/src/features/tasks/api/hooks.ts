@@ -449,6 +449,56 @@ export function useUpdateTask(projectId: string) {
     },
   });
 }
+/* ------------------------------- Bulk -------------------------------- */
+
+/** Toast a bulk call's per-task failures, naming the first reason. */
+function reportFailures(failed: readonly { message: string }[], verb: string) {
+  if (!failed.length) return;
+  toast.error(
+    `${failed.length} task${failed.length === 1 ? "" : "s"} not ${verb}: ${failed[0].message}`,
+  );
+}
+
+/**
+ * BulkUpdateTasks. The returned rows are written into the list cache; a move
+ * between modules reshapes the list (order, subtasks following a parent), so
+ * that case refetches instead.
+ */
+export function useBulkUpdateTasks(projectId: string) {
+  const { listKey, taskKey } = useTaskKeys(projectId);
+  return useMutation(TaskService.method.bulkUpdateTasks, {
+    onSuccess: (res, input) => {
+      reportFailures(res.failed, "updated");
+      if (input.moduleId) {
+        void invalidateTasks();
+        return;
+      }
+      const byId = new Map(res.tasks.map((t) => [t.id, t]));
+      queryClient.setQueryData(listKey, (old) =>
+        old
+          ? create(ListTasksResponseSchema, {
+              tasks: old.tasks.map((t) => byId.get(t.id) ?? t),
+            })
+          : old,
+      );
+      for (const t of res.tasks) {
+        queryClient.setQueryData(taskKey(t.id), (old) => (old ? t : old));
+      }
+    },
+    onError: (err) => toast.error(err.message || "Bulk update failed"),
+  });
+}
+
+export function useBulkDeleteTasks() {
+  return useMutation(TaskService.method.bulkDeleteTasks, {
+    onSuccess: (res) => {
+      reportFailures(res.failed, "deleted");
+      return invalidateTasks();
+    },
+    onError: (err) => toast.error(err.message || "Bulk delete failed"),
+  });
+}
+
 export function useDeleteTask() {
   return useMutation(TaskService.method.deleteTask, {
     onSuccess: invalidateTasks,

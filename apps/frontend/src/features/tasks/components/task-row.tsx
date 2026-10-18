@@ -11,6 +11,7 @@ import { statusToProto } from "../api/mappers";
 import { isOptimisticTaskId, useUpdateTask, useDeleteTask } from "../api/hooks";
 import { DueDate, EstimateLabel, PriorityLabel, TaskNumber } from "./task-badges";
 import { StatusMenu } from "./status-menu";
+import type { TaskSelection } from "./bulk-action-bar";
 import { AssigneeAvatars } from "./assignee-picker";
 
 export function TaskRow({
@@ -24,6 +25,7 @@ export function TaskRow({
   progress,
   blocked,
   subtaskCount = 0,
+  selection,
 }: {
   /** The project whose task list an optimistic edit writes into. */
   projectId: string;
@@ -52,6 +54,9 @@ export function TaskRow({
    * with it, so the blast radius grew and the guard has to grow with it.
    */
   subtaskCount?: number;
+  /** Select mode: the checkbox picks the task for a bulk action instead of
+   *  marking it done. */
+  selection?: TaskSelection;
 }) {
   const update = useUpdateTask(projectId);
   const del = useDeleteTask();
@@ -110,14 +115,25 @@ export function TaskRow({
       >
         <GripVertical className="h-4 w-4" />
       </button>
-      <Checkbox
-        checked={done}
-        disabled={pending}
-        onCheckedChange={(c) => toggleDone(c === true)}
-        onClick={(e) => e.stopPropagation()}
-        className="relative z-10"
-        aria-label={done ? "Mark as to do" : "Mark as done"}
-      />
+      {selection ? (
+        <Checkbox
+          checked={selection.has(task.id)}
+          disabled={pending}
+          onCheckedChange={(c) => selection.set([task.id], c === true)}
+          onClick={(e) => e.stopPropagation()}
+          className="relative z-10"
+          aria-label={`Select ${task.title}`}
+        />
+      ) : (
+        <Checkbox
+          checked={done}
+          disabled={pending}
+          onCheckedChange={(c) => toggleDone(c === true)}
+          onClick={(e) => e.stopPropagation()}
+          className="relative z-10"
+          aria-label={done ? "Mark as to do" : "Mark as done"}
+        />
+      )}
 
       <div className="min-w-0 flex-1">
         <div className="flex min-w-0 items-center gap-2">

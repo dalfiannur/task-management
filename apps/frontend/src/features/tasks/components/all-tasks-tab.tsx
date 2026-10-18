@@ -8,7 +8,7 @@ import {
   useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import { Columns3, Layers, List, Plus, SearchX, Workflow } from "lucide-react";
+import { Columns3, Layers, List, ListChecks, Plus, SearchX, Workflow } from "lucide-react";
 import { toast } from "sonner";
 import { Button, Skeleton } from "sedjiwa-ui";
 import { cn } from "@/lib/utils";
@@ -30,11 +30,17 @@ import { buildHierarchy, edgeConflicts, subtaskProgress } from "../task-graph";
 import { statsByModule } from "../task-stats";
 import { tasksViewAtom, type TasksView } from "../atoms/view";
 import {
+  EMPTY_FILTER,
   filterTasks,
+  filterToQuery,
   hasActiveFilter,
   parseTaskFilter,
+  queryToFilter,
   type TaskFilter,
 } from "../filter";
+import type { SavedView } from "../api/views";
+import { SavedViewsBar } from "./saved-views-bar";
+import { BulkActionBar, type TaskSelection } from "./bulk-action-bar";
 import { ModuleSection } from "./module-section";
 import { TaskFilterBar } from "./task-filter-bar";
 import { TaskBoard } from "./task-board";
@@ -71,6 +77,55 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
   const move = useMoveTask();
   const reorder = useReorderModules();
   const [view, setView] = useAtom(tasksViewAtom);
+  // Select mode (list only): row checkboxes pick tasks for the bulk bar.
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
+  const selection: TaskSelection | undefined = useMemo(
+    () =>
+      selectMode
+        ? {
+            has: (id) => selected.has(id),
+            set: (ids, on) =>
+              setSelected((prev) => {
+                const next = new Set(prev);
+                for (const id of ids) {
+                  if (on) next.add(id);
+                  else next.delete(id);
+                }
+                return next;
+              }),
+          }
+        : undefined,
+    [selectMode, selected],
+  );
+
+  // A new filter starts a new selection: tasks it hides would otherwise stay
+  // picked out of sight, and toggle the wrong way once they reappear.
+  const filterKey = filterToQuery(filter);
+  const [selectionFilterKey, setSelectionFilterKey] = useState(filterKey);
+  if (filterKey !== selectionFilterKey) {
+    setSelectionFilterKey(filterKey);
+    setSelected(new Set());
+  }
+
+  function exitSelectMode() {
+    setSelectMode(false);
+    setSelected(new Set());
+  }
+
+  // Esc leaves select mode — unless a dialog or menu is open, in which case
+  // that Esc is closing it. Checked in the capture phase, before the layer
+  // reacts and leaves the DOM.
+  useEffect(() => {
+    if (!selectMode) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== "Escape") return;
+      if (document.querySelector('[role="menu"], [role="dialog"], [role="alertdialog"], [role="listbox"]')) return;
+      exitSelectMode();
+    }
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [selectMode]);
 
   const canManage = isAdmin || (!!project && project.ownerId === me?.id);
 
@@ -121,6 +176,25 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
 
   function setFilter(next: Partial<TaskFilter>) {
     navigate({ to: ".", search: (prev) => ({ ...prev, ...next }) });
+  }
+
+  /** Open a saved view (its filter replaces the current one), or go back to
+   *  every task with `null`. */
+  function applyView(v: SavedView | null) {
+    navigate({
+      to: ".",
+      search: (prev) => ({
+        ...prev,
+        ...EMPTY_FILTER,
+        ...(v ? queryToFilter(v.query) : {}),
+        view: v?.id,
+      }),
+    });
+    if (v) setView(v.layout);
+  }
+
+  function markView(id: string | undefined) {
+    navigate({ to: ".", search: (prev) => ({ ...prev, view: id }) });
   }
 
   function clearFilters() {
@@ -295,6 +369,17 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
   return (
     <div className="space-y-4 p-4 sm:p-6">
       {modules.length > 0 && (
+        <SavedViewsBar
+          projectId={projectId}
+          projectOwnerId={project?.ownerId}
+          filter={filter}
+          layout={view}
+          activeId={search.view}
+          onApply={applyView}
+          onActivate={markView}
+        />
+      )}
+      {modules.length > 0 && (
         <TaskFilterBar
           filter={filter}
           onChange={setFilter}
@@ -317,7 +402,10 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
                   <button
                     key={key}
                     type="button"
-                    onClick={() => setView(key)}
+                    onClick={() => {
+                      setView(key);
+                      if (key === "board") exitSelectMode();
+                    }}
                     aria-pressed={view === key}
                     className={cn(
                       "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm",
@@ -332,6 +420,17 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
                   </button>
                 ))}
               </div>
+              {view === "list" && (
+                <Button
+                  variant={selectMode ? "secondary" : "outline"}
+                  size="sm"
+                  aria-pressed={selectMode}
+                  onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
+                >
+                  <ListChecks className="mr-1 h-4 w-4" />
+                  {selectMode ? "Done" : "Select"}
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"
@@ -404,7 +503,8 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
                   totalCount={totalByModule[m.id] ?? 0}
                   stats={moduleStats[m.id] ?? EMPTY_STATS}
                   canManage={canManage}
-                  dragDisabled={filtering}
+                  dragDisabled={filtering || selectMode}
+                  selection={selection}
                   userMap={userMap}
                   labelMap={labelMap}
                   blockedMap={blockedMap}
@@ -462,6 +562,20 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
         projectId={projectId}
         module={moduleDialog.module}
       />
+      {selectMode && view === "list" && (
+        <BulkActionBar
+          projectId={projectId}
+          // Only what is on screen: a task the filter hides is never changed
+          // by an action the user can't see it in.
+          selectedIds={visibleTasks.filter((t) => selected.has(t.id)).map((t) => t.id)}
+          statuses={statuses}
+          modules={modules}
+          memberIds={memberIds}
+          userMap={userMap}
+          labelMap={labelMap}
+          onClear={() => setSelected(new Set())}
+        />
+      )}
       <ManageStatusesDialog
         open={statusDialog}
         onOpenChange={setStatusDialog}

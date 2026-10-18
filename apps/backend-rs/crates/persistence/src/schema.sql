@@ -373,3 +373,17 @@ CREATE TABLE IF NOT EXISTS cmp_taskestimate (
     pid BIGINT PRIMARY KEY REFERENCES arke_entities(pid) ON DELETE CASCADE,
     minutes INTEGER NOT NULL
 );
+
+-- A saved view of a project's Tasks tab: a named filter (URL query string,
+-- verbatim) and layout. Personal to `owner_id` unless `shared`.
+CREATE TABLE IF NOT EXISTS cmp_savedview (
+    pid BIGINT PRIMARY KEY REFERENCES arke_entities(pid) ON DELETE CASCADE,
+    project_id TEXT NOT NULL,
+    owner_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    query TEXT NOT NULL,
+    layout TEXT NOT NULL,
+    shared BOOLEAN NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_cmp_savedview_project_id ON cmp_savedview USING btree (project_id);

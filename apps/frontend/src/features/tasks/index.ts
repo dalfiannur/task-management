@@ -28,6 +28,8 @@ export {
   useUpdateStatus,
   useDeleteStatus,
   useReorderStatuses,
+  useBulkUpdateTasks,
+  useBulkDeleteTasks,
 } from "./api/hooks";
 export { AllTasksTab } from "./components/all-tasks-tab";
 export { TaskDialog } from "./components/task-dialog";

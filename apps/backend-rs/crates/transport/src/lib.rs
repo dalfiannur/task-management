@@ -29,6 +29,7 @@ mod reports;
 mod search;
 mod tokens;
 mod users;
+mod views;
 mod work;
 pub use activity::activity_router;
 pub use dashboard::{dashboard_router, mytasks_router};
@@ -43,6 +44,7 @@ pub use reports::report_router;
 pub use search::search_router;
 pub use tokens::token_router;
 pub use users::{auth_router, user_router, JwtConfig};
+pub use views::view_router;
 pub use work::{module_router, status_router, task_router};
 
 use std::sync::Arc;
