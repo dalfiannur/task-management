@@ -408,3 +408,19 @@ CREATE INDEX IF NOT EXISTS idx_cmp_timeentry_task_id ON cmp_timeentry USING btre
 CREATE INDEX IF NOT EXISTS idx_cmp_timeentry_project_date ON cmp_timeentry USING btree (project_id, work_date);
 CREATE INDEX IF NOT EXISTS idx_cmp_timeentry_user_date ON cmp_timeentry USING btree (user_id, work_date);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_cmp_timeentry_one_running ON cmp_timeentry USING btree (user_id) WHERE running;
+
+-- Working days (bit 0 = Monday … bit 6 = Sunday) and, for a user, weekly
+-- capacity in minutes. Attached to a project or a user entity. NULL = inherit
+-- the global days or use the default capacity.
+CREATE TABLE IF NOT EXISTS cmp_workcalendar (
+    pid BIGINT PRIMARY KEY REFERENCES arke_entities(pid) ON DELETE CASCADE,
+    working_days INTEGER,
+    weekly_minutes INTEGER
+);
+
+-- The one workspace-settings entity, holding the global working days.
+CREATE TABLE IF NOT EXISTS cmp_workspacesettings (
+    pid BIGINT PRIMARY KEY REFERENCES arke_entities(pid) ON DELETE CASCADE,
+    singleton BOOLEAN NOT NULL DEFAULT TRUE UNIQUE CHECK (singleton),
+    working_days INTEGER NOT NULL
+);

@@ -1,5 +1,5 @@
 // Time tracking RPC hooks (connect-query over TimeService). Every write also
-// refreshes the task lists, whose `loggedMinutes` it changes.
+// refreshes the task lists, whose `loggedMinutes` it changes, and the workload.
 
 import { useMemo } from "react";
 import { format } from "date-fns";
@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { createConnectQueryKey, useMutation, useQuery } from "@connectrpc/connect-query";
 import { TimeService, type TimeEntry as PbTimeEntry } from "@/lib/gen/time_pb";
 import { TaskService } from "@/lib/gen/work_pb";
+import { WorkloadService } from "@/lib/gen/workload_pb";
 import { queryClient } from "@/lib/query";
 import type { TimeEntry } from "../types";
 
@@ -39,6 +40,9 @@ const refresh = () =>
     }),
     queryClient.invalidateQueries({
       queryKey: createConnectQueryKey({ schema: TaskService, cardinality: "finite" }),
+    }),
+    queryClient.invalidateQueries({
+      queryKey: createConnectQueryKey({ schema: WorkloadService, cardinality: "finite" }),
     }),
   ]);
 

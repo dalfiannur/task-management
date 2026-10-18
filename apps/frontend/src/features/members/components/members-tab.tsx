@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useAtomValue } from "jotai";
 import {
+  CalendarDays,
   ListChecks,
   LogOut,
   MoreHorizontal,
@@ -12,11 +13,13 @@ import {
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, Avatar, AvatarFallback, AvatarImage, Badge, Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, Input, Skeleton } from "sedjiwa-ui";
 import { KpiStrip } from "@/components/shared/kpi-strip";
+import { formatMinutes } from "@/lib/duration";
 import { cn, getInitials } from "@/lib/utils";
 import { currentUserAtom, isAdminAtom } from "@/features/auth";
 import { useProjectMembers } from "@/features/projects";
 import { useTasks } from "@/features/tasks";
 import { useUserMap } from "@/features/users";
+import { WorkCalendarDialog, useWorkload } from "@/features/workload";
 import { useRemoveMember, useLeaveProject } from "../api/hooks";
 import {
   EMPTY_MEMBER_STATS,
@@ -29,6 +32,7 @@ import { AddMemberDialog } from "./add-member-dialog";
 const COLS = {
   open: "w-16 shrink-0 text-right",
   overdue: "w-16 shrink-0 text-right",
+  effort: "w-24 shrink-0 whitespace-nowrap text-right",
   progress: "w-40 shrink-0",
   actions: "w-8 shrink-0",
 };
@@ -40,6 +44,8 @@ interface Row {
   phone?: string;
   avatarUrl?: string;
   stats: MemberStats;
+  /** Remaining effort on their estimated open tasks here; see Workload. */
+  effortLeft: number;
 }
 
 export function MembersTab({ projectId }: { projectId: string }) {
@@ -53,12 +59,18 @@ export function MembersTab({ projectId }: { projectId: string }) {
   const leave = useLeaveProject();
   const [q, setQ] = useState("");
   const [confirmRemove, setConfirmRemove] = useState<Row | null>(null);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const { workload: effort, isLoading: effortLoading } = useWorkload(projectId, 1);
 
   const canManage = isAdmin || ownerId === me?.id;
   const iAmMember = !!me && memberIds.includes(me.id);
   const iAmOwner = ownerId === me?.id;
 
   const workload = useMemo(() => workloadByMember(tasks), [tasks]);
+  const effortByUser = useMemo(
+    () => new Map(effort?.members.map((m) => [m.userId, m.totalMinutes]) ?? []),
+    [effort],
+  );
 
   // Owner first, then by name.
   const rows: Row[] = useMemo(
@@ -73,13 +85,14 @@ export function MembersTab({ projectId }: { projectId: string }) {
             phone: u?.phone,
             avatarUrl: u?.avatarUrl,
             stats: workload.byUser[m.userId] ?? EMPTY_MEMBER_STATS,
+            effortLeft: effortByUser.get(m.userId) ?? 0,
           };
         })
         .sort((a, b) => {
           if (a.isOwner !== b.isOwner) return a.isOwner ? -1 : 1;
           return a.name.localeCompare(b.name);
         }),
-    [members, userMap, workload],
+    [members, userMap, workload, effortByUser],
   );
 
   const needle = q.trim().toLowerCase();
@@ -148,6 +161,10 @@ export function MembersTab({ projectId }: { projectId: string }) {
           />
         </Input.Root>
         <div className="ml-auto flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setCalendarOpen(true)}>
+            <CalendarDays className="mr-1 h-4 w-4" />
+            Working days
+          </Button>
           {iAmMember && !iAmOwner && (
             <Button
               variant="outline"
@@ -200,6 +217,9 @@ export function MembersTab({ projectId }: { projectId: string }) {
             <span className="flex-1">Member</span>
             <span className={COLS.open}>Open</span>
             <span className={COLS.overdue}>Overdue</span>
+            <span className={COLS.effort} title="Estimate minus time logged, open tasks">
+              Effort left
+            </span>
             <span className={COLS.progress}>Done</span>
             <span className={COLS.actions} />
           </div>
@@ -216,7 +236,7 @@ export function MembersTab({ projectId }: { projectId: string }) {
                   key={r.userId}
                   row={r}
                   isMe={r.userId === me?.id}
-                  statsLoading={tasksLoading}
+                  statsLoading={tasksLoading || effortLoading}
                   canRemove={canManage && !r.isOwner}
                   onViewTasks={() => viewTasks(r.userId)}
                   onRemove={() => setConfirmRemove(r)}
@@ -232,6 +252,14 @@ export function MembersTab({ projectId }: { projectId: string }) {
           )}
         </div>
       </section>
+
+      <WorkCalendarDialog
+        scope="project"
+        id={projectId}
+        title="Project working days"
+        open={calendarOpen}
+        onOpenChange={setCalendarOpen}
+      />
 
       {/* Controlled from the menu item: an AlertDialogTrigger inside the menu
           would unmount with it the moment the menu closes. */}
@@ -304,13 +332,14 @@ function MemberRow({
             {stats.overdue > 0 && (
               <span className="text-destructive"> · {stats.overdue} overdue</span>
             )}
+            {row.effortLeft > 0 && ` · ${formatMinutes(row.effortLeft)} left`}
             {stats.total > 0 && ` · ${pct}% done`}
           </span>
         )}
       </div>
 
       {statsLoading ? (
-        <Skeleton className="hidden h-4 w-[17rem] md:block" />
+        <Skeleton className="hidden h-4 w-[23.5rem] md:block" />
       ) : (
         <>
           <span className={cn(COLS.open, "text-num hidden text-sm md:block")}>
@@ -324,6 +353,15 @@ function MemberRow({
             )}
           >
             {stats.overdue}
+          </span>
+          <span
+            className={cn(
+              COLS.effort,
+              "text-num hidden text-sm md:block",
+              !row.effortLeft && "text-muted-foreground",
+            )}
+          >
+            {row.effortLeft ? formatMinutes(row.effortLeft) : "–"}
           </span>
           <div className={cn(COLS.progress, "hidden items-center gap-2 md:flex")}>
             {stats.total > 0 ? (

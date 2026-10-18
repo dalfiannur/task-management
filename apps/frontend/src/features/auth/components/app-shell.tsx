@@ -10,6 +10,7 @@ import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import {
   Check,
   FileBarChart,
+  Gauge,
   FolderKanban,
   KeyRound,
   LayoutDashboard,
@@ -89,6 +90,7 @@ const MAIN_NAV: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/my-tasks", label: "My tasks", icon: ListTodo },
   { to: "/projects", label: "Projects", icon: FolderKanban },
+  { to: "/workload", label: "Workload", icon: Gauge },
   { to: "/reports", label: "Reports", icon: FileBarChart },
 ];
 

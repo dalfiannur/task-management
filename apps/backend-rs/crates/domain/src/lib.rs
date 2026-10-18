@@ -16,6 +16,7 @@ pub mod time;
 pub mod token;
 pub mod user;
 pub mod view;
+pub mod workload;
 
 /// A single timestamp, used only to prove the database round-trips (DbCheck).
 #[derive(Debug, Clone)]

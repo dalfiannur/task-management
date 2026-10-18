@@ -1,0 +1,114 @@
+syntax = "proto3";
+package sedjiwa.tasks.workload.v1;
+
+// Workload: how much open, estimated work each person carries per week
+// against their capacity, plus the working-day calendars that spread it.
+//
+// Calendars nest: a project or a user without its own working days inherits
+// the global ones (Mon–Fri until an admin changes them). A task's remaining
+// effort (estimate − logged, never below 0) is split evenly between its
+// assignees and spread over the days that are working days for BOTH the
+// assignee and the task's project. When the two share no day, the assignee's
+// own days are used and the task is flagged.
+
+service WorkloadService {
+  // Members of `project_id`, or — without it — everyone in the caller's
+  // projects (admins: every project). Only those projects' tasks count.
+  rpc GetWorkload(GetWorkloadRequest) returns (Workload);
+
+  // Read: any signed-in user. Write: GLOBAL admin, PROJECT owner/admin,
+  // USER self/admin.
+  rpc GetWorkCalendar(GetWorkCalendarRequest) returns (WorkCalendar);
+  rpc SetWorkCalendar(SetWorkCalendarRequest) returns (WorkCalendar);
+}
+
+enum CalendarScope {
+  CALENDAR_SCOPE_UNSPECIFIED = 0;
+  CALENDAR_SCOPE_GLOBAL = 1;
+  CALENDAR_SCOPE_PROJECT = 2;
+  CALENDAR_SCOPE_USER = 3;
+}
+
+// Days are ISO weekdays: 1 = Monday … 7 = Sunday, ascending.
+message WorkCalendar {
+  CalendarScope scope = 1;
+  string id = 2;                        // project / user id; empty for GLOBAL
+  repeated int32 working_days = 3;      // own setting; empty = inherits global
+  repeated int32 effective_days = 4;    // what applies
+  optional int32 weekly_minutes = 5;    // USER only; unset = the default
+  int32 effective_weekly_minutes = 6;   // USER only (0 otherwise)
+  bool can_edit = 7;
+}
+
+message GetWorkCalendarRequest {
+  CalendarScope scope = 1;
+  string id = 2;
+}
+
+// Replaces the scope's setting. Empty `working_days` = inherit global (not
+// allowed for GLOBAL). `weekly_minutes` is for USER only; unset = default.
+message SetWorkCalendarRequest {
+  CalendarScope scope = 1;
+  string id = 2;
+  repeated int32 working_days = 3;
+  optional int32 weekly_minutes = 4;
+}
+
+message GetWorkloadRequest {
+  optional string project_id = 1;
+  // The caller's local date (yyyy-MM-dd); default today in UTC. Weeks start
+  // on the Monday of this date's week.
+  optional string today = 2;
+  int32 weeks = 3; // 0 = 6, at most 12
+}
+
+message Workload {
+  repeated string week_starts = 1; // yyyy-MM-dd Mondays
+  repeated WorkloadMember members = 2;
+  repeated WorkloadProject projects = 3; // in scope, by name
+}
+
+message WorkloadProject {
+  string id = 1;
+  string name = 2;
+}
+
+message WorkloadWeek {
+  int32 capacity_minutes = 1; // weekly capacity over the working days left in the week
+  int32 planned_minutes = 2;
+}
+
+enum WorkloadBucket {
+  WORKLOAD_BUCKET_UNSPECIFIED = 0;
+  WORKLOAD_BUCKET_SCHEDULED = 1;   // spread over its dates (may run past the horizon)
+  WORKLOAD_BUCKET_OVERDUE = 2;     // due before today
+  WORKLOAD_BUCKET_UNSCHEDULED = 3; // no due date
+}
+
+message WorkloadTask {
+  string task_id = 1;
+  string project_id = 2;
+  string project_name = 3;
+  int32 number = 4;
+  string title = 5;
+  int32 remaining_minutes = 6; // this member's share
+  optional string start_date = 7;
+  optional string due_date = 8;
+  WorkloadBucket bucket = 9;
+  bool calendar_conflict = 10; // member and project share no working day
+}
+
+message WorkloadMember {
+  string user_id = 1;
+  string user_name = 2;
+  string avatar_url = 3;
+  int32 weekly_minutes = 4;
+  repeated int32 working_days = 5;
+  repeated WorkloadWeek weeks = 6; // one per week_starts
+  int32 overdue_minutes = 7;
+  int32 unscheduled_minutes = 8;
+  int32 later_minutes = 9;         // scheduled past the last week shown
+  int32 total_minutes = 10;        // all of the above + the weeks
+  bool calendar_conflict = 11;     // any task flagged
+  repeated WorkloadTask tasks = 12;
+}

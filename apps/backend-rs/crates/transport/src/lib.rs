@@ -32,6 +32,7 @@ mod tokens;
 mod users;
 mod views;
 mod work;
+mod workload;
 pub use activity::activity_router;
 pub use dashboard::{dashboard_router, mytasks_router};
 pub use comments::comment_router;
@@ -46,6 +47,7 @@ pub use search::search_router;
 pub use tokens::token_router;
 pub use users::{auth_router, user_router, JwtConfig};
 pub use timelog::time_router;
+pub use workload::workload_router;
 pub use views::view_router;
 pub use work::{module_router, status_router, task_router};
 
