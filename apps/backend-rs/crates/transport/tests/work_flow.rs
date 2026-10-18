@@ -627,3 +627,87 @@ async fn estimates_are_set_kept_cleared_and_bounded() {
         assert_ne!(st, StatusCode::OK, "{bad} must be refused on create");
     }
 }
+
+#[tokio::test]
+async fn task_dates_must_be_real_calendar_days() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let owner = mk_user(&store).await;
+    let to = token(&owner);
+    let pid = project_with(&router, &owner, &[]).await;
+    let m = ok(&router, &format!("{MODULE}/CreateModule"), &to, json!({ "projectId": pid, "name": "M" })).await["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    let rejects = |path: String, body: Value, why: &'static str| {
+        let (router, to) = (router.clone(), to.clone());
+        async move {
+            let (st, v) = call(&router, &path, Some(&to), body).await;
+            assert_ne!(st, StatusCode::OK, "{why}: {v}");
+            assert_eq!(v["code"], "invalid_argument", "{why}: {v}");
+        }
+    };
+    let create = format!("{TASK}/CreateTask");
+    let update = format!("{TASK}/UpdateTask");
+
+    // Create: impossible days, malformed text and timestamps are refused on both fields.
+    for (field, bad) in [
+        ("dueDate", "2026-02-30"),
+        ("dueDate", "2026-13-01"),
+        ("dueDate", "2026-04-31"),
+        ("dueDate", "2026-10-1"),
+        ("dueDate", "2026-10-19T08:00:00Z"),
+        ("dueDate", "tomorrow"),
+        ("startDate", "2026-02-29"),
+        ("startDate", "2026-00-10"),
+    ] {
+        let mut body = json!({ "moduleId": m, "title": "T" });
+        body[field] = json!(bad);
+        rejects(create.clone(), body, "create with a bad date").await;
+    }
+    // Real days, leap day included, are fine; empty means none.
+    let t = ok(&router, &create, &to, json!({ "moduleId": m, "title": "Leap", "startDate": "2028-02-28", "dueDate": "2028-02-29" })).await;
+    assert_eq!(t["dueDate"], "2028-02-29", "a real leap day is accepted");
+    let none = ok(&router, &create, &to, json!({ "moduleId": m, "title": "No date", "dueDate": "" })).await;
+    assert!(none["dueDate"].is_null(), "an empty due date means none: {none}");
+    let id = t["id"].as_str().unwrap().to_string();
+
+    // Update: only real days; "" still clears; a refused update changes nothing.
+    rejects(update.clone(), json!({ "id": id, "dueDate": "2027-02-29" }), "update with a non-leap 29 Feb").await;
+    rejects(update.clone(), json!({ "id": id, "startDate": "2028-02-30" }), "update start with an impossible day").await;
+    let got = ok(&router, &format!("{TASK}/GetTask"), &to, json!({ "id": id })).await;
+    assert_eq!(got["dueDate"], "2028-02-29", "a refused update leaves the date alone");
+    let cleared = ok(&router, &update, &to, json!({ "id": id, "dueDate": "" })).await;
+    assert!(cleared["dueDate"].is_null(), "\"\" clears the due date: {cleared}");
+    let moved = ok(&router, &update, &to, json!({ "id": id, "dueDate": "2028-03-01" })).await;
+    assert_eq!(moved["dueDate"], "2028-03-01");
+
+    // Bulk: refused as a whole, nothing changes.
+    let other = ok(&router, &create, &to, json!({ "moduleId": m, "title": "Other", "dueDate": "2026-12-01" })).await;
+    let oid = other["id"].as_str().unwrap().to_string();
+    rejects(format!("{TASK}/BulkUpdateTasks"), json!({ "taskIds": [id, oid], "dueDate": "2026-04-31" }), "bulk with a bad date").await;
+    let o = ok(&router, &format!("{TASK}/GetTask"), &to, json!({ "id": oid })).await;
+    assert_eq!(o["dueDate"], "2026-12-01", "a refused bulk edit touches no task");
+
+    // A bad date stored before validation existed does not block other edits.
+    let legacy = ok(&router, &create, &to, json!({ "moduleId": m, "title": "Legacy" })).await;
+    let lid: i64 = legacy["id"].as_str().unwrap().parse().unwrap();
+    store
+        .attach(lid, TaskInfo {
+            title: "Legacy".into(),
+            description: String::new(),
+            status: "todo".into(),
+            priority: "none".into(),
+            start_date: None,
+            due_date: Some("2026-02-30".into()),
+            sort_order: 0,
+        })
+        .await
+        .unwrap();
+    let renamed = ok(&router, &update, &to, json!({ "id": lid.to_string(), "title": "Legacy renamed" })).await;
+    assert_eq!(renamed["title"], "Legacy renamed", "a title-only edit works on a task with a stored bad date");
+    let fixed = ok(&router, &update, &to, json!({ "id": lid.to_string(), "dueDate": "2026-02-28" })).await;
+    assert_eq!(fixed["dueDate"], "2026-02-28", "and the bad date can be replaced");
+}

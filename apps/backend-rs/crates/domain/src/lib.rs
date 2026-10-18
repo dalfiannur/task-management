@@ -13,6 +13,7 @@ pub mod page;
 pub mod project;
 pub mod sanitize;
 pub mod task;
+pub mod template;
 pub mod time;
 pub mod token;
 pub mod user;

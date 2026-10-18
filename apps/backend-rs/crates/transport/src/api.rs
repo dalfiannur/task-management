@@ -15,7 +15,7 @@
 //! rest of this crate resolves one, on a security-relevant seam where reusing
 //! the real lookup — not a hand-rolled copy — is the point.
 
-pub use crate::projects::project_service::{get_project_core, list_projects_core};
+pub use crate::projects::project_service::{create_project_core, get_project_core, list_projects_core};
 pub use crate::sedjiwa::tasks::project::v1 as project_pb;
 // `delete_module_core` cascades to the module's tasks; `module_task_count`
 // exists so the MCP tool can refuse a non-empty module up front instead of

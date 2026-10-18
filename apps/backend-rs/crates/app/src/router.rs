@@ -50,6 +50,7 @@ pub fn build_router(
         .merge(transport::view_router(store.clone()))
         .merge(transport::time_router(store.clone()))
         .merge(transport::workload_router(store.clone()))
+        .merge(transport::template_router(store.clone()))
         .merge(transport::automation_router(store.clone()))
         .merge(transport::page_router(store.clone()))
         .merge(transport::label_router(store.clone()))

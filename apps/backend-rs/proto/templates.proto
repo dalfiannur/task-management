@@ -1,0 +1,57 @@
+syntax = "proto3";
+package sedjiwa.tasks.templates.v1;
+
+import "work.proto";
+
+// Task templates: a task's title, description, priority, estimate, labels and
+// subtask titles, saved under a name and reused within the same project.
+// Members list, save and use them; the author, the project owner or an admin
+// deletes one.
+service TemplateService {
+  rpc ListTaskTemplates(ListTaskTemplatesRequest) returns (ListTaskTemplatesResponse);
+  // Snapshot an existing task (and its subtasks' titles).
+  rpc SaveTaskTemplate(SaveTaskTemplateRequest) returns (TaskTemplate);
+  rpc DeleteTaskTemplate(DeleteTaskTemplateRequest) returns (DeleteTaskTemplateResponse);
+  // Create the task (and its subtasks) in `module_id`, which must be in the
+  // template's project.
+  rpc CreateTaskFromTemplate(CreateTaskFromTemplateRequest) returns (sedjiwa.tasks.work.v1.Task);
+}
+
+message TaskTemplate {
+  string id = 1;
+  string project_id = 2;
+  string name = 3;
+  string title = 4;
+  string description = 5;
+  sedjiwa.tasks.work.v1.TaskPriority priority = 6;
+  optional int32 estimate_minutes = 7;
+  repeated string label_ids = 8;
+  repeated TemplateSubtask subtasks = 9;
+  string created_by = 10;
+  string created_at = 11;
+}
+
+// One subtask a template recreates. Only the title for now; a message so
+// more fields can follow without changing the field's type.
+message TemplateSubtask {
+  string title = 1;
+}
+
+message ListTaskTemplatesRequest { string project_id = 1; }
+message ListTaskTemplatesResponse { repeated TaskTemplate templates = 1; }
+
+message SaveTaskTemplateRequest {
+  string task_id = 1;
+  string name = 2;
+}
+
+message DeleteTaskTemplateRequest { string id = 1; }
+message DeleteTaskTemplateResponse { bool ok = 1; }
+
+message CreateTaskFromTemplateRequest {
+  string template_id = 1;
+  string module_id = 2;
+  optional string title = 3;       // default: the template's title
+  repeated string assignee_ids = 4;
+  optional string due_date = 5;
+}

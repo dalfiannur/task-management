@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file projects.proto.
  */
 export const file_projects: GenFile = /*@__PURE__*/
-  fileDesc("Cg5wcm9qZWN0cy5wcm90bxIYc2Vkaml3YS50YXNrcy5wcm9qZWN0LnYxIisKBk1lbWJlchIPCgd1c2VyX2lkGAEgASgJEhAKCGlzX293bmVyGAIgASgIIi8KGUxpc3RQcm9qZWN0TWVtYmVyc1JlcXVlc3QSEgoKcHJvamVjdF9pZBgBIAEoCSJhChpMaXN0UHJvamVjdE1lbWJlcnNSZXNwb25zZRIxCgdtZW1iZXJzGAEgAygLMiAuc2Vkaml3YS50YXNrcy5wcm9qZWN0LnYxLk1lbWJlchIQCghvd25lcl9pZBgCIAEoCSI+ChdBZGRQcm9qZWN0TWVtYmVyUmVxdWVzdBISCgpwcm9qZWN0X2lkGAEgASgJEg8KB3VzZXJfaWQYAiABKAkiQQoaUmVtb3ZlUHJvamVjdE1lbWJlclJlcXVlc3QSEgoKcHJvamVjdF9pZBgBIAEoCRIPCgd1c2VyX2lkGAIgASgJIikKE0xlYXZlUHJvamVjdFJlcXVlc3QSEgoKcHJvamVjdF9pZBgBIAEoCSIiChRMZWF2ZVByb2plY3RSZXNwb25zZRIKCgJvaxgBIAEoCCJyChRDcmVhdGVQcm9qZWN0UmVxdWVzdBIMCgRuYW1lGAEgASgJEhgKC2Rlc2NyaXB0aW9uGAIgASgJSACIAQESFQoIb3duZXJfaWQYAyABKAlIAYgBAUIOCgxfZGVzY3JpcHRpb25CCwoJX293bmVyX2lkIosBChNMaXN0UHJvamVjdHNSZXF1ZXN0EjcKBnN0YXR1cxgBIAMoDjInLnNlZGppd2EudGFza3MucHJvamVjdC52MS5Qcm9qZWN0U3RhdHVzEhMKBnNlYXJjaBgCIAEoCUgAiAEBEgwKBHBhZ2UYAyABKA0SDQoFbGltaXQYBCABKA1CCQoHX3NlYXJjaCJaChRMaXN0UHJvamVjdHNSZXNwb25zZRIzCghwcm9qZWN0cxgBIAMoCzIhLnNlZGppd2EudGFza3MucHJvamVjdC52MS5Qcm9qZWN0Eg0KBXRvdGFsGAIgASgNIh8KEUdldFByb2plY3RSZXF1ZXN0EgoKAmlkGAEgASgJIl4KF1NldFByb2plY3RTdGF0dXNSZXF1ZXN0EgoKAmlkGAEgASgJEjcKBnN0YXR1cxgCIAEoDjInLnNlZGppd2EudGFza3MucHJvamVjdC52MS5Qcm9qZWN0U3RhdHVzIkMKH1RyYW5zZmVyUHJvamVjdE93bmVyc2hpcFJlcXVlc3QSCgoCaWQYASABKAkSFAoMbmV3X293bmVyX2lkGAIgASgJIiIKFERlbGV0ZVByb2plY3RSZXF1ZXN0EgoKAmlkGAEgASgJIiMKFURlbGV0ZVByb2plY3RSZXNwb25zZRIKCgJvaxgBIAEoCCKoAgoHUHJvamVjdBIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEhgKC2Rlc2NyaXB0aW9uGAMgASgJSACIAQESNwoGc3RhdHVzGAQgASgOMicuc2Vkaml3YS50YXNrcy5wcm9qZWN0LnYxLlByb2plY3RTdGF0dXMSEAoIb3duZXJfaWQYBSABKAkSFwoKc3RhcnRfZGF0ZRgGIAEoCUgBiAEBEhUKCGVuZF9kYXRlGAcgASgJSAKIAQESOAoFdGFza3MYCCABKAsyJC5zZWRqaXdhLnRhc2tzLnByb2plY3QudjEuVGFza0NvdW50c0gDiAEBQg4KDF9kZXNjcmlwdGlvbkINCgtfc3RhcnRfZGF0ZUILCglfZW5kX2RhdGVCCAoGX3Rhc2tzImgKClRhc2tDb3VudHMSDAoEZG9uZRgBIAEoDRINCgV0b3RhbBgCIAEoDRIPCgdvdmVyZHVlGAMgASgNEhoKDW5leHRfZHVlX2RhdGUYBCABKAlIAIgBAUIQCg5fbmV4dF9kdWVfZGF0ZSqFAQoNUHJvamVjdFN0YXR1cxIeChpQUk9KRUNUX1NUQVRVU19VTlNQRUNJRklFRBAAEhkKFVBST0pFQ1RfU1RBVFVTX0FDVElWRRABEhwKGFBST0pFQ1RfU1RBVFVTX0NPTVBMRVRFRBACEhsKF1BST0pFQ1RfU1RBVFVTX0FSQ0hJVkVEEAMyiAkKDlByb2plY3RTZXJ2aWNlEmIKDUNyZWF0ZVByb2plY3QSLi5zZWRqaXdhLnRhc2tzLnByb2plY3QudjEuQ3JlYXRlUHJvamVjdFJlcXVlc3QaIS5zZWRqaXdhLnRhc2tzLnByb2plY3QudjEuUHJvamVjdBJtCgxMaXN0UHJvamVjdHMSLS5zZWRqaXdhLnRhc2tzLnByb2plY3QudjEuTGlzdFByb2plY3RzUmVxdWVzdBouLnNlZGppd2EudGFza3MucHJvamVjdC52MS5MaXN0UHJvamVjdHNSZXNwb25zZRJcCgpHZXRQcm9qZWN0Eisuc2Vkaml3YS50YXNrcy5wcm9qZWN0LnYxLkdldFByb2plY3RSZXF1ZXN0GiEuc2Vkaml3YS50YXNrcy5wcm9qZWN0LnYxLlByb2plY3QSaAoQU2V0UHJvamVjdFN0YXR1cxIxLnNlZGppd2EudGFza3MucHJvamVjdC52MS5TZXRQcm9qZWN0U3RhdHVzUmVxdWVzdBohLnNlZGppd2EudGFza3MucHJvamVjdC52MS5Qcm9qZWN0EngKGFRyYW5zZmVyUHJvamVjdE93bmVyc2hpcBI5LnNlZGppd2EudGFza3MucHJvamVjdC52MS5UcmFuc2ZlclByb2plY3RPd25lcnNoaXBSZXF1ZXN0GiEuc2Vkaml3YS50YXNrcy5wcm9qZWN0LnYxLlByb2plY3QScAoNRGVsZXRlUHJvamVjdBIuLnNlZGppd2EudGFza3MucHJvamVjdC52MS5EZWxldGVQcm9qZWN0UmVxdWVzdBovLnNlZGppd2EudGFza3MucHJvamVjdC52MS5EZWxldGVQcm9qZWN0UmVzcG9uc2USfwoSTGlzdFByb2plY3RNZW1iZXJzEjMuc2Vkaml3YS50YXNrcy5wcm9qZWN0LnYxLkxpc3RQcm9qZWN0TWVtYmVyc1JlcXVlc3QaNC5zZWRqaXdhLnRhc2tzLnByb2plY3QudjEuTGlzdFByb2plY3RNZW1iZXJzUmVzcG9uc2USewoQQWRkUHJvamVjdE1lbWJlchIxLnNlZGppd2EudGFza3MucHJvamVjdC52MS5BZGRQcm9qZWN0TWVtYmVyUmVxdWVzdBo0LnNlZGppd2EudGFza3MucHJvamVjdC52MS5MaXN0UHJvamVjdE1lbWJlcnNSZXNwb25zZRKBAQoTUmVtb3ZlUHJvamVjdE1lbWJlchI0LnNlZGppd2EudGFza3MucHJvamVjdC52MS5SZW1vdmVQcm9qZWN0TWVtYmVyUmVxdWVzdBo0LnNlZGppd2EudGFza3MucHJvamVjdC52MS5MaXN0UHJvamVjdE1lbWJlcnNSZXNwb25zZRJtCgxMZWF2ZVByb2plY3QSLS5zZWRqaXdhLnRhc2tzLnByb2plY3QudjEuTGVhdmVQcm9qZWN0UmVxdWVzdBouLnNlZGppd2EudGFza3MucHJvamVjdC52MS5MZWF2ZVByb2plY3RSZXNwb25zZWIGcHJvdG8z");
+  fileDesc("Cg5wcm9qZWN0cy5wcm90bxIYc2Vkaml3YS50YXNrcy5wcm9qZWN0LnYxIisKBk1lbWJlchIPCgd1c2VyX2lkGAEgASgJEhAKCGlzX293bmVyGAIgASgIIi8KGUxpc3RQcm9qZWN0TWVtYmVyc1JlcXVlc3QSEgoKcHJvamVjdF9pZBgBIAEoCSJhChpMaXN0UHJvamVjdE1lbWJlcnNSZXNwb25zZRIxCgdtZW1iZXJzGAEgAygLMiAuc2Vkaml3YS50YXNrcy5wcm9qZWN0LnYxLk1lbWJlchIQCghvd25lcl9pZBgCIAEoCSI+ChdBZGRQcm9qZWN0TWVtYmVyUmVxdWVzdBISCgpwcm9qZWN0X2lkGAEgASgJEg8KB3VzZXJfaWQYAiABKAkiQQoaUmVtb3ZlUHJvamVjdE1lbWJlclJlcXVlc3QSEgoKcHJvamVjdF9pZBgBIAEoCRIPCgd1c2VyX2lkGAIgASgJIikKE0xlYXZlUHJvamVjdFJlcXVlc3QSEgoKcHJvamVjdF9pZBgBIAEoCSIiChRMZWF2ZVByb2plY3RSZXNwb25zZRIKCgJvaxgBIAEoCCLMAQoUQ3JlYXRlUHJvamVjdFJlcXVlc3QSDAoEbmFtZRgBIAEoCRIYCgtkZXNjcmlwdGlvbhgCIAEoCUgAiAEBEhUKCG93bmVyX2lkGAMgASgJSAGIAQESHAoPZnJvbV9wcm9qZWN0X2lkGAQgASgJSAKIAQESFwoKc3RhcnRfZGF0ZRgFIAEoCUgDiAEBQg4KDF9kZXNjcmlwdGlvbkILCglfb3duZXJfaWRCEgoQX2Zyb21fcHJvamVjdF9pZEINCgtfc3RhcnRfZGF0ZSKeAQoTTGlzdFByb2plY3RzUmVxdWVzdBI3CgZzdGF0dXMYASADKA4yJy5zZWRqaXdhLnRhc2tzLnByb2plY3QudjEuUHJvamVjdFN0YXR1cxITCgZzZWFyY2gYAiABKAlIAIgBARIMCgRwYWdlGAMgASgNEg0KBWxpbWl0GAQgASgNEhEKCXRlbXBsYXRlcxgFIAEoCEIJCgdfc2VhcmNoIloKFExpc3RQcm9qZWN0c1Jlc3BvbnNlEjMKCHByb2plY3RzGAEgAygLMiEuc2Vkaml3YS50YXNrcy5wcm9qZWN0LnYxLlByb2plY3QSDQoFdG90YWwYAiABKA0iHwoRR2V0UHJvamVjdFJlcXVlc3QSCgoCaWQYASABKAkiXgoXU2V0UHJvamVjdFN0YXR1c1JlcXVlc3QSCgoCaWQYASABKAkSNwoGc3RhdHVzGAIgASgOMicuc2Vkaml3YS50YXNrcy5wcm9qZWN0LnYxLlByb2plY3RTdGF0dXMiQwofVHJhbnNmZXJQcm9qZWN0T3duZXJzaGlwUmVxdWVzdBIKCgJpZBgBIAEoCRIUCgxuZXdfb3duZXJfaWQYAiABKAkiIgoURGVsZXRlUHJvamVjdFJlcXVlc3QSCgoCaWQYASABKAkiIwoVRGVsZXRlUHJvamVjdFJlc3BvbnNlEgoKAm9rGAEgASgIIjwKGVNldFByb2plY3RUZW1wbGF0ZVJlcXVlc3QSCgoCaWQYASABKAkSEwoLaXNfdGVtcGxhdGUYAiABKAgivQIKB1Byb2plY3QSCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRIYCgtkZXNjcmlwdGlvbhgDIAEoCUgAiAEBEjcKBnN0YXR1cxgEIAEoDjInLnNlZGppd2EudGFza3MucHJvamVjdC52MS5Qcm9qZWN0U3RhdHVzEhAKCG93bmVyX2lkGAUgASgJEhcKCnN0YXJ0X2RhdGUYBiABKAlIAYgBARIVCghlbmRfZGF0ZRgHIAEoCUgCiAEBEjgKBXRhc2tzGAggASgLMiQuc2Vkaml3YS50YXNrcy5wcm9qZWN0LnYxLlRhc2tDb3VudHNIA4gBARITCgtpc190ZW1wbGF0ZRgJIAEoCEIOCgxfZGVzY3JpcHRpb25CDQoLX3N0YXJ0X2RhdGVCCwoJX2VuZF9kYXRlQggKBl90YXNrcyJoCgpUYXNrQ291bnRzEgwKBGRvbmUYASABKA0SDQoFdG90YWwYAiABKA0SDwoHb3ZlcmR1ZRgDIAEoDRIaCg1uZXh0X2R1ZV9kYXRlGAQgASgJSACIAQFCEAoOX25leHRfZHVlX2RhdGUqhQEKDVByb2plY3RTdGF0dXMSHgoaUFJPSkVDVF9TVEFUVVNfVU5TUEVDSUZJRUQQABIZChVQUk9KRUNUX1NUQVRVU19BQ1RJVkUQARIcChhQUk9KRUNUX1NUQVRVU19DT01QTEVURUQQAhIbChdQUk9KRUNUX1NUQVRVU19BUkNISVZFRBADMvYJCg5Qcm9qZWN0U2VydmljZRJiCg1DcmVhdGVQcm9qZWN0Ei4uc2Vkaml3YS50YXNrcy5wcm9qZWN0LnYxLkNyZWF0ZVByb2plY3RSZXF1ZXN0GiEuc2Vkaml3YS50YXNrcy5wcm9qZWN0LnYxLlByb2plY3QSbQoMTGlzdFByb2plY3RzEi0uc2Vkaml3YS50YXNrcy5wcm9qZWN0LnYxLkxpc3RQcm9qZWN0c1JlcXVlc3QaLi5zZWRqaXdhLnRhc2tzLnByb2plY3QudjEuTGlzdFByb2plY3RzUmVzcG9uc2USXAoKR2V0UHJvamVjdBIrLnNlZGppd2EudGFza3MucHJvamVjdC52MS5HZXRQcm9qZWN0UmVxdWVzdBohLnNlZGppd2EudGFza3MucHJvamVjdC52MS5Qcm9qZWN0EmgKEFNldFByb2plY3RTdGF0dXMSMS5zZWRqaXdhLnRhc2tzLnByb2plY3QudjEuU2V0UHJvamVjdFN0YXR1c1JlcXVlc3QaIS5zZWRqaXdhLnRhc2tzLnByb2plY3QudjEuUHJvamVjdBJ4ChhUcmFuc2ZlclByb2plY3RPd25lcnNoaXASOS5zZWRqaXdhLnRhc2tzLnByb2plY3QudjEuVHJhbnNmZXJQcm9qZWN0T3duZXJzaGlwUmVxdWVzdBohLnNlZGppd2EudGFza3MucHJvamVjdC52MS5Qcm9qZWN0EnAKDURlbGV0ZVByb2plY3QSLi5zZWRqaXdhLnRhc2tzLnByb2plY3QudjEuRGVsZXRlUHJvamVjdFJlcXVlc3QaLy5zZWRqaXdhLnRhc2tzLnByb2plY3QudjEuRGVsZXRlUHJvamVjdFJlc3BvbnNlEmwKElNldFByb2plY3RUZW1wbGF0ZRIzLnNlZGppd2EudGFza3MucHJvamVjdC52MS5TZXRQcm9qZWN0VGVtcGxhdGVSZXF1ZXN0GiEuc2Vkaml3YS50YXNrcy5wcm9qZWN0LnYxLlByb2plY3QSfwoSTGlzdFByb2plY3RNZW1iZXJzEjMuc2Vkaml3YS50YXNrcy5wcm9qZWN0LnYxLkxpc3RQcm9qZWN0TWVtYmVyc1JlcXVlc3QaNC5zZWRqaXdhLnRhc2tzLnByb2plY3QudjEuTGlzdFByb2plY3RNZW1iZXJzUmVzcG9uc2USewoQQWRkUHJvamVjdE1lbWJlchIxLnNlZGppd2EudGFza3MucHJvamVjdC52MS5BZGRQcm9qZWN0TWVtYmVyUmVxdWVzdBo0LnNlZGppd2EudGFza3MucHJvamVjdC52MS5MaXN0UHJvamVjdE1lbWJlcnNSZXNwb25zZRKBAQoTUmVtb3ZlUHJvamVjdE1lbWJlchI0LnNlZGppd2EudGFza3MucHJvamVjdC52MS5SZW1vdmVQcm9qZWN0TWVtYmVyUmVxdWVzdBo0LnNlZGppd2EudGFza3MucHJvamVjdC52MS5MaXN0UHJvamVjdE1lbWJlcnNSZXNwb25zZRJtCgxMZWF2ZVByb2plY3QSLS5zZWRqaXdhLnRhc2tzLnByb2plY3QudjEuTGVhdmVQcm9qZWN0UmVxdWVzdBouLnNlZGppd2EudGFza3MucHJvamVjdC52MS5MZWF2ZVByb2plY3RSZXNwb25zZWIGcHJvdG8z");
 
 /**
  * @generated from message sedjiwa.tasks.project.v1.Member
@@ -173,6 +173,24 @@ export type CreateProjectRequest = Message<"sedjiwa.tasks.project.v1.CreateProje
    * @generated from field: optional string owner_id = 3;
    */
   ownerId?: string | undefined;
+
+  /**
+   * Copy another project's workflow statuses, labels, modules, tasks (with
+   * subtasks, estimates and dependencies) and working days. Not copied:
+   * assignees, comments, time, media, pages. Tasks start in the first To Do
+   * status; cancelled ones are skipped. The caller must be a member of it.
+   *
+   * @generated from field: optional string from_project_id = 4;
+   */
+  fromProjectId?: string | undefined;
+
+  /**
+   * With `from_project_id`: the new project's start. Every copied date moves
+   * by (start_date − the source's start, or its earliest task date).
+   *
+   * @generated from field: optional string start_date = 5;
+   */
+  startDate?: string | undefined;
 };
 
 /**
@@ -211,6 +229,13 @@ export type ListProjectsRequest = Message<"sedjiwa.tasks.project.v1.ListProjects
    * @generated from field: uint32 limit = 4;
    */
   limit: number;
+
+  /**
+   * false/absent: projects only. true: templates only.
+   *
+   * @generated from field: bool templates = 5;
+   */
+  templates: boolean;
 };
 
 /**
@@ -340,6 +365,28 @@ export const DeleteProjectResponseSchema: GenMessage<DeleteProjectResponse> = /*
   messageDesc(file_projects, 14);
 
 /**
+ * @generated from message sedjiwa.tasks.project.v1.SetProjectTemplateRequest
+ */
+export type SetProjectTemplateRequest = Message<"sedjiwa.tasks.project.v1.SetProjectTemplateRequest"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: bool is_template = 2;
+   */
+  isTemplate: boolean;
+};
+
+/**
+ * Describes the message sedjiwa.tasks.project.v1.SetProjectTemplateRequest.
+ * Use `create(SetProjectTemplateRequestSchema)` to create a new message.
+ */
+export const SetProjectTemplateRequestSchema: GenMessage<SetProjectTemplateRequest> = /*@__PURE__*/
+  messageDesc(file_projects, 15);
+
+/**
  * @generated from message sedjiwa.tasks.project.v1.Project
  */
 export type Project = Message<"sedjiwa.tasks.project.v1.Project"> & {
@@ -387,6 +434,11 @@ export type Project = Message<"sedjiwa.tasks.project.v1.Project"> & {
    * @generated from field: optional sedjiwa.tasks.project.v1.TaskCounts tasks = 8;
    */
   tasks?: TaskCounts | undefined;
+
+  /**
+   * @generated from field: bool is_template = 9;
+   */
+  isTemplate: boolean;
 };
 
 /**
@@ -394,7 +446,7 @@ export type Project = Message<"sedjiwa.tasks.project.v1.Project"> & {
  * Use `create(ProjectSchema)` to create a new message.
  */
 export const ProjectSchema: GenMessage<Project> = /*@__PURE__*/
-  messageDesc(file_projects, 15);
+  messageDesc(file_projects, 16);
 
 /**
  * @generated from message sedjiwa.tasks.project.v1.TaskCounts
@@ -430,7 +482,7 @@ export type TaskCounts = Message<"sedjiwa.tasks.project.v1.TaskCounts"> & {
  * Use `create(TaskCountsSchema)` to create a new message.
  */
 export const TaskCountsSchema: GenMessage<TaskCounts> = /*@__PURE__*/
-  messageDesc(file_projects, 16);
+  messageDesc(file_projects, 17);
 
 /**
  * @generated from enum sedjiwa.tasks.project.v1.ProjectStatus
@@ -516,6 +568,16 @@ export const ProjectService: GenService<{
     methodKind: "unary";
     input: typeof DeleteProjectRequestSchema;
     output: typeof DeleteProjectResponseSchema;
+  },
+  /**
+   * Owner/admin: mark or unmark the project as a template.
+   *
+   * @generated from rpc sedjiwa.tasks.project.v1.ProjectService.SetProjectTemplate
+   */
+  setProjectTemplate: {
+    methodKind: "unary";
+    input: typeof SetProjectTemplateRequestSchema;
+    output: typeof ProjectSchema;
   },
   /**
    * Members tab.

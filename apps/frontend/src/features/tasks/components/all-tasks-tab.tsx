@@ -8,7 +8,7 @@ import {
   useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import { Columns3, Layers, List, ListChecks, Plus, SearchX, Workflow } from "lucide-react";
+import { Columns3, LayoutTemplate, Layers, List, ListChecks, Plus, SearchX, Workflow } from "lucide-react";
 import { toast } from "sonner";
 import { Button, Skeleton } from "sedjiwa-ui";
 import { cn } from "@/lib/utils";
@@ -45,6 +45,7 @@ import { ModuleSection } from "./module-section";
 import { TaskFilterBar } from "./task-filter-bar";
 import { TaskBoard } from "./task-board";
 import { ModuleDialog } from "./module-dialog";
+import { TaskTemplatesDialog } from "./task-templates-dialog";
 import { ManageStatusesDialog } from "./manage-statuses-dialog";
 import { TaskDialog } from "./task-dialog";
 
@@ -235,6 +236,7 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
     open: boolean;
     moduleId: string;
   }>({ open: false, moduleId: "" });
+  const [templatesOpen, setTemplatesOpen] = useState(false);
   const [moduleDialog, setModuleDialog] = useState<{
     open: boolean;
     module?: Module;
@@ -439,6 +441,10 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
                 <Workflow className="mr-1 h-4 w-4" />
                 Statuses
               </Button>
+              <Button variant="outline" size="sm" onClick={() => setTemplatesOpen(true)}>
+                <LayoutTemplate className="mr-1 h-4 w-4" />
+                Templates
+              </Button>
               {canManage && (
                 <Button size="sm" onClick={() => setModuleDialog({ open: true })}>
                   <Plus className="mr-1 h-4 w-4" />
@@ -555,6 +561,14 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
         userMap={userMap}
         tasks={tasks}
         onOpenTask={openTask}
+      />
+      <TaskTemplatesDialog
+        projectId={projectId}
+        projectOwnerId={project?.ownerId}
+        modules={modules}
+        open={templatesOpen}
+        onOpenChange={setTemplatesOpen}
+        onCreated={openTask}
       />
       <ModuleDialog
         open={moduleDialog.open}

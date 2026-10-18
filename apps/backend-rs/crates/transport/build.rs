@@ -20,6 +20,7 @@ fn main() {
             "../../proto/views.proto",
             "../../proto/time.proto",
             "../../proto/workload.proto",
+            "../../proto/templates.proto",
             "../../proto/automations.proto",
         ],
         &["../../proto"],
@@ -45,5 +46,6 @@ fn main() {
     println!("cargo:rerun-if-changed=../../proto/views.proto");
     println!("cargo:rerun-if-changed=../../proto/time.proto");
     println!("cargo:rerun-if-changed=../../proto/workload.proto");
+    println!("cargo:rerun-if-changed=../../proto/templates.proto");
     println!("cargo:rerun-if-changed=../../proto/automations.proto");
 }

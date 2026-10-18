@@ -425,6 +425,28 @@ CREATE TABLE IF NOT EXISTS cmp_workspacesettings (
     working_days INTEGER NOT NULL
 );
 
+-- Marks a project as a template: hidden from the normal project list and
+-- offered as a starting point when creating a project.
+CREATE TABLE IF NOT EXISTS cmp_projecttemplatemark (
+    pid BIGINT PRIMARY KEY REFERENCES arke_entities(pid) ON DELETE CASCADE
+);
+
+-- A reusable task within a project: its fields and the titles of its
+-- subtasks. `label_ids` and `subtasks` are JSONB string arrays.
+CREATE TABLE IF NOT EXISTS cmp_tasktemplate (
+    pid BIGINT PRIMARY KEY REFERENCES arke_entities(pid) ON DELETE CASCADE,
+    project_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    priority TEXT NOT NULL,
+    estimate_minutes INTEGER,
+    label_ids JSONB NOT NULL,
+    subtasks JSONB NOT NULL,
+    created_by TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_cmp_tasktemplate_project_id ON cmp_tasktemplate USING btree (project_id);
 -- An automation rule of a project. `trigger`, `conditions` and `actions` are
 -- JSON text in the shapes of `domain::automation` (Trigger, Conditions,
 -- a list of Action).

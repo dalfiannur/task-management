@@ -7,7 +7,7 @@
 //! is an admin. Every value is bound, never formatted into the statement.
 
 use auth::AuthUser;
-use domain::user::UserStatus;
+use domain::user::{permissions_for, UserStatus};
 use persistence::{entity, Store};
 use sqlx::postgres::PgRow;
 use sqlx::Row;
@@ -188,11 +188,9 @@ pub async fn auth_user_for(store: &Store, user_id: &str) -> anyhow::Result<Optio
     }
     Ok(Some(AuthUser {
         id: user_id.to_string(),
-        permissions: if u.is_admin {
-            vec!["*".to_string()]
-        } else {
-            vec![]
-        },
+        // The same rights a web login mints, so a token can do what its
+        // owner can (create projects included).
+        permissions: permissions_for(u.is_admin),
     }))
 }
 

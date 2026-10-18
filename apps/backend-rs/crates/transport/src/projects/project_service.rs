@@ -21,7 +21,9 @@ use crate::dashboard::context::{today, Tally};
 use crate::work::record::load_all_modules;
 use crate::work::task_record::load_all_tasks;
 use crate::notifications::{emit, NotifRefs, Notifier};
-use crate::search::{deindex_project, index, project_doc};
+use crate::search::{deindex_project, index, project_doc, task_doc};
+use crate::templates::record::{copy_project, earliest_task_date, NewCopy};
+use domain::template::day_shift;
 use domain::activity::{ActivityAction, EntityType};
 use crate::sedjiwa::tasks::project::v1 as pb;
 use crate::sedjiwa::tasks::project::v1::project_service_connect::ProjectServiceBuilder;
@@ -58,10 +60,20 @@ async fn create_project(
     req: ConnectRequest<pb::CreateProjectRequest>,
 ) -> Result<ConnectResponse<pb::Project>, ConnectError> {
     let auth = require_auth(user)?;
+    let ConnectRequest(r) = req;
+    Ok(ConnectResponse::new(create_project_core(&store, &auth, r).await?))
+}
+
+/// Create a project, empty or as a copy of `from_project_id` (which the
+/// caller must be able to see).
+pub async fn create_project_core(
+    store: &Store,
+    auth: &AuthUser,
+    r: pb::CreateProjectRequest,
+) -> Result<pb::Project, ConnectError> {
     if !auth.has(PERM_CREATE) {
         return Err(ConnectError::new_permission_denied("projects:create required"));
     }
-    let ConnectRequest(r) = req;
     let name = r.name.trim();
     if !project_name_ok(name) {
         return Err(ConnectError::new_invalid_argument("name is required"));
@@ -71,28 +83,93 @@ async fn create_project(
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
         .unwrap_or_else(|| auth.id.clone());
-
     let description = r
         .description
         .map(|d| d.trim().to_string())
         .filter(|d| !d.is_empty());
-    let pid = project_record::create_project(
-        &store,
-        name,
-        description.as_deref(),
-        &owner_id,
-        &auth.id,
-    )
-    .await
-    .map_err(internal)?;
+    let start_date = r.start_date.filter(|s| !s.is_empty());
+    if start_date.as_deref().is_some_and(|d| !domain::time::date_ok(d)) {
+        return Err(ConnectError::new_invalid_argument("start_date must be yyyy-MM-dd"));
+    }
 
-    let p = require_project(&store, pid).await?;
+    let (pid, copied) = match r.from_project_id.filter(|s| !s.is_empty()) {
+        None => {
+            let pid = project_record::create_project(
+                store,
+                name,
+                description.as_deref(),
+                &owner_id,
+                &auth.id,
+            )
+            .await
+            .map_err(internal)?;
+            (pid, Vec::new())
+        }
+        Some(src_id) => {
+            let src = require_project(store, parse_pid(&src_id)?).await?;
+            if !auth.is_admin() && !is_member(store, &src_id, &auth.id).await.map_err(internal)? {
+                return Err(ConnectError::new_permission_denied("not a member of the source project"));
+            }
+            let base = match &src.start_date {
+                Some(d) if !d.is_empty() => Some(d.clone()),
+                _ => earliest_task_date(store, &src_id).await.map_err(internal)?,
+            };
+            let shift = match (&base, &start_date) {
+                (Some(b), Some(s)) => day_shift(b, s).unwrap_or(0),
+                _ => 0,
+            };
+            let now = crate::timelog::record::now_iso();
+            copy_project(
+                store,
+                NewCopy {
+                    source_id: &src_id,
+                    name,
+                    description: description.as_deref(),
+                    owner_id: &owner_id,
+                    creator_id: &auth.id,
+                    start_date: start_date.as_deref(),
+                    shift,
+                    now: &now,
+                },
+            )
+            .await
+            .map_err(internal)?
+        }
+    };
+
+    let p = require_project(store, pid).await?;
+    let project_id = pid.to_string();
     index(
-        &store,
-        project_doc(&pid.to_string(), &p.name, p.description.as_deref().unwrap_or_default()),
+        store,
+        project_doc(&project_id, &p.name, p.description.as_deref().unwrap_or_default()),
     )
     .await;
-    Ok(ConnectResponse::new(to_proto(&p)))
+    for t in copied {
+        index(
+            store,
+            task_doc(&t.pid.to_string(), &project_id, &t.title, &t.description, vec![], t.parent_id),
+        )
+        .await;
+    }
+    Ok(to_proto(&p))
+}
+
+/// Owner/admin: mark the project as a template, or back to a project.
+async fn set_project_template(
+    Extension(store): Extension<Arc<Store>>,
+    user: Option<Extension<AuthUser>>,
+    req: ConnectRequest<pb::SetProjectTemplateRequest>,
+) -> Result<ConnectResponse<pb::Project>, ConnectError> {
+    let auth = require_auth(user)?;
+    let ConnectRequest(r) = req;
+    let pid = parse_pid(&r.id)?;
+    let p = require_project(&store, pid).await?;
+    require_owner_or_admin(&auth, &p)?;
+    project_record::set_template(&store, pid, r.is_template)
+        .await
+        .map_err(internal)?;
+    let updated = require_project(&store, pid).await?;
+    Ok(ConnectResponse::new(to_proto(&updated)))
 }
 
 /// Member-scoped list (admin sees all) with status/search filters + pagination.
@@ -122,6 +199,7 @@ pub async fn list_projects_core(
     let search = r.search.unwrap_or_default().trim().to_lowercase();
     let mut filtered: Vec<ProjectRecord> = visible
         .into_iter()
+        .filter(|p| p.is_template == r.templates)
         .filter(|p| want.is_empty() || want.contains(&p.status.to_proto()))
         .filter(|p| search.is_empty() || p.name.to_lowercase().contains(&search))
         .collect();
@@ -492,6 +570,9 @@ pub fn project_router(store: Arc<Store>) -> axum::Router<()> {
             ConnectRequest<pb::TransferProjectOwnershipRequest>,
         )>(transfer_project_ownership)
         .delete_project::<_, (S, A, ConnectRequest<pb::DeleteProjectRequest>)>(delete_project)
+        .set_project_template::<_, (S, A, ConnectRequest<pb::SetProjectTemplateRequest>)>(
+            set_project_template,
+        )
         .list_project_members::<_, (S, A, ConnectRequest<pb::ListProjectMembersRequest>)>(
             list_project_members,
         )

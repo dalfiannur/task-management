@@ -24,17 +24,20 @@ pub(crate) struct ProjectRecord {
     pub owner_id: String,
     pub start_date: Option<String>,
     pub end_date: Option<String>,
+    pub is_template: bool,
 }
 
 /// Name, owner and status are what make an entity a project — the inner joins.
 const SELECT_PROJECT: &str = "\
     SELECT n.pid, n.value AS name, d.value AS description, s.value AS status, \
-           o.value AS owner_id, dt.start_date, dt.end_date \
+           o.value AS owner_id, dt.start_date, dt.end_date, \
+           (tm.pid IS NOT NULL) AS is_template \
     FROM cmp_projectname n \
     JOIN cmp_projectownerid o ON o.pid = n.pid \
     JOIN cmp_projectstatuscomponent s ON s.pid = n.pid \
     LEFT JOIN cmp_projectdescription d ON d.pid = n.pid \
-    LEFT JOIN cmp_projectdates dt ON dt.pid = n.pid";
+    LEFT JOIN cmp_projectdates dt ON dt.pid = n.pid \
+    LEFT JOIN cmp_projecttemplatemark tm ON tm.pid = n.pid";
 
 /// `None` for a stored status this build does not know.
 fn read_project(row: &PgRow) -> sqlx::Result<Option<ProjectRecord>> {
@@ -50,6 +53,7 @@ fn read_project(row: &PgRow) -> sqlx::Result<Option<ProjectRecord>> {
         owner_id: row.try_get("owner_id")?,
         start_date: row.try_get("start_date")?,
         end_date: row.try_get("end_date")?,
+        is_template: row.try_get("is_template")?,
     }))
 }
 
@@ -63,6 +67,7 @@ pub(crate) fn to_proto(p: &ProjectRecord) -> pb::Project {
         start_date: p.start_date.clone(),
         end_date: p.end_date.clone(),
         tasks: None,
+        is_template: p.is_template,
     }
 }
 
@@ -179,7 +184,23 @@ pub(crate) async fn create_project(
     creator_id: &str,
 ) -> anyhow::Result<i64> {
     let mut tx = store.pool().begin().await?;
-    let pid = entity::new_pid(&mut tx).await?;
+    let pid = create_project_on(&mut tx, name, description, owner_id, creator_id).await?;
+    let project_id = pid.to_string();
+    crate::work::status_record::ensure_defaults(&mut tx, &project_id).await?;
+    tx.commit().await?;
+    Ok(pid)
+}
+
+/// [`create_project`] inside the caller's transaction, without the default
+/// statuses (a copy brings its own).
+pub(crate) async fn create_project_on(
+    tx: &mut PgConnection,
+    name: &str,
+    description: Option<&str>,
+    owner_id: &str,
+    creator_id: &str,
+) -> sqlx::Result<i64> {
+    let pid = entity::new_pid(&mut *tx).await?;
     sqlx::query("INSERT INTO cmp_projectname (pid, value) VALUES ($1, $2)")
         .bind(pid)
         .bind(name)
@@ -203,13 +224,27 @@ pub(crate) async fn create_project(
             .await?;
     }
     let project_id = pid.to_string();
-    insert_member(&mut tx, &project_id, owner_id).await?;
+    insert_member(&mut *tx, &project_id, owner_id).await?;
     if creator_id != owner_id {
-        insert_member(&mut tx, &project_id, creator_id).await?;
+        insert_member(&mut *tx, &project_id, creator_id).await?;
     }
-    crate::work::status_record::ensure_defaults(&mut tx, &project_id).await?;
-    tx.commit().await?;
     Ok(pid)
+}
+
+/// Mark (`true`) or unmark `pid` as a template.
+pub(crate) async fn set_template(store: &Store, pid: i64, on: bool) -> anyhow::Result<()> {
+    let mut tx = store.pool().begin().await?;
+    if !entity::touch(&mut tx, pid).await? {
+        return Ok(());
+    }
+    let sql = if on {
+        "INSERT INTO cmp_projecttemplatemark (pid) VALUES ($1) ON CONFLICT DO NOTHING"
+    } else {
+        "DELETE FROM cmp_projecttemplatemark WHERE pid = $1"
+    };
+    sqlx::query(sql).bind(pid).execute(&mut *tx).await?;
+    tx.commit().await?;
+    Ok(())
 }
 
 pub(crate) async fn set_status(store: &Store, pid: i64, status: ProjectStatus) -> anyhow::Result<()> {
@@ -286,6 +321,7 @@ pub(crate) async fn delete_project(store: &Store, pid: i64) -> anyhow::Result<()
     .execute(&mut *tx)
     .await?;
     crate::timelog::record::delete_entries_for_project(&mut tx, &pid.to_string()).await?;
+    crate::templates::record::delete_templates_for_project(&mut tx, &pid.to_string()).await?;
     entity::delete(&mut tx, pid).await?;
     tx.commit().await?;
     Ok(())

@@ -152,6 +152,16 @@ async fn list_tasks(
 /// Create a task in a module (or as a subtask of `parent_id`). Member-gated;
 /// validates title/dates/assignees, notifies newly-assigned members, and
 /// records activity + search index entries.
+/// A set date must be a real calendar day written `yyyy-MM-dd`.
+fn check_date(field: &str, value: Option<&str>) -> Result<(), ConnectError> {
+    match value {
+        Some(v) if !domain::time::date_ok(v) => Err(ConnectError::new_invalid_argument(format!(
+            "{field} must be a real date written yyyy-MM-dd"
+        ))),
+        _ => Ok(()),
+    }
+}
+
 pub async fn create_task_core(
     store: &Store,
     notifier: Option<&Arc<Notifier>>,
@@ -174,6 +184,8 @@ pub async fn create_task_core(
     let priority = TaskPriority::from_proto(r.priority).unwrap_or(TaskPriority::None);
     let start_date = r.start_date.filter(|s| !s.is_empty());
     let due_date = r.due_date.filter(|s| !s.is_empty());
+    check_date("start_date", start_date.as_deref())?;
+    check_date("due_date", due_date.as_deref())?;
     if !dates_ok(start_date.as_deref(), due_date.as_deref()) {
         return Err(ConnectError::new_invalid_argument(
             "start_date must be on or before due_date",
@@ -325,6 +337,10 @@ pub async fn update_task_core(
         Some(s) => Some(s),
         None => cur,
     };
+    // Only what this request sets is checked: a bad value stored before
+    // dates were validated must not block unrelated edits.
+    check_date("start_date", r.start_date.as_deref().filter(|s| !s.is_empty()))?;
+    check_date("due_date", r.due_date.as_deref().filter(|s| !s.is_empty()))?;
     let start_date = clean(r.start_date, t.start_date.clone());
     let due_date = clean(r.due_date, t.due_date.clone());
     if !dates_ok(start_date.as_deref(), due_date.as_deref()) {
@@ -721,6 +737,8 @@ async fn bulk_update_tasks(
         None => None,
     };
     let selected: HashSet<String> = tasks.iter().map(|t| t.pid.to_string()).collect();
+    // A bad date would fail every task in turn; fail the call once instead.
+    check_date("due_date", r.due_date.as_deref().filter(|s| !s.is_empty()))?;
     // Moved tasks append after the destination's current last one.
     let mut next_order = match &target_module {
         Some(m) => tasks_for_modules(&store, HashSet::from([m.clone()]))

@@ -38,6 +38,7 @@ export function mapProject(p: PbProject): Project {
     ownerId: p.ownerId,
     startDate: p.startDate,
     endDate: p.endDate,
+    isTemplate: p.isTemplate,
     tasks: p.tasks && {
       done: p.tasks.done,
       total: p.tasks.total,

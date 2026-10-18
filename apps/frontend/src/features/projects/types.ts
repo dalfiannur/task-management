@@ -10,6 +10,8 @@ export interface Project {
   ownerId: string;
   startDate?: string;
   endDate?: string;
+  /** A blueprint: hidden from the normal list, offered when creating one. */
+  isTemplate: boolean;
   /** Task progress — only the list endpoint carries it. */
   tasks?: ProjectTasks;
 }
