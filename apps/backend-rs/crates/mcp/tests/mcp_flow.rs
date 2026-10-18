@@ -2165,3 +2165,25 @@ async fn create_task_refuses_an_impossible_due_date() {
         json!({ "module_id": module_id, "title": "leap", "due_date": "2028-02-29" })).await;
     assert!(!err, "a real leap day is accepted: {t}");
 }
+
+#[tokio::test]
+async fn my_tasks_leaves_template_projects_out() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    let (tpl_project, tpl_module) = seed_project_and_module(&store, &user).await;
+    let (_real_project, real_module) = seed_project_and_module(&store, &user).await;
+    let mut ids = Vec::new();
+    for m in [&tpl_module, &real_module] {
+        let (err, t) = tools_call(&router, &token, "create_task",
+            json!({ "module_id": m, "title": "mine", "assignee_ids": [user], "due_date": "2099-01-01" })).await;
+        assert!(!err, "create_task: {t}");
+        ids.push(t["id"].as_str().unwrap().to_string());
+    }
+    mark_template(&store, &user, &tpl_project).await;
+    let (err, out) = tools_call(&router, &token, "my_tasks", json!({ "scope": "assigned", "limit": 200 })).await;
+    assert!(!err, "my_tasks: {out}");
+    let text = out.to_string();
+    assert!(text.contains(&ids[1]), "the real project's task is listed: {out}");
+    assert!(!text.contains(&ids[0]), "the template's task is not: {out}");
+}

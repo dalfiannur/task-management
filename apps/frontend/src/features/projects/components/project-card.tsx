@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { CalendarDays } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "sedjiwa-ui";
+import { Avatar, AvatarFallback, AvatarImage, Badge } from "sedjiwa-ui";
 import { getInitials } from "@/lib/utils";
 import type { AppUser } from "@/features/auth";
 import type { Project } from "../types";
@@ -22,7 +22,11 @@ export function ProjectCard({
     <article className="group relative flex h-full flex-col gap-4 rounded-xl bg-card p-4 shadow-sm transition-shadow [transition-duration:var(--duration-fast)] [transition-timing-function:var(--ease-out)] focus-within:shadow-md hover:shadow-md">
       <header className="flex items-start gap-2">
         <div className="min-w-0 flex-1 space-y-1.5">
-          <ProjectStatusBadge status={project.status} />
+          {project.isTemplate ? (
+            <Badge variant="secondary">Template</Badge>
+          ) : (
+            <ProjectStatusBadge status={project.status} />
+          )}
           <h3 className="truncate font-medium leading-tight">
             {/* Menaut ke rute telanjang, BUKAN ke tab tertentu: tab mana yang
                 menyambut diputuskan sekali di
@@ -53,7 +57,15 @@ export function ProjectCard({
         </p>
       )}
 
-      {tasks && (
+      {/* A template is a blueprint: how big it is, not how it is doing. */}
+      {tasks && project.isTemplate && (
+        <p className="text-xs text-muted-foreground">
+          <span className="text-num font-medium text-foreground">{tasks.total}</span>{" "}
+          {tasks.total === 1 ? "task" : "tasks"}
+        </p>
+      )}
+
+      {tasks && !project.isTemplate && (
         <div className="space-y-1.5">
           <div className="flex items-baseline justify-between gap-2 text-xs">
             <span className="text-muted-foreground">
@@ -85,7 +97,7 @@ export function ProjectCard({
           <span className="truncate">{ownerName}</span>
         </span>
         <span className="ml-auto shrink-0 text-right">
-          {tasks && <DueNote tasks={tasks} />}
+          {tasks && !project.isTemplate && <DueNote tasks={tasks} />}
         </span>
       </footer>
     </article>

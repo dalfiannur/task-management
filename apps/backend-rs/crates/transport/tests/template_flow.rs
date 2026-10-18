@@ -30,6 +30,9 @@ const ACTIVITY: &str = "/sedjiwa.tasks.activity.v1.ActivityService";
 const TIME: &str = "/sedjiwa.tasks.time.v1.TimeService";
 const WORK: &str = "/sedjiwa.tasks.workload.v1.WorkloadService";
 const TPL: &str = "/sedjiwa.tasks.templates.v1.TemplateService";
+const DASH: &str = "/sedjiwa.tasks.dashboard.v1.DashboardService";
+const MINE: &str = "/sedjiwa.tasks.dashboard.v1.MyTasksService";
+const REPORT: &str = "/sedjiwa.tasks.reports.v1.ReportService";
 
 fn uniq() -> String {
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -64,6 +67,9 @@ async fn setup() -> Option<(Router, Arc<Store>)> {
         .merge(transport::time_router(store.clone()))
         .merge(transport::workload_router(store.clone()))
         .merge(transport::template_router(store.clone()))
+        .merge(transport::dashboard_router(store.clone()))
+        .merge(transport::mytasks_router(store.clone()))
+        .merge(transport::report_router(store.clone()))
         .layer(from_fn(auth_mw));
     Some((router, store))
 }
@@ -764,4 +770,103 @@ async fn templates_saved_with_plain_string_subtasks_still_work() {
         subs.sort();
         assert_eq!(subs.into_iter().map(|x| x.1).collect::<Vec<_>>(), want, "{shape} creates its subtasks in order");
     }
+}
+
+// ── Templates are not real work ──────────────────────────────────────────────
+
+/// Task ids in a list of `MyTask` items.
+fn my_ids(items: &[&Value]) -> Vec<String> {
+    items.iter().map(|i| s(&i["task"], "id")).collect()
+}
+
+#[tokio::test]
+async fn template_projects_stay_out_of_dashboards_reports_my_tasks_and_search() {
+    use base64::Engine;
+    use calamine::{Reader, Xlsx};
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let (owner, u, admin) = (mk_user(&store).await, mk_user(&store).await, mk_user(&store).await);
+    let (to, tu, ta) = (token(&owner), token(&u), admin_token(&admin));
+    let marker = format!("scope{}", uniq());
+    // T: a template with 3 overdue tasks for U. P: a real project with 1.
+    let t = project_with(&router, &owner, &[&u]).await;
+    let p = project_with(&router, &owner, &[&u]).await;
+    let (tm, pm) = (module(&router, &to, &t, "M", None).await, module(&router, &to, &p, "M", None).await);
+    let mut t_tasks = Vec::new();
+    for i in 0..3 {
+        t_tasks.push(s(&task(&router, &to, &tm, json!({
+            "title": format!("{marker} template {i}"), "assigneeIds": [u], "dueDate": format!("2026-01-0{}", i + 2)
+        })).await, "id"));
+    }
+    let p_task = s(&task(&router, &to, &pm, json!({ "title": format!("{marker} real"), "assigneeIds": [u], "dueDate": "2026-01-05" })).await, "id");
+    // A far-future pair for the "upcoming" side as well.
+    let t_future = s(&task(&router, &to, &tm, json!({ "title": format!("{marker} template future"), "assigneeIds": [u], "dueDate": "2099-01-01" })).await, "id");
+    let p_future = s(&task(&router, &to, &pm, json!({ "title": format!("{marker} real future"), "assigneeIds": [u], "dueDate": "2099-01-01" })).await, "id");
+    ok(&router, &format!("{PROJECT}/SetProjectTemplate"), &to, json!({ "id": t, "isTemplate": true })).await;
+    let t_all: Vec<String> = t_tasks.iter().cloned().chain([t_future.clone()]).collect();
+
+    for (who, tok) in [("member", tu.clone()), ("admin", ta.clone())] {
+        // Dashboard stats.
+        let d = ok(&router, &format!("{DASH}/GetDashboardStats"), &tok, json!({})).await;
+        let per: Vec<String> = arr(&d, "perProject").iter().map(|x| s(x, "projectId")).collect();
+        assert!(per.contains(&p), "{who}: the real project is on the dashboard");
+        assert!(!per.contains(&t), "{who}: the template is not: {d}");
+        if who == "member" {
+            assert_eq!(num(&d, "overdueTasks"), 1, "member: only P's overdue task counts: {d}");
+            assert_eq!(num(&d, "totalTasks"), 2, "member: only P's tasks count: {d}");
+        }
+
+        // Search: neither the template, nor its tasks.
+        let hits = ok(&router, &format!("{SEARCH}/Search"), &tok, json!({ "q": marker, "limit": 50 })).await;
+        let ids: Vec<String> = arr(&hits, "results").iter().map(|r| s(r, "id")).collect();
+        assert!(ids.contains(&p_task), "{who}: P's task is found");
+        assert!(t_all.iter().all(|x| !ids.contains(x)), "{who}: no template task is found: {hits}");
+        let pname = ok(&router, &format!("{PROJECT}/GetProject"), &to, json!({ "id": t })).await;
+        let hits = ok(&router, &format!("{SEARCH}/Search"), &tok, json!({ "q": s(&pname, "name"), "kinds": ["PROJECT"] })).await;
+        assert!(arr(&hits, "results").iter().all(|r| s(r, "id") != t), "{who}: the template project is not found: {hits}");
+
+        // Period report (+ xlsx) around today.
+        let d0 = time::OffsetDateTime::now_utc().date();
+        let (from, to_d) = (d0 - time::Duration::days(7), d0 + time::Duration::days(1));
+        let body = json!({
+            "periodStart": format!("{from}T00:00:00Z"), "periodEnd": format!("{to_d}T00:00:00Z"),
+            "periodStartDate": from.to_string(), "periodEndDate": to_d.to_string(),
+        });
+        let r = ok(&router, &format!("{REPORT}/GetPeriodReport"), &tok, body.clone()).await;
+        let per: Vec<String> = arr(&r, "perProject").iter().map(|x| s(x, "projectId")).collect();
+        assert!(per.contains(&p), "{who}: P is in the report");
+        assert!(!per.contains(&t), "{who}: T is not in the report: {r}");
+        let overdue = my_ids(&arr(&r, "overdueTasks"));
+        assert!(overdue.contains(&p_task) || r["overdueTruncated"] == true, "{who}: P's overdue task is listed");
+        assert!(t_all.iter().all(|x| !overdue.contains(x)), "{who}: no template task in the overdue list");
+        let x = ok(&router, &format!("{REPORT}/ExportPeriodReportXlsx"), &tok, json!({ "report": body, "label": "w", "granularity": "weekly" })).await;
+        let bytes = base64::engine::general_purpose::STANDARD.decode(x["xlsx"].as_str().unwrap()).unwrap();
+        let mut wb: Xlsx<_> = calamine::open_workbook_from_rs(std::io::Cursor::new(bytes)).unwrap();
+        for sheet in wb.sheet_names() {
+            let range = wb.worksheet_range(&sheet).unwrap();
+            let text: String = range.rows().flat_map(|r| r.iter().map(|c| c.to_string())).collect::<Vec<_>>().join("|");
+            assert!(!text.contains(&format!("{marker} template")), "{who}: sheet {sheet} mentions a template task");
+        }
+    }
+
+    // My tasks (member): assigned and upcoming only show P.
+    let mine = ok(&router, &format!("{MINE}/ListAssignedToMe"), &tu, json!({ "pageSize": 100 })).await;
+    let ids = my_ids(&arr(&mine, "items"));
+    assert_eq!(num(&mine, "total"), 2, "assigned to U: P's two tasks only: {mine}");
+    assert!(ids.contains(&p_task) && ids.contains(&p_future));
+    let created = ok(&router, &format!("{MINE}/ListCreatedByMe"), &to, json!({ "pageSize": 100 })).await;
+    let cids = my_ids(&arr(&created, "items"));
+    assert!(t_all.iter().all(|x| !cids.contains(x)), "created by the owner: no template task");
+    assert!(cids.contains(&p_task));
+    let up = ok(&router, &format!("{DASH}/GetUpcomingDeadlines"), &tu, json!({ "withinDays": 30, "includeOverdue": true })).await;
+    let uids = my_ids(&arr(&up, "items"));
+    assert!(uids.contains(&p_task), "upcoming/overdue: P's task: {up}");
+    assert!(t_all.iter().all(|x| !uids.contains(x)), "upcoming/overdue: no template task");
+
+    // The template itself still works.
+    assert_eq!(tasks_of(&router, &tu, &t).await.len(), 4, "opening T lists its tasks");
+    let copy = copy(&router, &to, &t, json!({})).await;
+    assert_eq!(tasks_of(&router, &to, &s(&copy, "id")).await.len(), 4, "copying T brings its tasks");
 }

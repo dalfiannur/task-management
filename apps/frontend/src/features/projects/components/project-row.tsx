@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Avatar, AvatarFallback, AvatarImage } from "sedjiwa-ui";
+import { Badge, Avatar, AvatarFallback, AvatarImage } from "sedjiwa-ui";
 import { getInitials } from "@/lib/utils";
 import type { AppUser } from "@/features/auth";
 import type { Project } from "../types";
@@ -54,11 +54,20 @@ export function ProjectRow({
       </div>
 
       <span className="hidden md:block">
-        <ProjectStatusBadge status={project.status} />
+        {project.isTemplate ? (
+          <Badge variant="secondary">Template</Badge>
+        ) : (
+          <ProjectStatusBadge status={project.status} />
+        )}
       </span>
 
       <span className="space-y-1">
-        {tasks && (
+        {tasks && project.isTemplate && (
+          <span className="text-num block text-xs text-muted-foreground">
+            {tasks.total} {tasks.total === 1 ? "task" : "tasks"}
+          </span>
+        )}
+        {tasks && !project.isTemplate && (
           <>
             <span className="text-num block text-xs text-muted-foreground">
               {tasks.total === 0 ? "—" : `${tasks.done}/${tasks.total}`}
@@ -69,7 +78,7 @@ export function ProjectRow({
       </span>
 
       <span className="hidden text-xs md:block">
-        {tasks && <DueNote tasks={tasks} />}
+        {tasks && !project.isTemplate && <DueNote tasks={tasks} />}
       </span>
 
       <span className="hidden min-w-0 items-center gap-2 text-muted-foreground lg:flex">
