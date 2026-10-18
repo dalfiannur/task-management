@@ -33,6 +33,8 @@ pub use crate::work::task_service::{
     create_task_core, get_task_core, list_tasks_core, module_project, move_task_core,
     update_task_core,
 };
+// MCP tools take a status by name; the project's workflow resolves it.
+pub use crate::work::status_service::status_by_name;
 pub use crate::sedjiwa::tasks::work::v1 as work_pb;
 pub use crate::comments::comment_service::{create_comment_core, list_comments_core};
 pub use crate::sedjiwa::tasks::comment::v1 as comment_pb;

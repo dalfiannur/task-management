@@ -1,9 +1,10 @@
 import type {
   Module as PbModule,
   Task as PbTask,
+  TaskStatusDef as PbStatusDef,
 } from "@/lib/gen/work_pb";
 import { TaskStatus as PbStatus, TaskPriority as PbPriority } from "@/lib/gen/work_pb";
-import type { Module, Task, TaskPriority, TaskStatus } from "../types";
+import type { Module, Task, TaskPriority, TaskStatus, WorkflowStatus } from "../types";
 
 export function statusFromProto(s: PbStatus): TaskStatus {
   switch (s) {
@@ -92,5 +93,19 @@ export function mapTask(t: PbTask): Task {
     parentId: t.parentId,
     blockedByIds: t.blockedByIds,
     number: t.number,
+    statusId: t.statusId,
+    statusName: t.statusName,
+    statusColor: t.statusColor,
+  };
+}
+
+export function mapStatusDef(s: PbStatusDef): WorkflowStatus {
+  return {
+    id: s.id,
+    projectId: s.projectId,
+    name: s.name,
+    color: s.color,
+    category: statusFromProto(s.category),
+    order: s.order,
   };
 }

@@ -27,7 +27,7 @@ use domain::project::{
 };
 use domain::task::{
     TaskAssignees, TaskAudit, TaskBlockedBy, TaskInfo, TaskLabels, TaskModuleRef, TaskParent,
-    TaskPriority, TaskStatus,
+    TaskPriority, TaskStatus, TaskStatusDef, TaskStatusRef, DEFAULT_STATUSES,
 };
 use domain::user::{
     AdminMark, UserPassword, UserPhone, UserProfile, UserStatus, UserStatusComponent,
@@ -1566,7 +1566,7 @@ async fn main() -> Result<()> {
     let mut n_activity = 0usize;
     let mut n_notifs = 0usize;
 
-    for p in PROJECTS {
+    for (pi, p) in PROJECTS.iter().enumerate() {
         // ---- Project ------------------------------------------------------
         let project_pid = store
             .create((
@@ -1597,6 +1597,30 @@ async fn main() -> Result<()> {
                     user_id: uid(*m),
                 },))
                 .await?;
+        }
+
+        // ---- Workflow -----------------------------------------------------
+        // The defaults, plus a custom "Review" step in the first project so
+        // the demo shows a workflow of its own; its first in-progress task
+        // sits there.
+        let mut workflow: Vec<(&str, &str, TaskStatus)> = DEFAULT_STATUSES.to_vec();
+        if pi == 0 {
+            workflow.insert(2, ("Review", "#a855f7", TaskStatus::InProgress));
+        }
+        let mut review_id: Option<String> = None;
+        for (order, (name, color, category)) in workflow.into_iter().enumerate() {
+            let pid = store
+                .create((TaskStatusDef {
+                    project_id: project_id.clone(),
+                    name: name.into(),
+                    color: color.into(),
+                    category: category.as_str().into(),
+                    sort_order: order as i32,
+                },))
+                .await?;
+            if name == "Review" {
+                review_id = Some(pid.to_string());
+            }
         }
 
         // ---- Labels -------------------------------------------------------
@@ -1679,6 +1703,11 @@ async fn main() -> Result<()> {
                         },
                     ))
                     .await?;
+                if matches!(t.status, TaskStatus::InProgress) {
+                    if let Some(status_id) = review_id.take() {
+                        store.attach(task_pid, TaskStatusRef { status_id }).await?;
+                    }
+                }
                 task_ids.insert(t.title, task_pid);
                 n_tasks += 1;
 

@@ -2,7 +2,7 @@ import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 import { dueGroup, dueLabel } from "@/features/dashboard";
 import type { Task, TaskPriority, TaskStatus } from "../types";
-import { TASK_PRIORITY_CONFIG, TASK_STATUS_CONFIG } from "../config";
+import { TASK_PRIORITY_CONFIG, TASK_STATUS_CONFIG, statusLabel } from "../config";
 
 /** "#12" before a task title. Inline-block, so a done title's line-through
  *  skips it. */
@@ -26,8 +26,36 @@ export function TaskNumber({
   );
 }
 
-export function StatusBadge({ status }: { status: TaskStatus }) {
-  const c = TASK_STATUS_CONFIG[status];
+type StatusFields = Pick<Task, "status" | "statusName" | "statusColor">;
+
+/** The status colour dot: the workflow's own colour, else the category's
+ *  token. Decorative — the name always travels next to it. */
+export function StatusDot({
+  status,
+  color,
+  className,
+}: {
+  status: TaskStatus;
+  color?: string;
+  className?: string;
+}) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        "inline-block h-1.5 w-1.5 shrink-0 rounded-full",
+        !color && TASK_STATUS_CONFIG[status].dot,
+        className,
+      )}
+      style={color ? { backgroundColor: color } : undefined}
+    />
+  );
+}
+
+/** Badge surface from the category (so done still reads as done), name and
+ *  dot from the project's workflow. */
+export function StatusBadge({ task }: { task: StatusFields }) {
+  const c = TASK_STATUS_CONFIG[task.status];
   return (
     <span
       className={cn(
@@ -35,8 +63,8 @@ export function StatusBadge({ status }: { status: TaskStatus }) {
         c.badge,
       )}
     >
-      <span className={cn("h-1.5 w-1.5 rounded-full", c.dot)} />
-      {c.label}
+      <StatusDot status={task.status} color={task.statusColor} />
+      {statusLabel(task)}
     </span>
   );
 }

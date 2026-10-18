@@ -6,10 +6,13 @@
 
 pub(crate) mod module_service;
 pub(crate) mod record;
+pub(crate) mod status_record;
+pub(crate) mod status_service;
 pub(crate) mod task_record;
 pub(crate) mod task_service;
 
 pub use module_service::module_router;
+pub use status_service::status_router;
 pub use task_service::task_router;
 
 use std::sync::Arc;

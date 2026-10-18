@@ -5,9 +5,10 @@ import { Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, B
 import { DatePickerField } from "@/components/shared/date-picker-field";
 import type { AppUser } from "@/features/auth";
 import type { Label } from "@/features/labels";
-import { TASK_PRIORITIES, TASK_STATUSES } from "../types";
+import { TASK_PRIORITIES, TASK_STATUSES, type WorkflowStatus } from "../types";
 import { TASK_PRIORITY_CONFIG, TASK_STATUS_CONFIG } from "../config";
 import { hasActiveFilter, type TaskFilter } from "../filter";
+import { StatusDot } from "./task-badges";
 
 /** Radix Select has no empty value, so "no filter" needs a sentinel. */
 const ALL = "all";
@@ -30,6 +31,7 @@ export function TaskFilterBar({
   onChange,
   onClear,
   memberIds,
+  statuses,
   userMap,
   labelMap,
   matched,
@@ -41,6 +43,8 @@ export function TaskFilterBar({
   onChange: (next: Partial<TaskFilter>) => void;
   onClear: () => void;
   memberIds: string[];
+  /** The project's workflow, for the status filter. */
+  statuses: WorkflowStatus[];
   userMap: Record<string, AppUser>;
   labelMap: Record<string, Label>;
   /** Tasks passing the filter, and the project's total — for the count line. */
@@ -111,9 +115,17 @@ export function TaskFilterBar({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={ALL}>All statuses</SelectItem>
-            {TASK_STATUSES.map((s) => (
-              <SelectItem key={s} value={s}>
-                {TASK_STATUS_CONFIG[s].label}
+            {statuses.map((s) => (
+              <SelectItem key={s.id} value={s.id}>
+                <StatusDot status={s.category} color={s.color} className="mr-1.5 h-2 w-2" />
+                {s.name}
+              </SelectItem>
+            ))}
+            {/* A category from an older link or the dashboard: offered only
+                while it is the active filter, so the trigger can name it. */}
+            {TASK_STATUSES.filter((c) => c === filter.status).map((c) => (
+              <SelectItem key={c} value={c}>
+                Any {TASK_STATUS_CONFIG[c].label.toLowerCase()}
               </SelectItem>
             ))}
           </SelectContent>

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { CalendarOff, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DatePickerField } from "@/components/shared/date-picker-field";
-import { TASK_STATUS_CONFIG, TaskNumber, type Task } from "@/features/tasks";
+import { StatusDot, TaskNumber, statusLabel, type Task } from "@/features/tasks";
 
 /** Tasks with no dates. Picking a date schedules them (start = due = pick). */
 export function UnscheduledPanel({
@@ -54,13 +54,7 @@ export function UnscheduledPanel({
               key={t.id}
               className="flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors [transition-duration:var(--duration-fast)] hover:bg-accent"
             >
-              <span
-                aria-hidden="true"
-                className={cn(
-                  "h-2 w-2 shrink-0 rounded-full",
-                  TASK_STATUS_CONFIG[t.status].dot,
-                )}
-              />
+              <StatusDot status={t.status} color={t.statusColor} className="h-2 w-2" />
               <button
                 type="button"
                 onClick={() => onOpen(t.id)}
@@ -70,7 +64,7 @@ export function UnscheduledPanel({
                 {t.title}
                 <span className="sr-only">
                   {" "}
-                  · {TASK_STATUS_CONFIG[t.status].label}
+                  · {statusLabel(t)}
                 </span>
               </button>
               <span className="hidden shrink-0 truncate text-xs text-muted-foreground sm:inline">

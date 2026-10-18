@@ -5,7 +5,7 @@
 use serde_json::{json, Value};
 use transport::api::{
     create_task_core, get_task_core, list_tasks_core, module_project, move_task_core,
-    update_task_core, work_pb,
+    status_by_name, update_task_core, work_pb,
 };
 
 use super::{limit_arg, opt_str, opt_str_list, str_arg, truncate, Ctx, ToolError, ToolMeta};
@@ -48,33 +48,30 @@ fn priority_arg(args: &Value) -> Result<Option<i32>, ToolError> {
     }
 }
 
-/// `create_task`'s optional initial `status`. Validated at this boundary for
-/// the same reason as `priority_arg`: `create_task_core` reads an
-/// unrecognized status as "unspecified" and silently defaults it to Todo, so a
-/// typo like "in-progress" would create the task in the wrong state instead
-/// of failing.
-fn status_arg(args: &Value) -> Result<Option<i32>, ToolError> {
-    match opt_str(args, "status") {
-        None => Ok(None),
-        Some(s) => domain::task::TaskStatus::parse(&s)
-            .map(|st| Some(st.to_proto()))
-            .ok_or_else(|| {
-                ToolError::BadArgs(format!(
-                    "`status` must be one of todo, in_progress, done, cancelled (got `{s}`)"
-                ))
-            }),
-    }
+const STATUS_HELP: &str = "a category (todo, in_progress, done, cancelled) or the \
+                           name of one of the project's statuses";
+
+/// What a `status` argument names in `project_id`: a category (the core fn
+/// then picks that category's first status) or, failing that, one of the
+/// project's own statuses by name. Validated at this boundary because
+/// `create_task_core` reads an unrecognized status as "unspecified" and
+/// silently defaults it to Todo, so a typo like "in-progress" would create
+/// the task in the wrong state instead of failing.
+enum StatusTarget {
+    Category(i32),
+    Status(String),
 }
 
-/// The inverse of `status_label`, for `update_task`'s optional `status` field.
-/// Unlike priority, `0` is never a valid status to send: an unrecognized label
-/// is deliberately mapped to it anyway (rather than silently dropped) so
-/// `update_task_core`'s own `TaskStatus::from_proto` check rejects it as
-/// "invalid status" instead of the tool quietly leaving status unchanged.
-fn status_value(s: &str) -> i32 {
-    domain::task::TaskStatus::parse(s)
-        .map(|st| st.to_proto())
-        .unwrap_or(0)
+async fn status_target(ctx: &Ctx, project_id: &str, s: &str) -> Result<StatusTarget, ToolError> {
+    if let Some(c) = domain::task::TaskStatus::parse(s) {
+        return Ok(StatusTarget::Category(c.to_proto()));
+    }
+    match status_by_name(&ctx.store, project_id, s).await? {
+        Some((id, _)) => Ok(StatusTarget::Status(id)),
+        None => Err(ToolError::BadArgs(format!(
+            "`status` must be {STATUS_HELP} (got `{s}`)"
+        ))),
+    }
 }
 
 /// `update_task`'s re-parent argument, mapped onto the proto's `StringList`
@@ -113,6 +110,7 @@ pub(crate) fn flatten(t: &work_pb::Task) -> Value {
         "title": t.title,
         "description": truncate(&t.description),
         "status": status_label(t.status),
+        "status_name": t.status_name,
         "priority": priority_label(t.priority),
         "module_id": t.module_id,
         "assignee_ids": t.assignee_ids,
@@ -134,7 +132,7 @@ pub const LIST_TASKS: ToolMeta = ToolMeta {
                 "project_id": { "type": "string" },
                 "module_id": { "type": "string" },
                 "assignee_id": { "type": "string" },
-                "status": { "type": "string", "enum": ["todo", "in_progress", "done", "cancelled"] },
+                "status": { "type": "string", "description": "Filter: a category (todo, in_progress, done, cancelled) matches every status in it; otherwise the name of one of the project's statuses." },
                 "limit": { "type": "integer", "minimum": 1, "maximum": 200 }
             }
         })
@@ -159,7 +157,7 @@ pub async fn list_tasks(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
         None => module_project(&ctx.store, module_id.as_ref().unwrap()).await?.1,
     };
     let req = work_pb::ListTasksRequest {
-        project_id,
+        project_id: project_id.clone(),
         module_id: module_id.clone(),
     };
     let resp = list_tasks_core(&ctx.store, &ctx.auth, req).await?;
@@ -170,18 +168,18 @@ pub async fn list_tasks(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
     // exactly the failure `limit_arg`'s doc comment refuses to allow for
     // `limit`.
     let status = match opt_str(args, "status") {
-        Some(s) if domain::task::TaskStatus::parse(&s).is_none() => {
-            return Err(ToolError::BadArgs(format!(
-                "`status` must be one of todo, in_progress, done, cancelled (got `{s}`)"
-            )))
-        }
-        other => other,
+        Some(s) => Some(status_target(ctx, &project_id, &s).await?),
+        None => None,
     };
     let assignee = opt_str(args, "assignee_id");
     let rows: Vec<Value> = resp
         .tasks
         .iter()
-        .filter(|t| status.as_deref().is_none_or(|s| status_label(t.status) == s))
+        .filter(|t| match &status {
+            None => true,
+            Some(StatusTarget::Category(c)) => t.status == *c,
+            Some(StatusTarget::Status(id)) => &t.status_id == id,
+        })
         .filter(|t| assignee.as_deref().is_none_or(|a| t.assignee_ids.iter().any(|x| x == a)))
         .take(limit_arg(args)?)
         .map(flatten)
@@ -224,7 +222,7 @@ pub const CREATE_TASK: ToolMeta = ToolMeta {
                 "title": { "type": "string" },
                 "description": { "type": "string" },
                 "parent_id": { "type": "string", "description": "Make this a subtask of that task. The parent must be in the same project and must not itself be a subtask — nesting is one level deep." },
-                "status": { "type": "string", "enum": ["todo", "in_progress", "done", "cancelled"], "description": "Initial status. Omit to start the task as todo." },
+                "status": { "type": "string", "description": "Initial status: a category (todo, in_progress, done, cancelled) or the name of one of the project's statuses. Omit to start the task in the project's first todo status." },
                 "priority": { "type": "string", "enum": ["none", "low", "medium", "high", "urgent"] },
                 "start_date": { "type": "string", "description": "ISO-8601 date, yyyy-MM-dd" },
                 "due_date": { "type": "string", "description": "ISO-8601 date, yyyy-MM-dd" },
@@ -237,13 +235,26 @@ pub const CREATE_TASK: ToolMeta = ToolMeta {
 };
 
 pub async fn create_task(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
+    let module_id = str_arg(args, "module_id")?;
+    let (status, status_id) = match opt_str(args, "status") {
+        None => (0, None),
+        Some(s) => {
+            let project_id = module_project(&ctx.store, &module_id).await?.1;
+            match status_target(ctx, &project_id, &s).await? {
+                StatusTarget::Category(c) => (c, None),
+                StatusTarget::Status(id) => (0, Some(id)),
+            }
+        }
+    };
     let req = work_pb::CreateTaskRequest {
-        module_id: str_arg(args, "module_id")?,
+        module_id,
         title: str_arg(args, "title")?,
         description: opt_str(args, "description"),
-        // `status_arg` already rejects a misspelled status; `0` here only ever
-        // means "not supplied", which `create_task_core` defaults to Todo.
-        status: status_arg(args)?.unwrap_or(0),
+        // `status_target` already rejects a misspelled status; `0` here only
+        // ever means "not supplied" (or a named status, which wins), which
+        // `create_task_core` defaults to Todo.
+        status,
+        status_id,
         // `priority_arg` already rejects a misspelled priority; `0` here only
         // ever means "not supplied", which `create_task_core` treats as no
         // priority.
@@ -275,7 +286,7 @@ pub const UPDATE_TASK: ToolMeta = ToolMeta {
                 "title": { "type": "string" },
                 "description": { "type": "string" },
                 "parent_id": { "type": ["string", "null"], "description": "Task id to become a subtask of, or null to detach to top level. Omit to leave the parent unchanged. The parent must be in the same project and must not itself be a subtask." },
-                "status": { "type": "string", "enum": ["todo", "in_progress", "done", "cancelled"] },
+                "status": { "type": "string", "description": "A category (todo, in_progress, done, cancelled) — its first status, unless the task is already in it — or the name of one of the project's statuses." },
                 "priority": { "type": "string", "enum": ["none", "low", "medium", "high", "urgent"] },
                 "start_date": { "type": "string", "description": "ISO-8601 date, yyyy-MM-dd" },
                 "due_date": { "type": "string", "description": "ISO-8601 date, yyyy-MM-dd" },
@@ -288,11 +299,26 @@ pub const UPDATE_TASK: ToolMeta = ToolMeta {
 };
 
 pub async fn update_task(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
+    let id = str_arg(args, "task_id")?;
+    let (status, status_id) = match opt_str(args, "status") {
+        None => (None, None),
+        Some(s) => {
+            // Member-gated read: the task's project scopes the status names.
+            let t = get_task_core(&ctx.store, &ctx.auth, work_pb::GetTaskRequest { id: id.clone() })
+                .await?;
+            let project_id = module_project(&ctx.store, &t.module_id).await?.1;
+            match status_target(ctx, &project_id, &s).await? {
+                StatusTarget::Category(c) => (Some(c), None),
+                StatusTarget::Status(sid) => (None, Some(sid)),
+            }
+        }
+    };
     let req = work_pb::UpdateTaskRequest {
-        id: str_arg(args, "task_id")?,
+        id,
         title: opt_str(args, "title"),
         description: opt_str(args, "description"),
-        status: opt_str(args, "status").map(|s| status_value(&s)),
+        status,
+        status_id,
         // Validated up front rather than left to `update_task_core`'s own
         // re-parse: it happens to reject an invalid code, but that's a more
         // fragile guarantee to lean on than checking at the boundary the way

@@ -43,7 +43,7 @@ pub use reports::report_router;
 pub use search::search_router;
 pub use tokens::token_router;
 pub use users::{auth_router, user_router, JwtConfig};
-pub use work::{module_router, task_router};
+pub use work::{module_router, status_router, task_router};
 
 use std::sync::Arc;
 

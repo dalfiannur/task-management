@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 import { LABEL_COLORS, type Label } from "../types";
 import { useLabels, useCreateLabel, useUpdateLabel, useDeleteLabel } from "../api/hooks";
 
-function ColorSwatches({
+export function ColorSwatches({
   value,
   onChange,
 }: {

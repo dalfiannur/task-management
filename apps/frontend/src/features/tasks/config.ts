@@ -6,7 +6,7 @@
 // --surface-sunken. Warna tidak pernah jadi satu-satunya pembawa makna:
 // setiap badge membawa label teks, dan titiknya aria-hidden.
 
-import type { TaskPriority, TaskStatus } from "./types";
+import type { Task, TaskPriority, TaskStatus } from "./types";
 
 export const TASK_STATUS_CONFIG: Record<
   TaskStatus,
@@ -49,3 +49,8 @@ export const TASK_PRIORITY_CONFIG: Record<
   high: { label: "High", className: "text-warning-text font-semibold" },
   urgent: { label: "Urgent", className: "text-destructive font-semibold" },
 };
+
+/** A task's status as shown: its workflow name, else its category's. */
+export function statusLabel(task: Pick<Task, "status" | "statusName">): string {
+  return task.statusName || TASK_STATUS_CONFIG[task.status].label;
+}

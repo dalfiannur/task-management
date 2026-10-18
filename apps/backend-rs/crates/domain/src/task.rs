@@ -160,6 +160,39 @@ impl TaskPriority {
     }
 }
 
+/// One status in a project's workflow. `category` (a [`TaskStatus::as_str`]) is
+/// what reports, the dashboard and `completed_at` read; name, color and order
+/// are the project's own.
+#[derive(Debug, Clone)]
+pub struct TaskStatusDef {
+    pub project_id: String,
+    pub name: String,
+    pub color: String,
+    pub category: String,
+    pub sort_order: i32,
+}
+
+/// A task's current status (a [`TaskStatusDef`] `pid` string). Absent = the
+/// project's first status of the task's category.
+#[derive(Debug, Clone)]
+pub struct TaskStatusRef {
+    pub status_id: String,
+}
+
+/// The statuses every new project starts with: (name, color, category).
+pub const DEFAULT_STATUSES: [(&str, &str, TaskStatus); 4] = [
+    ("To Do", "#94a3b8", TaskStatus::Todo),
+    ("In Progress", "#f59e0b", TaskStatus::InProgress),
+    ("Done", "#22c55e", TaskStatus::Done),
+    ("Cancelled", "#64748b", TaskStatus::Cancelled),
+];
+
+/// Categories a project must always keep at least one status of: a new task
+/// needs somewhere to start and somewhere to finish.
+pub fn required_category(c: TaskStatus) -> bool {
+    matches!(c, TaskStatus::Todo | TaskStatus::Done)
+}
+
 /// A task title is valid iff it has non-whitespace content.
 pub fn title_ok(title: &str) -> bool {
     !title.trim().is_empty()

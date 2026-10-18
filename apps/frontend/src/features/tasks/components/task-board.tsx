@@ -14,12 +14,10 @@ import { CornerDownRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AppUser } from "@/features/auth";
 import { LabelChips, type Label } from "@/features/labels";
-import { TASK_STATUSES, type Module, type Task, type TaskStatus } from "../types";
-import { TASK_STATUS_CONFIG } from "../config";
-import { statusToProto } from "../api/mappers";
-import { isOptimisticTaskId, useUpdateTask } from "../api/hooks";
+import type { Module, Task, WorkflowStatus } from "../types";
+import { isOptimisticTaskId, useStatuses, useUpdateTask } from "../api/hooks";
 import { AssigneeAvatars } from "./assignee-picker";
-import { DueDate, PriorityLabel, TaskNumber } from "./task-badges";
+import { DueDate, PriorityLabel, StatusDot, TaskNumber } from "./task-badges";
 import { StatusMenu } from "./status-menu";
 
 interface CardContext {
@@ -33,8 +31,13 @@ interface CardContext {
   onOpenTask: (id: string) => void;
 }
 
+/** Up to this many columns share the width on a wide screen; more scroll
+ *  sideways at every size rather than squeezing into slivers. */
+const GRID_MAX_COLUMNS = 5;
+
 /**
- * Board view of the Tasks tab: one column per status, across every module.
+ * Board view of the Tasks tab: one column per status of the project's
+ * workflow, in workflow order, across every module.
  * Dropping a card on another column changes its status; order inside a
  * column follows module order, then the task's own order, so it reads the
  * same way the list does.
@@ -63,6 +66,7 @@ export function TaskBoard({
   onOpenTask: (id: string) => void;
 }) {
   const update = useUpdateTask(projectId);
+  const { statuses } = useStatuses(projectId);
   const [activeId, setActiveId] = useState<string | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -84,19 +88,24 @@ export function TaskBoard({
 
   const columns = useMemo(() => {
     const moduleRank = new Map(modules.map((m, i) => [m.id, i]));
-    const byStatus = Object.fromEntries(
-      TASK_STATUSES.map((s) => [s, [] as Task[]]),
-    ) as Record<TaskStatus, Task[]>;
-    for (const t of tasks) byStatus[t.status].push(t);
-    for (const s of TASK_STATUSES) {
-      byStatus[s].sort(
+    const byStatus = new Map(statuses.map((s) => [s.id, [] as Task[]]));
+    for (const t of tasks) {
+      // A status deleted under a loaded list: show the task where the server
+      // will put it — its category's first status — until the refetch lands.
+      const column =
+        byStatus.get(t.statusId) ??
+        byStatus.get(statuses.find((s) => s.category === t.status)?.id ?? "");
+      column?.push(t);
+    }
+    for (const list of byStatus.values()) {
+      list.sort(
         (a, b) =>
           (moduleRank.get(a.moduleId) ?? 0) - (moduleRank.get(b.moduleId) ?? 0) ||
           a.order - b.order,
       );
     }
     return byStatus;
-  }, [modules, tasks]);
+  }, [modules, tasks, statuses]);
 
   const activeTask = activeId ? tasks.find((t) => t.id === activeId) : undefined;
 
@@ -108,11 +117,11 @@ export function TaskBoard({
     setActiveId(null);
     const over = e.over ? String(e.over.id) : "";
     if (!over.startsWith("status:")) return;
-    const next = over.slice(7) as TaskStatus;
+    const next = over.slice(7);
     const task = tasks.find((t) => t.id === e.active.id);
-    if (!task || task.status === next) return;
+    if (!task || task.statusId === next) return;
     // Failure is reported (and the card moved back) by useUpdateTask.
-    update.mutate({ id: task.id, status: statusToProto(next) });
+    update.mutate({ id: task.id, statusId: next });
   }
 
   return (
@@ -123,10 +132,26 @@ export function TaskBoard({
       onDragCancel={() => setActiveId(null)}
     >
       {/* Columns keep a readable width and scroll sideways inside the tab on
-          narrow screens rather than squeezing four lists into a phone. */}
-      <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0 lg:grid lg:grid-cols-4 lg:overflow-visible">
-        {TASK_STATUSES.map((s) => (
-          <BoardColumn key={s} status={s} tasks={columns[s]} ctx={ctx} />
+          narrow screens rather than squeezing every list into a phone. */}
+      <div
+        className={cn(
+          "-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0",
+          statuses.length <= GRID_MAX_COLUMNS && "lg:grid lg:overflow-visible",
+        )}
+        style={
+          statuses.length <= GRID_MAX_COLUMNS
+            ? { gridTemplateColumns: `repeat(${statuses.length}, minmax(0, 1fr))` }
+            : undefined
+        }
+      >
+        {statuses.map((s) => (
+          <BoardColumn
+            key={s.id}
+            status={s}
+            tasks={columns.get(s.id) ?? []}
+            ctx={ctx}
+            fill={statuses.length <= GRID_MAX_COLUMNS}
+          />
         ))}
       </div>
       <DragOverlay dropAnimation={null}>
@@ -140,26 +165,29 @@ function BoardColumn({
   status,
   tasks,
   ctx,
+  fill,
 }: {
-  status: TaskStatus;
+  status: WorkflowStatus;
   tasks: Task[];
   ctx: CardContext;
+  /** Sharing the width of a wide-screen grid rather than scrolling. */
+  fill: boolean;
 }) {
-  const { setNodeRef, isOver } = useDroppable({ id: `status:${status}` });
-  const c = TASK_STATUS_CONFIG[status];
+  const { setNodeRef, isOver } = useDroppable({ id: `status:${status.id}` });
   return (
     <section
       ref={setNodeRef}
-      aria-label={c.label}
+      aria-label={status.name}
       className={cn(
-        "flex w-72 shrink-0 snap-start flex-col rounded-xl bg-muted/60 p-2 lg:w-auto",
+        "flex w-72 shrink-0 snap-start flex-col rounded-xl bg-muted/60 p-2",
+        fill && "lg:w-auto",
         "transition-shadow [transition-duration:var(--duration-fast)]",
         isOver && "ring-2 ring-ring",
       )}
     >
       <header className="flex items-center gap-2 px-2 pb-2 pt-1">
-        <span aria-hidden="true" className={cn("h-2 w-2 rounded-full", c.dot)} />
-        <h3 className="text-sm font-medium">{c.label}</h3>
+        <StatusDot status={status.category} color={status.color} className="h-2 w-2" />
+        <h3 className="text-sm font-medium">{status.name}</h3>
         <span className="text-num text-xs text-muted-foreground">{tasks.length}</span>
       </header>
       <div className="flex min-h-24 flex-1 flex-col gap-2">

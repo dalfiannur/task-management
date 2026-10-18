@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file work.proto.
  */
 export const file_work: GenFile = /*@__PURE__*/
-  fileDesc("Cgp3b3JrLnByb3RvEhVzZWRqaXdhLnRhc2tzLndvcmsudjEiWwoGTW9kdWxlEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSGAoLZGVzY3JpcHRpb24YAyABKAlIAIgBARINCgVvcmRlchgEIAEoBUIOCgxfZGVzY3JpcHRpb24iKAoSTGlzdE1vZHVsZXNSZXF1ZXN0EhIKCnByb2plY3RfaWQYASABKAkiRQoTTGlzdE1vZHVsZXNSZXNwb25zZRIuCgdtb2R1bGVzGAEgAygLMh0uc2Vkaml3YS50YXNrcy53b3JrLnYxLk1vZHVsZSJhChNDcmVhdGVNb2R1bGVSZXF1ZXN0EhIKCnByb2plY3RfaWQYASABKAkSDAoEbmFtZRgCIAEoCRIYCgtkZXNjcmlwdGlvbhgDIAEoCUgAiAEBQg4KDF9kZXNjcmlwdGlvbiJnChNVcGRhdGVNb2R1bGVSZXF1ZXN0EgoKAmlkGAEgASgJEhEKBG5hbWUYAiABKAlIAIgBARIYCgtkZXNjcmlwdGlvbhgDIAEoCUgBiAEBQgcKBV9uYW1lQg4KDF9kZXNjcmlwdGlvbiIhChNEZWxldGVNb2R1bGVSZXF1ZXN0EgoKAmlkGAEgASgJIiIKFERlbGV0ZU1vZHVsZVJlc3BvbnNlEgoKAm9rGAEgASgIIj8KFVJlb3JkZXJNb2R1bGVzUmVxdWVzdBISCgpwcm9qZWN0X2lkGAEgASgJEhIKCm1vZHVsZV9pZHMYAiADKAki7QMKBFRhc2sSCgoCaWQYASABKAkSEQoJbW9kdWxlX2lkGAIgASgJEg0KBXRpdGxlGAMgASgJEhMKC2Rlc2NyaXB0aW9uGAQgASgJEjEKBnN0YXR1cxgFIAEoDjIhLnNlZGppd2EudGFza3Mud29yay52MS5UYXNrU3RhdHVzEjUKCHByaW9yaXR5GAYgASgOMiMuc2Vkaml3YS50YXNrcy53b3JrLnYxLlRhc2tQcmlvcml0eRIXCgpzdGFydF9kYXRlGAcgASgJSACIAQESFQoIZHVlX2RhdGUYCCABKAlIAYgBARINCgVvcmRlchgJIAEoBRIUCgxhc3NpZ25lZV9pZHMYCiADKAkSEQoJbGFiZWxfaWRzGAsgAygJEhIKCmNyZWF0ZWRfYXQYDCABKAkSEgoKdXBkYXRlZF9hdBgNIAEoCRIZCgxjb21wbGV0ZWRfYXQYDiABKAlIAogBARISCgpjcmVhdGVkX2J5GA8gASgJEhYKCXBhcmVudF9pZBgQIAEoCUgDiAEBEhYKDmJsb2NrZWRfYnlfaWRzGBEgAygJEg4KBm51bWJlchgSIAEoBUINCgtfc3RhcnRfZGF0ZUILCglfZHVlX2RhdGVCDwoNX2NvbXBsZXRlZF9hdEIMCgpfcGFyZW50X2lkIhwKDkdldFRhc2tSZXF1ZXN0EgoKAmlkGAEgASgJIkwKEExpc3RUYXNrc1JlcXVlc3QSEgoKcHJvamVjdF9pZBgBIAEoCRIWCgltb2R1bGVfaWQYAiABKAlIAIgBAUIMCgpfbW9kdWxlX2lkIj8KEUxpc3RUYXNrc1Jlc3BvbnNlEioKBXRhc2tzGAEgAygLMhsuc2Vkaml3YS50YXNrcy53b3JrLnYxLlRhc2si5AIKEUNyZWF0ZVRhc2tSZXF1ZXN0EhEKCW1vZHVsZV9pZBgBIAEoCRINCgV0aXRsZRgCIAEoCRIYCgtkZXNjcmlwdGlvbhgDIAEoCUgAiAEBEjEKBnN0YXR1cxgEIAEoDjIhLnNlZGppd2EudGFza3Mud29yay52MS5UYXNrU3RhdHVzEjUKCHByaW9yaXR5GAUgASgOMiMuc2Vkaml3YS50YXNrcy53b3JrLnYxLlRhc2tQcmlvcml0eRIXCgpzdGFydF9kYXRlGAYgASgJSAGIAQESFQoIZHVlX2RhdGUYByABKAlIAogBARIUCgxhc3NpZ25lZV9pZHMYCCADKAkSEQoJbGFiZWxfaWRzGAkgAygJEhYKCXBhcmVudF9pZBgKIAEoCUgDiAEBQg4KDF9kZXNjcmlwdGlvbkINCgtfc3RhcnRfZGF0ZUILCglfZHVlX2RhdGVCDAoKX3BhcmVudF9pZCIcCgpTdHJpbmdMaXN0Eg4KBnZhbHVlcxgBIAMoCSL7BAoRVXBkYXRlVGFza1JlcXVlc3QSCgoCaWQYASABKAkSEgoFdGl0bGUYAiABKAlIAIgBARIYCgtkZXNjcmlwdGlvbhgDIAEoCUgBiAEBEjYKBnN0YXR1cxgEIAEoDjIhLnNlZGppd2EudGFza3Mud29yay52MS5UYXNrU3RhdHVzSAKIAQESOgoIcHJpb3JpdHkYBSABKA4yIy5zZWRqaXdhLnRhc2tzLndvcmsudjEuVGFza1ByaW9yaXR5SAOIAQESFwoKc3RhcnRfZGF0ZRgGIAEoCUgEiAEBEhUKCGR1ZV9kYXRlGAcgASgJSAWIAQESPAoMYXNzaWduZWVfaWRzGAggASgLMiEuc2Vkaml3YS50YXNrcy53b3JrLnYxLlN0cmluZ0xpc3RIBogBARI5CglsYWJlbF9pZHMYCSABKAsyIS5zZWRqaXdhLnRhc2tzLndvcmsudjEuU3RyaW5nTGlzdEgHiAEBEj4KDmJsb2NrZWRfYnlfaWRzGAogASgLMiEuc2Vkaml3YS50YXNrcy53b3JrLnYxLlN0cmluZ0xpc3RICIgBARI9Cg1wYXJlbnRfaWRfc2V0GAsgASgLMiEuc2Vkaml3YS50YXNrcy53b3JrLnYxLlN0cmluZ0xpc3RICYgBAUIICgZfdGl0bGVCDgoMX2Rlc2NyaXB0aW9uQgkKB19zdGF0dXNCCwoJX3ByaW9yaXR5Qg0KC19zdGFydF9kYXRlQgsKCV9kdWVfZGF0ZUIPCg1fYXNzaWduZWVfaWRzQgwKCl9sYWJlbF9pZHNCEQoPX2Jsb2NrZWRfYnlfaWRzQhAKDl9wYXJlbnRfaWRfc2V0Ih8KEURlbGV0ZVRhc2tSZXF1ZXN0EgoKAmlkGAEgASgJIiAKEkRlbGV0ZVRhc2tSZXNwb25zZRIKCgJvaxgBIAEoCCI/Cg9Nb3ZlVGFza1JlcXVlc3QSCgoCaWQYASABKAkSEQoJbW9kdWxlX2lkGAIgASgJEg0KBW9yZGVyGAMgASgFKl0KClRhc2tTdGF0dXMSGwoXVEFTS19TVEFUVVNfVU5TUEVDSUZJRUQQABIICgRUT0RPEAESDwoLSU5fUFJPR1JFU1MQAhIICgRET05FEAMSDQoJQ0FOQ0VMTEVEEAQqYgoMVGFza1ByaW9yaXR5Eh0KGVRBU0tfUFJJT1JJVFlfVU5TUEVDSUZJRUQQABIICgROT05FEAESBwoDTE9XEAISCgoGTUVESVVNEAMSCAoESElHSBAEEgoKBlVSR0VOVBAFMoAECg1Nb2R1bGVTZXJ2aWNlEmQKC0xpc3RNb2R1bGVzEikuc2Vkaml3YS50YXNrcy53b3JrLnYxLkxpc3RNb2R1bGVzUmVxdWVzdBoqLnNlZGppd2EudGFza3Mud29yay52MS5MaXN0TW9kdWxlc1Jlc3BvbnNlElkKDENyZWF0ZU1vZHVsZRIqLnNlZGppd2EudGFza3Mud29yay52MS5DcmVhdGVNb2R1bGVSZXF1ZXN0Gh0uc2Vkaml3YS50YXNrcy53b3JrLnYxLk1vZHVsZRJZCgxVcGRhdGVNb2R1bGUSKi5zZWRqaXdhLnRhc2tzLndvcmsudjEuVXBkYXRlTW9kdWxlUmVxdWVzdBodLnNlZGppd2EudGFza3Mud29yay52MS5Nb2R1bGUSZwoMRGVsZXRlTW9kdWxlEiouc2Vkaml3YS50YXNrcy53b3JrLnYxLkRlbGV0ZU1vZHVsZVJlcXVlc3QaKy5zZWRqaXdhLnRhc2tzLndvcmsudjEuRGVsZXRlTW9kdWxlUmVzcG9uc2USagoOUmVvcmRlck1vZHVsZXMSLC5zZWRqaXdhLnRhc2tzLndvcmsudjEuUmVvcmRlck1vZHVsZXNSZXF1ZXN0Giouc2Vkaml3YS50YXNrcy53b3JrLnYxLkxpc3RNb2R1bGVzUmVzcG9uc2UymgQKC1Rhc2tTZXJ2aWNlEk0KB0dldFRhc2sSJS5zZWRqaXdhLnRhc2tzLndvcmsudjEuR2V0VGFza1JlcXVlc3QaGy5zZWRqaXdhLnRhc2tzLndvcmsudjEuVGFzaxJeCglMaXN0VGFza3MSJy5zZWRqaXdhLnRhc2tzLndvcmsudjEuTGlzdFRhc2tzUmVxdWVzdBooLnNlZGppd2EudGFza3Mud29yay52MS5MaXN0VGFza3NSZXNwb25zZRJTCgpDcmVhdGVUYXNrEiguc2Vkaml3YS50YXNrcy53b3JrLnYxLkNyZWF0ZVRhc2tSZXF1ZXN0Ghsuc2Vkaml3YS50YXNrcy53b3JrLnYxLlRhc2sSUwoKVXBkYXRlVGFzaxIoLnNlZGppd2EudGFza3Mud29yay52MS5VcGRhdGVUYXNrUmVxdWVzdBobLnNlZGppd2EudGFza3Mud29yay52MS5UYXNrEmEKCkRlbGV0ZVRhc2sSKC5zZWRqaXdhLnRhc2tzLndvcmsudjEuRGVsZXRlVGFza1JlcXVlc3QaKS5zZWRqaXdhLnRhc2tzLndvcmsudjEuRGVsZXRlVGFza1Jlc3BvbnNlEk8KCE1vdmVUYXNrEiYuc2Vkaml3YS50YXNrcy53b3JrLnYxLk1vdmVUYXNrUmVxdWVzdBobLnNlZGppd2EudGFza3Mud29yay52MS5UYXNrYgZwcm90bzM");
+  fileDesc("Cgp3b3JrLnByb3RvEhVzZWRqaXdhLnRhc2tzLndvcmsudjEiWwoGTW9kdWxlEgoKAmlkGAEgASgJEgwKBG5hbWUYAiABKAkSGAoLZGVzY3JpcHRpb24YAyABKAlIAIgBARINCgVvcmRlchgEIAEoBUIOCgxfZGVzY3JpcHRpb24iKAoSTGlzdE1vZHVsZXNSZXF1ZXN0EhIKCnByb2plY3RfaWQYASABKAkiRQoTTGlzdE1vZHVsZXNSZXNwb25zZRIuCgdtb2R1bGVzGAEgAygLMh0uc2Vkaml3YS50YXNrcy53b3JrLnYxLk1vZHVsZSJhChNDcmVhdGVNb2R1bGVSZXF1ZXN0EhIKCnByb2plY3RfaWQYASABKAkSDAoEbmFtZRgCIAEoCRIYCgtkZXNjcmlwdGlvbhgDIAEoCUgAiAEBQg4KDF9kZXNjcmlwdGlvbiJnChNVcGRhdGVNb2R1bGVSZXF1ZXN0EgoKAmlkGAEgASgJEhEKBG5hbWUYAiABKAlIAIgBARIYCgtkZXNjcmlwdGlvbhgDIAEoCUgBiAEBQgcKBV9uYW1lQg4KDF9kZXNjcmlwdGlvbiIhChNEZWxldGVNb2R1bGVSZXF1ZXN0EgoKAmlkGAEgASgJIiIKFERlbGV0ZU1vZHVsZVJlc3BvbnNlEgoKAm9rGAEgASgIIj8KFVJlb3JkZXJNb2R1bGVzUmVxdWVzdBISCgpwcm9qZWN0X2lkGAEgASgJEhIKCm1vZHVsZV9pZHMYAiADKAkiqwQKBFRhc2sSCgoCaWQYASABKAkSEQoJbW9kdWxlX2lkGAIgASgJEg0KBXRpdGxlGAMgASgJEhMKC2Rlc2NyaXB0aW9uGAQgASgJEjEKBnN0YXR1cxgFIAEoDjIhLnNlZGppd2EudGFza3Mud29yay52MS5UYXNrU3RhdHVzEjUKCHByaW9yaXR5GAYgASgOMiMuc2Vkaml3YS50YXNrcy53b3JrLnYxLlRhc2tQcmlvcml0eRIXCgpzdGFydF9kYXRlGAcgASgJSACIAQESFQoIZHVlX2RhdGUYCCABKAlIAYgBARINCgVvcmRlchgJIAEoBRIUCgxhc3NpZ25lZV9pZHMYCiADKAkSEQoJbGFiZWxfaWRzGAsgAygJEhIKCmNyZWF0ZWRfYXQYDCABKAkSEgoKdXBkYXRlZF9hdBgNIAEoCRIZCgxjb21wbGV0ZWRfYXQYDiABKAlIAogBARISCgpjcmVhdGVkX2J5GA8gASgJEhYKCXBhcmVudF9pZBgQIAEoCUgDiAEBEhYKDmJsb2NrZWRfYnlfaWRzGBEgAygJEg4KBm51bWJlchgSIAEoBRIRCglzdGF0dXNfaWQYEyABKAkSEwoLc3RhdHVzX25hbWUYFCABKAkSFAoMc3RhdHVzX2NvbG9yGBUgASgJQg0KC19zdGFydF9kYXRlQgsKCV9kdWVfZGF0ZUIPCg1fY29tcGxldGVkX2F0QgwKCl9wYXJlbnRfaWQiHAoOR2V0VGFza1JlcXVlc3QSCgoCaWQYASABKAkiTAoQTGlzdFRhc2tzUmVxdWVzdBISCgpwcm9qZWN0X2lkGAEgASgJEhYKCW1vZHVsZV9pZBgCIAEoCUgAiAEBQgwKCl9tb2R1bGVfaWQiPwoRTGlzdFRhc2tzUmVzcG9uc2USKgoFdGFza3MYASADKAsyGy5zZWRqaXdhLnRhc2tzLndvcmsudjEuVGFzayKKAwoRQ3JlYXRlVGFza1JlcXVlc3QSEQoJbW9kdWxlX2lkGAEgASgJEg0KBXRpdGxlGAIgASgJEhgKC2Rlc2NyaXB0aW9uGAMgASgJSACIAQESMQoGc3RhdHVzGAQgASgOMiEuc2Vkaml3YS50YXNrcy53b3JrLnYxLlRhc2tTdGF0dXMSNQoIcHJpb3JpdHkYBSABKA4yIy5zZWRqaXdhLnRhc2tzLndvcmsudjEuVGFza1ByaW9yaXR5EhcKCnN0YXJ0X2RhdGUYBiABKAlIAYgBARIVCghkdWVfZGF0ZRgHIAEoCUgCiAEBEhQKDGFzc2lnbmVlX2lkcxgIIAMoCRIRCglsYWJlbF9pZHMYCSADKAkSFgoJcGFyZW50X2lkGAogASgJSAOIAQESFgoJc3RhdHVzX2lkGAsgASgJSASIAQFCDgoMX2Rlc2NyaXB0aW9uQg0KC19zdGFydF9kYXRlQgsKCV9kdWVfZGF0ZUIMCgpfcGFyZW50X2lkQgwKCl9zdGF0dXNfaWQiHAoKU3RyaW5nTGlzdBIOCgZ2YWx1ZXMYASADKAkioQUKEVVwZGF0ZVRhc2tSZXF1ZXN0EgoKAmlkGAEgASgJEhIKBXRpdGxlGAIgASgJSACIAQESGAoLZGVzY3JpcHRpb24YAyABKAlIAYgBARI2CgZzdGF0dXMYBCABKA4yIS5zZWRqaXdhLnRhc2tzLndvcmsudjEuVGFza1N0YXR1c0gCiAEBEjoKCHByaW9yaXR5GAUgASgOMiMuc2Vkaml3YS50YXNrcy53b3JrLnYxLlRhc2tQcmlvcml0eUgDiAEBEhcKCnN0YXJ0X2RhdGUYBiABKAlIBIgBARIVCghkdWVfZGF0ZRgHIAEoCUgFiAEBEjwKDGFzc2lnbmVlX2lkcxgIIAEoCzIhLnNlZGppd2EudGFza3Mud29yay52MS5TdHJpbmdMaXN0SAaIAQESOQoJbGFiZWxfaWRzGAkgASgLMiEuc2Vkaml3YS50YXNrcy53b3JrLnYxLlN0cmluZ0xpc3RIB4gBARI+Cg5ibG9ja2VkX2J5X2lkcxgKIAEoCzIhLnNlZGppd2EudGFza3Mud29yay52MS5TdHJpbmdMaXN0SAiIAQESPQoNcGFyZW50X2lkX3NldBgLIAEoCzIhLnNlZGppd2EudGFza3Mud29yay52MS5TdHJpbmdMaXN0SAmIAQESFgoJc3RhdHVzX2lkGAwgASgJSAqIAQFCCAoGX3RpdGxlQg4KDF9kZXNjcmlwdGlvbkIJCgdfc3RhdHVzQgsKCV9wcmlvcml0eUINCgtfc3RhcnRfZGF0ZUILCglfZHVlX2RhdGVCDwoNX2Fzc2lnbmVlX2lkc0IMCgpfbGFiZWxfaWRzQhEKD19ibG9ja2VkX2J5X2lkc0IQCg5fcGFyZW50X2lkX3NldEIMCgpfc3RhdHVzX2lkIh8KEURlbGV0ZVRhc2tSZXF1ZXN0EgoKAmlkGAEgASgJIiAKEkRlbGV0ZVRhc2tSZXNwb25zZRIKCgJvaxgBIAEoCCI/Cg9Nb3ZlVGFza1JlcXVlc3QSCgoCaWQYASABKAkSEQoJbW9kdWxlX2lkGAIgASgJEg0KBW9yZGVyGAMgASgFIpABCg1UYXNrU3RhdHVzRGVmEgoKAmlkGAEgASgJEhIKCnByb2plY3RfaWQYAiABKAkSDAoEbmFtZRgDIAEoCRINCgVjb2xvchgEIAEoCRIzCghjYXRlZ29yeRgFIAEoDjIhLnNlZGppd2EudGFza3Mud29yay52MS5UYXNrU3RhdHVzEg0KBW9yZGVyGAYgASgFIi0KF0xpc3RUYXNrU3RhdHVzZXNSZXF1ZXN0EhIKCnByb2plY3RfaWQYASABKAkiUgoYTGlzdFRhc2tTdGF0dXNlc1Jlc3BvbnNlEjYKCHN0YXR1c2VzGAEgAygLMiQuc2Vkaml3YS50YXNrcy53b3JrLnYxLlRhc2tTdGF0dXNEZWYifwoXQ3JlYXRlVGFza1N0YXR1c1JlcXVlc3QSEgoKcHJvamVjdF9pZBgBIAEoCRIMCgRuYW1lGAIgASgJEg0KBWNvbG9yGAMgASgJEjMKCGNhdGVnb3J5GAQgASgOMiEuc2Vkaml3YS50YXNrcy53b3JrLnYxLlRhc2tTdGF0dXMipgEKF1VwZGF0ZVRhc2tTdGF0dXNSZXF1ZXN0EgoKAmlkGAEgASgJEhEKBG5hbWUYAiABKAlIAIgBARISCgVjb2xvchgDIAEoCUgBiAEBEjgKCGNhdGVnb3J5GAQgASgOMiEuc2Vkaml3YS50YXNrcy53b3JrLnYxLlRhc2tTdGF0dXNIAogBAUIHCgVfbmFtZUIICgZfY29sb3JCCwoJX2NhdGVnb3J5IlUKF0RlbGV0ZVRhc2tTdGF0dXNSZXF1ZXN0EgoKAmlkGAEgASgJEhsKDnJlcGxhY2VtZW50X2lkGAIgASgJSACIAQFCEQoPX3JlcGxhY2VtZW50X2lkIiYKGERlbGV0ZVRhc2tTdGF0dXNSZXNwb25zZRIKCgJvaxgBIAEoCCJEChpSZW9yZGVyVGFza1N0YXR1c2VzUmVxdWVzdBISCgpwcm9qZWN0X2lkGAEgASgJEhIKCnN0YXR1c19pZHMYAiADKAkqXQoKVGFza1N0YXR1cxIbChdUQVNLX1NUQVRVU19VTlNQRUNJRklFRBAAEggKBFRPRE8QARIPCgtJTl9QUk9HUkVTUxACEggKBERPTkUQAxINCglDQU5DRUxMRUQQBCpiCgxUYXNrUHJpb3JpdHkSHQoZVEFTS19QUklPUklUWV9VTlNQRUNJRklFRBAAEggKBE5PTkUQARIHCgNMT1cQAhIKCgZNRURJVU0QAxIICgRISUdIEAQSCgoGVVJHRU5UEAUygAQKDU1vZHVsZVNlcnZpY2USZAoLTGlzdE1vZHVsZXMSKS5zZWRqaXdhLnRhc2tzLndvcmsudjEuTGlzdE1vZHVsZXNSZXF1ZXN0Giouc2Vkaml3YS50YXNrcy53b3JrLnYxLkxpc3RNb2R1bGVzUmVzcG9uc2USWQoMQ3JlYXRlTW9kdWxlEiouc2Vkaml3YS50YXNrcy53b3JrLnYxLkNyZWF0ZU1vZHVsZVJlcXVlc3QaHS5zZWRqaXdhLnRhc2tzLndvcmsudjEuTW9kdWxlElkKDFVwZGF0ZU1vZHVsZRIqLnNlZGppd2EudGFza3Mud29yay52MS5VcGRhdGVNb2R1bGVSZXF1ZXN0Gh0uc2Vkaml3YS50YXNrcy53b3JrLnYxLk1vZHVsZRJnCgxEZWxldGVNb2R1bGUSKi5zZWRqaXdhLnRhc2tzLndvcmsudjEuRGVsZXRlTW9kdWxlUmVxdWVzdBorLnNlZGppd2EudGFza3Mud29yay52MS5EZWxldGVNb2R1bGVSZXNwb25zZRJqCg5SZW9yZGVyTW9kdWxlcxIsLnNlZGppd2EudGFza3Mud29yay52MS5SZW9yZGVyTW9kdWxlc1JlcXVlc3QaKi5zZWRqaXdhLnRhc2tzLndvcmsudjEuTGlzdE1vZHVsZXNSZXNwb25zZTKaBAoLVGFza1NlcnZpY2USTQoHR2V0VGFzaxIlLnNlZGppd2EudGFza3Mud29yay52MS5HZXRUYXNrUmVxdWVzdBobLnNlZGppd2EudGFza3Mud29yay52MS5UYXNrEl4KCUxpc3RUYXNrcxInLnNlZGppd2EudGFza3Mud29yay52MS5MaXN0VGFza3NSZXF1ZXN0Giguc2Vkaml3YS50YXNrcy53b3JrLnYxLkxpc3RUYXNrc1Jlc3BvbnNlElMKCkNyZWF0ZVRhc2sSKC5zZWRqaXdhLnRhc2tzLndvcmsudjEuQ3JlYXRlVGFza1JlcXVlc3QaGy5zZWRqaXdhLnRhc2tzLndvcmsudjEuVGFzaxJTCgpVcGRhdGVUYXNrEiguc2Vkaml3YS50YXNrcy53b3JrLnYxLlVwZGF0ZVRhc2tSZXF1ZXN0Ghsuc2Vkaml3YS50YXNrcy53b3JrLnYxLlRhc2sSYQoKRGVsZXRlVGFzaxIoLnNlZGppd2EudGFza3Mud29yay52MS5EZWxldGVUYXNrUmVxdWVzdBopLnNlZGppd2EudGFza3Mud29yay52MS5EZWxldGVUYXNrUmVzcG9uc2USTwoITW92ZVRhc2sSJi5zZWRqaXdhLnRhc2tzLndvcmsudjEuTW92ZVRhc2tSZXF1ZXN0Ghsuc2Vkaml3YS50YXNrcy53b3JrLnYxLlRhc2syzAQKEVRhc2tTdGF0dXNTZXJ2aWNlEnMKEExpc3RUYXNrU3RhdHVzZXMSLi5zZWRqaXdhLnRhc2tzLndvcmsudjEuTGlzdFRhc2tTdGF0dXNlc1JlcXVlc3QaLy5zZWRqaXdhLnRhc2tzLndvcmsudjEuTGlzdFRhc2tTdGF0dXNlc1Jlc3BvbnNlEmgKEENyZWF0ZVRhc2tTdGF0dXMSLi5zZWRqaXdhLnRhc2tzLndvcmsudjEuQ3JlYXRlVGFza1N0YXR1c1JlcXVlc3QaJC5zZWRqaXdhLnRhc2tzLndvcmsudjEuVGFza1N0YXR1c0RlZhJoChBVcGRhdGVUYXNrU3RhdHVzEi4uc2Vkaml3YS50YXNrcy53b3JrLnYxLlVwZGF0ZVRhc2tTdGF0dXNSZXF1ZXN0GiQuc2Vkaml3YS50YXNrcy53b3JrLnYxLlRhc2tTdGF0dXNEZWYScwoQRGVsZXRlVGFza1N0YXR1cxIuLnNlZGppd2EudGFza3Mud29yay52MS5EZWxldGVUYXNrU3RhdHVzUmVxdWVzdBovLnNlZGppd2EudGFza3Mud29yay52MS5EZWxldGVUYXNrU3RhdHVzUmVzcG9uc2USeQoTUmVvcmRlclRhc2tTdGF0dXNlcxIxLnNlZGppd2EudGFza3Mud29yay52MS5SZW9yZGVyVGFza1N0YXR1c2VzUmVxdWVzdBovLnNlZGppd2EudGFza3Mud29yay52MS5MaXN0VGFza1N0YXR1c2VzUmVzcG9uc2ViBnByb3RvMw");
 
 /**
  * @generated from message sedjiwa.tasks.work.v1.Module
@@ -285,6 +285,23 @@ export type Task = Message<"sedjiwa.tasks.work.v1.Task"> & {
    * @generated from field: int32 number = 18;
    */
   number: number;
+
+  /**
+   * The task's status in its project's workflow; `status` is its category.
+   *
+   * @generated from field: string status_id = 19;
+   */
+  statusId: string;
+
+  /**
+   * @generated from field: string status_name = 20;
+   */
+  statusName: string;
+
+  /**
+   * @generated from field: string status_color = 21;
+   */
+  statusColor: string;
 };
 
 /**
@@ -403,6 +420,14 @@ export type CreateTaskRequest = Message<"sedjiwa.tasks.work.v1.CreateTaskRequest
    * @generated from field: optional string parent_id = 10;
    */
   parentId?: string | undefined;
+
+  /**
+   * Wins over `status` when set; otherwise the first status of `status`'s
+   * category (TODO when that is unspecified).
+   *
+   * @generated from field: optional string status_id = 11;
+   */
+  statusId?: string | undefined;
 };
 
 /**
@@ -498,6 +523,13 @@ export type UpdateTaskRequest = Message<"sedjiwa.tasks.work.v1.UpdateTaskRequest
    * @generated from field: optional sedjiwa.tasks.work.v1.StringList parent_id_set = 11;
    */
   parentIdSet?: StringList | undefined;
+
+  /**
+   * Wins over `status`; `status` alone picks the category's first status.
+   *
+   * @generated from field: optional string status_id = 12;
+   */
+  statusId?: string | undefined;
 };
 
 /**
@@ -567,6 +599,213 @@ export type MoveTaskRequest = Message<"sedjiwa.tasks.work.v1.MoveTaskRequest"> &
  */
 export const MoveTaskRequestSchema: GenMessage<MoveTaskRequest> = /*@__PURE__*/
   messageDesc(file_work, 17);
+
+/**
+ * @generated from message sedjiwa.tasks.work.v1.TaskStatusDef
+ */
+export type TaskStatusDef = Message<"sedjiwa.tasks.work.v1.TaskStatusDef"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string project_id = 2;
+   */
+  projectId: string;
+
+  /**
+   * @generated from field: string name = 3;
+   */
+  name: string;
+
+  /**
+   * #RRGGBB
+   *
+   * @generated from field: string color = 4;
+   */
+  color: string;
+
+  /**
+   * @generated from field: sedjiwa.tasks.work.v1.TaskStatus category = 5;
+   */
+  category: TaskStatus;
+
+  /**
+   * @generated from field: int32 order = 6;
+   */
+  order: number;
+};
+
+/**
+ * Describes the message sedjiwa.tasks.work.v1.TaskStatusDef.
+ * Use `create(TaskStatusDefSchema)` to create a new message.
+ */
+export const TaskStatusDefSchema: GenMessage<TaskStatusDef> = /*@__PURE__*/
+  messageDesc(file_work, 18);
+
+/**
+ * @generated from message sedjiwa.tasks.work.v1.ListTaskStatusesRequest
+ */
+export type ListTaskStatusesRequest = Message<"sedjiwa.tasks.work.v1.ListTaskStatusesRequest"> & {
+  /**
+   * @generated from field: string project_id = 1;
+   */
+  projectId: string;
+};
+
+/**
+ * Describes the message sedjiwa.tasks.work.v1.ListTaskStatusesRequest.
+ * Use `create(ListTaskStatusesRequestSchema)` to create a new message.
+ */
+export const ListTaskStatusesRequestSchema: GenMessage<ListTaskStatusesRequest> = /*@__PURE__*/
+  messageDesc(file_work, 19);
+
+/**
+ * @generated from message sedjiwa.tasks.work.v1.ListTaskStatusesResponse
+ */
+export type ListTaskStatusesResponse = Message<"sedjiwa.tasks.work.v1.ListTaskStatusesResponse"> & {
+  /**
+   * @generated from field: repeated sedjiwa.tasks.work.v1.TaskStatusDef statuses = 1;
+   */
+  statuses: TaskStatusDef[];
+};
+
+/**
+ * Describes the message sedjiwa.tasks.work.v1.ListTaskStatusesResponse.
+ * Use `create(ListTaskStatusesResponseSchema)` to create a new message.
+ */
+export const ListTaskStatusesResponseSchema: GenMessage<ListTaskStatusesResponse> = /*@__PURE__*/
+  messageDesc(file_work, 20);
+
+/**
+ * @generated from message sedjiwa.tasks.work.v1.CreateTaskStatusRequest
+ */
+export type CreateTaskStatusRequest = Message<"sedjiwa.tasks.work.v1.CreateTaskStatusRequest"> & {
+  /**
+   * @generated from field: string project_id = 1;
+   */
+  projectId: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string color = 3;
+   */
+  color: string;
+
+  /**
+   * @generated from field: sedjiwa.tasks.work.v1.TaskStatus category = 4;
+   */
+  category: TaskStatus;
+};
+
+/**
+ * Describes the message sedjiwa.tasks.work.v1.CreateTaskStatusRequest.
+ * Use `create(CreateTaskStatusRequestSchema)` to create a new message.
+ */
+export const CreateTaskStatusRequestSchema: GenMessage<CreateTaskStatusRequest> = /*@__PURE__*/
+  messageDesc(file_work, 21);
+
+/**
+ * @generated from message sedjiwa.tasks.work.v1.UpdateTaskStatusRequest
+ */
+export type UpdateTaskStatusRequest = Message<"sedjiwa.tasks.work.v1.UpdateTaskStatusRequest"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: optional string name = 2;
+   */
+  name?: string | undefined;
+
+  /**
+   * @generated from field: optional string color = 3;
+   */
+  color?: string | undefined;
+
+  /**
+   * @generated from field: optional sedjiwa.tasks.work.v1.TaskStatus category = 4;
+   */
+  category?: TaskStatus | undefined;
+};
+
+/**
+ * Describes the message sedjiwa.tasks.work.v1.UpdateTaskStatusRequest.
+ * Use `create(UpdateTaskStatusRequestSchema)` to create a new message.
+ */
+export const UpdateTaskStatusRequestSchema: GenMessage<UpdateTaskStatusRequest> = /*@__PURE__*/
+  messageDesc(file_work, 22);
+
+/**
+ * @generated from message sedjiwa.tasks.work.v1.DeleteTaskStatusRequest
+ */
+export type DeleteTaskStatusRequest = Message<"sedjiwa.tasks.work.v1.DeleteTaskStatusRequest"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * Where the deleted status's tasks go; required when it has any.
+   *
+   * @generated from field: optional string replacement_id = 2;
+   */
+  replacementId?: string | undefined;
+};
+
+/**
+ * Describes the message sedjiwa.tasks.work.v1.DeleteTaskStatusRequest.
+ * Use `create(DeleteTaskStatusRequestSchema)` to create a new message.
+ */
+export const DeleteTaskStatusRequestSchema: GenMessage<DeleteTaskStatusRequest> = /*@__PURE__*/
+  messageDesc(file_work, 23);
+
+/**
+ * @generated from message sedjiwa.tasks.work.v1.DeleteTaskStatusResponse
+ */
+export type DeleteTaskStatusResponse = Message<"sedjiwa.tasks.work.v1.DeleteTaskStatusResponse"> & {
+  /**
+   * @generated from field: bool ok = 1;
+   */
+  ok: boolean;
+};
+
+/**
+ * Describes the message sedjiwa.tasks.work.v1.DeleteTaskStatusResponse.
+ * Use `create(DeleteTaskStatusResponseSchema)` to create a new message.
+ */
+export const DeleteTaskStatusResponseSchema: GenMessage<DeleteTaskStatusResponse> = /*@__PURE__*/
+  messageDesc(file_work, 24);
+
+/**
+ * @generated from message sedjiwa.tasks.work.v1.ReorderTaskStatusesRequest
+ */
+export type ReorderTaskStatusesRequest = Message<"sedjiwa.tasks.work.v1.ReorderTaskStatusesRequest"> & {
+  /**
+   * @generated from field: string project_id = 1;
+   */
+  projectId: string;
+
+  /**
+   * new order; must list every status
+   *
+   * @generated from field: repeated string status_ids = 2;
+   */
+  statusIds: string[];
+};
+
+/**
+ * Describes the message sedjiwa.tasks.work.v1.ReorderTaskStatusesRequest.
+ * Use `create(ReorderTaskStatusesRequestSchema)` to create a new message.
+ */
+export const ReorderTaskStatusesRequestSchema: GenMessage<ReorderTaskStatusesRequest> = /*@__PURE__*/
+  messageDesc(file_work, 25);
 
 /**
  * @generated from enum sedjiwa.tasks.work.v1.TaskStatus
@@ -746,4 +985,55 @@ export const TaskService: GenService<{
   },
 }> = /*@__PURE__*/
   serviceDesc(file_work, 1);
+
+/**
+ * A project's workflow: its own task statuses, each in a fixed category (the
+ * TaskStatus enum). Member-gated, like labels. A project always keeps at least
+ * one TODO and one DONE status; deleting a status moves its tasks to another.
+ *
+ * @generated from service sedjiwa.tasks.work.v1.TaskStatusService
+ */
+export const TaskStatusService: GenService<{
+  /**
+   * @generated from rpc sedjiwa.tasks.work.v1.TaskStatusService.ListTaskStatuses
+   */
+  listTaskStatuses: {
+    methodKind: "unary";
+    input: typeof ListTaskStatusesRequestSchema;
+    output: typeof ListTaskStatusesResponseSchema;
+  },
+  /**
+   * @generated from rpc sedjiwa.tasks.work.v1.TaskStatusService.CreateTaskStatus
+   */
+  createTaskStatus: {
+    methodKind: "unary";
+    input: typeof CreateTaskStatusRequestSchema;
+    output: typeof TaskStatusDefSchema;
+  },
+  /**
+   * @generated from rpc sedjiwa.tasks.work.v1.TaskStatusService.UpdateTaskStatus
+   */
+  updateTaskStatus: {
+    methodKind: "unary";
+    input: typeof UpdateTaskStatusRequestSchema;
+    output: typeof TaskStatusDefSchema;
+  },
+  /**
+   * @generated from rpc sedjiwa.tasks.work.v1.TaskStatusService.DeleteTaskStatus
+   */
+  deleteTaskStatus: {
+    methodKind: "unary";
+    input: typeof DeleteTaskStatusRequestSchema;
+    output: typeof DeleteTaskStatusResponseSchema;
+  },
+  /**
+   * @generated from rpc sedjiwa.tasks.work.v1.TaskStatusService.ReorderTaskStatuses
+   */
+  reorderTaskStatuses: {
+    methodKind: "unary";
+    input: typeof ReorderTaskStatusesRequestSchema;
+    output: typeof ListTaskStatusesResponseSchema;
+  },
+}> = /*@__PURE__*/
+  serviceDesc(file_work, 2);
 

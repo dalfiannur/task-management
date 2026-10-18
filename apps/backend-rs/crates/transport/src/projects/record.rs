@@ -207,6 +207,7 @@ pub(crate) async fn create_project(
     if creator_id != owner_id {
         insert_member(&mut tx, &project_id, creator_id).await?;
     }
+    crate::work::status_record::ensure_defaults(&mut tx, &project_id).await?;
     tx.commit().await?;
     Ok(pid)
 }

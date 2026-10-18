@@ -92,7 +92,7 @@ export function SubtaskSection({
                 >
                   {c.title}
                 </button>
-                <StatusBadge status={c.status} />
+                <StatusBadge task={c} />
               </li>
             );
           })}

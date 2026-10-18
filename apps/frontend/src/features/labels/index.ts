@@ -12,4 +12,4 @@ export {
 } from "./api/hooks";
 export { LabelChip, LabelChips } from "./components/label-chip";
 export { LabelCombobox } from "./components/label-combobox";
-export { ManageLabelsDialog } from "./components/manage-labels-dialog";
+export { ManageLabelsDialog, ColorSwatches } from "./components/manage-labels-dialog";

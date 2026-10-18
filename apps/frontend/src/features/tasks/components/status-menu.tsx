@@ -1,14 +1,14 @@
 import { ChevronDown } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from "sedjiwa-ui";
 import { cn } from "@/lib/utils";
-import { TASK_STATUSES, type Task, type TaskStatus } from "../types";
-import { TASK_STATUS_CONFIG } from "../config";
-import { statusToProto } from "../api/mappers";
-import { isOptimisticTaskId, useUpdateTask } from "../api/hooks";
+import type { Task } from "../types";
+import { TASK_STATUS_CONFIG, statusLabel } from "../config";
+import { isOptimisticTaskId, useStatuses, useUpdateTask } from "../api/hooks";
+import { StatusDot } from "./task-badges";
 
 /**
- * The status badge, as a menu: change a task's status without opening the
- * dialog. Optimistic through `useUpdateTask`, which also reports a failure
+ * The status badge, as a menu: move a task to another status of its
+ * project's workflow without opening the dialog. Optimistic through `useUpdateTask`, which also reports a failure
  * and rolls the row back.
  */
 export function StatusMenu({
@@ -25,13 +25,15 @@ export function StatusMenu({
   className?: string;
 }) {
   const update = useUpdateTask(projectId);
+  const { statuses } = useStatuses(projectId);
   const c = TASK_STATUS_CONFIG[task.status];
+  const label = statusLabel(task);
   // No server id yet — nothing to send the change to.
   const pending = isOptimisticTaskId(task.id);
 
   function set(next: string) {
-    if (next === task.status) return;
-    update.mutate({ id: task.id, status: statusToProto(next as TaskStatus) });
+    if (next === task.statusId) return;
+    update.mutate({ id: task.id, statusId: next });
   }
 
   return (
@@ -39,7 +41,7 @@ export function StatusMenu({
       <DropdownMenuTrigger
         disabled={pending}
         onClick={(e) => e.stopPropagation()}
-        aria-label={`Status: ${c.label}. Change status`}
+        aria-label={`Status: ${label}. Change status`}
         className={cn(
           "group/status inline-flex items-center rounded-full text-xs font-medium whitespace-nowrap",
           "focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-60",
@@ -54,11 +56,8 @@ export function StatusMenu({
       >
         {!compact && (
           <>
-            <span
-              aria-hidden="true"
-              className={cn("h-1.5 w-1.5 rounded-full", c.dot)}
-            />
-            {c.label}
+            <StatusDot status={task.status} color={task.statusColor} />
+            {label}
           </>
         )}
         <ChevronDown
@@ -70,17 +69,15 @@ export function StatusMenu({
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-        <DropdownMenuRadioGroup value={task.status} onValueChange={set}>
-          {TASK_STATUSES.map((s) => (
-            <DropdownMenuRadioItem key={s} value={s}>
-              <span
-                aria-hidden="true"
-                className={cn(
-                  "mr-1 inline-block h-2 w-2 rounded-full",
-                  TASK_STATUS_CONFIG[s].dot,
-                )}
+        <DropdownMenuRadioGroup value={task.statusId} onValueChange={set}>
+          {statuses.map((s) => (
+            <DropdownMenuRadioItem key={s.id} value={s.id}>
+              <StatusDot
+                status={s.category}
+                color={s.color}
+                className="mr-1 h-2 w-2"
               />
-              {TASK_STATUS_CONFIG[s].label}
+              {s.name}
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>

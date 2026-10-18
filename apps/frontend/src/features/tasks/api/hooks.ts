@@ -1,4 +1,5 @@
-// Modules + Tasks RPC hooks (connect-query over ModuleService/TaskService).
+// Modules + Tasks + workflow statuses RPC hooks (connect-query over
+// ModuleService/TaskService/TaskStatusService).
 // Reads map proto→flat. Create/Update patch the task caches from the response
 // (no list refetch); the writes that reshape a list still invalidate.
 
@@ -20,16 +21,20 @@ import {
   TaskStatus as PbStatus,
   TaskSchema,
   TaskService,
+  TaskStatusService,
   type CreateTaskRequestSchema,
   type UpdateTaskRequestSchema,
   type Task as PbTask,
+  type TaskStatusDef as PbStatusDef,
 } from "@/lib/gen/work_pb";
 import { currentUserAtom } from "@/features/auth";
 import { queryClient } from "@/lib/query";
-import type { Module, Task } from "../types";
-import { mapModule, mapTask } from "./mappers";
+import type { Module, Task, WorkflowStatus } from "../types";
+import { mapModule, mapStatusDef, mapTask } from "./mappers";
 
-function invalidate(service: typeof ModuleService | typeof TaskService) {
+function invalidate(
+  service: typeof ModuleService | typeof TaskService | typeof TaskStatusService,
+) {
   return queryClient.invalidateQueries({
     queryKey: createConnectQueryKey({ schema: service, cardinality: "finite" }),
   });
@@ -72,6 +77,50 @@ export function useDeleteModule() {
 export function useReorderModules() {
   return useMutation(ModuleService.method.reorderModules, {
     onSuccess: invalidateModules,
+  });
+}
+
+/* ------------------------- Workflow statuses ------------------------- */
+
+export function useStatuses(projectId: string) {
+  const result = useQuery(
+    TaskStatusService.method.listTaskStatuses,
+    { projectId },
+    { enabled: !!projectId },
+  );
+  const statuses: WorkflowStatus[] = useMemo(
+    () =>
+      (result.data?.statuses ?? [])
+        .map(mapStatusDef)
+        .sort((a, b) => a.order - b.order),
+    [result.data],
+  );
+  return { ...result, statuses };
+}
+
+// A status write can move tasks (a category change, a delete with a
+// replacement), so the task lists refetch with the workflow.
+const invalidateWorkflow = () =>
+  Promise.all([invalidate(TaskStatusService), invalidateTasks()]);
+
+export function useCreateStatus() {
+  return useMutation(TaskStatusService.method.createTaskStatus, {
+    onSuccess: invalidateWorkflow,
+  });
+}
+export function useUpdateStatus() {
+  return useMutation(TaskStatusService.method.updateTaskStatus, {
+    onSuccess: invalidateWorkflow,
+  });
+}
+export function useDeleteStatus() {
+  return useMutation(TaskStatusService.method.deleteTaskStatus, {
+    onSuccess: invalidateWorkflow,
+  });
+}
+export function useReorderStatuses() {
+  return useMutation(TaskStatusService.method.reorderTaskStatuses, {
+    onSuccess: () => invalidate(TaskStatusService),
   });
 }
 
@@ -134,7 +183,28 @@ function useTaskKeys(projectId: string) {
       input: { id },
       cardinality: "finite",
     });
-  return { listKey, taskKey };
+  const statusKey = createConnectQueryKey({
+    schema: TaskStatusService.method.listTaskStatuses,
+    transport,
+    input: { projectId },
+    cardinality: "finite",
+  });
+  /** The project's workflow as cached, in order — what an optimistic write
+   *  resolves a status against. Empty when it hasn't loaded. */
+  const cachedStatuses = (): PbStatusDef[] =>
+    [...(queryClient.getQueryData(statusKey)?.statuses ?? [])].sort(
+      (a, b) => a.order - b.order,
+    );
+  return { listKey, taskKey, cachedStatuses };
+}
+
+/** Put `task` on `def`: the status fields and the category it implies. */
+function placeOn(task: PbTask, def: PbStatusDef | undefined) {
+  if (!def) return;
+  task.status = def.category;
+  task.statusId = def.id;
+  task.statusName = def.name;
+  task.statusColor = def.color;
 }
 
 /* ------------------------- Optimistic create ------------------------- */
@@ -157,6 +227,7 @@ export function isOptimisticTaskId(id: string): boolean {
 function optimisticTask(
   input: MessageInitShape<typeof CreateTaskRequestSchema>,
   existing: readonly PbTask[],
+  statuses: readonly PbStatusDef[],
   createdBy: string,
 ): PbTask {
   const parentId = input.parentId?.trim() ? input.parentId : undefined;
@@ -174,7 +245,13 @@ function optimisticTask(
       .reduce((max, t) => Math.max(max, t.order), -1) + 1;
   // UNSPECIFIED is 0, so falsy covers both "omitted" and "unspecified" —
   // the same two cases the backend defaults.
-  const status = input.status || PbStatus.TODO;
+  // Same resolution as the server: an explicit status wins, else the first
+  // status of the asked-for category.
+  const category = input.status || PbStatus.TODO;
+  const def =
+    statuses.find((s) => s.id === input.statusId) ??
+    statuses.find((s) => s.category === category);
+  const status = def?.category ?? category;
   const priority = input.priority || PbPriority.NONE;
   const now = new Date().toISOString();
   return create(TaskSchema, {
@@ -196,6 +273,9 @@ function optimisticTask(
     parentId,
     // Dependencies can only be attached to a saved task.
     blockedByIds: [],
+    statusId: def?.id ?? "",
+    statusName: def?.name ?? "",
+    statusColor: def?.color ?? "",
   });
 }
 
@@ -210,7 +290,7 @@ function optimisticTask(
  */
 export function useCreateTask(projectId: string) {
   const me = useAtomValue(currentUserAtom);
-  const { listKey, taskKey } = useTaskKeys(projectId);
+  const { listKey, taskKey, cachedStatuses } = useTaskKeys(projectId);
 
   return useMutation(TaskService.method.createTask, {
     onMutate: async (input) => {
@@ -222,7 +302,12 @@ export function useCreateTask(projectId: string) {
       // Nothing to insert into: seeding a one-row "list" here would be a
       // wrong answer for the next reader of this key.
       if (!cached) return { tempId: undefined };
-      const optimistic = optimisticTask(input, cached.tasks, me?.id ?? "");
+      const optimistic = optimisticTask(
+        input,
+        cached.tasks,
+        cachedStatuses(),
+        me?.id ?? "",
+      );
       queryClient.setQueryData(listKey, (old) =>
         create(ListTasksResponseSchema, {
           tasks: [...(old?.tasks ?? []), optimistic],
@@ -268,16 +353,24 @@ export function useCreateTask(projectId: string) {
  * Apply an UpdateTaskRequest to a cached task the way the server does:
  * an absent field leaves its value alone, an empty date string clears it, a
  * present `StringList` wrapper replaces the whole list (an empty one included),
- * and `completedAt` follows the transition into and out of Done.
+ * a status id wins over a bare category (which keeps the current status when
+ * already in it, else takes that category's first), and `completedAt` follows
+ * the transition into and out of Done.
  */
 function applyUpdate(
   task: PbTask,
   input: MessageInitShape<typeof UpdateTaskRequestSchema>,
+  statuses: readonly PbStatusDef[],
 ): PbTask {
   const next = clone(TaskSchema, task);
   if (input.title !== undefined) next.title = input.title.trim();
   if (input.description !== undefined) next.description = input.description;
-  if (input.status !== undefined) next.status = input.status;
+  if (input.statusId) {
+    placeOn(next, statuses.find((s) => s.id === input.statusId));
+  } else if (input.status !== undefined && input.status !== task.status) {
+    next.status = input.status;
+    placeOn(next, statuses.find((s) => s.category === input.status));
+  }
   if (input.priority !== undefined) next.priority = input.priority;
   // Dates: "" clears, a value sets, absent keeps.
   if (input.startDate !== undefined) next.startDate = input.startDate || undefined;
@@ -307,7 +400,7 @@ function applyUpdate(
  * the rest of the list is left alone, so a second edit in flight survives.
  */
 export function useUpdateTask(projectId: string) {
-  const { listKey, taskKey } = useTaskKeys(projectId);
+  const { listKey, taskKey, cachedStatuses } = useTaskKeys(projectId);
 
   function patch(id: string, next: (task: PbTask) => PbTask) {
     queryClient.setQueryData(listKey, (old) =>
@@ -336,7 +429,8 @@ export function useUpdateTask(projectId: string) {
         queryClient.getQueryData(listKey)?.tasks.find((t) => t.id === id) ??
         queryClient.getQueryData(taskKey(id));
       if (!before) return { before: undefined };
-      patch(id, (t) => applyUpdate(t, input));
+      const statuses = cachedStatuses();
+      patch(id, (t) => applyUpdate(t, input, statuses));
       return { before };
     },
     onSuccess: (task) => patch(task.id, () => task),

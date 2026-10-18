@@ -36,6 +36,11 @@ pub(crate) struct TaskRecord {
     pub parent_id: Option<String>,
     pub blocked_by_ids: Vec<String>,
     pub number: i32,
+    /// Effective status: the one pointed at, else the project's first status
+    /// of `status` (the category). Empty when the project has no statuses.
+    pub status_id: String,
+    pub status_name: String,
+    pub status_color: String,
 }
 
 /// A JSONB string array as `text[]`, in array order; empty when the row is
@@ -55,7 +60,9 @@ const SELECT_TASK: &str = concat!(
     "SELECT i.pid, m.module_id, i.title, i.description, i.status, i.priority, \
            i.start_date, i.due_date, i.sort_order, \
            a.created_at, a.updated_at, a.completed_at, a.created_by, par.parent_id, \
-           COALESCE(num.value, 0) AS number, ",
+           COALESCE(num.value, 0) AS number, \
+           COALESCE(sd.pid::text, '') AS status_id, COALESCE(sd.name, '') AS status_name, \
+           COALESCE(sd.color, '') AS status_color, ",
     ids_sql!("asg.user_ids"), " AS user_ids, ",
     ids_sql!("lab.label_ids"), " AS label_ids, ",
     ids_sql!("blk.task_ids"), " AS task_ids \
@@ -66,7 +73,15 @@ const SELECT_TASK: &str = concat!(
     LEFT JOIN cmp_tasklabels lab ON lab.pid = i.pid \
     LEFT JOIN cmp_taskparent par ON par.pid = i.pid \
     LEFT JOIN cmp_taskblockedby blk ON blk.pid = i.pid \
-    LEFT JOIN cmp_tasknumber num ON num.pid = i.pid"
+    LEFT JOIN cmp_tasknumber num ON num.pid = i.pid \
+    LEFT JOIN cmp_moduleprojectref mp ON mp.pid::text = m.module_id \
+    LEFT JOIN cmp_taskstatusref sr ON sr.pid = i.pid \
+    LEFT JOIN LATERAL ( \
+        SELECT d.pid, d.name, d.color FROM cmp_taskstatusdef d \
+        WHERE d.project_id = mp.project_id \
+          AND (d.pid::text = sr.status_id OR d.category = i.status) \
+        ORDER BY (d.pid::text = sr.status_id) IS TRUE DESC, d.sort_order, d.pid LIMIT 1 \
+    ) sd ON true"
 );
 
 fn ids(row: &PgRow, col: &str) -> sqlx::Result<Vec<String>> {
@@ -101,6 +116,9 @@ fn read_task(row: &PgRow) -> sqlx::Result<Option<TaskRecord>> {
         parent_id: row.try_get("parent_id")?,
         blocked_by_ids: ids(row, "task_ids")?,
         number: row.try_get("number")?,
+        status_id: row.try_get("status_id")?,
+        status_name: row.try_get("status_name")?,
+        status_color: row.try_get("status_color")?,
     }))
 }
 
@@ -132,6 +150,9 @@ pub(crate) fn to_proto(t: &TaskRecord) -> pb::Task {
         parent_id: t.parent_id.clone(),
         blocked_by_ids: t.blocked_by_ids.clone(),
         number: t.number,
+        status_id: t.status_id.clone(),
+        status_name: t.status_name.clone(),
+        status_color: t.status_color.clone(),
     }
 }
 
@@ -203,6 +224,9 @@ pub(crate) struct TaskFields {
     pub title: String,
     pub description: String,
     pub status: TaskStatus,
+    /// The status `status` is the category of; `None` writes no pointer (the
+    /// task falls back to its category's first status).
+    pub status_id: Option<String>,
     pub priority: TaskPriority,
     pub start_date: Option<String>,
     pub due_date: Option<String>,
@@ -225,6 +249,25 @@ async fn upsert_ids(
     ))
     .bind(pid)
     .bind(ids)
+    .execute(conn)
+    .await?;
+    Ok(())
+}
+
+async fn upsert_status_ref(
+    conn: &mut PgConnection,
+    pid: i64,
+    status_id: Option<String>,
+) -> sqlx::Result<()> {
+    let Some(status_id) = status_id else {
+        return Ok(());
+    };
+    sqlx::query(
+        "INSERT INTO cmp_taskstatusref (pid, status_id) VALUES ($1, $2) \
+         ON CONFLICT (pid) DO UPDATE SET status_id = EXCLUDED.status_id",
+    )
+    .bind(pid)
+    .bind(status_id)
     .execute(conn)
     .await?;
     Ok(())
@@ -288,6 +331,7 @@ pub(crate) async fn create_task(
         .await?;
     upsert_ids(&mut tx, "cmp_taskassignees", "user_ids", pid, f.assignee_ids).await?;
     upsert_ids(&mut tx, "cmp_tasklabels", "label_ids", pid, f.label_ids).await?;
+    upsert_status_ref(&mut tx, pid, f.status_id).await?;
     sqlx::query(
         "INSERT INTO cmp_taskaudit (pid, created_at, updated_at, completed_at, created_by) \
          VALUES ($1, $2, $2, $3, $4)",
@@ -344,6 +388,7 @@ pub(crate) async fn update_task(
     upsert_ids(&mut tx, "cmp_taskassignees", "user_ids", pid, f.assignee_ids).await?;
     upsert_ids(&mut tx, "cmp_tasklabels", "label_ids", pid, f.label_ids).await?;
     upsert_ids(&mut tx, "cmp_taskblockedby", "task_ids", pid, blocked_by).await?;
+    upsert_status_ref(&mut tx, pid, f.status_id).await?;
     match parent {
         None => {}
         Some(None) => {

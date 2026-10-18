@@ -70,7 +70,7 @@ export function DependencyPicker({
                       <span className="flex-1 truncate text-left">
                         {c.title}
                       </span>
-                      <StatusBadge status={c.status} />
+                      <StatusBadge task={c} />
                       <Check
                         className={cn(
                           "h-4 w-4 shrink-0",
@@ -100,7 +100,7 @@ export function DependencyPicker({
               >
                 {conflicted && <TriangleAlert className="h-4 w-4 shrink-0" />}
                 <span className="flex-1 truncate">{b.title}</span>
-                <StatusBadge status={b.status} />
+                <StatusBadge task={b} />
               </li>
             );
           })}

@@ -9,11 +9,12 @@ import type { AppUser } from "@/features/auth";
 import { LabelCombobox } from "@/features/labels";
 import { CommentThread } from "@/features/comments";
 import { TaskAttachments } from "@/features/media";
-import type { Task, TaskPriority, TaskStatus } from "../types";
-import { TASK_PRIORITIES, TASK_STATUSES } from "../types";
-import { TASK_PRIORITY_CONFIG, TASK_STATUS_CONFIG } from "../config";
-import { statusToProto, priorityToProto } from "../api/mappers";
-import { useCreateTask, useUpdateTask } from "../api/hooks";
+import type { Task, TaskPriority } from "../types";
+import { TASK_PRIORITIES } from "../types";
+import { TASK_PRIORITY_CONFIG } from "../config";
+import { priorityToProto } from "../api/mappers";
+import { useCreateTask, useStatuses, useUpdateTask } from "../api/hooks";
+import { StatusDot } from "./task-badges";
 import { buildHierarchy } from "../task-graph";
 import { AssigneePicker } from "./assignee-picker";
 import { SubtaskSection } from "./subtask-section";
@@ -98,6 +99,7 @@ export function TaskDialog({
 }: Props) {
   const create = useCreateTask(projectId);
   const update = useUpdateTask(projectId);
+  const { statuses } = useStatuses(projectId);
   const editing = editingProp ?? !!task;
   // Edit intent confirmed, but the object hasn't arrived yet. The create
   // path must stay unreachable through this whole window, not just visually
@@ -111,7 +113,10 @@ export function TaskDialog({
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [status, setStatus] = useState<TaskStatus>("todo");
+  // "" = the project's first To Do status, which is where a new task starts.
+  const [statusId, setStatusId] = useState("");
+  const shownStatusId =
+    statusId || statuses.find((s) => s.category === "todo")?.id || "";
   const [priority, setPriority] = useState<TaskPriority>("none");
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [dueDate, setDueDate] = useState<Date | undefined>();
@@ -136,7 +141,7 @@ export function TaskDialog({
     const t = taskRef.current;
     setTitle(t?.title ?? "");
     setDescription(t?.description ?? "");
-    setStatus(t?.status ?? "todo");
+    setStatusId(t?.statusId ?? "");
     setPriority(t?.priority ?? "none");
     setStartDate(isoToDate(t?.startDate));
     setDueDate(isoToDate(t?.dueDate));
@@ -195,7 +200,7 @@ export function TaskDialog({
         id: task.id,
         title: title.trim(),
         description,
-        status: statusToProto(status),
+        statusId: statusId || undefined,
         priority: priorityToProto(priority),
         startDate: start,
         dueDate: due,
@@ -211,7 +216,7 @@ export function TaskDialog({
         moduleId,
         title: title.trim(),
         description: description || undefined,
-        status: statusToProto(status),
+        statusId: statusId || undefined,
         priority: priorityToProto(priority),
         startDate: start,
         dueDate: due,
@@ -302,17 +307,19 @@ export function TaskDialog({
                   )}
                 >
                   <Property label="Status">
-                    <Select
-                      value={status}
-                      onValueChange={(v) => setStatus(v as TaskStatus)}
-                    >
+                    <Select value={shownStatusId} onValueChange={setStatusId}>
                       <SelectTrigger className="w-full">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {TASK_STATUSES.map((s) => (
-                          <SelectItem key={s} value={s}>
-                            {TASK_STATUS_CONFIG[s].label}
+                        {statuses.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            <StatusDot
+                              status={s.category}
+                              color={s.color}
+                              className="mr-1.5 h-2 w-2"
+                            />
+                            {s.name}
                           </SelectItem>
                         ))}
                       </SelectContent>

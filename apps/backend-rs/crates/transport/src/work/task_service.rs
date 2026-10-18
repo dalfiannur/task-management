@@ -12,6 +12,7 @@ use domain::task::{dates_ok, title_ok, TaskPriority, TaskStatus};
 use persistence::Store;
 
 use super::record::{load_module, modules_for_project};
+use super::status_service::resolve_status;
 use super::task_record::{
     self, load_task, tasks_for_modules, to_proto, TaskFields, TaskRecord,
 };
@@ -157,7 +158,9 @@ pub async fn create_task_core(
     validate_assignees(store, &project_id, &r.assignee_ids).await?;
     let assignees = r.assignee_ids.clone();
 
-    let status = TaskStatus::from_proto(r.status).unwrap_or(TaskStatus::Todo);
+    let category = TaskStatus::from_proto(r.status).unwrap_or(TaskStatus::Todo);
+    let st = resolve_status(store, &project_id, r.status_id.as_deref(), category).await?;
+    let status = st.category;
     let priority = TaskPriority::from_proto(r.priority).unwrap_or(TaskPriority::None);
     let start_date = r.start_date.filter(|s| !s.is_empty());
     let due_date = r.due_date.filter(|s| !s.is_empty());
@@ -188,6 +191,7 @@ pub async fn create_task_core(
             title: title.to_string(),
             description: description_for_index.clone(),
             status,
+            status_id: Some(st.pid.to_string()),
             priority,
             start_date,
             due_date,
@@ -278,11 +282,23 @@ pub async fn update_task_core(
         None => t.title.clone(),
     };
     let description = domain::sanitize::clean_html(&r.description.unwrap_or_else(|| t.description.clone()));
-    let status = match r.status {
-        Some(code) => TaskStatus::from_proto(code)
-            .ok_or_else(|| ConnectError::new_invalid_argument("invalid status"))?,
-        None => t.status,
+    // Status: an explicit `status_id` wins; a bare category keeps the current
+    // status when it is already in that category, else takes its first one.
+    let category = match r.status {
+        Some(code) => Some(
+            TaskStatus::from_proto(code)
+                .ok_or_else(|| ConnectError::new_invalid_argument("invalid status"))?,
+        ),
+        None => None,
     };
+    let new_status = match (r.status_id.as_deref().filter(|s| !s.is_empty()), category) {
+        (Some(id), _) => Some(resolve_status(store, &project_id, Some(id), t.status).await?),
+        (None, Some(c)) if c != t.status => {
+            Some(resolve_status(store, &project_id, None, c).await?)
+        }
+        _ => None,
+    };
+    let status = new_status.as_ref().map_or(t.status, |s| s.category);
     let priority = match r.priority {
         Some(code) => TaskPriority::from_proto(code)
             .ok_or_else(|| ConnectError::new_invalid_argument("invalid priority"))?,
@@ -348,11 +364,14 @@ pub async fn update_task_core(
 
     // Diff for the audit log (important fields only, spec §8.1).
     let mut changes = Vec::new();
-    if status != t.status {
+    if let Some(s) = new_status.as_ref().filter(|s| s.pid.to_string() != t.status_id) {
+        let label = |name: &str, c: TaskStatus| {
+            if name.is_empty() { c.as_str().to_string() } else { name.to_string() }
+        };
         changes.push(FieldChange {
             field: "status".into(),
-            from: Some(t.status.as_str().into()),
-            to: Some(status.as_str().into()),
+            from: Some(label(&t.status_name, t.status)),
+            to: Some(label(&s.name, s.category)),
         });
     }
     if priority != t.priority {
@@ -393,6 +412,7 @@ pub async fn update_task_core(
             title,
             description,
             status,
+            status_id: new_status.map(|s| s.pid.to_string()),
             priority,
             start_date,
             due_date,

@@ -10,13 +10,15 @@
 // instead of poisoning the comparison.
 
 import { coerceSearchParam } from "@/lib/utils";
-import type { Task, TaskPriority, TaskStatus } from "./types";
-import { TASK_PRIORITIES, TASK_STATUSES } from "./types";
+import type { Task, TaskPriority } from "./types";
+import { TASK_PRIORITIES } from "./types";
 
 export interface TaskFilter {
   /** Free text, matched case-insensitively against the task title. */
   q?: string;
-  status?: TaskStatus;
+  /** A workflow status id, or a category (`done`, …) matching every status
+   *  in it — the form older links and the dashboard use. */
+  status?: string;
   priority?: TaskPriority;
   /** A single user id; a task matches when it is among its assignees. */
   assignee?: string;
@@ -56,7 +58,9 @@ function matchesDateRange(task: Task, from?: string, to?: string): boolean {
 export function matchesFilter(task: Task, f: TaskFilter): boolean {
   const q = f.q?.trim().toLowerCase();
   if (q && !task.title.toLowerCase().includes(q)) return false;
-  if (f.status && task.status !== f.status) return false;
+  if (f.status && task.statusId !== f.status && task.status !== f.status) {
+    return false;
+  }
   if (f.priority && task.priority !== f.priority) return false;
   if (f.assignee && !task.assigneeIds.includes(f.assignee)) return false;
   if (f.label && !task.labelIds.includes(f.label)) return false;
@@ -133,7 +137,9 @@ export function parseTaskFilter(search: Record<string, unknown>): TaskFilter {
     typeof v === "string" && PLAIN_DATE_RE.test(v) ? v : undefined;
   return {
     q: coerceSearchParam(search.q),
-    status: oneOf(search.status, TASK_STATUSES),
+    // Any id is accepted: one that names no status simply matches nothing,
+    // which the count line then says.
+    status: coerceSearchParam(search.status),
     priority: oneOf(search.priority, TASK_PRIORITIES),
     assignee: coerceSearchParam(search.assignee),
     label: coerceSearchParam(search.label),

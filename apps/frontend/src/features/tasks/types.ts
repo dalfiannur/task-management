@@ -32,6 +32,23 @@ export interface Task {
   blockedByIds: string[];
   /** Sequential within the project (#1, #2, …); stable across moves. */
   number: number;
+  /** The task's status in its project's workflow; `status` is its category.
+   *  Empty only for a project with no statuses (never, once loaded). */
+  statusId: string;
+  statusName: string;
+  statusColor: string;
+}
+
+/** One step of a project's workflow. `category` is what every rule reads
+ *  (done, overdue, progress); name, color and order are the project's own. */
+export interface WorkflowStatus {
+  id: string;
+  projectId: string;
+  name: string;
+  /** `#RRGGBB` */
+  color: string;
+  category: TaskStatus;
+  order: number;
 }
 
 export const TASK_STATUSES: TaskStatus[] = [

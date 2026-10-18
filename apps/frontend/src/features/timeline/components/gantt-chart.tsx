@@ -16,7 +16,8 @@ import { cn } from "@/lib/utils";
 import { useProjectMembers } from "@/features/projects";
 import { useUserMap } from "@/features/users";
 import {
-  TASK_STATUS_CONFIG,
+  StatusDot,
+  statusLabel,
   TaskDialog,
   allConflicts,
   buildHierarchy,
@@ -474,12 +475,10 @@ export function GanttChart({ projectId }: { projectId: string }) {
                           : "text-foreground",
                       )}
                     >
-                      <span
-                        aria-hidden="true"
-                        className={cn(
-                          "h-2 w-2 shrink-0 rounded-full",
-                          TASK_STATUS_CONFIG[r.task.status].dot,
-                        )}
+                      <StatusDot
+                        status={r.task.status}
+                        color={r.task.statusColor}
+                        className="h-2 w-2"
                       />
                       <span
                         className={cn(
@@ -492,7 +491,7 @@ export function GanttChart({ projectId }: { projectId: string }) {
                       </span>
                       <span className="sr-only">
                         {" "}
-                        · {TASK_STATUS_CONFIG[r.task.status].label}
+                        · {statusLabel(r.task)}
                       </span>
                     </button>
                   ),

@@ -324,3 +324,46 @@ FROM (
 ) t
 LEFT JOIN (SELECT project_id, MAX(value) AS top FROM cmp_tasknumber GROUP BY project_id) mx
     ON mx.project_id = t.project_id;
+
+-- A project's task statuses (its workflow): name, color and order are free;
+-- `category` is one of todo / in_progress / done / cancelled and is what every
+-- report, dashboard and `completed_at` rule reads. `cmp_taskinfo.status` keeps
+-- the category of the task's current status, so those readers never join here.
+CREATE TABLE IF NOT EXISTS cmp_taskstatusdef (
+    pid BIGINT PRIMARY KEY REFERENCES arke_entities(pid) ON DELETE CASCADE,
+    project_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    color TEXT NOT NULL,
+    category TEXT NOT NULL,
+    sort_order INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_cmp_taskstatusdef_project_id ON cmp_taskstatusdef USING btree (project_id);
+
+-- The task's status (a `cmp_taskstatusdef` pid). Absent = the project's first
+-- status of the task's category (tasks from before custom statuses, fixtures).
+CREATE TABLE IF NOT EXISTS cmp_taskstatusref (
+    pid BIGINT PRIMARY KEY REFERENCES arke_entities(pid) ON DELETE CASCADE,
+    status_id TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_cmp_taskstatusref_status_id ON cmp_taskstatusref USING btree (status_id);
+
+-- Give every project without statuses the four defaults. Pids are drawn up
+-- front so the entity rows and the status rows share them in one statement.
+WITH missing AS MATERIALIZED (
+    SELECT nextval(pg_get_serial_sequence('arke_entities', 'pid')) AS pid,
+           p.pid::text AS project_id, d.name, d.color, d.category, d.sort_order
+    FROM cmp_projectname p
+    CROSS JOIN (VALUES
+        ('To Do', '#94a3b8', 'todo', 0),
+        ('In Progress', '#f59e0b', 'in_progress', 1),
+        ('Done', '#22c55e', 'done', 2),
+        ('Cancelled', '#64748b', 'cancelled', 3)
+    ) AS d(name, color, category, sort_order)
+    WHERE NOT EXISTS (SELECT 1 FROM cmp_taskstatusdef s WHERE s.project_id = p.pid::text)
+),
+ent AS (
+    INSERT INTO arke_entities (pid, version) SELECT pid, 0 FROM missing RETURNING pid
+)
+INSERT INTO cmp_taskstatusdef (pid, project_id, name, color, category, sort_order)
+SELECT m.pid, m.project_id, m.name, m.color, m.category, m.sort_order
+FROM missing m JOIN ent e ON e.pid = m.pid;

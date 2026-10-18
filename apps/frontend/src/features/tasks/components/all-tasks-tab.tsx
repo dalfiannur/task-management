@@ -8,7 +8,7 @@ import {
   useSensors,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import { Columns3, Layers, List, Plus, SearchX } from "lucide-react";
+import { Columns3, Layers, List, Plus, SearchX, Workflow } from "lucide-react";
 import { toast } from "sonner";
 import { Button, Skeleton } from "sedjiwa-ui";
 import { cn } from "@/lib/utils";
@@ -24,6 +24,7 @@ import {
   useTask,
   useMoveTask,
   useReorderModules,
+  useStatuses,
 } from "../api/hooks";
 import { buildHierarchy, edgeConflicts, subtaskProgress } from "../task-graph";
 import { statsByModule } from "../task-stats";
@@ -38,6 +39,7 @@ import { ModuleSection } from "./module-section";
 import { TaskFilterBar } from "./task-filter-bar";
 import { TaskBoard } from "./task-board";
 import { ModuleDialog } from "./module-dialog";
+import { ManageStatusesDialog } from "./manage-statuses-dialog";
 import { TaskDialog } from "./task-dialog";
 
 const VIEWS: { key: TasksView; label: string; icon: typeof List }[] = [
@@ -61,6 +63,8 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
   const { project } = useProject(projectId);
   const { modules, isLoading: modulesLoading } = useModules(projectId);
   const { tasks, isLoading: tasksLoading } = useTasks(projectId);
+  const { statuses } = useStatuses(projectId);
+  const [statusDialog, setStatusDialog] = useState(false);
   const { memberIds } = useProjectMembers(projectId);
   const userMap = useUserMap();
   const labelMap = useLabelMap(projectId);
@@ -296,6 +300,7 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
           onChange={setFilter}
           onClear={clearFilters}
           memberIds={memberIds}
+          statuses={statuses}
           userMap={userMap}
           labelMap={labelMap}
           matched={visibleTasks.length}
@@ -327,6 +332,14 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
                   </button>
                 ))}
               </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setStatusDialog(true)}
+              >
+                <Workflow className="mr-1 h-4 w-4" />
+                Statuses
+              </Button>
               {canManage && (
                 <Button size="sm" onClick={() => setModuleDialog({ open: true })}>
                   <Plus className="mr-1 h-4 w-4" />
@@ -448,6 +461,12 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
         onOpenChange={(open) => setModuleDialog((s) => ({ ...s, open }))}
         projectId={projectId}
         module={moduleDialog.module}
+      />
+      <ManageStatusesDialog
+        open={statusDialog}
+        onOpenChange={setStatusDialog}
+        projectId={projectId}
+        tasks={tasks}
       />
     </div>
   );

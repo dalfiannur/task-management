@@ -21,6 +21,17 @@ service TaskService {
   rpc MoveTask(MoveTaskRequest) returns (Task);
 }
 
+// A project's workflow: its own task statuses, each in a fixed category (the
+// TaskStatus enum). Member-gated, like labels. A project always keeps at least
+// one TODO and one DONE status; deleting a status moves its tasks to another.
+service TaskStatusService {
+  rpc ListTaskStatuses(ListTaskStatusesRequest) returns (ListTaskStatusesResponse);
+  rpc CreateTaskStatus(CreateTaskStatusRequest) returns (TaskStatusDef);
+  rpc UpdateTaskStatus(UpdateTaskStatusRequest) returns (TaskStatusDef);
+  rpc DeleteTaskStatus(DeleteTaskStatusRequest) returns (DeleteTaskStatusResponse);
+  rpc ReorderTaskStatuses(ReorderTaskStatusesRequest) returns (ListTaskStatusesResponse);
+}
+
 message Module {
   string id = 1;
   string name = 2;
@@ -67,6 +78,10 @@ message Task {
   repeated string blocked_by_ids = 17;
   // Sequential within the project (#1, #2, …); stable across moves.
   int32 number = 18;
+  // The task's status in its project's workflow; `status` is its category.
+  string status_id = 19;
+  string status_name = 20;
+  string status_color = 21;
 }
 
 enum TaskStatus {
@@ -103,6 +118,9 @@ message CreateTaskRequest {
   repeated string assignee_ids = 8;
   repeated string label_ids = 9;
   optional string parent_id = 10;
+  // Wins over `status` when set; otherwise the first status of `status`'s
+  // category (TODO when that is unspecified).
+  optional string status_id = 11;
 }
 // Wrapper so a repeated field can be distinguished from "absent" on update
 // (proto3 can't tell an omitted `repeated` from an empty one).
@@ -125,6 +143,8 @@ message UpdateTaskRequest {
   // unchanged, empty = detach, one element = that parent. Two or more is an
   // invalid argument.
   optional StringList parent_id_set = 11;
+  // Wins over `status`; `status` alone picks the category's first status.
+  optional string status_id = 12;
 }
 message DeleteTaskRequest { string id = 1; }
 message DeleteTaskResponse { bool ok = 1; }
@@ -132,4 +152,38 @@ message MoveTaskRequest {
   string id = 1;
   string module_id = 2;
   int32 order = 3;
+}
+
+message TaskStatusDef {
+  string id = 1;
+  string project_id = 2;
+  string name = 3;
+  string color = 4; // #RRGGBB
+  TaskStatus category = 5;
+  int32 order = 6;
+}
+
+message ListTaskStatusesRequest { string project_id = 1; }
+message ListTaskStatusesResponse { repeated TaskStatusDef statuses = 1; }
+message CreateTaskStatusRequest {
+  string project_id = 1;
+  string name = 2;
+  string color = 3;
+  TaskStatus category = 4;
+}
+message UpdateTaskStatusRequest {
+  string id = 1;
+  optional string name = 2;
+  optional string color = 3;
+  optional TaskStatus category = 4;
+}
+message DeleteTaskStatusRequest {
+  string id = 1;
+  // Where the deleted status's tasks go; required when it has any.
+  optional string replacement_id = 2;
+}
+message DeleteTaskStatusResponse { bool ok = 1; }
+message ReorderTaskStatusesRequest {
+  string project_id = 1;
+  repeated string status_ids = 2; // new order; must list every status
 }

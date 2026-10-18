@@ -24,7 +24,7 @@ export function MyTaskRow({ item }: { item: MyTaskItem }) {
       {task.dueDate && (
         <span className="text-num text-xs text-muted-foreground">{task.dueDate}</span>
       )}
-      <StatusBadge status={task.status} />
+      <StatusBadge task={task} />
     </Link>
   );
 }

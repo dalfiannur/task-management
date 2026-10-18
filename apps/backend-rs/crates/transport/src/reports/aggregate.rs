@@ -290,6 +290,9 @@ mod tests {
             parent_id: None,
             blocked_by_ids: Vec::new(),
             number: 0,
+            status_id: String::new(),
+            status_name: String::new(),
+            status_color: String::new(),
         }
     }
 
