@@ -294,6 +294,7 @@ mod tests {
             status_name: String::new(),
             status_color: String::new(),
             estimate_minutes: None,
+            logged_minutes: 0,
         }
     }
 

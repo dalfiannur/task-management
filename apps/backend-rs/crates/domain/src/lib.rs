@@ -12,6 +12,7 @@ pub mod page;
 pub mod project;
 pub mod sanitize;
 pub mod task;
+pub mod time;
 pub mod token;
 pub mod user;
 pub mod view;

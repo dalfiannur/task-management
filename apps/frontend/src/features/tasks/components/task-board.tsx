@@ -287,7 +287,7 @@ function BoardCard({
       <div className="flex items-center gap-3">
         <PriorityLabel priority={task.priority} />
         <DueDate task={task} />
-        <EstimateLabel minutes={task.estimateMinutes} dash={false} />
+        <EstimateLabel minutes={task.estimateMinutes} logged={task.loggedMinutes} dash={false} />
         {progress && (
           <span className="text-num text-xs text-muted-foreground" title="Subtasks done">
             {progress.done}/{progress.total}

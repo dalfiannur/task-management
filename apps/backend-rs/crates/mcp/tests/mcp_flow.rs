@@ -451,9 +451,10 @@ async fn tools_list_returns_the_registry() {
     .await;
     assert_eq!(st, StatusCode::OK, "{body:?}");
     let tools = body["result"]["tools"].as_array().unwrap();
-    assert_eq!(tools.len(), 15);
+    assert_eq!(tools.len(), 16);
     let names: Vec<&str> = tools.iter().map(|t| t["name"].as_str().unwrap()).collect();
     assert!(names.contains(&"create_task"));
+    assert!(names.contains(&"log_time"));
     assert!(!names.contains(&"delete_task"), "delete sengaja tidak diekspos");
     for t in tools {
         assert!(t["description"].as_str().is_some_and(|d| !d.is_empty()));

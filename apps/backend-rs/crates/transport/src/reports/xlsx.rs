@@ -76,6 +76,11 @@ fn filter(ws: &mut Worksheet, rows: usize, cols: usize) -> Result<(), XlsxError>
     Ok(())
 }
 
+/// Minutes as decimal hours, the unit a timesheet is billed in.
+fn hours(minutes: u32) -> f64 {
+    f64::from(minutes) / 60.0
+}
+
 fn status_label(code: i32) -> &'static str {
     match TaskStatus::from_proto(code) {
         Some(TaskStatus::Todo) => "To do",
@@ -168,6 +173,7 @@ pub(crate) fn workbook(report: &pb::PeriodReport, meta: &Meta<'_>) -> Result<Vec
     let bold = Format::new().set_bold();
     let datetime = Format::new().set_num_format(DATETIME_FMT);
     let percent = Format::new().set_num_format("0%");
+    let hours_fmt = Format::new().set_num_format("0.00");
 
     // Summary — what this is, the period it covers, and when it was taken.
     {
@@ -202,11 +208,12 @@ pub(crate) fn workbook(report: &pb::PeriodReport, meta: &Meta<'_>) -> Result<Vec
         let prev = report.prev_totals.as_ref();
         // Only the quantities of the window have a like-for-like previous value;
         // the backlog numbers are "now" under both windows.
-        let rows: [(&str, u32, Option<u32>); 4] = [
-            ("Completed", t.completed, prev.map(|p| p.completed)),
-            ("Started", t.started, prev.map(|p| p.started)),
-            ("Still open (now)", t.still_open, None),
-            ("Overdue (now)", t.overdue, None),
+        let rows: [(&str, f64, Option<f64>); 5] = [
+            ("Completed", t.completed.into(), prev.map(|p| p.completed.into())),
+            ("Started", t.started.into(), prev.map(|p| p.started.into())),
+            ("Still open (now)", t.still_open.into(), None),
+            ("Overdue (now)", t.overdue.into(), None),
+            ("Hours logged", hours(t.logged_minutes), prev.map(|p| hours(p.logged_minutes))),
         ];
         for (label, now, before) in rows {
             r += 1;
@@ -230,6 +237,7 @@ pub(crate) fn workbook(report: &pb::PeriodReport, meta: &Meta<'_>) -> Result<Vec
             Col { header: "Done", width: 10.0 },
             Col { header: "Total", width: 10.0 },
             Col { header: "Progress", width: 12.0 },
+            Col { header: "Hours logged", width: 14.0 },
         ];
         header(ws, &cols)?;
         for (i, p) in report.per_project.iter().enumerate() {
@@ -243,6 +251,7 @@ pub(crate) fn workbook(report: &pb::PeriodReport, meta: &Meta<'_>) -> Result<Vec
             ws.write_number(r, 6, p.total)?;
             let progress = if p.total > 0 { f64::from(p.done_total) / f64::from(p.total) } else { 0.0 };
             ws.write_number_with_format(r, 7, progress, &percent)?;
+            ws.write_number_with_format(r, 8, hours(p.logged_minutes), &hours_fmt)?;
         }
         filter(ws, report.per_project.len(), cols.len())?;
     }
@@ -256,6 +265,7 @@ pub(crate) fn workbook(report: &pb::PeriodReport, meta: &Meta<'_>) -> Result<Vec
             Col { header: "Started", width: 12.0 },
             Col { header: "Open now", width: 12.0 },
             Col { header: "Overdue now", width: 14.0 },
+            Col { header: "Hours logged", width: 14.0 },
         ];
         header(ws, &cols)?;
         for (i, m) in report.per_member.iter().enumerate() {
@@ -266,8 +276,50 @@ pub(crate) fn workbook(report: &pb::PeriodReport, meta: &Meta<'_>) -> Result<Vec
             ws.write_number(r, 2, m.started)?;
             ws.write_number(r, 3, m.open_assigned)?;
             ws.write_number(r, 4, m.overdue_assigned)?;
+            ws.write_number_with_format(r, 5, hours(m.logged_minutes), &hours_fmt)?;
         }
         filter(ws, report.per_member.len(), cols.len())?;
+    }
+
+    // Timesheet — every finished entry of the period, oldest first.
+    {
+        let ws = wb.add_worksheet().set_name("Timesheet")?;
+        let cols = [
+            Col { header: "Date", width: 12.0 },
+            Col { header: "Member", width: 24.0 },
+            Col { header: "Project", width: 28.0 },
+            Col { header: "Task", width: 44.0 },
+            Col { header: "Hours", width: 10.0 },
+            Col { header: "Note", width: 40.0 },
+        ];
+        header(ws, &cols)?;
+        let date_fmt = Format::new().set_num_format("yyyy-mm-dd");
+        let n = report.timesheet.len();
+        for (i, t) in report.timesheet.iter().enumerate() {
+            let r = i as u32 + 1;
+            match plain_date(&t.date) {
+                Some(d) => ws.write_datetime_with_format(r, 0, &d, &date_fmt)?,
+                None => ws.write_string(r, 0, &t.date)?,
+            };
+            let member = if t.user_name.is_empty() { format!("User {}", t.user_id) } else { t.user_name.clone() };
+            ws.write_string(r, 1, member)?;
+            ws.write_string(r, 2, &t.project_name)?;
+            let task = if t.task_title.is_empty() {
+                "(deleted task)".to_string()
+            } else if t.task_number > 0 {
+                format!("#{} {}", t.task_number, t.task_title)
+            } else {
+                t.task_title.clone()
+            };
+            ws.write_string(r, 3, task)?;
+            ws.write_number_with_format(r, 4, hours(t.minutes), &hours_fmt)?;
+            ws.write_string(r, 5, &t.note)?;
+        }
+        filter(ws, n, cols.len())?;
+        let total: u32 = report.timesheet.iter().map(|t| t.minutes).sum();
+        let r = n as u32 + 1;
+        ws.write_string_with_format(r, 0, "Total", &bold)?;
+        ws.write_number_with_format(r, 4, hours(total), &Format::new().set_bold().set_num_format("0.00"))?;
     }
 
     task_sheet(&mut wb, "Completed", &report.completed_tasks, off)?;

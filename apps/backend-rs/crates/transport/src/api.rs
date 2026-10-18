@@ -36,6 +36,8 @@ pub use crate::work::task_service::{
 // MCP tools take a status by name; the project's workflow resolves it.
 pub use crate::work::status_service::status_by_name;
 pub use crate::sedjiwa::tasks::work::v1 as work_pb;
+pub use crate::timelog::time_service::log_time_core;
+pub use crate::sedjiwa::tasks::time::v1 as time_pb;
 pub use crate::comments::comment_service::{create_comment_core, list_comments_core};
 pub use crate::sedjiwa::tasks::comment::v1 as comment_pb;
 pub use crate::search::search_service::search_core;

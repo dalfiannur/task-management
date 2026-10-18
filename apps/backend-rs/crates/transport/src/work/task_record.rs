@@ -42,6 +42,8 @@ pub(crate) struct TaskRecord {
     pub status_name: String,
     pub status_color: String,
     pub estimate_minutes: Option<i32>,
+    /// Sum of the task's finished time entries.
+    pub logged_minutes: i32,
 }
 
 /// A JSONB string array as `text[]`, in array order; empty when the row is
@@ -63,7 +65,9 @@ const SELECT_TASK: &str = concat!(
            a.created_at, a.updated_at, a.completed_at, a.created_by, par.parent_id, \
            COALESCE(num.value, 0) AS number, \
            COALESCE(sd.pid::text, '') AS status_id, COALESCE(sd.name, '') AS status_name, \
-           COALESCE(sd.color, '') AS status_color, est.minutes AS estimate_minutes, ",
+           COALESCE(sd.color, '') AS status_color, est.minutes AS estimate_minutes, \
+           (SELECT COALESCE(SUM(te.minutes), 0)::int4 FROM cmp_timeentry te \
+            WHERE te.task_id = i.pid::text AND NOT te.running) AS logged_minutes, ",
     ids_sql!("asg.user_ids"), " AS user_ids, ",
     ids_sql!("lab.label_ids"), " AS label_ids, ",
     ids_sql!("blk.task_ids"), " AS task_ids \
@@ -122,6 +126,7 @@ fn read_task(row: &PgRow) -> sqlx::Result<Option<TaskRecord>> {
         status_name: row.try_get("status_name")?,
         status_color: row.try_get("status_color")?,
         estimate_minutes: row.try_get("estimate_minutes")?,
+        logged_minutes: row.try_get("logged_minutes")?,
     }))
 }
 
@@ -157,6 +162,7 @@ pub(crate) fn to_proto(t: &TaskRecord) -> pb::Task {
         status_name: t.status_name.clone(),
         status_color: t.status_color.clone(),
         estimate_minutes: t.estimate_minutes,
+        logged_minutes: t.logged_minutes,
     }
 }
 

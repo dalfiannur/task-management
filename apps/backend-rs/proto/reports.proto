@@ -74,6 +74,8 @@ message PeriodTotals {
   uint32 started = 2;
   uint32 still_open = 3;
   uint32 overdue = 4;
+  // Time entries whose day falls in the window.
+  uint32 logged_minutes = 5;
 }
 
 message ProjectReportRow {
@@ -85,6 +87,7 @@ message ProjectReportRow {
   uint32 overdue = 6;
   uint32 done_total = 7; // cumulative; matches DashboardStats.per_project
   uint32 total = 8;
+  uint32 logged_minutes = 9; // in the window
 }
 
 message MemberReportRow {
@@ -94,6 +97,7 @@ message MemberReportRow {
   uint32 started = 4;   // created_by them, started in window
   uint32 open_assigned = 5;
   uint32 overdue_assigned = 6;
+  uint32 logged_minutes = 7; // their own entries, in the window
 }
 
 message ActivitySummaryRow {
@@ -121,4 +125,21 @@ message PeriodReport {
 
   repeated ActivitySummaryRow activity_summary = 11;
   uint32 activity_total = 12;
+
+  // Every finished time entry in the window, for the workbook's Timesheet
+  // sheet. Filled by ExportPeriodReportXlsx only; empty on GetPeriodReport.
+  repeated TimesheetRow timesheet = 13;
+}
+
+message TimesheetRow {
+  string date = 1;
+  string user_id = 2;
+  string user_name = 3;
+  string project_id = 4;
+  string project_name = 5;
+  string task_id = 6;
+  int32 task_number = 7;
+  string task_title = 8; // empty if the task was deleted
+  uint32 minutes = 9;
+  string note = 10;
 }

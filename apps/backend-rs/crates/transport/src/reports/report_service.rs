@@ -15,6 +15,7 @@ use super::{internal, require_auth, StoreExt};
 use crate::dashboard::context::{today, Context};
 use crate::sedjiwa::tasks::reports::v1 as pb;
 use crate::sedjiwa::tasks::reports::v1::report_service_connect::ReportServiceBuilder;
+use crate::timelog::record::{list_entries, minutes_by_project_user, EntryFilter};
 use crate::users::record::load_all_users;
 
 /// Cap on the task lists. A month of completed work is readable; a year of it
@@ -29,7 +30,7 @@ async fn get_period_report(
     let auth = require_auth(user)?;
     let ConnectRequest(r) = req;
     let limit = if r.list_limit == 0 { DEFAULT_LIST_LIMIT } else { r.list_limit } as usize;
-    Ok(ConnectResponse::new(build_report(&store, &auth, &r, limit).await?))
+    Ok(ConnectResponse::new(build_report(&store, &auth, &r, limit, false).await?))
 }
 
 /// The report as an .xlsx workbook. Built from the same `build_report` as the
@@ -48,7 +49,7 @@ async fn export_period_report_xlsx(
         "weekly" | "monthly" => r.granularity.clone(),
         _ => return Err(ConnectError::new_invalid_argument("granularity must be weekly or monthly")),
     };
-    let report = build_report(&store, &auth, &request, usize::MAX).await?;
+    let report = build_report(&store, &auth, &request, usize::MAX, true).await?;
     let by = crate::users::record::load_user(&store, auth.id.parse().unwrap_or(0))
         .await
         .map_err(internal)?
@@ -77,6 +78,7 @@ async fn build_report(
     auth: &AuthUser,
     r: &pb::GetPeriodReportRequest,
     limit: usize,
+    with_timesheet: bool,
 ) -> Result<pb::PeriodReport, ConnectError> {
     let window = Window::parse(&r.period_start, &r.period_end).ok_or_else(|| {
         ConnectError::new_invalid_argument(
@@ -132,6 +134,91 @@ async fn build_report(
     let (activity_summary_rows, activity_total) =
         activity_summary(store, ctx.scope.as_ref(), &window).await.map_err(internal)?;
 
+    // Logged time counts by the entry's own day, so it uses the date window.
+    let scope: Option<Vec<String>> = ctx.scope.as_ref().map(|s| s.iter().cloned().collect());
+    let logged = minutes_by_project_user(store, date_window.start(), date_window.end(), scope.as_deref())
+        .await
+        .map_err(internal)?;
+    let prev_logged: Option<i64> = match &prev_dates {
+        Some(dw) => Some(
+            minutes_by_project_user(store, dw.start(), dw.end(), scope.as_deref())
+                .await
+                .map_err(internal)?
+                .iter()
+                .map(|(_, _, m)| m)
+                .sum(),
+        ),
+        None => None,
+    };
+    let minutes = |m: i64| u32::try_from(m).unwrap_or(u32::MAX);
+    let mut totals_now = totals(&scoped, &window, &date_window, &today);
+    totals_now.logged_minutes = minutes(logged.iter().map(|(_, _, m)| m).sum());
+    let prev_totals = prev.as_ref().zip(prev_dates.as_ref()).map(|(w, dw)| {
+        let mut t = totals(&scoped, w, dw, &today);
+        t.logged_minutes = minutes(prev_logged.unwrap_or(0));
+        t
+    });
+    let mut per_project_rows = per_project(&ctx, &window, &date_window, &today);
+    for row in per_project_rows.iter_mut() {
+        row.logged_minutes = minutes(
+            logged.iter().filter(|(p, _, _)| *p == row.project_id).map(|(_, _, m)| m).sum(),
+        );
+    }
+    let mut per_member_rows = per_member(&ctx, &window, &date_window, &today, &names);
+    let mut by_user: HashMap<&str, i64> = HashMap::new();
+    for (_, u, m) in &logged {
+        *by_user.entry(u.as_str()).or_default() += m;
+    }
+    for row in per_member_rows.iter_mut() {
+        row.logged_minutes = minutes(by_user.remove(row.user_id.as_str()).unwrap_or(0));
+    }
+    // Someone who only logged time still belongs in the member table.
+    let mut extra: Vec<pb::MemberReportRow> = by_user
+        .into_iter()
+        .map(|(u, m)| pb::MemberReportRow {
+            user_id: u.to_string(),
+            user_name: names.get(u).cloned().unwrap_or_default(),
+            logged_minutes: minutes(m),
+            ..Default::default()
+        })
+        .collect();
+    extra.sort_by(|a, b| a.user_name.cmp(&b.user_name).then(a.user_id.cmp(&b.user_id)));
+    per_member_rows.extend(extra);
+
+    let timesheet = if with_timesheet {
+        let mut entries = list_entries(
+            store,
+            EntryFilter {
+                from: Some(date_window.start().to_string()),
+                before: Some(date_window.end().to_string()),
+                projects: scope.clone(),
+                finished_only: true,
+                ..Default::default()
+            },
+        )
+        .await
+        .map_err(internal)?;
+        // Oldest first reads as a timesheet.
+        entries.reverse();
+        entries
+            .into_iter()
+            .map(|e| pb::TimesheetRow {
+                user_name: names.get(&e.user_id).cloned().unwrap_or_default(),
+                project_name: ctx.project_name(&e.project_id),
+                date: e.work_date,
+                user_id: e.user_id,
+                project_id: e.project_id,
+                task_id: e.task_id,
+                task_number: e.task_number,
+                task_title: e.task_title,
+                minutes: minutes(i64::from(e.minutes)),
+                note: e.note,
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
+
     Ok(pb::PeriodReport {
         // `Window::start`/`end` are the truncated 19-character form with no
         // zone designator (`"2026-09-07T00:00:00"`); echoed as-is, a JS
@@ -139,19 +226,17 @@ async fn build_report(
         // actually is. Append `Z` so what goes out is genuinely RFC3339 UTC.
         period_start: format!("{}Z", window.start()),
         period_end: format!("{}Z", window.end()),
-        totals: Some(totals(&scoped, &window, &date_window, &today)),
-        prev_totals: prev
-            .as_ref()
-            .zip(prev_dates.as_ref())
-            .map(|(w, dw)| totals(&scoped, w, dw, &today)),
-        per_project: per_project(&ctx, &window, &date_window, &today),
-        per_member: per_member(&ctx, &window, &date_window, &today, &names),
+        totals: Some(totals_now),
+        prev_totals,
+        per_project: per_project_rows,
+        per_member: per_member_rows,
         completed_tasks,
         completed_truncated,
         overdue_tasks,
         overdue_truncated,
         activity_summary: activity_summary_rows,
         activity_total,
+        timesheet,
     })
 }
 

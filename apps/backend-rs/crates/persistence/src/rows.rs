@@ -21,6 +21,7 @@ use domain::task::{
     TaskEstimate, TaskStatusDef, TaskStatusRef,
 };
 use domain::token::{TokenInfo, TokenOwner, TokenSecret, TokenUsage};
+use domain::time::TimeEntryInfo;
 use domain::view::SavedViewInfo;
 use domain::user::{AdminMark, UserPassword, UserPhone, UserProfile, UserStatusComponent};
 use domain::HeartbeatAt;
@@ -152,6 +153,7 @@ row!(TaskAudit, "cmp_taskaudit", created_at, updated_at, completed_at, created_b
 row!(TaskStatusDef, "cmp_taskstatusdef", project_id, name, color, category, sort_order);
 row!(TaskStatusRef, "cmp_taskstatusref", status_id);
 row!(TaskEstimate, "cmp_taskestimate", minutes);
+row!(TimeEntryInfo, "cmp_timeentry", task_id, project_id, user_id, work_date, started_at, ended_at, running, minutes, note, created_at);
 row!(SavedViewInfo, "cmp_savedview", project_id, owner_id, name, query, layout, shared, created_at);
 row!(PageInfo, "cmp_pageinfo", project_id, title, icon, content, sort_order);
 row!(PageAudit, "cmp_pageaudit", created_by, last_edited_by, created_at, updated_at);

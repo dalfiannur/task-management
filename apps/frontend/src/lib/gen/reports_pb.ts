@@ -14,7 +14,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file reports.proto.
  */
 export const file_reports: GenFile = /*@__PURE__*/
-  fileDesc("Cg1yZXBvcnRzLnByb3RvEhhzZWRqaXdhLnRhc2tzLnJlcG9ydHMudjEiswEKHUV4cG9ydFBlcmlvZFJlcG9ydFhsc3hSZXF1ZXN0EkAKBnJlcG9ydBgBIAEoCzIwLnNlZGppd2EudGFza3MucmVwb3J0cy52MS5HZXRQZXJpb2RSZXBvcnRSZXF1ZXN0Eg0KBWxhYmVsGAIgASgJEhMKC2dyYW51bGFyaXR5GAMgASgJEhoKEnV0Y19vZmZzZXRfbWludXRlcxgEIAEoBRIQCghhcHBfbmFtZRgFIAEoCSJBCh5FeHBvcnRQZXJpb2RSZXBvcnRYbHN4UmVzcG9uc2USDAoEeGxzeBgBIAEoDBIRCglmaWxlX25hbWUYAiABKAki4AEKFkdldFBlcmlvZFJlcG9ydFJlcXVlc3QSFAoMcGVyaW9kX3N0YXJ0GAEgASgJEhIKCnBlcmlvZF9lbmQYAiABKAkSEgoKcHJldl9zdGFydBgDIAEoCRIQCghwcmV2X2VuZBgEIAEoCRISCgpsaXN0X2xpbWl0GAUgASgNEhkKEXBlcmlvZF9zdGFydF9kYXRlGAYgASgJEhcKD3BlcmlvZF9lbmRfZGF0ZRgHIAEoCRIXCg9wcmV2X3N0YXJ0X2RhdGUYCCABKAkSFQoNcHJldl9lbmRfZGF0ZRgJIAEoCSJXCgxQZXJpb2RUb3RhbHMSEQoJY29tcGxldGVkGAEgASgNEg8KB3N0YXJ0ZWQYAiABKA0SEgoKc3RpbGxfb3BlbhgDIAEoDRIPCgdvdmVyZHVlGAQgASgNIqgBChBQcm9qZWN0UmVwb3J0Um93EhIKCnByb2plY3RfaWQYASABKAkSFAoMcHJvamVjdF9uYW1lGAIgASgJEhEKCWNvbXBsZXRlZBgDIAEoDRIPCgdzdGFydGVkGAQgASgNEhIKCnN0aWxsX29wZW4YBSABKA0SDwoHb3ZlcmR1ZRgGIAEoDRISCgpkb25lX3RvdGFsGAcgASgNEg0KBXRvdGFsGAggASgNIooBCg9NZW1iZXJSZXBvcnRSb3cSDwoHdXNlcl9pZBgBIAEoCRIRCgl1c2VyX25hbWUYAiABKAkSEQoJY29tcGxldGVkGAMgASgNEg8KB3N0YXJ0ZWQYBCABKA0SFQoNb3Blbl9hc3NpZ25lZBgFIAEoDRIYChBvdmVyZHVlX2Fzc2lnbmVkGAYgASgNIpoBChJBY3Rpdml0eVN1bW1hcnlSb3cSOgoLZW50aXR5X3R5cGUYASABKA4yJS5zZWRqaXdhLnRhc2tzLmFjdGl2aXR5LnYxLkVudGl0eVR5cGUSOQoGYWN0aW9uGAIgASgOMikuc2Vkaml3YS50YXNrcy5hY3Rpdml0eS52MS5BY3Rpdml0eUFjdGlvbhINCgVjb3VudBgDIAEoDSK9BAoMUGVyaW9kUmVwb3J0EhQKDHBlcmlvZF9zdGFydBgBIAEoCRISCgpwZXJpb2RfZW5kGAIgASgJEjYKBnRvdGFscxgDIAEoCzImLnNlZGppd2EudGFza3MucmVwb3J0cy52MS5QZXJpb2RUb3RhbHMSOwoLcHJldl90b3RhbHMYBCABKAsyJi5zZWRqaXdhLnRhc2tzLnJlcG9ydHMudjEuUGVyaW9kVG90YWxzEj8KC3Blcl9wcm9qZWN0GAUgAygLMiouc2Vkaml3YS50YXNrcy5yZXBvcnRzLnYxLlByb2plY3RSZXBvcnRSb3cSPQoKcGVyX21lbWJlchgGIAMoCzIpLnNlZGppd2EudGFza3MucmVwb3J0cy52MS5NZW1iZXJSZXBvcnRSb3cSOwoPY29tcGxldGVkX3Rhc2tzGAcgAygLMiIuc2Vkaml3YS50YXNrcy5kYXNoYm9hcmQudjEuTXlUYXNrEjkKDW92ZXJkdWVfdGFza3MYCCADKAsyIi5zZWRqaXdhLnRhc2tzLmRhc2hib2FyZC52MS5NeVRhc2sSGwoTY29tcGxldGVkX3RydW5jYXRlZBgJIAEoCBIZChFvdmVyZHVlX3RydW5jYXRlZBgKIAEoCBJGChBhY3Rpdml0eV9zdW1tYXJ5GAsgAygLMiwuc2Vkaml3YS50YXNrcy5yZXBvcnRzLnYxLkFjdGl2aXR5U3VtbWFyeVJvdxIWCg5hY3Rpdml0eV90b3RhbBgMIAEoDTKKAgoNUmVwb3J0U2VydmljZRJrCg9HZXRQZXJpb2RSZXBvcnQSMC5zZWRqaXdhLnRhc2tzLnJlcG9ydHMudjEuR2V0UGVyaW9kUmVwb3J0UmVxdWVzdBomLnNlZGppd2EudGFza3MucmVwb3J0cy52MS5QZXJpb2RSZXBvcnQSiwEKFkV4cG9ydFBlcmlvZFJlcG9ydFhsc3gSNy5zZWRqaXdhLnRhc2tzLnJlcG9ydHMudjEuRXhwb3J0UGVyaW9kUmVwb3J0WGxzeFJlcXVlc3QaOC5zZWRqaXdhLnRhc2tzLnJlcG9ydHMudjEuRXhwb3J0UGVyaW9kUmVwb3J0WGxzeFJlc3BvbnNlYgZwcm90bzM", [file_dashboard, file_activity]);
+  fileDesc("Cg1yZXBvcnRzLnByb3RvEhhzZWRqaXdhLnRhc2tzLnJlcG9ydHMudjEiswEKHUV4cG9ydFBlcmlvZFJlcG9ydFhsc3hSZXF1ZXN0EkAKBnJlcG9ydBgBIAEoCzIwLnNlZGppd2EudGFza3MucmVwb3J0cy52MS5HZXRQZXJpb2RSZXBvcnRSZXF1ZXN0Eg0KBWxhYmVsGAIgASgJEhMKC2dyYW51bGFyaXR5GAMgASgJEhoKEnV0Y19vZmZzZXRfbWludXRlcxgEIAEoBRIQCghhcHBfbmFtZRgFIAEoCSJBCh5FeHBvcnRQZXJpb2RSZXBvcnRYbHN4UmVzcG9uc2USDAoEeGxzeBgBIAEoDBIRCglmaWxlX25hbWUYAiABKAki4AEKFkdldFBlcmlvZFJlcG9ydFJlcXVlc3QSFAoMcGVyaW9kX3N0YXJ0GAEgASgJEhIKCnBlcmlvZF9lbmQYAiABKAkSEgoKcHJldl9zdGFydBgDIAEoCRIQCghwcmV2X2VuZBgEIAEoCRISCgpsaXN0X2xpbWl0GAUgASgNEhkKEXBlcmlvZF9zdGFydF9kYXRlGAYgASgJEhcKD3BlcmlvZF9lbmRfZGF0ZRgHIAEoCRIXCg9wcmV2X3N0YXJ0X2RhdGUYCCABKAkSFQoNcHJldl9lbmRfZGF0ZRgJIAEoCSJvCgxQZXJpb2RUb3RhbHMSEQoJY29tcGxldGVkGAEgASgNEg8KB3N0YXJ0ZWQYAiABKA0SEgoKc3RpbGxfb3BlbhgDIAEoDRIPCgdvdmVyZHVlGAQgASgNEhYKDmxvZ2dlZF9taW51dGVzGAUgASgNIsABChBQcm9qZWN0UmVwb3J0Um93EhIKCnByb2plY3RfaWQYASABKAkSFAoMcHJvamVjdF9uYW1lGAIgASgJEhEKCWNvbXBsZXRlZBgDIAEoDRIPCgdzdGFydGVkGAQgASgNEhIKCnN0aWxsX29wZW4YBSABKA0SDwoHb3ZlcmR1ZRgGIAEoDRISCgpkb25lX3RvdGFsGAcgASgNEg0KBXRvdGFsGAggASgNEhYKDmxvZ2dlZF9taW51dGVzGAkgASgNIqIBCg9NZW1iZXJSZXBvcnRSb3cSDwoHdXNlcl9pZBgBIAEoCRIRCgl1c2VyX25hbWUYAiABKAkSEQoJY29tcGxldGVkGAMgASgNEg8KB3N0YXJ0ZWQYBCABKA0SFQoNb3Blbl9hc3NpZ25lZBgFIAEoDRIYChBvdmVyZHVlX2Fzc2lnbmVkGAYgASgNEhYKDmxvZ2dlZF9taW51dGVzGAcgASgNIpoBChJBY3Rpdml0eVN1bW1hcnlSb3cSOgoLZW50aXR5X3R5cGUYASABKA4yJS5zZWRqaXdhLnRhc2tzLmFjdGl2aXR5LnYxLkVudGl0eVR5cGUSOQoGYWN0aW9uGAIgASgOMikuc2Vkaml3YS50YXNrcy5hY3Rpdml0eS52MS5BY3Rpdml0eUFjdGlvbhINCgVjb3VudBgDIAEoDSL4BAoMUGVyaW9kUmVwb3J0EhQKDHBlcmlvZF9zdGFydBgBIAEoCRISCgpwZXJpb2RfZW5kGAIgASgJEjYKBnRvdGFscxgDIAEoCzImLnNlZGppd2EudGFza3MucmVwb3J0cy52MS5QZXJpb2RUb3RhbHMSOwoLcHJldl90b3RhbHMYBCABKAsyJi5zZWRqaXdhLnRhc2tzLnJlcG9ydHMudjEuUGVyaW9kVG90YWxzEj8KC3Blcl9wcm9qZWN0GAUgAygLMiouc2Vkaml3YS50YXNrcy5yZXBvcnRzLnYxLlByb2plY3RSZXBvcnRSb3cSPQoKcGVyX21lbWJlchgGIAMoCzIpLnNlZGppd2EudGFza3MucmVwb3J0cy52MS5NZW1iZXJSZXBvcnRSb3cSOwoPY29tcGxldGVkX3Rhc2tzGAcgAygLMiIuc2Vkaml3YS50YXNrcy5kYXNoYm9hcmQudjEuTXlUYXNrEjkKDW92ZXJkdWVfdGFza3MYCCADKAsyIi5zZWRqaXdhLnRhc2tzLmRhc2hib2FyZC52MS5NeVRhc2sSGwoTY29tcGxldGVkX3RydW5jYXRlZBgJIAEoCBIZChFvdmVyZHVlX3RydW5jYXRlZBgKIAEoCBJGChBhY3Rpdml0eV9zdW1tYXJ5GAsgAygLMiwuc2Vkaml3YS50YXNrcy5yZXBvcnRzLnYxLkFjdGl2aXR5U3VtbWFyeVJvdxIWCg5hY3Rpdml0eV90b3RhbBgMIAEoDRI5Cgl0aW1lc2hlZXQYDSADKAsyJi5zZWRqaXdhLnRhc2tzLnJlcG9ydHMudjEuVGltZXNoZWV0Um93IsMBCgxUaW1lc2hlZXRSb3cSDAoEZGF0ZRgBIAEoCRIPCgd1c2VyX2lkGAIgASgJEhEKCXVzZXJfbmFtZRgDIAEoCRISCgpwcm9qZWN0X2lkGAQgASgJEhQKDHByb2plY3RfbmFtZRgFIAEoCRIPCgd0YXNrX2lkGAYgASgJEhMKC3Rhc2tfbnVtYmVyGAcgASgFEhIKCnRhc2tfdGl0bGUYCCABKAkSDwoHbWludXRlcxgJIAEoDRIMCgRub3RlGAogASgJMooCCg1SZXBvcnRTZXJ2aWNlEmsKD0dldFBlcmlvZFJlcG9ydBIwLnNlZGppd2EudGFza3MucmVwb3J0cy52MS5HZXRQZXJpb2RSZXBvcnRSZXF1ZXN0GiYuc2Vkaml3YS50YXNrcy5yZXBvcnRzLnYxLlBlcmlvZFJlcG9ydBKLAQoWRXhwb3J0UGVyaW9kUmVwb3J0WGxzeBI3LnNlZGppd2EudGFza3MucmVwb3J0cy52MS5FeHBvcnRQZXJpb2RSZXBvcnRYbHN4UmVxdWVzdBo4LnNlZGppd2EudGFza3MucmVwb3J0cy52MS5FeHBvcnRQZXJpb2RSZXBvcnRYbHN4UmVzcG9uc2ViBnByb3RvMw", [file_dashboard, file_activity]);
 
 /**
  * @generated from message sedjiwa.tasks.reports.v1.ExportPeriodReportXlsxRequest
@@ -193,6 +193,13 @@ export type PeriodTotals = Message<"sedjiwa.tasks.reports.v1.PeriodTotals"> & {
    * @generated from field: uint32 overdue = 4;
    */
   overdue: number;
+
+  /**
+   * Time entries whose day falls in the window.
+   *
+   * @generated from field: uint32 logged_minutes = 5;
+   */
+  loggedMinutes: number;
 };
 
 /**
@@ -247,6 +254,13 @@ export type ProjectReportRow = Message<"sedjiwa.tasks.reports.v1.ProjectReportRo
    * @generated from field: uint32 total = 8;
    */
   total: number;
+
+  /**
+   * in the window
+   *
+   * @generated from field: uint32 logged_minutes = 9;
+   */
+  loggedMinutes: number;
 };
 
 /**
@@ -293,6 +307,13 @@ export type MemberReportRow = Message<"sedjiwa.tasks.reports.v1.MemberReportRow"
    * @generated from field: uint32 overdue_assigned = 6;
    */
   overdueAssigned: number;
+
+  /**
+   * their own entries, in the window
+   *
+   * @generated from field: uint32 logged_minutes = 7;
+   */
+  loggedMinutes: number;
 };
 
 /**
@@ -397,6 +418,14 @@ export type PeriodReport = Message<"sedjiwa.tasks.reports.v1.PeriodReport"> & {
    * @generated from field: uint32 activity_total = 12;
    */
   activityTotal: number;
+
+  /**
+   * Every finished time entry in the window, for the workbook's Timesheet
+   * sheet. Filled by ExportPeriodReportXlsx only; empty on GetPeriodReport.
+   *
+   * @generated from field: repeated sedjiwa.tasks.reports.v1.TimesheetRow timesheet = 13;
+   */
+  timesheet: TimesheetRow[];
 };
 
 /**
@@ -405,6 +434,70 @@ export type PeriodReport = Message<"sedjiwa.tasks.reports.v1.PeriodReport"> & {
  */
 export const PeriodReportSchema: GenMessage<PeriodReport> = /*@__PURE__*/
   messageDesc(file_reports, 7);
+
+/**
+ * @generated from message sedjiwa.tasks.reports.v1.TimesheetRow
+ */
+export type TimesheetRow = Message<"sedjiwa.tasks.reports.v1.TimesheetRow"> & {
+  /**
+   * @generated from field: string date = 1;
+   */
+  date: string;
+
+  /**
+   * @generated from field: string user_id = 2;
+   */
+  userId: string;
+
+  /**
+   * @generated from field: string user_name = 3;
+   */
+  userName: string;
+
+  /**
+   * @generated from field: string project_id = 4;
+   */
+  projectId: string;
+
+  /**
+   * @generated from field: string project_name = 5;
+   */
+  projectName: string;
+
+  /**
+   * @generated from field: string task_id = 6;
+   */
+  taskId: string;
+
+  /**
+   * @generated from field: int32 task_number = 7;
+   */
+  taskNumber: number;
+
+  /**
+   * empty if the task was deleted
+   *
+   * @generated from field: string task_title = 8;
+   */
+  taskTitle: string;
+
+  /**
+   * @generated from field: uint32 minutes = 9;
+   */
+  minutes: number;
+
+  /**
+   * @generated from field: string note = 10;
+   */
+  note: string;
+};
+
+/**
+ * Describes the message sedjiwa.tasks.reports.v1.TimesheetRow.
+ * Use `create(TimesheetRowSchema)` to create a new message.
+ */
+export const TimesheetRowSchema: GenMessage<TimesheetRow> = /*@__PURE__*/
+  messageDesc(file_reports, 8);
 
 /**
  * Cross-project period reporting. Read-only aggregation over existing Task and

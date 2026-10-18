@@ -325,7 +325,7 @@ FROM (
 LEFT JOIN (SELECT project_id, MAX(value) AS top FROM cmp_tasknumber GROUP BY project_id) mx
     ON mx.project_id = t.project_id;
 
--- A project's task statuses (its workflow): name, color and order are free;
+-- A project's task statuses (its workflow): name, color and order are free —
 -- `category` is one of todo / in_progress / done / cancelled and is what every
 -- report, dashboard and `completed_at` rule reads. `cmp_taskinfo.status` keeps
 -- the category of the task's current status, so those readers never join here.
@@ -387,3 +387,24 @@ CREATE TABLE IF NOT EXISTS cmp_savedview (
     created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_cmp_savedview_project_id ON cmp_savedview USING btree (project_id);
+
+-- Time spent on a task: a timer run (started_at … ended_at) or a hand-logged
+-- amount. `running` = the timer is still going, at most one per user.
+-- `work_date` is the author's local day the minutes count for.
+CREATE TABLE IF NOT EXISTS cmp_timeentry (
+    pid BIGINT PRIMARY KEY REFERENCES arke_entities(pid) ON DELETE CASCADE,
+    task_id TEXT NOT NULL,
+    project_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    work_date TEXT NOT NULL,
+    started_at TEXT,
+    ended_at TEXT,
+    running BOOLEAN NOT NULL,
+    minutes INTEGER NOT NULL,
+    note TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_cmp_timeentry_task_id ON cmp_timeentry USING btree (task_id);
+CREATE INDEX IF NOT EXISTS idx_cmp_timeentry_project_date ON cmp_timeentry USING btree (project_id, work_date);
+CREATE INDEX IF NOT EXISTS idx_cmp_timeentry_user_date ON cmp_timeentry USING btree (user_id, work_date);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_cmp_timeentry_one_running ON cmp_timeentry USING btree (user_id) WHERE running;

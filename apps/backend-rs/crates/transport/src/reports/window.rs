@@ -175,6 +175,15 @@ impl DateWindow {
     pub(crate) fn contains(&self, date: &str) -> bool {
         date >= self.start.as_str() && date < self.end.as_str()
     }
+
+    pub(crate) fn start(&self) -> &str {
+        &self.start
+    }
+
+    /// The first day after the window.
+    pub(crate) fn end(&self) -> &str {
+        &self.end
+    }
 }
 
 #[cfg(test)]

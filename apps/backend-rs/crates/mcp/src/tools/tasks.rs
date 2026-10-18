@@ -5,7 +5,7 @@
 use serde_json::{json, Value};
 use transport::api::{
     create_task_core, get_task_core, list_tasks_core, module_project, move_task_core,
-    status_by_name, update_task_core, work_pb,
+    log_time_core, status_by_name, time_pb, update_task_core, work_pb,
 };
 
 use super::{limit_arg, opt_str, opt_str_list, str_arg, truncate, Ctx, ToolError, ToolMeta};
@@ -128,6 +128,7 @@ pub(crate) fn flatten(t: &work_pb::Task) -> Value {
         "status": status_label(t.status),
         "status_name": t.status_name,
         "estimate_minutes": t.estimate_minutes,
+        "logged_minutes": t.logged_minutes,
         "priority": priority_label(t.priority),
         "module_id": t.module_id,
         "assignee_ids": t.assignee_ids,
@@ -381,4 +382,50 @@ pub async fn move_task(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
     };
     let t = move_task_core(&ctx.store, &ctx.auth, req).await?;
     Ok(flatten(&t))
+}
+
+pub const LOG_TIME: ToolMeta = ToolMeta {
+    name: "log_time",
+    description: "Record time spent on a task, as your own time entry. Use it after \
+                  finishing a piece of work so the task's logged time and the timesheet \
+                  stay accurate.",
+    schema: || {
+        json!({
+            "type": "object",
+            "properties": {
+                "task_id": { "type": "string" },
+                "minutes": { "type": "integer", "minimum": 1, "maximum": 1440, "description": "Minutes spent (e.g. 90 for 1h 30m)." },
+                "date": { "type": "string", "description": "Day the work counts for, yyyy-MM-dd. Defaults to today (UTC)." },
+                "note": { "type": "string", "description": "What was done, briefly." }
+            },
+            "required": ["task_id", "minutes"]
+        })
+    },
+    handler: |ctx, args| Box::pin(log_time(ctx, args)),
+};
+
+pub async fn log_time(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
+    let minutes = args
+        .get("minutes")
+        .and_then(Value::as_i64)
+        .and_then(|n| i32::try_from(n).ok())
+        .ok_or_else(|| ToolError::BadArgs("`minutes` must be a whole number".into()))?;
+    let e = log_time_core(
+        &ctx.store,
+        &ctx.auth,
+        time_pb::LogTimeRequest {
+            task_id: str_arg(args, "task_id")?,
+            minutes,
+            date: opt_str(args, "date"),
+            note: opt_str(args, "note"),
+        },
+    )
+    .await?;
+    Ok(json!({
+        "id": e.id,
+        "task_id": e.task_id,
+        "date": e.date,
+        "minutes": e.minutes,
+        "note": e.note,
+    }))
 }

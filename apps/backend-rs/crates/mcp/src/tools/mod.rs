@@ -84,6 +84,7 @@ pub const TOOLS: &[ToolMeta] = &[
     tasks::CREATE_TASK,
     tasks::UPDATE_TASK,
     tasks::MOVE_TASK,
+    tasks::LOG_TIME,
     projects::LIST_PROJECTS,
     projects::GET_PROJECT,
     projects::LIST_MODULES,

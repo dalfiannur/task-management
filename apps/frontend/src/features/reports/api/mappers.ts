@@ -20,6 +20,7 @@ const ZERO: PeriodTotals = {
   started: 0,
   stillOpen: 0,
   overdue: 0,
+  loggedMinutes: 0,
 };
 
 function mapTotals(t: PbTotals): PeriodTotals {
@@ -28,6 +29,7 @@ function mapTotals(t: PbTotals): PeriodTotals {
     started: t.started,
     stillOpen: t.stillOpen,
     overdue: t.overdue,
+    loggedMinutes: t.loggedMinutes,
   };
 }
 
@@ -41,6 +43,7 @@ function mapProjectRow(p: PbProjectRow): ProjectReportRow {
     overdue: p.overdue,
     doneTotal: p.doneTotal,
     total: p.total,
+    loggedMinutes: p.loggedMinutes,
   };
 }
 
@@ -52,6 +55,7 @@ function mapMemberRow(m: PbMemberRow): MemberReportRow {
     started: m.started,
     openAssigned: m.openAssigned,
     overdueAssigned: m.overdueAssigned,
+    loggedMinutes: m.loggedMinutes,
   };
 }
 

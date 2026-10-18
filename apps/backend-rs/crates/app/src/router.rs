@@ -48,6 +48,7 @@ pub fn build_router(
         .merge(transport::task_router(store.clone()))
         .merge(transport::status_router(store.clone()))
         .merge(transport::view_router(store.clone()))
+        .merge(transport::time_router(store.clone()))
         .merge(transport::page_router(store.clone()))
         .merge(transport::label_router(store.clone()))
         .merge(transport::comment_router(store.clone()))

@@ -9,6 +9,7 @@ import type { AppUser } from "@/features/auth";
 import { LabelCombobox } from "@/features/labels";
 import { CommentThread } from "@/features/comments";
 import { TaskAttachments } from "@/features/media";
+import { TaskTimeSection } from "@/features/time";
 import type { Task, TaskPriority } from "../types";
 import { TASK_PRIORITIES } from "../types";
 import { TASK_PRIORITY_CONFIG } from "../config";
@@ -439,6 +440,13 @@ export function TaskDialog({
                       <TaskAttachments
                         taskId={task.id}
                         projectId={projectId}
+                      />
+                    </div>
+                    <div className="border-t border-border pt-6">
+                      <TaskTimeSection
+                        taskId={task.id}
+                        estimateMinutes={task.estimateMinutes}
+                        loggedMinutes={task.loggedMinutes}
                       />
                     </div>
                     <div className="border-t border-border pt-6">

@@ -430,7 +430,7 @@ async fn xlsx_export_has_every_sheet_and_every_row() {
     let mut wb: Xlsx<_> = calamine::open_workbook_from_rs(std::io::Cursor::new(bytes)).unwrap();
     assert_eq!(
         wb.sheet_names(),
-        vec!["Summary", "Per project", "Per member", "Completed", "Overdue", "Activity"]
+        vec!["Summary", "Per project", "Per member", "Timesheet", "Completed", "Overdue", "Activity"]
     );
 
     let summary = wb.worksheet_range("Summary").unwrap();

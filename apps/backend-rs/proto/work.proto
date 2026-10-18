@@ -91,6 +91,8 @@ message Task {
   string status_color = 21;
   // Estimated effort; absent = not estimated.
   optional int32 estimate_minutes = 22;
+  // Total of the task's time entries (finished ones), in minutes.
+  int32 logged_minutes = 23;
 }
 
 enum TaskStatus {

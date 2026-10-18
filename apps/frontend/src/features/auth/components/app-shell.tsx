@@ -70,6 +70,7 @@ import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { cn, getInitials } from "@/lib/utils";
 import { APP_NAME } from "@/lib/app-config";
 import { NotificationBell } from "@/features/notifications";
+import { RunningTimerChip } from "@/features/time";
 import { useAssignedOpenCount } from "@/features/dashboard";
 import {
   PROJECT_STATUSES,
@@ -140,6 +141,7 @@ export function AppShell() {
               <Kbd>K</Kbd>
             </span>
           </Button>
+          <RunningTimerChip />
           <ThemeToggle />
           <NotificationBell />
         </>

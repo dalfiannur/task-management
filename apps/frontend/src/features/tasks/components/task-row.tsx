@@ -188,7 +188,7 @@ export function TaskRow({
         <DueDate task={task} />
       </div>
       <div className={cn(TASK_COLS.estimate, "hidden md:block")}>
-        <EstimateLabel minutes={task.estimateMinutes} />
+        <EstimateLabel minutes={task.estimateMinutes} logged={task.loggedMinutes} />
       </div>
       <div className={cn(TASK_COLS.priority, "hidden md:block")}>
         {task.priority === "none" ? (
@@ -248,7 +248,7 @@ export function TaskRow({
 const TASK_COLS = {
   assignee: "w-20 shrink-0",
   due: "w-24 shrink-0",
-  estimate: "w-16 shrink-0",
+  estimate: "w-24 shrink-0",
   priority: "w-16 shrink-0",
   status: "shrink-0 justify-start md:w-32",
   actions: "w-7 shrink-0",
@@ -266,7 +266,7 @@ export function TaskListHeader() {
       <span className="flex-1">Task</span>
       <span className={TASK_COLS.assignee}>Assignee</span>
       <span className={TASK_COLS.due}>Due</span>
-      <span className={TASK_COLS.estimate}>Estimate</span>
+      <span className={TASK_COLS.estimate}>Time</span>
       <span className={TASK_COLS.priority}>Priority</span>
       <span className={TASK_COLS.status}>Status</span>
       <span className={TASK_COLS.actions} />

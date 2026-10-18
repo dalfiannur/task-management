@@ -1,0 +1,77 @@
+syntax = "proto3";
+package sedjiwa.tasks.time.v1;
+
+// Time tracking: entries of work on a task, from a running timer or logged by
+// hand. Every member of the task's project sees its entries; only the author
+// (or an admin) changes or deletes one. One running timer per user: starting
+// another stops the first.
+
+service TimeService {
+  rpc StartTimer(StartTimerRequest) returns (TimeEntry);
+  // No-op (empty response) when nothing is running.
+  rpc StopTimer(StopTimerRequest) returns (StopTimerResponse);
+  rpc GetRunningTimer(GetRunningTimerRequest) returns (GetRunningTimerResponse);
+  rpc LogTime(LogTimeRequest) returns (TimeEntry);
+  rpc ListTimeEntries(ListTimeEntriesRequest) returns (ListTimeEntriesResponse);
+  rpc UpdateTimeEntry(UpdateTimeEntryRequest) returns (TimeEntry);
+  rpc DeleteTimeEntry(DeleteTimeEntryRequest) returns (DeleteTimeEntryResponse);
+}
+
+message TimeEntry {
+  string id = 1;
+  string task_id = 2;
+  string project_id = 3;
+  string user_id = 4;
+  // The day the work counts for (yyyy-MM-dd, the author's local date).
+  string date = 5;
+  // RFC 3339; set for timer entries, absent for hand-logged ones.
+  optional string started_at = 6;
+  optional string ended_at = 7;
+  // 0 while running.
+  int32 minutes = 8;
+  string note = 9;
+  string created_at = 10;
+  bool running = 11;
+  // For lists across tasks; empty if the task was deleted.
+  string task_title = 12;
+  int32 task_number = 13;
+}
+
+message StartTimerRequest {
+  string task_id = 1;
+  // The author's local date; defaults to today (UTC).
+  optional string date = 2;
+  optional string note = 3;
+}
+message StopTimerRequest {}
+message StopTimerResponse { optional TimeEntry entry = 1; }
+message GetRunningTimerRequest {}
+message GetRunningTimerResponse { optional TimeEntry entry = 1; }
+
+message LogTimeRequest {
+  string task_id = 1;
+  int32 minutes = 2;     // 1 … 1440
+  optional string date = 3; // yyyy-MM-dd; defaults to today (UTC)
+  optional string note = 4;
+}
+
+// At least one of task_id / project_id / user_id. Only entries in projects the
+// caller belongs to are returned (all for an admin). Dates are inclusive.
+message ListTimeEntriesRequest {
+  optional string task_id = 1;
+  optional string project_id = 2;
+  optional string user_id = 3;
+  optional string from = 4;
+  optional string to = 5;
+}
+message ListTimeEntriesResponse { repeated TimeEntry entries = 1; }
+
+// A running entry only takes a note.
+message UpdateTimeEntryRequest {
+  string id = 1;
+  optional int32 minutes = 2;
+  optional string date = 3;
+  optional string note = 4;
+}
+message DeleteTimeEntryRequest { string id = 1; }
+message DeleteTimeEntryResponse { bool ok = 1; }

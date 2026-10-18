@@ -37,6 +37,8 @@ export interface PeriodTotals {
   started: number;
   stillOpen: number;
   overdue: number;
+  /** Time entries dated in the window. */
+  loggedMinutes: number;
 }
 
 export interface ProjectReportRow {
@@ -48,6 +50,7 @@ export interface ProjectReportRow {
   overdue: number;
   doneTotal: number;
   total: number;
+  loggedMinutes: number;
 }
 
 export interface MemberReportRow {
@@ -57,6 +60,7 @@ export interface MemberReportRow {
   started: number;
   openAssigned: number;
   overdueAssigned: number;
+  loggedMinutes: number;
 }
 
 export interface ActivitySummaryRow {

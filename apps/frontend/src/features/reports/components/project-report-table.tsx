@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { formatMinutes } from "@/lib/duration";
 import type { ProjectReportRow } from "../types";
 
 export function ProjectReportTable({ rows }: { rows: ProjectReportRow[] }) {
@@ -19,6 +20,7 @@ export function ProjectReportTable({ rows }: { rows: ProjectReportRow[] }) {
             <th className="text-label px-4 py-3 text-right">Started</th>
             <th className="text-label px-4 py-3 text-right">Open now</th>
             <th className="text-label px-4 py-3 text-right">Overdue now</th>
+            <th className="text-label px-4 py-3 text-right">Time logged</th>
             <th className="text-label px-4 py-3 text-right">Progress</th>
           </tr>
         </thead>
@@ -48,6 +50,9 @@ export function ProjectReportTable({ rows }: { rows: ProjectReportRow[] }) {
                   ) : (
                     r.overdue
                   )}
+                </td>
+                <td className="text-num px-4 py-3 text-right">
+                  {r.loggedMinutes ? formatMinutes(r.loggedMinutes) : "—"}
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center justify-end gap-2">

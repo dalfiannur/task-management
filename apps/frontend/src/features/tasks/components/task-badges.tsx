@@ -70,21 +70,35 @@ export function StatusBadge({ task }: { task: StatusFields }) {
   );
 }
 
-/** A task's estimate (`1h 30m`), or a quiet dash when there is none. */
+/** A task's estimate (`1h 30m`), with the time logged so far in front of it
+ *  once there is any (`45m / 2h`, red past the estimate). A quiet dash when
+ *  there is neither. */
 export function EstimateLabel({
   minutes,
+  logged = 0,
   dash = true,
 }: {
   minutes?: number;
+  logged?: number;
   /** Show `—` for no estimate (list columns); off where absence is silent. */
   dash?: boolean;
 }) {
-  if (!minutes) {
+  if (!minutes && !logged) {
     return dash ? <span className="text-xs text-muted-foreground">—</span> : null;
   }
+  const over = !!minutes && logged > minutes;
   return (
-    <span className="text-num text-xs whitespace-nowrap text-muted-foreground" title="Estimate">
-      {formatMinutes(minutes)}
+    <span
+      className="text-num text-xs whitespace-nowrap text-muted-foreground"
+      title={logged ? "Logged / estimate" : "Estimate"}
+    >
+      {logged > 0 && (
+        <span className={cn(over ? "font-medium text-destructive" : "text-foreground")}>
+          {formatMinutes(logged)}
+          {minutes ? " / " : ""}
+        </span>
+      )}
+      {minutes ? formatMinutes(minutes) : null}
     </span>
   );
 }

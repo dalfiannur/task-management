@@ -39,6 +39,8 @@ export interface Task {
   statusColor: string;
   /** Estimated effort in minutes; absent = not estimated. */
   estimateMinutes?: number;
+  /** Minutes of finished time entries. */
+  loggedMinutes: number;
 }
 
 /** One step of a project's workflow. `category` is what every rule reads

@@ -1,3 +1,4 @@
+import { formatMinutes } from "@/lib/duration";
 import type { MemberReportRow } from "../types";
 
 export function MemberReportTable({ rows }: { rows: MemberReportRow[] }) {
@@ -18,6 +19,7 @@ export function MemberReportTable({ rows }: { rows: MemberReportRow[] }) {
             <th className="text-label px-4 py-3 text-right">Started</th>
             <th className="text-label px-4 py-3 text-right">Open now</th>
             <th className="text-label px-4 py-3 text-right">Overdue now</th>
+            <th className="text-label px-4 py-3 text-right">Time logged</th>
           </tr>
         </thead>
         <tbody>
@@ -40,6 +42,9 @@ export function MemberReportTable({ rows }: { rows: MemberReportRow[] }) {
                 ) : (
                   r.overdueAssigned
                 )}
+              </td>
+              <td className="text-num px-4 py-3 text-right">
+                {r.loggedMinutes ? formatMinutes(r.loggedMinutes) : "—"}
               </td>
             </tr>
           ))}

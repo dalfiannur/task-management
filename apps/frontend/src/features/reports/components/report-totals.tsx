@@ -1,5 +1,6 @@
-import { AlertTriangle, CheckCircle2, ListTodo, Plus } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Clock, ListTodo, Plus } from "lucide-react";
 import { StatCard } from "@/components/shared/stat-card";
+import { formatMinutes } from "@/lib/duration";
 import type { PeriodTotals } from "../types";
 
 /** The delta line under a period quantity.
@@ -20,7 +21,7 @@ function Delta({ now, before }: { now: number; before: number | null }) {
   );
 }
 
-/** Four totals, two of which carry a delta against the previous window.
+/** Five totals; the three of the window carry a delta against the previous one.
  *
  *  The delta for a stat lives in that stat's own grid cell, stacked beneath
  *  its `StatCard`, rather than in a second grid row underneath the whole
@@ -38,7 +39,7 @@ export function ReportTotals({
   prev: PeriodTotals | null;
 }) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 print:break-inside-avoid">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 print:break-inside-avoid">
       <div className="space-y-2">
         <StatCard icon={CheckCircle2} label="Completed" value={totals.completed} />
         {prev && <Delta now={totals.completed} before={prev.completed} />}
@@ -52,6 +53,18 @@ export function ReportTotals({
       </div>
       <div className="space-y-2">
         <StatCard icon={AlertTriangle} label="Overdue" value={totals.overdue} alert />
+      </div>
+      <div className="space-y-2">
+        <StatCard
+          icon={Clock}
+          label="Time logged"
+          value={totals.loggedMinutes ? formatMinutes(totals.loggedMinutes) : "0h"}
+        />
+        {prev && (
+          <p className="text-num text-xs text-muted-foreground">
+            vs {prev.loggedMinutes ? formatMinutes(prev.loggedMinutes) : "0h"} previous
+          </p>
+        )}
       </div>
     </div>
   );
