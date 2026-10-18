@@ -112,6 +112,14 @@ fn arr<'a>(v: &'a Value, key: &str) -> Vec<&'a Value> {
     v[key].as_array().map(|a| a.iter().collect()).unwrap_or_default()
 }
 
+/// Subtask titles of a template (`subtasks: [{ "title": … }]`).
+fn sub_titles(tpl: &Value) -> Vec<String> {
+    arr(tpl, "subtasks").iter().map(|x| {
+        assert!(x.is_object(), "subtasks travel as objects: {x}");
+        s(x, "title")
+    }).collect()
+}
+
 fn strs(v: &Value, key: &str) -> Vec<String> {
     arr(v, key).iter().map(|x| x.as_str().unwrap_or_default().to_string()).collect()
 }
@@ -564,7 +572,7 @@ async fn task_templates_snapshot_a_task_and_recreate_it() {
     let mut want = vec![l1.clone(), l2.clone()];
     want.sort();
     assert_eq!(ls, want);
-    assert_eq!(strs(&tpl, "subtasks"), vec!["Tag", "Build", "Announce"], "subtask titles in order");
+    assert_eq!(sub_titles(&tpl), vec!["Tag", "Build", "Announce"], "subtask titles in order");
     assert_eq!(tpl["createdBy"], member.as_str());
     assert_eq!(tpl["projectId"], pid.as_str());
 
@@ -622,6 +630,7 @@ async fn task_templates_snapshot_a_task_and_recreate_it() {
     fails(&router, &use_, &to, json!({ "templateId": "999999999999", "moduleId": m }), "not_found").await;
     fails(&router, &use_, &to, json!({ "templateId": tid, "moduleId": "999999999999" }), "not_found").await;
     fails(&router, &use_, &tx, json!({ "templateId": tid, "moduleId": m }), "permission_denied").await;
+    fails(&router, &use_, &to, json!({ "templateId": tid, "moduleId": m, "dueDate": "2026-02-30" }), "invalid_argument").await;
 }
 
 #[tokio::test]
@@ -639,10 +648,16 @@ async fn a_task_template_keeps_at_most_fifty_subtasks() {
         task(&router, &to, &m, json!({ "title": format!("s{i:02}"), "parentId": parent })).await;
     }
     let tpl = ok(&router, &format!("{TPL}/SaveTaskTemplate"), &to, json!({ "taskId": parent, "name": "big" })).await;
-    let subs = strs(&tpl, "subtasks");
+    let subs = sub_titles(&tpl);
     assert_eq!(subs.len(), 50, "capped at 50");
     assert_eq!(subs.first().map(String::as_str), Some("s00"));
     assert_eq!(subs.last().map(String::as_str), Some("s49"), "the first 50 in order");
+    let stored: String = sqlx::query_scalar("SELECT subtasks::text FROM cmp_tasktemplate WHERE pid = $1")
+        .bind(s(&tpl, "id").parse::<i64>().unwrap())
+        .fetch_one(store.pool())
+        .await
+        .unwrap();
+    assert!(stored.starts_with(r#"[{"title": "s00"}, {"title": "s01"}"#), "stored as ordered objects: {stored}");
 }
 
 #[tokio::test]
@@ -701,4 +716,52 @@ async fn deleting_a_project_removes_its_task_templates() {
         .await
         .unwrap();
     assert_eq!(left, 0, "a deleted project's task templates go with it");
+}
+
+#[tokio::test]
+async fn templates_saved_with_plain_string_subtasks_still_work() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let owner = mk_user(&store).await;
+    let to = token(&owner);
+    let pid = project_with(&router, &owner, &[]).await;
+    let m = module(&router, &to, &pid, "M", None).await;
+    let t = s(&task(&router, &to, &m, json!({ "title": "Old style" })).await, "id");
+    let tpl = ok(&router, &format!("{TPL}/SaveTaskTemplate"), &to, json!({ "taskId": t, "name": "legacy" })).await;
+    let tid = s(&tpl, "id");
+    // New rows store ordered objects…
+    let stored: String = sqlx::query_scalar("SELECT subtasks::text FROM cmp_tasktemplate WHERE pid = $1")
+        .bind(tid.parse::<i64>().unwrap())
+        .fetch_one(store.pool())
+        .await
+        .unwrap();
+    assert_eq!(stored, "[]", "a template without subtasks stores an empty list");
+    // …while rows from before the change hold plain strings. Write one directly
+    // (there is no Row type for cmp_tasktemplate), plus a mixed one.
+    for (shape, want) in [
+        (r#"["Third", "First", "Second"]"#, vec!["Third", "First", "Second"]),
+        (r#"["plain", {"title": "object"}]"#, vec!["plain", "object"]),
+    ] {
+        sqlx::query("UPDATE cmp_tasktemplate SET subtasks = $2::jsonb WHERE pid = $1")
+            .bind(tid.parse::<i64>().unwrap())
+            .bind(shape)
+            .execute(store.pool())
+            .await
+            .unwrap();
+        let l = ok(&router, &format!("{TPL}/ListTaskTemplates"), &to, json!({ "projectId": pid })).await;
+        let row = arr(&l, "templates").into_iter().find(|x| s(x, "id") == tid).unwrap().clone();
+        assert_eq!(sub_titles(&row), want, "{shape} lists as objects, in order");
+
+        let made = ok(&router, &format!("{TPL}/CreateTaskFromTemplate"), &to, json!({ "templateId": tid, "moduleId": m })).await;
+        let mut subs: Vec<(i64, String)> = tasks_of(&router, &to, &pid)
+            .await
+            .iter()
+            .filter(|x| x["parentId"] == made["id"])
+            .map(|x| (num(x, "order"), s(x, "title")))
+            .collect();
+        subs.sort();
+        assert_eq!(subs.into_iter().map(|x| x.1).collect::<Vec<_>>(), want, "{shape} creates its subtasks in order");
+    }
 }

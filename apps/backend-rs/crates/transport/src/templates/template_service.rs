@@ -8,7 +8,7 @@ use auth::AuthUser;
 use axum::Extension;
 use connectrpc_axum::{ConnectError, ConnectRequest, ConnectResponse};
 use domain::task::TaskPriority;
-use domain::template::{template_name_ok, MAX_TEMPLATE_SUBTASKS};
+use domain::template::{template_name_ok, TemplateSubtask, MAX_TEMPLATE_SUBTASKS};
 use persistence::Store;
 
 use super::record::{
@@ -35,7 +35,11 @@ fn to_proto(t: &TemplateRecord) -> pb::TaskTemplate {
         priority: TaskPriority::parse(&t.priority).unwrap_or(TaskPriority::None).to_proto(),
         estimate_minutes: t.estimate_minutes,
         label_ids: t.label_ids.clone(),
-        subtasks: t.subtasks.clone(),
+        subtasks: t
+            .subtasks
+            .iter()
+            .map(|s| pb::TemplateSubtask { title: s.title.clone() })
+            .collect(),
         created_by: t.created_by.clone(),
         created_at: t.created_at.clone(),
     }
@@ -82,8 +86,13 @@ async fn save_task_template(
         .await
         .map_err(internal)?
         .ok_or_else(|| ConnectError::new_not_found("task not found"))?;
-    let mut subtasks = subtask_titles(&store, &r.task_id).await.map_err(internal)?;
-    subtasks.truncate(MAX_TEMPLATE_SUBTASKS);
+    let subtasks: Vec<TemplateSubtask> = subtask_titles(&store, &r.task_id)
+        .await
+        .map_err(internal)?
+        .into_iter()
+        .take(MAX_TEMPLATE_SUBTASKS)
+        .map(|title| TemplateSubtask { title })
+        .collect();
     let now = crate::timelog::record::now_iso();
     let pid = tpl::create_template(
         &store,
@@ -175,7 +184,8 @@ async fn create_task_from_template(
         },
     )
     .await?;
-    for title in &t.subtasks {
+    for sub in &t.subtasks {
+        let title = &sub.title;
         create_task_core(
             &store,
             notifier.as_ref(),

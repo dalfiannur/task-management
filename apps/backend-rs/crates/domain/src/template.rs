@@ -8,6 +8,12 @@ use crate::workload::{format_date, parse_date};
 pub const MAX_TEMPLATE_NAME: usize = 80;
 pub const MAX_TEMPLATE_SUBTASKS: usize = 50;
 
+/// One subtask a task template recreates.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TemplateSubtask {
+    pub title: String,
+}
+
 pub fn template_name_ok(name: &str) -> bool {
     let n = name.trim().chars().count();
     (1..=MAX_TEMPLATE_NAME).contains(&n)

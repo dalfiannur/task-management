@@ -17,7 +17,8 @@ export interface TaskTemplate {
   priority: TaskPriority;
   estimateMinutes?: number;
   labelIds: string[];
-  subtasks: string[];
+  /** In order; only the title for now. */
+  subtasks: { title: string }[];
   createdBy: string;
 }
 
@@ -30,7 +31,7 @@ function mapTemplate(t: PbTemplate): TaskTemplate {
     priority: priorityFromProto(t.priority),
     estimateMinutes: t.estimateMinutes,
     labelIds: [...t.labelIds],
-    subtasks: [...t.subtasks],
+    subtasks: t.subtasks.map((s) => ({ title: s.title })),
     createdBy: t.createdBy,
   };
 }

@@ -8,7 +8,7 @@
 use std::collections::HashMap;
 
 use domain::task::TaskStatus;
-use domain::template::shift_date;
+use domain::template::{shift_date, TemplateSubtask};
 use persistence::{entity, Store};
 use sqlx::postgres::PgRow;
 use sqlx::{PgConnection, Row};
@@ -377,15 +377,18 @@ pub(crate) struct TemplateRecord {
     pub priority: String,
     pub estimate_minutes: Option<i32>,
     pub label_ids: Vec<String>,
-    pub subtasks: Vec<String>,
+    pub subtasks: Vec<TemplateSubtask>,
     pub created_by: String,
     pub created_at: String,
 }
 
+/// Subtasks are stored as JSONB objects (`{"title": …}`); rows written before
+/// that hold plain strings, which still read as titles.
 const SELECT_TEMPLATE: &str = "SELECT pid, project_id, name, title, description, priority, \
        estimate_minutes, \
        ARRAY(SELECT jsonb_array_elements_text(label_ids)) AS label_ids, \
-       ARRAY(SELECT jsonb_array_elements_text(subtasks)) AS subtasks, \
+       ARRAY(SELECT CASE jsonb_typeof(e) WHEN 'string' THEN e #>> '{}' ELSE e ->> 'title' END \
+             FROM jsonb_array_elements(subtasks) WITH ORDINALITY AS x(e, n) ORDER BY n) AS subtasks, \
        created_by, created_at FROM cmp_tasktemplate";
 
 fn read_template(row: &PgRow) -> sqlx::Result<TemplateRecord> {
@@ -398,7 +401,11 @@ fn read_template(row: &PgRow) -> sqlx::Result<TemplateRecord> {
         priority: row.try_get("priority")?,
         estimate_minutes: row.try_get("estimate_minutes")?,
         label_ids: row.try_get("label_ids")?,
-        subtasks: row.try_get("subtasks")?,
+        subtasks: row
+            .try_get::<Vec<Option<String>>, _>("subtasks")?
+            .into_iter()
+            .map(|t| TemplateSubtask { title: t.unwrap_or_default() })
+            .collect(),
         created_by: row.try_get("created_by")?,
         created_at: row.try_get("created_at")?,
     })
@@ -434,7 +441,7 @@ pub(crate) struct NewTemplate<'a> {
     pub priority: &'a str,
     pub estimate_minutes: Option<i32>,
     pub label_ids: Vec<String>,
-    pub subtasks: Vec<String>,
+    pub subtasks: Vec<TemplateSubtask>,
     pub created_by: &'a str,
     pub created_at: &'a str,
 }
@@ -445,7 +452,9 @@ pub(crate) async fn create_template(store: &Store, t: NewTemplate<'_>) -> anyhow
     sqlx::query(
         "INSERT INTO cmp_tasktemplate (pid, project_id, name, title, description, priority, \
          estimate_minutes, label_ids, subtasks, created_by, created_at) \
-         VALUES ($1, $2, $3, $4, $5, $6, $7, to_jsonb($8::text[]), to_jsonb($9::text[]), $10, $11)",
+         VALUES ($1, $2, $3, $4, $5, $6, $7, to_jsonb($8::text[]), \
+                 (SELECT COALESCE(jsonb_agg(jsonb_build_object('title', t) ORDER BY n), '[]'::jsonb) \
+                  FROM unnest($9::text[]) WITH ORDINALITY AS u(t, n)), $10, $11)",
     )
     .bind(pid)
     .bind(t.project_id)
@@ -455,7 +464,7 @@ pub(crate) async fn create_template(store: &Store, t: NewTemplate<'_>) -> anyhow
     .bind(t.priority)
     .bind(t.estimate_minutes)
     .bind(t.label_ids)
-    .bind(t.subtasks)
+    .bind(t.subtasks.into_iter().map(|s| s.title).collect::<Vec<_>>())
     .bind(t.created_by)
     .bind(t.created_at)
     .execute(&mut *tx)

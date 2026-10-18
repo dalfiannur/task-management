@@ -26,9 +26,15 @@ message TaskTemplate {
   sedjiwa.tasks.work.v1.TaskPriority priority = 6;
   optional int32 estimate_minutes = 7;
   repeated string label_ids = 8;
-  repeated string subtasks = 9;
+  repeated TemplateSubtask subtasks = 9;
   string created_by = 10;
   string created_at = 11;
+}
+
+// One subtask a template recreates. Only the title for now; a message so
+// more fields can follow without changing the field's type.
+message TemplateSubtask {
+  string title = 1;
 }
 
 message ListTaskTemplatesRequest { string project_id = 1; }

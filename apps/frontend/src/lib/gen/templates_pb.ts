@@ -12,7 +12,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file templates.proto.
  */
 export const file_templates: GenFile = /*@__PURE__*/
-  fileDesc("Cg90ZW1wbGF0ZXMucHJvdG8SGnNlZGppd2EudGFza3MudGVtcGxhdGVzLnYxIpgCCgxUYXNrVGVtcGxhdGUSCgoCaWQYASABKAkSEgoKcHJvamVjdF9pZBgCIAEoCRIMCgRuYW1lGAMgASgJEg0KBXRpdGxlGAQgASgJEhMKC2Rlc2NyaXB0aW9uGAUgASgJEjUKCHByaW9yaXR5GAYgASgOMiMuc2Vkaml3YS50YXNrcy53b3JrLnYxLlRhc2tQcmlvcml0eRIdChBlc3RpbWF0ZV9taW51dGVzGAcgASgFSACIAQESEQoJbGFiZWxfaWRzGAggAygJEhAKCHN1YnRhc2tzGAkgAygJEhIKCmNyZWF0ZWRfYnkYCiABKAkSEgoKY3JlYXRlZF9hdBgLIAEoCUITChFfZXN0aW1hdGVfbWludXRlcyIuChhMaXN0VGFza1RlbXBsYXRlc1JlcXVlc3QSEgoKcHJvamVjdF9pZBgBIAEoCSJYChlMaXN0VGFza1RlbXBsYXRlc1Jlc3BvbnNlEjsKCXRlbXBsYXRlcxgBIAMoCzIoLnNlZGppd2EudGFza3MudGVtcGxhdGVzLnYxLlRhc2tUZW1wbGF0ZSI4ChdTYXZlVGFza1RlbXBsYXRlUmVxdWVzdBIPCgd0YXNrX2lkGAEgASgJEgwKBG5hbWUYAiABKAkiJwoZRGVsZXRlVGFza1RlbXBsYXRlUmVxdWVzdBIKCgJpZBgBIAEoCSIoChpEZWxldGVUYXNrVGVtcGxhdGVSZXNwb25zZRIKCgJvaxgBIAEoCCKfAQodQ3JlYXRlVGFza0Zyb21UZW1wbGF0ZVJlcXVlc3QSEwoLdGVtcGxhdGVfaWQYASABKAkSEQoJbW9kdWxlX2lkGAIgASgJEhIKBXRpdGxlGAMgASgJSACIAQESFAoMYXNzaWduZWVfaWRzGAQgAygJEhUKCGR1ZV9kYXRlGAUgASgJSAGIAQFCCAoGX3RpdGxlQgsKCV9kdWVfZGF0ZTL/AwoPVGVtcGxhdGVTZXJ2aWNlEoABChFMaXN0VGFza1RlbXBsYXRlcxI0LnNlZGppd2EudGFza3MudGVtcGxhdGVzLnYxLkxpc3RUYXNrVGVtcGxhdGVzUmVxdWVzdBo1LnNlZGppd2EudGFza3MudGVtcGxhdGVzLnYxLkxpc3RUYXNrVGVtcGxhdGVzUmVzcG9uc2UScQoQU2F2ZVRhc2tUZW1wbGF0ZRIzLnNlZGppd2EudGFza3MudGVtcGxhdGVzLnYxLlNhdmVUYXNrVGVtcGxhdGVSZXF1ZXN0Giguc2Vkaml3YS50YXNrcy50ZW1wbGF0ZXMudjEuVGFza1RlbXBsYXRlEoMBChJEZWxldGVUYXNrVGVtcGxhdGUSNS5zZWRqaXdhLnRhc2tzLnRlbXBsYXRlcy52MS5EZWxldGVUYXNrVGVtcGxhdGVSZXF1ZXN0GjYuc2Vkaml3YS50YXNrcy50ZW1wbGF0ZXMudjEuRGVsZXRlVGFza1RlbXBsYXRlUmVzcG9uc2UScAoWQ3JlYXRlVGFza0Zyb21UZW1wbGF0ZRI5LnNlZGppd2EudGFza3MudGVtcGxhdGVzLnYxLkNyZWF0ZVRhc2tGcm9tVGVtcGxhdGVSZXF1ZXN0Ghsuc2Vkaml3YS50YXNrcy53b3JrLnYxLlRhc2tiBnByb3RvMw", [file_work]);
+  fileDesc("Cg90ZW1wbGF0ZXMucHJvdG8SGnNlZGppd2EudGFza3MudGVtcGxhdGVzLnYxIsUCCgxUYXNrVGVtcGxhdGUSCgoCaWQYASABKAkSEgoKcHJvamVjdF9pZBgCIAEoCRIMCgRuYW1lGAMgASgJEg0KBXRpdGxlGAQgASgJEhMKC2Rlc2NyaXB0aW9uGAUgASgJEjUKCHByaW9yaXR5GAYgASgOMiMuc2Vkaml3YS50YXNrcy53b3JrLnYxLlRhc2tQcmlvcml0eRIdChBlc3RpbWF0ZV9taW51dGVzGAcgASgFSACIAQESEQoJbGFiZWxfaWRzGAggAygJEj0KCHN1YnRhc2tzGAkgAygLMisuc2Vkaml3YS50YXNrcy50ZW1wbGF0ZXMudjEuVGVtcGxhdGVTdWJ0YXNrEhIKCmNyZWF0ZWRfYnkYCiABKAkSEgoKY3JlYXRlZF9hdBgLIAEoCUITChFfZXN0aW1hdGVfbWludXRlcyIgCg9UZW1wbGF0ZVN1YnRhc2sSDQoFdGl0bGUYASABKAkiLgoYTGlzdFRhc2tUZW1wbGF0ZXNSZXF1ZXN0EhIKCnByb2plY3RfaWQYASABKAkiWAoZTGlzdFRhc2tUZW1wbGF0ZXNSZXNwb25zZRI7Cgl0ZW1wbGF0ZXMYASADKAsyKC5zZWRqaXdhLnRhc2tzLnRlbXBsYXRlcy52MS5UYXNrVGVtcGxhdGUiOAoXU2F2ZVRhc2tUZW1wbGF0ZVJlcXVlc3QSDwoHdGFza19pZBgBIAEoCRIMCgRuYW1lGAIgASgJIicKGURlbGV0ZVRhc2tUZW1wbGF0ZVJlcXVlc3QSCgoCaWQYASABKAkiKAoaRGVsZXRlVGFza1RlbXBsYXRlUmVzcG9uc2USCgoCb2sYASABKAginwEKHUNyZWF0ZVRhc2tGcm9tVGVtcGxhdGVSZXF1ZXN0EhMKC3RlbXBsYXRlX2lkGAEgASgJEhEKCW1vZHVsZV9pZBgCIAEoCRISCgV0aXRsZRgDIAEoCUgAiAEBEhQKDGFzc2lnbmVlX2lkcxgEIAMoCRIVCghkdWVfZGF0ZRgFIAEoCUgBiAEBQggKBl90aXRsZUILCglfZHVlX2RhdGUy/wMKD1RlbXBsYXRlU2VydmljZRKAAQoRTGlzdFRhc2tUZW1wbGF0ZXMSNC5zZWRqaXdhLnRhc2tzLnRlbXBsYXRlcy52MS5MaXN0VGFza1RlbXBsYXRlc1JlcXVlc3QaNS5zZWRqaXdhLnRhc2tzLnRlbXBsYXRlcy52MS5MaXN0VGFza1RlbXBsYXRlc1Jlc3BvbnNlEnEKEFNhdmVUYXNrVGVtcGxhdGUSMy5zZWRqaXdhLnRhc2tzLnRlbXBsYXRlcy52MS5TYXZlVGFza1RlbXBsYXRlUmVxdWVzdBooLnNlZGppd2EudGFza3MudGVtcGxhdGVzLnYxLlRhc2tUZW1wbGF0ZRKDAQoSRGVsZXRlVGFza1RlbXBsYXRlEjUuc2Vkaml3YS50YXNrcy50ZW1wbGF0ZXMudjEuRGVsZXRlVGFza1RlbXBsYXRlUmVxdWVzdBo2LnNlZGppd2EudGFza3MudGVtcGxhdGVzLnYxLkRlbGV0ZVRhc2tUZW1wbGF0ZVJlc3BvbnNlEnAKFkNyZWF0ZVRhc2tGcm9tVGVtcGxhdGUSOS5zZWRqaXdhLnRhc2tzLnRlbXBsYXRlcy52MS5DcmVhdGVUYXNrRnJvbVRlbXBsYXRlUmVxdWVzdBobLnNlZGppd2EudGFza3Mud29yay52MS5UYXNrYgZwcm90bzM", [file_work]);
 
 /**
  * @generated from message sedjiwa.tasks.templates.v1.TaskTemplate
@@ -59,9 +59,9 @@ export type TaskTemplate = Message<"sedjiwa.tasks.templates.v1.TaskTemplate"> & 
   labelIds: string[];
 
   /**
-   * @generated from field: repeated string subtasks = 9;
+   * @generated from field: repeated sedjiwa.tasks.templates.v1.TemplateSubtask subtasks = 9;
    */
-  subtasks: string[];
+  subtasks: TemplateSubtask[];
 
   /**
    * @generated from field: string created_by = 10;
@@ -82,6 +82,26 @@ export const TaskTemplateSchema: GenMessage<TaskTemplate> = /*@__PURE__*/
   messageDesc(file_templates, 0);
 
 /**
+ * One subtask a template recreates. Only the title for now; a message so
+ * more fields can follow without changing the field's type.
+ *
+ * @generated from message sedjiwa.tasks.templates.v1.TemplateSubtask
+ */
+export type TemplateSubtask = Message<"sedjiwa.tasks.templates.v1.TemplateSubtask"> & {
+  /**
+   * @generated from field: string title = 1;
+   */
+  title: string;
+};
+
+/**
+ * Describes the message sedjiwa.tasks.templates.v1.TemplateSubtask.
+ * Use `create(TemplateSubtaskSchema)` to create a new message.
+ */
+export const TemplateSubtaskSchema: GenMessage<TemplateSubtask> = /*@__PURE__*/
+  messageDesc(file_templates, 1);
+
+/**
  * @generated from message sedjiwa.tasks.templates.v1.ListTaskTemplatesRequest
  */
 export type ListTaskTemplatesRequest = Message<"sedjiwa.tasks.templates.v1.ListTaskTemplatesRequest"> & {
@@ -96,7 +116,7 @@ export type ListTaskTemplatesRequest = Message<"sedjiwa.tasks.templates.v1.ListT
  * Use `create(ListTaskTemplatesRequestSchema)` to create a new message.
  */
 export const ListTaskTemplatesRequestSchema: GenMessage<ListTaskTemplatesRequest> = /*@__PURE__*/
-  messageDesc(file_templates, 1);
+  messageDesc(file_templates, 2);
 
 /**
  * @generated from message sedjiwa.tasks.templates.v1.ListTaskTemplatesResponse
@@ -113,7 +133,7 @@ export type ListTaskTemplatesResponse = Message<"sedjiwa.tasks.templates.v1.List
  * Use `create(ListTaskTemplatesResponseSchema)` to create a new message.
  */
 export const ListTaskTemplatesResponseSchema: GenMessage<ListTaskTemplatesResponse> = /*@__PURE__*/
-  messageDesc(file_templates, 2);
+  messageDesc(file_templates, 3);
 
 /**
  * @generated from message sedjiwa.tasks.templates.v1.SaveTaskTemplateRequest
@@ -135,7 +155,7 @@ export type SaveTaskTemplateRequest = Message<"sedjiwa.tasks.templates.v1.SaveTa
  * Use `create(SaveTaskTemplateRequestSchema)` to create a new message.
  */
 export const SaveTaskTemplateRequestSchema: GenMessage<SaveTaskTemplateRequest> = /*@__PURE__*/
-  messageDesc(file_templates, 3);
+  messageDesc(file_templates, 4);
 
 /**
  * @generated from message sedjiwa.tasks.templates.v1.DeleteTaskTemplateRequest
@@ -152,7 +172,7 @@ export type DeleteTaskTemplateRequest = Message<"sedjiwa.tasks.templates.v1.Dele
  * Use `create(DeleteTaskTemplateRequestSchema)` to create a new message.
  */
 export const DeleteTaskTemplateRequestSchema: GenMessage<DeleteTaskTemplateRequest> = /*@__PURE__*/
-  messageDesc(file_templates, 4);
+  messageDesc(file_templates, 5);
 
 /**
  * @generated from message sedjiwa.tasks.templates.v1.DeleteTaskTemplateResponse
@@ -169,7 +189,7 @@ export type DeleteTaskTemplateResponse = Message<"sedjiwa.tasks.templates.v1.Del
  * Use `create(DeleteTaskTemplateResponseSchema)` to create a new message.
  */
 export const DeleteTaskTemplateResponseSchema: GenMessage<DeleteTaskTemplateResponse> = /*@__PURE__*/
-  messageDesc(file_templates, 5);
+  messageDesc(file_templates, 6);
 
 /**
  * @generated from message sedjiwa.tasks.templates.v1.CreateTaskFromTemplateRequest
@@ -208,7 +228,7 @@ export type CreateTaskFromTemplateRequest = Message<"sedjiwa.tasks.templates.v1.
  * Use `create(CreateTaskFromTemplateRequestSchema)` to create a new message.
  */
 export const CreateTaskFromTemplateRequestSchema: GenMessage<CreateTaskFromTemplateRequest> = /*@__PURE__*/
-  messageDesc(file_templates, 6);
+  messageDesc(file_templates, 7);
 
 /**
  * Task templates: a task's title, description, priority, estimate, labels and
