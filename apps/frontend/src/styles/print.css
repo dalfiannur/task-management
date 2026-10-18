@@ -58,6 +58,11 @@
     background: #ffffff;
   }
 
+  /* sedjiwa-ui's SidebarLayout header takes no className; hide it here. */
+  [data-slot="sidebar-layout-header"] {
+    display: none;
+  }
+
   @page {
     margin: 14mm;
   }

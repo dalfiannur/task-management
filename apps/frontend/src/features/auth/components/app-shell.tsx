@@ -49,15 +49,13 @@ import {
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarHeader,
-  SidebarInset,
+  SidebarLayout,
   SidebarMenu,
   SidebarMenuAction,
   SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarProvider,
   SidebarRail,
-  SidebarTrigger,
   useSidebar,
 } from "sedjiwa-ui";
 import {
@@ -108,10 +106,12 @@ const SECTIONS: { to: string; label: string }[] = [
   { to: "/settings/tokens", label: "Access tokens" },
 ];
 
-/** Authed shell, built from sedjiwa-ui's `Sidebar*` primitives: an icon-rail
- *  sidebar on desktop (a sheet below `md`, handled by the primitive) and a
- *  sticky action bar carrying the breadcrumb over the outlet.
+/** Authed shell: sedjiwa-ui's ready-made `SidebarLayout` — icon-rail sidebar
+ *  (a sheet below `md`), sticky header with the trigger on the left and our
+ *  actions on the right, content on the raised `--surface`.
  *
+ *  The layout's header has no slot on the left, so the breadcrumb opens the
+ *  content instead. Pages keep their own padding; the layout's is zeroed.
  *  Collapsed is our persisted Jotai preference rather than the primitive's
  *  cookie, so it survives the same way it did before the port. */
 export function AppShell() {
@@ -119,16 +119,13 @@ export function AppShell() {
   const setSearchOpen = useSetAtom(searchOpenAtom);
 
   return (
-    <SidebarProvider
+    <SidebarLayout
       open={!collapsed}
       onOpenChange={(open) => setCollapsed(!open)}
-    >
-      <SearchOverlay />
-      <AppSidebar />
-      <SidebarInset className="min-w-0">
-        <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b bg-background px-4 print:hidden">
-          <SidebarTrigger className="-ml-1" />
-          <ShellBreadcrumb />
+      sidebar={<AppSidebar />}
+      contentClassName="p-0 md:px-0"
+      headerActions={
+        <>
           <Button
             variant="outline"
             size="sm"
@@ -143,16 +140,17 @@ export function AppShell() {
               <Kbd>K</Kbd>
             </span>
           </Button>
-          <div className="flex shrink-0 items-center gap-3">
-            <ThemeToggle />
-            <NotificationBell />
-          </div>
-        </header>
-        <div className="flex-1">
-          <Outlet />
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+          <ThemeToggle />
+          <NotificationBell />
+        </>
+      }
+    >
+      <SearchOverlay />
+      <div className="px-4 pt-4 sm:px-6 print:hidden">
+        <ShellBreadcrumb />
+      </div>
+      <Outlet />
+    </SidebarLayout>
   );
 }
 
@@ -175,7 +173,10 @@ function AppSidebar() {
   const openCount = useAssignedOpenCount();
 
   return (
-    <Sidebar collapsible="icon" className="print:hidden">
+    <Sidebar
+      collapsible="icon"
+      className="group-data-[side=left]:border-r-0 print:hidden"
+    >
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
