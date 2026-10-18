@@ -12,7 +12,7 @@ use axum::middleware::{from_fn, Next};
 use axum::response::Response;
 use axum::Router;
 use base64::Engine;
-use calamine::{Data, Reader, Xlsx};
+use calamine::{Data, DataType, Reader, Xlsx};
 use domain::user::{UserPassword, UserPhone, UserProfile, UserStatusComponent};
 use persistence::Store;
 use serde_json::{json, Value};
@@ -297,4 +297,314 @@ async fn period_report_counts_logged_time_and_exports_a_timesheet() {
     assert_eq!(ours[0][4], Data::Float(1.5), "hours, oldest first");
     assert_eq!(ours[0][5], Data::String("build".into()));
     assert_eq!(ours[1][4], Data::Float(0.5));
+    let header: Vec<String> = rows[0].iter().map(|c| c.to_string()).collect();
+    assert_eq!(header, ["Date", "Member", "Project", "Task", "Hours", "Note"], "timesheet columns");
+    let last = rows.last().unwrap();
+    assert!(last[0].to_string().to_lowercase().contains("total"), "a total row closes the sheet: {last:?}");
+    let sum: f64 = rows[1..rows.len() - 1].iter().filter_map(|r| r[4].get_float()).sum();
+    assert!((last[4].get_float().unwrap() - sum).abs() < 1e-6, "the total is the sum of the hours");
 }
+
+fn admin_token(sub: &str) -> String {
+    sign_jwt(SECRET, sub, &["*".to_string()], 9_999_999_999).unwrap()
+}
+
+/// Seed a running timer that started `secs_ago` seconds ago, bypassing
+/// StartTimer so the elapsed time is under the test's control.
+async fn seed_running(store: &Store, task: &str, project: &str, user: &str, secs_ago: i64) {
+    use time::format_description::well_known::Rfc3339;
+    let started = (time::OffsetDateTime::now_utc() - time::Duration::seconds(secs_ago))
+        .format(&Rfc3339)
+        .unwrap();
+    store
+        .create((domain::time::TimeEntryInfo {
+            task_id: task.into(),
+            project_id: project.into(),
+            user_id: user.into(),
+            work_date: today(),
+            started_at: Some(started.clone()),
+            ended_at: None,
+            running: true,
+            minutes: 0,
+            note: String::new(),
+            created_at: started,
+        },))
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn time_rpcs_require_a_token() {
+    let Some((router, _store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    for (method, body) in [
+        ("StartTimer", json!({ "taskId": "1" })),
+        ("StopTimer", json!({})),
+        ("GetRunningTimer", json!({})),
+        ("LogTime", json!({ "taskId": "1", "minutes": 5 })),
+        ("ListTimeEntries", json!({ "taskId": "1" })),
+        ("UpdateTimeEntry", json!({ "id": "1", "note": "x" })),
+        ("DeleteTimeEntry", json!({ "id": "1" })),
+    ] {
+        let (st, v) = call(&router, &format!("{TIME}/{method}"), None, body).await;
+        assert_ne!(st, StatusCode::OK, "{method} without a token must fail");
+        assert_eq!(v["code"], "unauthenticated", "{method} without a token: {v}");
+    }
+}
+
+#[tokio::test]
+async fn stopped_timer_minutes_are_rounded_and_clamped_to_a_day() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let owner = mk_user(&store).await;
+    let to = token(&owner);
+    let pid = project_with(&router, &owner, &[]).await;
+    let m = module(&router, &to, &pid).await;
+    let t = task(&router, &to, &m, "Clock").await;
+    let stop = format!("{TIME}/StopTimer");
+
+    // (seconds running, minutes recorded): nearest minute, never 0, never > 1440.
+    for (secs, want) in [(5, 1), (150, 3), (149 * 60 + 20, 149), (30 * 3600, 1440)] {
+        seed_running(&store, &t, &pid, &owner, secs).await;
+        let running = ok(&router, &format!("{TIME}/GetRunningTimer"), &to, json!({})).await;
+        assert_eq!(running["entry"]["running"], true, "seeded timer is the running one");
+        let e = ok(&router, &stop, &to, json!({})).await;
+        assert_eq!(num(&e["entry"], "minutes"), want, "a timer that ran {secs}s records {want}m");
+        assert!(e["entry"]["endedAt"].is_string(), "stopping sets ended_at");
+    }
+    assert_eq!(num(&get(&router, &to, &t).await, "loggedMinutes"), 1 + 3 + 149 + 1440, "every stopped timer counts");
+}
+
+#[tokio::test]
+async fn time_entry_validation_and_unknown_ids() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let owner = mk_user(&store).await;
+    let to = token(&owner);
+    let pid = project_with(&router, &owner, &[]).await;
+    let m = module(&router, &to, &pid).await;
+    let t = task(&router, &to, &m, "V").await;
+    let (log, start, list, upd, del) = (
+        format!("{TIME}/LogTime"),
+        format!("{TIME}/StartTimer"),
+        format!("{TIME}/ListTimeEntries"),
+        format!("{TIME}/UpdateTimeEntry"),
+        format!("{TIME}/DeleteTimeEntry"),
+    );
+
+    // Unknown / malformed task ids are not_found, never internal.
+    for bad in ["999999999999", "abc", ""] {
+        fails(&router, &log, &to, json!({ "taskId": bad, "minutes": 5 }), "not_found").await;
+        fails(&router, &start, &to, json!({ "taskId": bad }), "not_found").await;
+    }
+    fails(&router, &list, &to, json!({ "taskId": "999999999999" }), "not_found").await;
+    fails(&router, &upd, &to, json!({ "id": "999999999999", "note": "x" }), "not_found").await;
+    fails(&router, &del, &to, json!({ "id": "abc" }), "not_found").await;
+
+    // Bounds and formats.
+    fails(&router, &log, &to, json!({ "taskId": t, "minutes": -5 }), "invalid_argument").await;
+    ok(&router, &log, &to, json!({ "taskId": t, "minutes": 1440, "date": "2028-02-29" })).await;
+    fails(&router, &log, &to, json!({ "taskId": t, "minutes": 5, "date": "2027-02-29" }), "invalid_argument").await;
+    fails(&router, &log, &to, json!({ "taskId": t, "minutes": 5, "date": "2026-10-1" }), "invalid_argument").await;
+    fails(&router, &log, &to, json!({ "taskId": t, "minutes": 5, "note": "n".repeat(501) }), "invalid_argument").await;
+    ok(&router, &log, &to, json!({ "taskId": t, "minutes": 5, "note": "é".repeat(500) })).await;
+    fails(&router, &start, &to, json!({ "taskId": t, "date": "tomorrow" }), "invalid_argument").await;
+    let nothing = ok(&router, &format!("{TIME}/GetRunningTimer"), &to, json!({})).await;
+    assert!(nothing["entry"].is_null(), "a rejected StartTimer starts nothing");
+    fails(&router, &list, &to, json!({ "taskId": t, "from": "01-10-2026" }), "invalid_argument").await;
+
+    let e = ok(&router, &log, &to, json!({ "taskId": t, "minutes": 30, "date": "2026-10-05" })).await;
+    let id = s(&e, "id");
+    fails(&router, &upd, &to, json!({ "id": id, "minutes": 0 }), "invalid_argument").await;
+    fails(&router, &upd, &to, json!({ "id": id, "minutes": 1441 }), "invalid_argument").await;
+    fails(&router, &upd, &to, json!({ "id": id, "date": "2026-13-01" }), "invalid_argument").await;
+    fails(&router, &upd, &to, json!({ "id": id, "note": "n".repeat(501) }), "invalid_argument").await;
+    let after = ok(&router, &list, &to, json!({ "taskId": t, "from": "2026-10-05", "to": "2026-10-05" })).await;
+    let entries = after["entries"].as_array().unwrap();
+    assert_eq!(entries.len(), 1, "from/to bound the list by work date (inclusive)");
+    assert_eq!(num(&entries[0], "minutes"), 30, "rejected updates change nothing");
+
+    // A date-only update moves the entry and keeps its minutes.
+    let moved = ok(&router, &upd, &to, json!({ "id": id, "date": "2026-10-06" })).await;
+    assert_eq!(moved["date"], "2026-10-06");
+    assert_eq!(num(&moved, "minutes"), 30);
+
+    // Once deleted, it is gone.
+    ok(&router, &del, &to, json!({ "id": id })).await;
+    fails(&router, &del, &to, json!({ "id": id }), "not_found").await;
+    fails(&router, &upd, &to, json!({ "id": id, "note": "x" }), "not_found").await;
+}
+
+#[tokio::test]
+async fn admins_edit_anyones_entries_and_ex_members_lose_access() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let owner = mk_user(&store).await;
+    let member = mk_user(&store).await;
+    let admin = mk_user(&store).await;
+    let (to, tm, ta) = (token(&owner), token(&member), admin_token(&admin));
+    let pid = project_with(&router, &owner, &[&member]).await;
+    let m = module(&router, &to, &pid).await;
+    let t = task(&router, &to, &m, "A").await;
+    let log = format!("{TIME}/LogTime");
+
+    // An admin who is not a member can log, list, edit and delete.
+    let mine = ok(&router, &log, &ta, json!({ "taskId": t, "minutes": 10 })).await;
+    assert_eq!(mine["userId"], admin.as_str(), "the entry belongs to the caller");
+    let e = ok(&router, &log, &tm, json!({ "taskId": t, "minutes": 60 })).await;
+    let list = ok(&router, &format!("{TIME}/ListTimeEntries"), &ta, json!({ "userId": member })).await;
+    assert_eq!(list["entries"].as_array().unwrap().len(), 1, "admin sees a user's entries in any project");
+    let upd = ok(&router, &format!("{TIME}/UpdateTimeEntry"), &ta, json!({ "id": e["id"], "minutes": 50 })).await;
+    assert_eq!(num(&upd, "minutes"), 50, "admin edits another user's entry");
+    assert_eq!(upd["userId"], member.as_str(), "editing does not change the author");
+    ok(&router, &format!("{TIME}/DeleteTimeEntry"), &ta, json!({ "id": e["id"] })).await;
+    assert_eq!(num(&get(&router, &to, &t).await, "loggedMinutes"), 10);
+
+    // A member who leaves can no longer log or edit their own entries there.
+    let e = ok(&router, &log, &tm, json!({ "taskId": t, "minutes": 20 })).await;
+    ok(&router, &format!("{PROJECT}/RemoveProjectMember"), &to, json!({ "projectId": pid, "userId": member })).await;
+    fails(&router, &log, &tm, json!({ "taskId": t, "minutes": 5 }), "permission_denied").await;
+    fails(&router, &format!("{TIME}/UpdateTimeEntry"), &tm, json!({ "id": e["id"], "note": "x" }), "permission_denied").await;
+    // Their entry still counts on the task.
+    assert_eq!(num(&get(&router, &to, &t).await, "loggedMinutes"), 30);
+}
+
+#[tokio::test]
+async fn concurrent_starts_leave_exactly_one_running_timer() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let owner = mk_user(&store).await;
+    let to = token(&owner);
+    let pid = project_with(&router, &owner, &[]).await;
+    let m = module(&router, &to, &pid).await;
+    let tasks = [
+        task(&router, &to, &m, "A").await,
+        task(&router, &to, &m, "B").await,
+        task(&router, &to, &m, "C").await,
+        task(&router, &to, &m, "D").await,
+    ];
+    let path = format!("{TIME}/StartTimer");
+    let c = |i: usize| call(&router, &path, Some(&to), json!({ "taskId": tasks[i] }));
+    let (r0, r1, r2, r3) = tokio::join!(c(0), c(1), c(2), c(3));
+    for (st, v) in [r0, r1, r2, r3] {
+        assert_eq!(st, StatusCode::OK, "every concurrent start succeeds: {v}");
+    }
+    let all = ok(&router, &format!("{TIME}/ListTimeEntries"), &to, json!({ "projectId": pid })).await;
+    let entries = all["entries"].as_array().unwrap();
+    assert_eq!(entries.len(), 4, "one entry per start");
+    let running = entries.iter().filter(|e| e["running"] == true).count();
+    assert_eq!(running, 1, "only one timer is left running: {all}");
+    assert!(
+        entries.iter().filter(|e| e["running"] != true).all(|e| num(e, "minutes") >= 1),
+        "each stopped timer recorded at least a minute"
+    );
+}
+
+#[tokio::test]
+async fn running_timers_stay_out_of_the_period_report() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let owner = mk_user(&store).await;
+    let to = token(&owner);
+    let pid = project_with(&router, &owner, &[]).await;
+    let m = module(&router, &to, &pid).await;
+    let t = task(&router, &to, &m, "R").await;
+    ok(&router, &format!("{TIME}/LogTime"), &to, json!({ "taskId": t, "minutes": 40, "date": today() })).await;
+    ok(&router, &format!("{TIME}/StartTimer"), &to, json!({ "taskId": t })).await;
+
+    let d = time::OffsetDateTime::now_utc().date();
+    let (from, to_d) = (d - time::Duration::days(1), d + time::Duration::days(1));
+    let (pf, pt) = (from - time::Duration::days(2), from);
+    let body = json!({
+        "periodStart": format!("{from}T00:00:00Z"), "periodEnd": format!("{to_d}T00:00:00Z"),
+        "prevStart": format!("{pf}T00:00:00Z"), "prevEnd": format!("{pt}T00:00:00Z"),
+        "periodStartDate": from.to_string(), "periodEndDate": to_d.to_string(),
+        "prevStartDate": pf.to_string(), "prevEndDate": pt.to_string(),
+    });
+    let r = ok(&router, &format!("{REPORT}/GetPeriodReport"), &to, body).await;
+    let proj = r["perProject"].as_array().unwrap().iter().find(|p| s(p, "projectId") == pid).unwrap();
+    assert_eq!(num(proj, "loggedMinutes"), 40, "the running timer is not in the report");
+    ok(&router, &format!("{TIME}/StopTimer"), &to, json!({})).await;
+}
+
+#[tokio::test]
+async fn deleting_a_task_or_project_leaves_no_time_entries_behind() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let owner = mk_user(&store).await;
+    let to = token(&owner);
+    let pid = project_with(&router, &owner, &[]).await;
+    let m = module(&router, &to, &pid).await;
+    let t = task(&router, &to, &m, "Doomed").await;
+    let sub = s(&ok(&router, &format!("{TASK}/CreateTask"), &to,
+        json!({ "moduleId": m, "title": "Doomed child", "parentId": t })).await, "id");
+    ok(&router, &format!("{TIME}/LogTime"), &to, json!({ "taskId": t, "minutes": 30 })).await;
+    ok(&router, &format!("{TIME}/LogTime"), &to, json!({ "taskId": sub, "minutes": 15 })).await;
+    ok(&router, &format!("{TIME}/StartTimer"), &to, json!({ "taskId": t })).await;
+
+    ok(&router, &format!("{TASK}/DeleteTask"), &to, json!({ "id": t })).await;
+    let left: i64 = sqlx::query_scalar("SELECT count(*) FROM cmp_timeentry WHERE task_id = $1 OR task_id = $2")
+        .bind(&t)
+        .bind(&sub)
+        .fetch_one(store.pool())
+        .await
+        .unwrap();
+    assert_eq!(left, 0, "a deleted task (and its subtasks) takes its time entries with it");
+    let running = ok(&router, &format!("{TIME}/GetRunningTimer"), &to, json!({})).await;
+    assert!(running["entry"].is_null(), "no timer keeps running on a deleted task: {running}");
+
+    // Bulk delete goes the same way.
+    let tb = task(&router, &to, &m, "Bulk doomed").await;
+    ok(&router, &format!("{TIME}/LogTime"), &to, json!({ "taskId": tb, "minutes": 10 })).await;
+    ok(&router, &format!("{TASK}/BulkDeleteTasks"), &to, json!({ "taskIds": [tb] })).await;
+    let left: i64 = sqlx::query_scalar("SELECT count(*) FROM cmp_timeentry WHERE task_id = $1")
+        .bind(&tb)
+        .fetch_one(store.pool())
+        .await
+        .unwrap();
+    assert_eq!(left, 0, "bulk-deleted tasks take their time entries with them");
+
+    // A module: every task in it, a running timer on a subtask included.
+    let m2 = module(&router, &to, &pid).await;
+    let mt = task(&router, &to, &m2, "In module").await;
+    let ms = s(&ok(&router, &format!("{TASK}/CreateTask"), &to,
+        json!({ "moduleId": m2, "title": "Module child", "parentId": mt })).await, "id");
+    ok(&router, &format!("{TIME}/LogTime"), &to, json!({ "taskId": mt, "minutes": 25 })).await;
+    ok(&router, &format!("{TIME}/StartTimer"), &to, json!({ "taskId": ms })).await;
+    ok(&router, &format!("{MODULE}/DeleteModule"), &to, json!({ "id": m2 })).await;
+    let left: i64 = sqlx::query_scalar("SELECT count(*) FROM cmp_timeentry WHERE task_id = $1 OR task_id = $2")
+        .bind(&mt)
+        .bind(&ms)
+        .fetch_one(store.pool())
+        .await
+        .unwrap();
+    assert_eq!(left, 0, "a deleted module takes its tasks' time entries with it");
+    let running = ok(&router, &format!("{TIME}/GetRunningTimer"), &to, json!({})).await;
+    assert!(running["entry"].is_null(), "the subtask's timer is gone with the module: {running}");
+
+    // Same for a whole project, and its time leaves the reports.
+    let t2 = task(&router, &to, &m, "Also doomed").await;
+    ok(&router, &format!("{TIME}/LogTime"), &to, json!({ "taskId": t2, "minutes": 20 })).await;
+    ok(&router, &format!("{PROJECT}/DeleteProject"), &to, json!({ "id": pid })).await;
+    let left: i64 = sqlx::query_scalar("SELECT count(*) FROM cmp_timeentry WHERE project_id = $1")
+        .bind(&pid)
+        .fetch_one(store.pool())
+        .await
+        .unwrap();
+    assert_eq!(left, 0, "a deleted project leaves no time entries behind");
+}
+

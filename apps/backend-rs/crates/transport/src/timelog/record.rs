@@ -292,3 +292,29 @@ pub(crate) async fn delete_entry(store: &Store, pid: i64) -> anyhow::Result<()> 
     entity::delete(&mut conn, pid).await?;
     Ok(())
 }
+
+/// Remove the time entries (a running timer included) of `task_ids`, inside
+/// the caller's delete transaction. Entries are their own entities keyed by a
+/// text id, so the task's cascade does not reach them.
+pub(crate) async fn delete_entries_for_tasks(conn: &mut PgConnection, task_ids: &[String]) -> sqlx::Result<()> {
+    sqlx::query(
+        "DELETE FROM arke_entities WHERE pid IN \
+         (SELECT pid FROM cmp_timeentry WHERE task_id = ANY($1))",
+    )
+    .bind(task_ids)
+    .execute(conn)
+    .await?;
+    Ok(())
+}
+
+/// Remove every time entry of `project_id`, inside the caller's transaction.
+pub(crate) async fn delete_entries_for_project(conn: &mut PgConnection, project_id: &str) -> sqlx::Result<()> {
+    sqlx::query(
+        "DELETE FROM arke_entities WHERE pid IN \
+         (SELECT pid FROM cmp_timeentry WHERE project_id = $1)",
+    )
+    .bind(project_id)
+    .execute(conn)
+    .await?;
+    Ok(())
+}

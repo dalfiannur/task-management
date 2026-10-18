@@ -214,6 +214,8 @@ pub(crate) async fn delete_module(store: &Store, pid: i64) -> anyhow::Result<Vec
     .bind(pid.to_string())
     .fetch_all(&mut *tx)
     .await?;
+    let gone: Vec<String> = task_pids.iter().map(i64::to_string).collect();
+    crate::timelog::record::delete_entries_for_tasks(&mut tx, &gone).await?;
     entity::delete(&mut tx, pid).await?;
     tx.commit().await?;
     Ok(task_pids)

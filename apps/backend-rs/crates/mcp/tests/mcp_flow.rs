@@ -2002,3 +2002,56 @@ async fn a_tool_call_records_token_usage_once_per_hour() {
     let second = transport::api::find_by_hash(&store, &hash).await.unwrap().unwrap();
     assert_eq!(second.last_used_at.as_deref(), Some(stamp.as_str()), "throttled within the hour");
 }
+
+#[tokio::test]
+async fn log_time_records_an_entry_and_validates_input() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    let (_project_id, module_id) = seed_project_and_module(&store, &user).await;
+    let (err, task) = tools_call(&router, &token, "create_task", json!({ "module_id": module_id, "title": "timed" })).await;
+    assert!(!err, "create_task: {task}");
+    let task_id = task["id"].as_str().unwrap().to_string();
+
+    let (err, e) = tools_call(&router, &token, "log_time",
+        json!({ "task_id": task_id, "minutes": 90, "date": "2026-10-02", "note": " pairing " })).await;
+    assert!(!err, "log_time: {e}");
+    assert_eq!(e["minutes"], 90);
+    assert_eq!(e["date"], "2026-10-02");
+    assert_eq!(e["note"], "pairing", "the note is trimmed");
+    assert_eq!(e["task_id"], task_id.as_str());
+    let (_, fetched) = tools_call(&router, &token, "get_task", json!({ "task_id": task_id })).await;
+    assert_eq!(fetched["logged_minutes"], 90, "get_task reflects the logged time");
+
+    // Malformed arguments are the caller's bug: a JSON-RPC invalid-params error.
+    for args in [
+        json!({ "task_id": task_id, "minutes": "90" }),
+        json!({ "task_id": task_id, "minutes": 1.5 }),
+        json!({ "task_id": task_id }),
+        json!({ "minutes": 5 }),
+    ] {
+        let (_, body) = rpc(&router, Some(&token),
+            json!({ "jsonrpc": "2.0", "id": 40, "method": "tools/call",
+                    "params": { "name": "log_time", "arguments": args.clone() } })).await;
+        assert_eq!(body["error"]["code"], -32602, "malformed {args}: {body:?}");
+    }
+    // Well-formed but against the rules: a business refusal the model can act on.
+    for args in [
+        json!({ "task_id": task_id, "minutes": 0 }),
+        json!({ "task_id": task_id, "minutes": 1441 }),
+        json!({ "task_id": task_id, "minutes": 5, "date": "2026-02-30" }),
+        json!({ "task_id": "999999999999", "minutes": 5 }),
+    ] {
+        assert!(tools_call_refused(&router, &token, "log_time", args.clone()).await, "refused: {args}");
+    }
+
+    // Someone outside the project cannot log on its tasks.
+    let outsider = seed_active_user(&store).await;
+    let outsider_token = issue_token(&store, &outsider).await;
+    assert!(
+        tools_call_refused(&router, &outsider_token, "log_time", json!({ "task_id": task_id, "minutes": 5 })).await,
+        "non-member is refused"
+    );
+    let (_, fetched) = tools_call(&router, &token, "get_task", json!({ "task_id": task_id })).await;
+    assert_eq!(fetched["logged_minutes"], 90, "refused calls logged nothing");
+}

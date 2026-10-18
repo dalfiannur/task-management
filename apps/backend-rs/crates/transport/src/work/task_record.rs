@@ -496,6 +496,9 @@ pub(crate) async fn delete_task(store: &Store, pid: i64) -> anyhow::Result<Vec<i
     .bind(pid.to_string())
     .fetch_all(&mut *tx)
     .await?;
+    let mut gone: Vec<String> = subtasks.iter().map(i64::to_string).collect();
+    gone.push(pid.to_string());
+    crate::timelog::record::delete_entries_for_tasks(&mut tx, &gone).await?;
     entity::delete(&mut tx, pid).await?;
     tx.commit().await?;
     Ok(subtasks)

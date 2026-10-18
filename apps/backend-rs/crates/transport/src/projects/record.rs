@@ -285,6 +285,7 @@ pub(crate) async fn delete_project(store: &Store, pid: i64) -> anyhow::Result<()
     .bind(pid.to_string())
     .execute(&mut *tx)
     .await?;
+    crate::timelog::record::delete_entries_for_project(&mut tx, &pid.to_string()).await?;
     entity::delete(&mut tx, pid).await?;
     tx.commit().await?;
     Ok(())
