@@ -24,6 +24,7 @@ import { Route as AuthedProjectsProjectIdRouteImport } from './routes/_authed/pr
 import { Route as AuthedSettingsTokensRouteImport } from './routes/_authed/settings/tokens'
 import { Route as AuthedProjectsProjectIdIndexRouteImport } from './routes/_authed/projects/$projectId/index'
 import { Route as AuthedProjectsProjectIdAllTasksRouteImport } from './routes/_authed/projects/$projectId/all-tasks'
+import { Route as AuthedProjectsProjectIdAutomationsRouteImport } from './routes/_authed/projects/$projectId/automations'
 import { Route as AuthedProjectsProjectIdMediaRouteImport } from './routes/_authed/projects/$projectId/media'
 import { Route as AuthedProjectsProjectIdMembersRouteImport } from './routes/_authed/projects/$projectId/members'
 import { Route as AuthedProjectsProjectIdOverviewRouteImport } from './routes/_authed/projects/$projectId/overview'
@@ -106,6 +107,12 @@ const AuthedProjectsProjectIdAllTasksRoute =
     path: '/all-tasks',
     getParentRoute: () => AuthedProjectsProjectIdRoute,
   } as any)
+const AuthedProjectsProjectIdAutomationsRoute =
+  AuthedProjectsProjectIdAutomationsRouteImport.update({
+    id: '/automations',
+    path: '/automations',
+    getParentRoute: () => AuthedProjectsProjectIdRoute,
+  } as any)
 const AuthedProjectsProjectIdMediaRoute =
   AuthedProjectsProjectIdMediaRouteImport.update({
     id: '/media',
@@ -151,6 +158,7 @@ export interface FileRoutesByFullPath {
   '/settings/tokens': typeof AuthedSettingsTokensRoute
   '/projects/': typeof AuthedProjectsIndexRoute
   '/projects/$projectId/all-tasks': typeof AuthedProjectsProjectIdAllTasksRoute
+  '/projects/$projectId/automations': typeof AuthedProjectsProjectIdAutomationsRoute
   '/projects/$projectId/media': typeof AuthedProjectsProjectIdMediaRoute
   '/projects/$projectId/members': typeof AuthedProjectsProjectIdMembersRoute
   '/projects/$projectId/overview': typeof AuthedProjectsProjectIdOverviewRoute
@@ -171,6 +179,7 @@ export interface FileRoutesByTo {
   '/settings/tokens': typeof AuthedSettingsTokensRoute
   '/projects': typeof AuthedProjectsIndexRoute
   '/projects/$projectId/all-tasks': typeof AuthedProjectsProjectIdAllTasksRoute
+  '/projects/$projectId/automations': typeof AuthedProjectsProjectIdAutomationsRoute
   '/projects/$projectId/media': typeof AuthedProjectsProjectIdMediaRoute
   '/projects/$projectId/members': typeof AuthedProjectsProjectIdMembersRoute
   '/projects/$projectId/overview': typeof AuthedProjectsProjectIdOverviewRoute
@@ -194,6 +203,7 @@ export interface FileRoutesById {
   '/_authed/settings/tokens': typeof AuthedSettingsTokensRoute
   '/_authed/projects/': typeof AuthedProjectsIndexRoute
   '/_authed/projects/$projectId/all-tasks': typeof AuthedProjectsProjectIdAllTasksRoute
+  '/_authed/projects/$projectId/automations': typeof AuthedProjectsProjectIdAutomationsRoute
   '/_authed/projects/$projectId/media': typeof AuthedProjectsProjectIdMediaRoute
   '/_authed/projects/$projectId/members': typeof AuthedProjectsProjectIdMembersRoute
   '/_authed/projects/$projectId/overview': typeof AuthedProjectsProjectIdOverviewRoute
@@ -217,6 +227,7 @@ export interface FileRouteTypes {
     | '/settings/tokens'
     | '/projects/'
     | '/projects/$projectId/all-tasks'
+    | '/projects/$projectId/automations'
     | '/projects/$projectId/media'
     | '/projects/$projectId/members'
     | '/projects/$projectId/overview'
@@ -237,6 +248,7 @@ export interface FileRouteTypes {
     | '/settings/tokens'
     | '/projects'
     | '/projects/$projectId/all-tasks'
+    | '/projects/$projectId/automations'
     | '/projects/$projectId/media'
     | '/projects/$projectId/members'
     | '/projects/$projectId/overview'
@@ -259,6 +271,7 @@ export interface FileRouteTypes {
     | '/_authed/settings/tokens'
     | '/_authed/projects/'
     | '/_authed/projects/$projectId/all-tasks'
+    | '/_authed/projects/$projectId/automations'
     | '/_authed/projects/$projectId/media'
     | '/_authed/projects/$projectId/members'
     | '/_authed/projects/$projectId/overview'
@@ -382,6 +395,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedProjectsProjectIdAllTasksRouteImport
       parentRoute: typeof AuthedProjectsProjectIdRoute
     }
+    '/_authed/projects/$projectId/automations': {
+      id: '/_authed/projects/$projectId/automations'
+      path: '/automations'
+      fullPath: '/projects/$projectId/automations'
+      preLoaderRoute: typeof AuthedProjectsProjectIdAutomationsRouteImport
+      parentRoute: typeof AuthedProjectsProjectIdRoute
+    }
     '/_authed/projects/$projectId/media': {
       id: '/_authed/projects/$projectId/media'
       path: '/media'
@@ -422,6 +442,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthedProjectsProjectIdRouteChildren {
   AuthedProjectsProjectIdAllTasksRoute: typeof AuthedProjectsProjectIdAllTasksRoute
+  AuthedProjectsProjectIdAutomationsRoute: typeof AuthedProjectsProjectIdAutomationsRoute
   AuthedProjectsProjectIdMediaRoute: typeof AuthedProjectsProjectIdMediaRoute
   AuthedProjectsProjectIdMembersRoute: typeof AuthedProjectsProjectIdMembersRoute
   AuthedProjectsProjectIdOverviewRoute: typeof AuthedProjectsProjectIdOverviewRoute
@@ -433,6 +454,8 @@ interface AuthedProjectsProjectIdRouteChildren {
 const AuthedProjectsProjectIdRouteChildren: AuthedProjectsProjectIdRouteChildren =
   {
     AuthedProjectsProjectIdAllTasksRoute: AuthedProjectsProjectIdAllTasksRoute,
+    AuthedProjectsProjectIdAutomationsRoute:
+      AuthedProjectsProjectIdAutomationsRoute,
     AuthedProjectsProjectIdMediaRoute: AuthedProjectsProjectIdMediaRoute,
     AuthedProjectsProjectIdMembersRoute: AuthedProjectsProjectIdMembersRoute,
     AuthedProjectsProjectIdOverviewRoute: AuthedProjectsProjectIdOverviewRoute,

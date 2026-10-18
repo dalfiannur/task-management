@@ -17,6 +17,7 @@ include!(concat!(env!("OUT_DIR"), "/generated.rs"));
 
 pub mod api;
 mod activity;
+mod automation;
 mod comments;
 mod dashboard;
 mod export;
@@ -47,6 +48,7 @@ pub use search::search_router;
 pub use tokens::token_router;
 pub use users::{auth_router, user_router, JwtConfig};
 pub use timelog::time_router;
+pub use automation::{automation_router, run_scheduled as run_scheduled_automations};
 pub use workload::workload_router;
 pub use views::view_router;
 pub use work::{module_router, status_router, task_router};

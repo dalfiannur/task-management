@@ -29,6 +29,7 @@ enum NotificationType {
   PROJECT_MEMBER_ADDED = 3;
   OWNERSHIP_TRANSFERRED = 4;
   ACCOUNT_APPROVED = 5;
+  AUTOMATION = 6;
 }
 
 message ListNotificationsRequest {

@@ -1,0 +1,147 @@
+syntax = "proto3";
+package sedjiwa.tasks.automation.v1;
+
+// Automations: per-project "when → if → then" rules over tasks.
+//
+// A rule runs right after the change that triggers it (a task created, a
+// status change, an assignee added, the last subtask done) or, for the
+// time-based triggers (overdue, due within N days), from a job every 15
+// minutes, once per task and due date. Actions run as the rule's author.
+// An automation's own change triggers further rules only through status
+// changes and subtask completion, one level deep, and one triggering change
+// runs at most 10 actions. Members read rules and runs; the project owner or
+// an admin writes them.
+service AutomationService {
+  rpc ListAutomations(ListAutomationsRequest) returns (ListAutomationsResponse);
+  rpc CreateAutomation(SaveAutomationRequest) returns (Automation);
+  rpc UpdateAutomation(SaveAutomationRequest) returns (Automation);
+  rpc DeleteAutomation(DeleteAutomationRequest) returns (DeleteAutomationResponse);
+  rpc SetAutomationEnabled(SetAutomationEnabledRequest) returns (Automation);
+  // Newest first; by project, optionally narrowed to one rule.
+  rpc ListAutomationRuns(ListAutomationRunsRequest) returns (ListAutomationRunsResponse);
+  // Admin: run the time-based rules now, as the periodic job does, for
+  // `today` (yyyy-MM-dd, default today in UTC).
+  rpc RunScheduledAutomations(RunScheduledAutomationsRequest) returns (RunScheduledAutomationsResponse);
+}
+
+message StatusChangedTrigger {
+  optional string from_status_id = 1; // unset = any
+  optional string to_status_id = 2;   // unset = any
+}
+message DueInTrigger { int32 days = 1; } // 1..30
+
+message Trigger {
+  oneof kind {
+    StatusChangedTrigger status_changed = 1;
+    Empty task_created = 2;
+    Empty assignee_added = 3;
+    Empty subtasks_done = 4;
+    Empty overdue = 5;
+    DueInTrigger due_in = 6;
+  }
+}
+
+message Empty {}
+
+// Every non-empty list must match; within a list any value does.
+message Conditions {
+  repeated string priorities = 1; // none, low, medium, high, urgent
+  repeated string label_ids = 2;
+  repeated string module_ids = 3;
+}
+
+enum NotifyTarget {
+  NOTIFY_TARGET_UNSPECIFIED = 0;
+  NOTIFY_TARGET_ASSIGNEES = 1;
+  NOTIFY_TARGET_OWNER = 2;     // the project owner
+  NOTIFY_TARGET_USER = 3;      // `user_id`
+}
+
+message Action {
+  oneof kind {
+    string set_status_id = 1;
+    string set_priority = 2;    // none, low, medium, high, urgent
+    string add_label_id = 3;
+    string remove_label_id = 4;
+    string assign_user_id = 5;  // "" = the task's creator
+    Empty unassign_all = 6;
+    string move_to_module_id = 7;
+    int32 set_due_in_days = 8;  // 0..365, from the day it runs
+    NotifyAction notify = 9;
+    string comment = 10;        // 1..500 characters
+  }
+}
+
+message NotifyAction {
+  NotifyTarget target = 1;
+  string user_id = 2;
+  string message = 3;           // 1..500 characters
+}
+
+message Automation {
+  string id = 1;
+  string project_id = 2;
+  string name = 3;
+  bool enabled = 4;
+  Trigger trigger = 5;
+  Conditions conditions = 6;
+  repeated Action actions = 7;
+  string created_by = 8;
+  string created_at = 9;
+  string updated_at = 10;
+  int32 run_count = 11;
+  optional string last_run_at = 12;
+}
+
+message ListAutomationsRequest { string project_id = 1; }
+message ListAutomationsResponse { repeated Automation automations = 1; }
+
+// Create: `project_id`, no `id`. Update: `id` (the rule is replaced; the
+// project is fixed).
+message SaveAutomationRequest {
+  string id = 1;
+  string project_id = 2;
+  string name = 3;
+  Trigger trigger = 4;
+  Conditions conditions = 5;
+  repeated Action actions = 6;
+  bool enabled = 7; // create only; use SetAutomationEnabled afterwards
+}
+
+message DeleteAutomationRequest { string id = 1; }
+message DeleteAutomationResponse { bool ok = 1; }
+
+message SetAutomationEnabledRequest {
+  string id = 1;
+  bool enabled = 2;
+}
+
+enum RunStatus {
+  RUN_STATUS_UNSPECIFIED = 0;
+  RUN_STATUS_OK = 1;
+  RUN_STATUS_FAILED = 2;   // an action failed; later actions did not run
+  RUN_STATUS_SKIPPED = 3;  // the action budget for the change ran out
+}
+
+message AutomationRun {
+  string id = 1;
+  string automation_id = 2;
+  string automation_name = 3;
+  string task_id = 4;
+  string task_title = 5;     // "" once the task is gone
+  int32 task_number = 6;
+  string trigger = 7;        // the trigger kind, e.g. "status_changed"
+  RunStatus status = 8;
+  string detail = 9;         // what ran, or why it failed
+  string created_at = 10;
+}
+
+message ListAutomationRunsRequest {
+  string project_id = 1;
+  optional string automation_id = 2;
+  int32 limit = 3; // 0 = 50, at most 200
+}
+message ListAutomationRunsResponse { repeated AutomationRun runs = 1; }
+
+message RunScheduledAutomationsRequest { optional string today = 1; }
+message RunScheduledAutomationsResponse { int32 runs = 1; }

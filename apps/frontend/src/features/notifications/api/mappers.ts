@@ -14,6 +14,8 @@ function mapKind(t: NotificationType): NotificationKind {
       return "ownership_transferred";
     case NotificationType.ACCOUNT_APPROVED:
       return "account_approved";
+    case NotificationType.AUTOMATION:
+      return "automation";
     default:
       return "other";
   }

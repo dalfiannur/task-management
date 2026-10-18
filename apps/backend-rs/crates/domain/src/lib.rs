@@ -3,6 +3,7 @@
 //! lives in `persistence::rows`.
 
 pub mod activity;
+pub mod automation;
 pub mod comment;
 pub mod label;
 pub mod media;

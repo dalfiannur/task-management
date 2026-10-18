@@ -6,6 +6,7 @@ export type NotificationKind =
   | "project_member_added"
   | "ownership_transferred"
   | "account_approved"
+  | "automation"
   | "other";
 
 export interface Notification {

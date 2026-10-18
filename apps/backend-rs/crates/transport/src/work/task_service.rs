@@ -255,6 +255,9 @@ pub async fn create_task_core(
     )
     .await;
     let t = require_task(store, pid).await?;
+    crate::automation::engine::task_created(store, notifier, &project_id, &t).await;
+    // Re-read: an automation may have changed it.
+    let t = require_task(store, pid).await?;
     Ok(to_proto(&t))
 }
 
@@ -480,6 +483,9 @@ pub async fn update_task_core(
         changes,
     )
     .await;
+    let after = require_task(store, pid).await?;
+    crate::automation::engine::task_updated(store, notifier, &project_id, &t, &after).await;
+    // Re-read: an automation may have changed it.
     let t = require_task(store, pid).await?;
     index(
         store,

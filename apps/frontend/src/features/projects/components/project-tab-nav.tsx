@@ -5,6 +5,7 @@ const TABS = [
   { to: "/projects/$projectId/all-tasks", label: "Tasks" },
   { to: "/projects/$projectId/timeline", label: "Timeline" },
   { to: "/projects/$projectId/members", label: "Members" },
+  { to: "/projects/$projectId/automations", label: "Automations" },
   { to: "/projects/$projectId/media", label: "Media" },
   { to: "/projects/$projectId/pages", label: "Pages" },
 ] as const;

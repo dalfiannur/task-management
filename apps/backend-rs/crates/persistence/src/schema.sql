@@ -424,3 +424,45 @@ CREATE TABLE IF NOT EXISTS cmp_workspacesettings (
     singleton BOOLEAN NOT NULL DEFAULT TRUE UNIQUE CHECK (singleton),
     working_days INTEGER NOT NULL
 );
+
+-- An automation rule of a project. `trigger`, `conditions` and `actions` are
+-- JSON text in the shapes of `domain::automation` (Trigger, Conditions,
+-- a list of Action).
+CREATE TABLE IF NOT EXISTS cmp_automation (
+    pid BIGINT PRIMARY KEY REFERENCES arke_entities(pid) ON DELETE CASCADE,
+    project_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    enabled BOOLEAN NOT NULL,
+    trigger_kind TEXT NOT NULL,
+    trigger TEXT NOT NULL,
+    conditions TEXT NOT NULL,
+    actions TEXT NOT NULL,
+    created_by TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_cmp_automation_project_id ON cmp_automation USING btree (project_id);
+
+-- One run of a rule on a task: what ran, or why it stopped.
+CREATE TABLE IF NOT EXISTS cmp_automationrun (
+    pid BIGINT PRIMARY KEY REFERENCES arke_entities(pid) ON DELETE CASCADE,
+    automation_id TEXT NOT NULL,
+    project_id TEXT NOT NULL,
+    task_id TEXT NOT NULL,
+    trigger_kind TEXT NOT NULL,
+    status TEXT NOT NULL,
+    detail TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_cmp_automationrun_project ON cmp_automationrun USING btree (project_id, pid);
+CREATE INDEX IF NOT EXISTS idx_cmp_automationrun_automation ON cmp_automationrun USING btree (automation_id, pid);
+
+-- A time-based rule already ran for this task and due date: it runs once
+-- per due date, and again only when the due date changes.
+CREATE TABLE IF NOT EXISTS cmp_automationfired (
+    pid BIGINT PRIMARY KEY REFERENCES arke_entities(pid) ON DELETE CASCADE,
+    automation_id TEXT NOT NULL,
+    task_id TEXT NOT NULL,
+    due_date TEXT NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_cmp_automationfired_key ON cmp_automationfired USING btree (automation_id, task_id, due_date);

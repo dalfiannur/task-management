@@ -28,6 +28,7 @@ pub enum NotificationType {
     ProjectMemberAdded,
     OwnershipTransferred,
     AccountApproved,
+    Automation,
 }
 
 impl NotificationType {
@@ -38,6 +39,7 @@ impl NotificationType {
             Self::ProjectMemberAdded => "project_member_added",
             Self::OwnershipTransferred => "ownership_transferred",
             Self::AccountApproved => "account_approved",
+            Self::Automation => "automation",
         }
     }
     pub fn parse(s: &str) -> Option<Self> {
@@ -47,6 +49,7 @@ impl NotificationType {
             "project_member_added" => Some(Self::ProjectMemberAdded),
             "ownership_transferred" => Some(Self::OwnershipTransferred),
             "account_approved" => Some(Self::AccountApproved),
+            "automation" => Some(Self::Automation),
             _ => None,
         }
     }
@@ -57,6 +60,7 @@ impl NotificationType {
             Self::ProjectMemberAdded => 3,
             Self::OwnershipTransferred => 4,
             Self::AccountApproved => 5,
+            Self::Automation => 6,
         }
     }
 }
@@ -73,6 +77,7 @@ mod tests {
             NotificationType::ProjectMemberAdded,
             NotificationType::OwnershipTransferred,
             NotificationType::AccountApproved,
+            NotificationType::Automation,
         ] {
             assert_eq!(NotificationType::parse(k.as_str()), Some(k));
         }
