@@ -10,8 +10,7 @@ import {
 } from "@dnd-kit/core";
 import { Columns3, Layers, List, Plus, SearchX } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Button, Skeleton } from "sedjiwa-ui";
 import { cn } from "@/lib/utils";
 import { EmptyState } from "@/components/shared/empty-state";
 import { currentUserAtom, isAdminAtom } from "@/features/auth";
@@ -283,8 +282,8 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
     return (
       <div className="space-y-3 p-4 sm:p-6">
         <Skeleton className="h-9 w-full max-w-xs rounded-md" />
-        <Skeleton className="h-24 w-full rounded-xl shadow-2" />
-        <Skeleton className="h-24 w-full rounded-xl shadow-2" />
+        <Skeleton className="h-24 w-full rounded-xl shadow-sm" />
+        <Skeleton className="h-24 w-full rounded-xl shadow-sm" />
       </div>
     );
   }
@@ -307,7 +306,7 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
               <div
                 role="group"
                 aria-label="Layout"
-                className="inline-flex gap-1 rounded-full bg-surface-sunken p-[3px]"
+                className="inline-flex gap-1 rounded-full bg-muted p-[3px]"
               >
                 {VIEWS.map(({ key, label, icon: Icon }) => (
                   <button
@@ -319,8 +318,8 @@ export function AllTasksTab({ projectId }: { projectId: string }) {
                       "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm",
                       "[transition:background-color_var(--duration-fast)_var(--ease-out),color_var(--duration-fast)_var(--ease-out)]",
                       view === key
-                        ? "bg-surface-raised font-medium text-text shadow-1"
-                        : "text-text-muted hover:text-text",
+                        ? "bg-card font-medium text-foreground shadow-xs"
+                        : "text-muted-foreground hover:text-foreground",
                     )}
                   >
                     <Icon aria-hidden="true" className="h-4 w-4" />

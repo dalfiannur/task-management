@@ -38,30 +38,30 @@ export function ProjectProgress({
   const pct = Math.round(share(done));
 
   return (
-    <div className="overflow-hidden rounded-xl bg-surface-raised shadow-2">
+    <div className="overflow-hidden rounded-xl bg-card shadow-sm">
       <div className="px-4 py-4">
         <div className="flex items-baseline justify-between gap-3">
           <span className="text-num text-3xl font-semibold">{pct}%</span>
-          <span className="text-num text-sm text-text-muted">
+          <span className="text-num text-sm text-muted-foreground">
             {done} of {total} done
           </span>
         </div>
         <div
-          className="mt-3 flex h-2 overflow-hidden rounded-full bg-surface-sunken"
+          className="mt-3 flex h-2 overflow-hidden rounded-full bg-muted"
           role="img"
           aria-label={`${done} done, ${active} in progress, ${total - done - active} remaining`}
         >
-          <div className="h-full bg-brand" style={{ width: `${share(done)}%` }} />
+          <div className="h-full bg-primary" style={{ width: `${share(done)}%` }} />
           <div
-            className="h-full bg-brand-soft"
+            className="h-full bg-primary/15"
             style={{ width: `${share(active)}%` }}
           />
         </div>
-        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-text-muted">
-          <Legend swatch="bg-brand" label="Done" value={done} />
-          <Legend swatch="bg-brand-soft" label="In progress" value={active} />
+        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          <Legend swatch="bg-primary" label="Done" value={done} />
+          <Legend swatch="bg-primary/15" label="In progress" value={active} />
           <Legend
-            swatch="bg-surface-sunken ring-1 ring-inset ring-border-field"
+            swatch="bg-muted ring-1 ring-inset ring-input"
             label="Remaining"
             value={total - done - active}
           />
@@ -69,7 +69,7 @@ export function ProjectProgress({
       </div>
 
       {overview.perModule.length > 0 && (
-        <div className="border-t border-border-subtle">
+        <div className="border-t border-border">
           <h3 className="text-label px-4 pb-1 pt-3">Modules</h3>
           <ModuleProgressList
             modules={overview.perModule}
@@ -94,7 +94,7 @@ function Legend({
     <span className="flex items-center gap-1.5">
       <span aria-hidden="true" className={`size-2 rounded-full ${swatch}`} />
       {label}
-      <span className="text-num text-text">{value}</span>
+      <span className="text-num text-foreground">{value}</span>
     </span>
   );
 }

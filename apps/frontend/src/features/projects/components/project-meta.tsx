@@ -2,6 +2,7 @@
 // deadline note and the pin toggle.
 
 import { Pin } from "lucide-react";
+import { Progress } from "sedjiwa-ui";
 import { cn } from "@/lib/utils";
 import { dueLabel } from "@/features/dashboard";
 import { usePinnedProjects } from "../atoms/pins";
@@ -18,19 +19,13 @@ export function ProgressBar({
   const pct = donePct(tasks);
   const complete = tasks.total > 0 && tasks.done === tasks.total;
   return (
-    <div
-      role="progressbar"
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-valuenow={pct}
+    <Progress
+      value={pct}
+      size="sm"
+      state={complete ? "success" : "default"}
       aria-label="Tasks done"
-      className={cn("h-1.5 overflow-hidden rounded-full bg-surface-sunken", className)}
-    >
-      <div
-        className={cn("h-full rounded-full", complete ? "bg-success" : "bg-brand")}
-        style={{ width: `${pct}%` }}
-      />
-    </div>
+      className={className}
+    />
   );
 }
 
@@ -38,14 +33,14 @@ export function ProgressBar({
 export function DueNote({ tasks }: { tasks: ProjectTasks }) {
   if (tasks.overdue > 0) {
     return (
-      <span className="font-medium text-danger">
+      <span className="font-medium text-destructive">
         <span className="text-num">{tasks.overdue}</span> overdue
       </span>
     );
   }
   if (tasks.nextDueDate) {
     return (
-      <span className="text-text-muted">
+      <span className="text-muted-foreground">
         Next due <span className="text-num">{dueLabel(tasks.nextDueDate)}</span>
       </span>
     );
@@ -73,11 +68,11 @@ export function PinButton({
       title={pinned ? "Unpin from sidebar" : "Pin to sidebar"}
       className={cn(
         "relative z-10 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md",
-        "text-text-muted transition-colors [transition-duration:var(--duration-fast)] hover:bg-surface-hover hover:text-text",
-        "focus-visible:outline-2 focus-visible:outline-focus",
+        "text-muted-foreground transition-colors [transition-duration:var(--duration-fast)] hover:bg-accent hover:text-foreground",
+        "focus-visible:outline-2 focus-visible:outline-ring",
         // Unpinned: only on hover/focus, so the grid stays quiet. Pinned: always.
         pinned
-          ? "text-brand-text"
+          ? "text-primary"
           : "opacity-0 group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100",
         className,
       )}

@@ -1,11 +1,5 @@
 import { Check, UserPlus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Button, Avatar, AvatarFallback, AvatarImage, Popover, PopoverContent, PopoverTrigger } from "sedjiwa-ui";
 import { cn, getInitials } from "@/lib/utils";
 import type { AppUser } from "@/features/auth";
 
@@ -35,7 +29,7 @@ export function AssigneePicker({
       </PopoverTrigger>
       <PopoverContent className="w-64 p-1" align="start">
         {memberIds.length === 0 ? (
-          <p className="p-2 text-sm text-text-muted">No members yet.</p>
+          <p className="p-2 text-sm text-muted-foreground">No members yet.</p>
         ) : (
           <ul className="max-h-60 space-y-0.5 overflow-y-auto">
             {memberIds.map((id) => {
@@ -47,7 +41,7 @@ export function AssigneePicker({
                   <button
                     type="button"
                     onClick={() => toggle(id)}
-                    className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors [transition-duration:var(--duration-fast)] hover:bg-surface-hover"
+                    className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors [transition-duration:var(--duration-fast)] hover:bg-accent"
                   >
                     <Avatar size="sm">
                       {u?.avatarUrl && <AvatarImage src={u.avatarUrl} />}
@@ -92,7 +86,7 @@ export function AssigneeAvatars({
         const u = userMap[id];
         const name = u?.displayName ?? id;
         return (
-          <Avatar key={id} className="h-5 w-5 ring-1 ring-surface-raised">
+          <Avatar key={id} className="h-5 w-5 ring-1 ring-card">
             {u?.avatarUrl && <AvatarImage src={u.avatarUrl} />}
             <AvatarFallback className="text-xs">
               {getInitials(name)}
@@ -101,7 +95,7 @@ export function AssigneeAvatars({
         );
       })}
       {extra > 0 && (
-        <span className="text-num flex h-5 w-5 items-center justify-center rounded-full bg-surface-sunken text-xs ring-1 ring-surface-raised">
+        <span className="text-num flex h-5 w-5 items-center justify-center rounded-full bg-muted text-xs ring-1 ring-card">
           +{extra}
         </span>
       )}

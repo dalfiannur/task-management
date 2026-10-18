@@ -1,14 +1,7 @@
 import { useState } from "react";
 import { Pencil, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Button, Input, Dialog, DialogContent, DialogHeader, DialogTitle } from "sedjiwa-ui";
 import { cn } from "@/lib/utils";
 import { LABEL_COLORS, type Label } from "../types";
 import { useLabels, useCreateLabel, useUpdateLabel, useDeleteLabel } from "../api/hooks";
@@ -30,7 +23,7 @@ function ColorSwatches({
           style={{ backgroundColor: c }}
           className={cn(
             "h-6 w-6 rounded-full ring-offset-2 transition-all",
-            value === c && "ring-2 ring-text",
+            value === c && "ring-2 ring-foreground",
           )}
           aria-label={`Color ${c}`}
         />
@@ -65,8 +58,10 @@ function LabelRow({ label }: { label: Label }) {
     // (3.35) — di atas sunken ia jatuh ke 2.73. Dark: fill input tetap sunken,
     // jadi well sunken membuatnya melebur ke latar sendiri.
     return (
-      <li className="space-y-2 rounded-lg border border-border-subtle p-3">
-        <Input value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+      <li className="space-y-2 rounded-lg border border-border p-3">
+        <Input.Root>
+          <Input.Field value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+        </Input.Root>
         <ColorSwatches value={color} onChange={setColor} />
         <div className="flex justify-end gap-2">
           <Button variant="ghost" size="sm" onClick={() => setEditing(false)}>
@@ -81,7 +76,7 @@ function LabelRow({ label }: { label: Label }) {
   }
 
   return (
-    <li className="group flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors [transition-duration:var(--duration-fast)] hover:bg-surface-hover">
+    <li className="group flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors [transition-duration:var(--duration-fast)] hover:bg-accent">
       <span
         className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
         style={{ backgroundColor: `${label.color}22`, color: label.color }}
@@ -153,19 +148,21 @@ export function ManageLabelsDialog({
         </DialogHeader>
 
         {/* Hairline, bukan fill sunken — alasan sama seperti di LabelRow. */}
-        <div className="space-y-2 rounded-lg border border-border-subtle p-3">
+        <div className="space-y-2 rounded-lg border border-border p-3">
           <div className="flex gap-2">
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="New label name"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  add();
-                }
-              }}
-            />
+            <Input.Root>
+              <Input.Field
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="New label name"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    add();
+                  }
+                }}
+              />
+            </Input.Root>
             <Button size="icon" onClick={add} disabled={create.isPending}>
               <Plus className="h-4 w-4" />
             </Button>
@@ -175,7 +172,7 @@ export function ManageLabelsDialog({
 
         <ul className="max-h-72 space-y-0.5 overflow-y-auto">
           {labels.length === 0 ? (
-            <li className="p-3 text-center text-sm text-text-muted">
+            <li className="p-3 text-center text-sm text-muted-foreground">
               No labels yet.
             </li>
           ) : (

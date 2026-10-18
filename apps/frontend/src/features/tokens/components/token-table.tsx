@@ -3,28 +3,7 @@
 
 import { KeyRound } from "lucide-react";
 import { toast } from "sonner";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, Badge, Button, Skeleton, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "sedjiwa-ui";
 import { EmptyState } from "@/components/shared/empty-state";
 import { useRevokeToken, useTokens } from "../api/hooks";
 import type { AccessToken } from "../types";
@@ -85,7 +64,7 @@ export function TokenTable({ onCreateToken }: { onCreateToken: () => void }) {
       // Sized to the table's eventual shape: a header-height skeleton plus a
       // few row-height ones, inside the same raised card the real table gets.
       <div
-        className="space-y-2 overflow-hidden rounded-xl bg-surface-raised p-3 shadow-2"
+        className="space-y-2 overflow-hidden rounded-xl bg-card p-3 shadow-sm"
         aria-busy="true"
         aria-label="Loading tokens"
       >
@@ -98,7 +77,7 @@ export function TokenTable({ onCreateToken }: { onCreateToken: () => void }) {
 
   if (isError) {
     return (
-      <p className="text-sm text-danger">
+      <p className="text-sm text-destructive">
         {error?.message ?? "Failed to load tokens."}
       </p>
     );
@@ -116,7 +95,7 @@ export function TokenTable({ onCreateToken }: { onCreateToken: () => void }) {
   }
 
   return (
-    <div className="overflow-hidden rounded-xl bg-surface-raised shadow-2">
+    <div className="overflow-hidden rounded-xl bg-card shadow-sm">
       <Table>
         <TableHeader>
           <TableRow>
@@ -139,7 +118,7 @@ export function TokenTable({ onCreateToken }: { onCreateToken: () => void }) {
                   </Badge>
                 )}
               </TableCell>
-              <TableCell className="font-mono text-text-muted">
+              <TableCell className="font-mono text-muted-foreground">
                 …{t.preview}
               </TableCell>
               <TableCell>{when(t.createdAt, "—")}</TableCell>

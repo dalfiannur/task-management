@@ -1,13 +1,6 @@
 import { toast } from "sonner";
 import { Download } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Button, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "sedjiwa-ui";
 import { downloadCsv } from "@/lib/download";
 import { useExportTasksCsv } from "../api/hooks";
 
@@ -50,10 +43,10 @@ export function ExportDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
-          <div className="flex items-center justify-between gap-4 rounded-lg border border-border-subtle p-3">
+          <div className="flex items-center justify-between gap-4 rounded-lg border border-border p-3">
             <div>
               <p className="text-sm font-medium">Task list (.csv)</p>
-              <p className="text-sm text-text-muted">
+              <p className="text-sm text-muted-foreground">
                 Every task with its module, people, labels and dates. Opens in a
                 spreadsheet.
               </p>

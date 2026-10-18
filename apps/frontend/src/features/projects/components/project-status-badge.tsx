@@ -1,4 +1,4 @@
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "sedjiwa-ui";
 import type { ProjectStatus } from "../types";
 import { STATUS_LABEL } from "../types";
 

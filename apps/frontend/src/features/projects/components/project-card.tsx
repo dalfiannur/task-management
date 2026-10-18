@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { CalendarDays } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "sedjiwa-ui";
 import { getInitials } from "@/lib/utils";
 import type { AppUser } from "@/features/auth";
 import type { Project } from "../types";
@@ -19,7 +19,7 @@ export function ProjectCard({
   const ownerName = owner?.displayName ?? "Owner";
   const tasks = project.tasks;
   return (
-    <article className="group relative flex h-full flex-col gap-4 rounded-xl bg-surface-raised p-4 shadow-2 transition-shadow [transition-duration:var(--duration-fast)] [transition-timing-function:var(--ease-out)] focus-within:shadow-3 hover:shadow-3">
+    <article className="group relative flex h-full flex-col gap-4 rounded-xl bg-card p-4 shadow-sm transition-shadow [transition-duration:var(--duration-fast)] [transition-timing-function:var(--ease-out)] focus-within:shadow-md hover:shadow-md">
       <header className="flex items-start gap-2">
         <div className="min-w-0 flex-1 space-y-1.5">
           <ProjectStatusBadge status={project.status} />
@@ -31,7 +31,7 @@ export function ProjectCard({
             <Link
               to="/projects/$projectId"
               params={{ projectId: project.id }}
-              className="rounded-sm after:absolute after:inset-0 after:rounded-xl focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-focus"
+              className="rounded-sm after:absolute after:inset-0 after:rounded-xl focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-ring"
             >
               {project.name}
             </Link>
@@ -40,14 +40,14 @@ export function ProjectCard({
         <PinButton projectId={project.id} className="-mr-1 -mt-1" />
       </header>
 
-      <p className="line-clamp-2 min-h-[2lh] text-sm text-text-muted">
+      <p className="line-clamp-2 min-h-[2lh] text-sm text-muted-foreground">
         {project.description || (
-          <span className="text-text-subtle">No description</span>
+          <span className="text-muted-foreground">No description</span>
         )}
       </p>
 
       {range && (
-        <p className="text-num -mt-2 flex items-center gap-1.5 text-xs text-text-subtle">
+        <p className="text-num -mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
           <CalendarDays className="h-3.5 w-3.5" />
           {range}
         </p>
@@ -56,12 +56,12 @@ export function ProjectCard({
       {tasks && (
         <div className="space-y-1.5">
           <div className="flex items-baseline justify-between gap-2 text-xs">
-            <span className="text-text-muted">
+            <span className="text-muted-foreground">
               {tasks.total === 0 ? (
                 "No tasks yet"
               ) : (
                 <>
-                  <span className="text-num font-medium text-text">
+                  <span className="text-num font-medium text-foreground">
                     {tasks.done}/{tasks.total}
                   </span>{" "}
                   tasks done
@@ -69,15 +69,15 @@ export function ProjectCard({
               )}
             </span>
             {tasks.total > 0 && (
-              <span className="text-num text-text-muted">{donePct(tasks)}%</span>
+              <span className="text-num text-muted-foreground">{donePct(tasks)}%</span>
             )}
           </div>
           <ProgressBar tasks={tasks} />
         </div>
       )}
 
-      <footer className="mt-auto flex items-center gap-3 border-t border-border-subtle pt-3 text-xs">
-        <span className="flex min-w-0 items-center gap-2 text-text-muted">
+      <footer className="mt-auto flex items-center gap-3 border-t border-border pt-3 text-xs">
+        <span className="flex min-w-0 items-center gap-2 text-muted-foreground">
           <Avatar size="sm">
             {owner?.avatarUrl && <AvatarImage src={owner.avatarUrl} />}
             <AvatarFallback>{getInitials(ownerName)}</AvatarFallback>

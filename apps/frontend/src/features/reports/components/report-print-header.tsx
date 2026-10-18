@@ -14,8 +14,8 @@ export function ReportPrintHeader({ window }: { window: PeriodWindow }) {
       <h1 className="text-xl font-semibold">
         {window.granularity === "weekly" ? "Weekly" : "Monthly"} report
       </h1>
-      <p className="text-num text-sm text-text-muted">{window.label}</p>
-      <p className="mt-1 text-xs text-text-subtle">
+      <p className="text-num text-sm text-muted-foreground">{window.label}</p>
+      <p className="mt-1 text-xs text-muted-foreground">
         {APP_NAME} · printed {format(new Date(), "d MMM yyyy HH:mm")}
         {user?.displayName ? ` · ${user.displayName}` : ""}
       </p>

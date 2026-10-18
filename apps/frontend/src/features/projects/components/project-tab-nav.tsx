@@ -25,7 +25,7 @@ export function ProjectTabNav({ projectId }: { projectId: string }) {
        (`gantt-chart.tsx`), satu-satunya tempat lain di app ini yang menggeser
        konten lebar — bukan idiom ketiga. `mx-6 my-3` pindah ke pembungkus
        sebagai `px-6 py-3` supaya jarak tepinya tidak berubah, dan padding
-       vertikal itu sekaligus memberi ruang bagi `shadow-1` pil aktif agar
+       vertikal itu sekaligus memberi ruang bagi `shadow-xs` pil aktif agar
        tidak terpotong oleh kotak scroll. */
     <div className="scrollbar-slim overflow-x-auto px-6 py-3">
       {/* Segmented control: track tenggelam, pil terangkat untuk yang aktif.
@@ -37,15 +37,15 @@ export function ProjectTabNav({ projectId }: { projectId: string }) {
           activeProps.className, jadi dua utility berspesifisitas sama diadu oleh
           urutan sumber CSS — dan urutan itu milik Tailwind, bukan kita. Itulah
           sebabnya status aktif tab ini sebelumnya tidak terlihat sama sekali. */}
-      <nav className="flex w-fit gap-1 rounded-full bg-surface-sunken p-[3px]">
+      <nav className="flex w-fit gap-1 rounded-full bg-muted p-[3px]">
         {TABS.map((tab) => (
           <Link
             key={tab.to}
             to={tab.to}
             params={{ projectId }}
             className="rounded-full px-3 py-1.5 text-sm font-medium transition-colors [transition-duration:var(--duration-fast)]"
-            activeProps={{ className: "bg-surface-raised text-text shadow-1" }}
-            inactiveProps={{ className: "text-text-muted hover:text-text" }}
+            activeProps={{ className: "bg-card text-foreground shadow-xs" }}
+            inactiveProps={{ className: "text-muted-foreground hover:text-foreground" }}
           >
             {tab.label}
           </Link>

@@ -1,11 +1,5 @@
 import { ChevronDown } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from "sedjiwa-ui";
 import { cn } from "@/lib/utils";
 import { TASK_STATUSES, type Task, type TaskStatus } from "../types";
 import { TASK_STATUS_CONFIG } from "../config";
@@ -48,9 +42,9 @@ export function StatusMenu({
         aria-label={`Status: ${c.label}. Change status`}
         className={cn(
           "group/status inline-flex items-center rounded-full text-xs font-medium whitespace-nowrap",
-          "focus-visible:outline-2 focus-visible:outline-focus disabled:opacity-60",
+          "focus-visible:outline-2 focus-visible:outline-ring disabled:opacity-60",
           compact
-            ? "h-6 w-6 justify-center text-text-muted transition-colors [transition-duration:var(--duration-fast)] hover:bg-surface-hover hover:text-text"
+            ? "h-6 w-6 justify-center text-muted-foreground transition-colors [transition-duration:var(--duration-fast)] hover:bg-accent hover:text-foreground"
             : cn(
                 "gap-1 py-0.5 pl-2.5 pr-1.5 transition-[filter] [transition-duration:var(--duration-fast)] hover:brightness-95",
                 c.badge,

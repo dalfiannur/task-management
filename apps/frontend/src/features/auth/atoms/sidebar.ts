@@ -1,7 +1,6 @@
 // Shell layout state (Jotai). Collapsed is a per-browser preference, so it is
-// persisted; the mobile drawer is transient and resets on reload.
+// persisted. The mobile sheet is owned by sedjiwa-ui's SidebarProvider.
 
-import { atom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 
 export const sidebarCollapsedAtom = atomWithStorage(
@@ -10,5 +9,3 @@ export const sidebarCollapsedAtom = atomWithStorage(
   undefined,
   { getOnInit: true },
 );
-
-export const mobileNavOpenAtom = atom(false);

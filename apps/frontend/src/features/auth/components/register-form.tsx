@@ -1,16 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Button, Input, Label, Card, CardContent, CardDescription, CardHeader, CardTitle } from "sedjiwa-ui";
 import { useRegister } from "../api/hooks";
 
 /** Self-registration → account lands `pending` until an admin approves it. */
@@ -48,33 +39,39 @@ export function RegisterForm() {
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="displayName">Name</Label>
-              <Input
-                id="displayName"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                required
-              />
+              <Input.Root>
+                <Input.Field
+                  id="displayName"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  required
+                />
+              </Input.Root>
             </div>
             <div className="space-y-2">
               <Label htmlFor="phone">Phone</Label>
-              <Input
-                id="phone"
-                autoComplete="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                required
-              />
+              <Input.Root>
+                <Input.Field
+                  id="phone"
+                  autoComplete="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  required
+                />
+              </Input.Root>
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                autoComplete="new-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
+              <Input.Root>
+                <Input.Field
+                  id="password"
+                  type="password"
+                  autoComplete="new-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </Input.Root>
             </div>
             <Button
               type="submit"
@@ -84,7 +81,7 @@ export function RegisterForm() {
               {register.isPending ? "Registering…" : "Register"}
             </Button>
           </form>
-          <p className="mt-4 text-center text-sm text-text-muted">
+          <p className="mt-4 text-center text-sm text-muted-foreground">
             Already have an account?{" "}
             <Link to="/login" className="underline">
               Sign in

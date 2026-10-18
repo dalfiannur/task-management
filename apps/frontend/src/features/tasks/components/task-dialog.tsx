@@ -1,23 +1,8 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Button, Skeleton, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "sedjiwa-ui";
 import { RichTextEditor } from "@/components/shared/rich-text-editor";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { DatePickerField } from "@/components/shared/date-picker-field";
 import { cn } from "@/lib/utils";
 import type { AppUser } from "@/features/auth";
@@ -242,10 +227,10 @@ export function TaskDialog({
           and footer rules span the full width and the middle band is the only
           thing that scrolls. */}
       <DialogContent className="flex max-h-[85dvh] flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl">
-        <DialogHeader className="shrink-0 border-b border-border-subtle px-6 py-4">
+        <DialogHeader className="shrink-0 border-b border-border px-6 py-4">
           {/* Demoted to an eyebrow: the task's own title is the heading of
               this dialog now, so this line only names the mode. */}
-          <DialogTitle className="text-xs leading-[1.6] font-semibold tracking-[0.08em] text-text-subtle uppercase">
+          <DialogTitle className="text-xs leading-[1.6] font-semibold tracking-[0.08em] text-muted-foreground uppercase">
             {editing ? "Edit task" : "New task"}
           </DialogTitle>
         </DialogHeader>
@@ -265,7 +250,7 @@ export function TaskDialog({
                 <Skeleton className="h-8 w-2/3 rounded-lg" />
                 <Skeleton className="h-32 w-full rounded-lg" />
               </div>
-              <div className="space-y-4 sm:border-l sm:border-border-subtle sm:pl-6">
+              <div className="space-y-4 sm:border-l sm:border-border sm:pl-6">
                 <Skeleton className="h-8 w-32 rounded-lg" />
                 <Skeleton className="h-8 w-28 rounded-lg" />
                 <Skeleton className="h-8 w-36 rounded-lg" />
@@ -293,7 +278,7 @@ export function TaskDialog({
                     placeholder="Task title"
                     autoFocus
                     required
-                    className="w-full bg-transparent text-xl font-semibold text-text placeholder:text-text-subtle"
+                    className="w-full bg-transparent text-xl font-semibold text-foreground placeholder:text-muted-foreground"
                   />
                   <div className="space-y-2" role="group" aria-labelledby={`${formId}-desc`}>
                     <span id={`${formId}-desc`} className="text-label block">
@@ -312,7 +297,7 @@ export function TaskDialog({
                     height of the content rather than stopping mid-way. */}
                 <aside
                   className={cn(
-                    "space-y-4 sm:col-start-2 sm:row-start-1 sm:border-l sm:border-border-subtle sm:pl-6",
+                    "space-y-4 sm:col-start-2 sm:row-start-1 sm:border-l sm:border-border sm:pl-6",
                     hasDetails && "sm:row-span-2",
                   )}
                 >
@@ -381,7 +366,7 @@ export function TaskDialog({
                     sits outside the form: relations and the comment thread. */}
                 {hasDetails && task && (
                   <div className="space-y-6 sm:col-start-1 sm:row-start-2">
-                    <div className="space-y-4 border-t border-border-subtle pt-6">
+                    <div className="space-y-4 border-t border-border pt-6">
                       {task.parentId ? (
                         // The one-level rule made visible: a subtask never gets
                         // its own "add subtask" UI (the backend would reject
@@ -394,12 +379,12 @@ export function TaskDialog({
                           <button
                             type="button"
                             onClick={() => onOpenTask(parentTask.id)}
-                            className="text-sm text-brand-text hover:underline"
+                            className="text-sm text-primary hover:underline"
                           >
                             ← Subtask of “{parentTask.title}”
                           </button>
                         ) : (
-                          <p className="text-sm text-text-muted">
+                          <p className="text-sm text-muted-foreground">
                             This is a subtask.
                           </p>
                         )
@@ -421,7 +406,7 @@ export function TaskDialog({
                         projectId={projectId}
                       />
                     </div>
-                    <div className="border-t border-border-subtle pt-6">
+                    <div className="border-t border-border pt-6">
                       <CommentThread
                         taskId={task.id}
                         projectId={projectId}
@@ -433,7 +418,7 @@ export function TaskDialog({
               </div>
             </div>
 
-            <DialogFooter className="shrink-0 border-t border-border-subtle px-6 py-4">
+            <DialogFooter className="shrink-0 border-t border-border px-6 py-4">
               <Button
                 type="button"
                 variant="ghost"

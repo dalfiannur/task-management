@@ -1,5 +1,5 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "sedjiwa-ui";
 import { cn } from "@/lib/utils";
 import type { Granularity, PeriodWindow } from "../types";
 
@@ -17,7 +17,7 @@ export function PeriodPicker({
 }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 print:hidden">
-      <div className="flex items-center gap-1 rounded-lg bg-surface-sunken p-1">
+      <div className="flex items-center gap-1 rounded-lg bg-muted p-1">
         {(["weekly", "monthly"] as const).map((g) => (
           <button
             key={g}
@@ -26,8 +26,8 @@ export function PeriodPicker({
             className={cn(
               "rounded-md px-3 py-1.5 text-sm font-medium transition-colors [transition-duration:var(--duration-fast)]",
               window.granularity === g
-                ? "bg-surface-raised text-text shadow-1"
-                : "text-text-muted hover:text-text",
+                ? "bg-card text-foreground shadow-xs"
+                : "text-muted-foreground hover:text-foreground",
             )}
             aria-pressed={window.granularity === g}
           >

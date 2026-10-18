@@ -9,7 +9,7 @@ import {
   Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "sedjiwa-ui";
 import type { AppUser } from "@/features/auth";
 import type { Activity, ActivityEntity } from "../types";
 
@@ -45,11 +45,11 @@ export function ActivityFeed({
 }) {
   if (isLoading) {
     return (
-      <div className="overflow-hidden rounded-xl bg-surface-raised shadow-2">
+      <div className="overflow-hidden rounded-xl bg-card shadow-sm">
         {Array.from({ length: 5 }).map((_, i) => (
           <div
             key={i}
-            className="border-b border-border-subtle px-4 py-3 last:border-b-0"
+            className="border-b border-border px-4 py-3 last:border-b-0"
           >
             <Skeleton className="h-10 w-full" />
           </div>
@@ -59,7 +59,7 @@ export function ActivityFeed({
   }
   if (activities.length === 0) {
     return (
-      <p className="rounded-xl bg-surface-raised p-6 text-center text-sm text-text-muted shadow-2">
+      <p className="rounded-xl bg-card p-6 text-center text-sm text-muted-foreground shadow-sm">
         {emptyLabel}
       </p>
     );
@@ -69,16 +69,16 @@ export function ActivityFeed({
        di atas kanvas bertint. Baris kehilangan radius sendiri — sudut membulat
        di dalam sudut membulat menghasilkan kurva ganda; container yang
        memotong. */
-    <ul className="overflow-hidden rounded-xl bg-surface-raised shadow-2">
+    <ul className="overflow-hidden rounded-xl bg-card shadow-sm">
       {activities.map((a) => {
         const Icon = ENTITY_ICON[a.entity];
         const actor = userMap[a.actorId]?.displayName;
         return (
           <li
             key={a.id}
-            className="flex items-start gap-3 border-b border-border-subtle px-4 py-3 last:border-b-0"
+            className="flex items-start gap-3 border-b border-border px-4 py-3 last:border-b-0"
           >
-            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-text-muted">
+            <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
               <Icon className="h-3.5 w-3.5" />
             </span>
             <div className="min-w-0 flex-1">
@@ -89,13 +89,13 @@ export function ActivityFeed({
               {a.changes.length > 0 && (
                 <ul className="mt-0.5 space-y-0.5">
                   {a.changes.map((c, i) => (
-                    <li key={i} className="text-xs text-text-muted">
+                    <li key={i} className="text-xs text-muted-foreground">
                       {c.field}: {c.from || "—"} → {c.to || "—"}
                     </li>
                   ))}
                 </ul>
               )}
-              <span className="text-xs text-text-muted">
+              <span className="text-xs text-muted-foreground">
                 {relative(a.createdAt)}
               </span>
             </div>

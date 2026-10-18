@@ -1,5 +1,5 @@
 import { Outlet } from "@tanstack/react-router";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "sedjiwa-ui";
 import { useProject } from "../api/hooks";
 import { ProjectDetailHeader } from "./project-detail-header";
 import { ProjectTabNav } from "./project-tab-nav";
@@ -21,7 +21,7 @@ export function ProjectShell({ projectId }: { projectId: string }) {
   if (isError || !project) {
     return (
       <div className="p-12 text-center">
-        <p className="text-danger">
+        <p className="text-destructive">
           {error?.message ?? "You don’t have access to this project."}
         </p>
       </div>

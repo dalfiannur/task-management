@@ -15,25 +15,7 @@
 import { useState } from "react";
 import { Copy } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Button, Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "sedjiwa-ui";
 import { useCreateToken } from "../api/hooks";
 
 const EXPIRY_OPTIONS = [
@@ -119,11 +101,11 @@ export function CreateTokenDialog({
             </DialogHeader>
             {/* Confirms this is the token just requested, not some other
                 row — the plaintext alone doesn't say whose it is. */}
-            <p className="text-sm text-text-muted">
+            <p className="text-sm text-muted-foreground">
               {created.token.name} · {formatExpiry(created.token.expiresAt)}
             </p>
             <div className="flex items-center gap-2">
-              <code className="flex-1 select-all break-all rounded-md border border-border bg-surface-sunken p-3 font-mono text-xs text-text">
+              <code className="flex-1 select-all break-all rounded-md border border-border bg-muted p-3 font-mono text-xs text-foreground">
                 {created.plaintext}
               </code>
               <Button
@@ -162,13 +144,15 @@ export function CreateTokenDialog({
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="token-name">Name</Label>
-                <Input
-                  id="token-name"
-                  value={name}
-                  maxLength={64}
-                  placeholder="Work laptop"
-                  onChange={(e) => setName(e.target.value)}
-                />
+                <Input.Root>
+                  <Input.Field
+                    id="token-name"
+                    value={name}
+                    maxLength={64}
+                    placeholder="Work laptop"
+                    onChange={(e) => setName(e.target.value)}
+                  />
+                </Input.Root>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="token-expiry">Expiry</Label>

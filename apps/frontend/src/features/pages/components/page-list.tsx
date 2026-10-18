@@ -18,8 +18,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { FileText, GripVertical, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button, Input } from "sedjiwa-ui";
 import { cn } from "@/lib/utils";
 import { useReorderPages } from "../api/hooks";
 import { editedAgo } from "../format";
@@ -100,21 +99,22 @@ export function PageList({
         </Button>
       </div>
       <div className="px-3 pb-2">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-text-subtle" />
-          <Input
+        <Input.Root appearance="search">
+          <Input.LeadingIcon>
+            <Search />
+          </Input.LeadingIcon>
+          <Input.Field
             type="search"
             placeholder="Search pages…"
             aria-label="Search pages"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            className="!pl-8" /* beats the module's padding shorthand */
           />
-        </div>
+        </Input.Root>
       </div>
 
       {visible.length === 0 ? (
-        <p className="px-4 py-6 text-center text-sm text-text-muted">
+        <p className="px-4 py-6 text-center text-sm text-muted-foreground">
           No pages match “{q.trim()}”.
         </p>
       ) : (
@@ -174,8 +174,8 @@ function PageListItem({
       className={cn(
         "group relative flex items-center rounded-lg",
         "transition-colors [transition-duration:var(--duration-fast)]",
-        active ? "bg-surface-sunken" : "hover:bg-surface-hover",
-        isDragging && "z-10 bg-surface-raised shadow-2",
+        active ? "bg-muted" : "hover:bg-accent",
+        isDragging && "z-10 bg-card shadow-sm",
       )}
     >
       <button
@@ -186,20 +186,20 @@ function PageListItem({
       >
         <span className="mt-px w-5 shrink-0 text-center leading-5">
           {page.icon || (
-            <FileText className="mx-auto h-4 w-4 text-text-subtle" />
+            <FileText className="mx-auto h-4 w-4 text-muted-foreground" />
           )}
         </span>
         <span className="min-w-0 flex-1">
           <span
             className={cn(
               "block truncate text-sm leading-5",
-              active ? "font-medium text-text" : "text-text",
-              !page.title && "text-text-muted",
+              active ? "font-medium text-foreground" : "text-foreground",
+              !page.title && "text-muted-foreground",
             )}
           >
             {page.title || "Untitled"}
           </span>
-          <span className="block truncate text-xs text-text-muted">
+          <span className="block truncate text-xs text-muted-foreground">
             Edited {editedAgo(page.updatedAt)}
           </span>
         </span>
@@ -211,7 +211,7 @@ function PageListItem({
           {...attributes}
           {...listeners}
           aria-label={`Reorder ${page.title || "Untitled"}`}
-          className="absolute right-1 top-1/2 -translate-y-1/2 cursor-grab rounded p-0.5 text-text-subtle opacity-0 hover:text-text focus-visible:opacity-100 group-hover:opacity-100 active:cursor-grabbing"
+          className="absolute right-1 top-1/2 -translate-y-1/2 cursor-grab rounded p-0.5 text-muted-foreground opacity-0 hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100 active:cursor-grabbing"
         >
           <GripVertical className="h-4 w-4" />
         </button>

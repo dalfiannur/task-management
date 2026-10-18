@@ -1,12 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { formatDistanceToNow, parseISO } from "date-fns";
-import { Bell, CheckCheck } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { CheckCheck } from "lucide-react";
+import { Button, NotificationButton, Popover, PopoverContent, PopoverTrigger } from "sedjiwa-ui";
 import { cn } from "@/lib/utils";
 import type { Notification } from "../types";
 import {
@@ -56,22 +51,15 @@ export function NotificationBell() {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative"
-          aria-label="Notifications"
-        >
-          <Bell className="h-5 w-5" />
-          {count > 0 && (
-            <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-danger px-1 text-xs font-semibold text-text-on-danger">
-              {count > 99 ? "99+" : count}
-            </span>
-          )}
-        </Button>
+        <NotificationButton
+          count={count}
+          max={99}
+          label="Notifications"
+          countLabel={(n) => `${n} unread`}
+        />
       </PopoverTrigger>
       <PopoverContent className="w-80 p-0" align="end">
-        <div className="flex items-center justify-between border-b border-border-subtle px-3 py-2">
+        <div className="flex items-center justify-between border-b border-border px-3 py-2">
           <span className="text-sm font-medium">Notifications</span>
           {count > 0 && (
             <Button
@@ -88,9 +76,9 @@ export function NotificationBell() {
         </div>
         <ul className="max-h-96 overflow-y-auto">
           {isLoading ? (
-            <li className="p-4 text-sm text-text-muted">Loading…</li>
+            <li className="p-4 text-sm text-muted-foreground">Loading…</li>
           ) : notifications.length === 0 ? (
-            <li className="p-6 text-center text-sm text-text-muted">
+            <li className="p-6 text-center text-sm text-muted-foreground">
               No notifications.
             </li>
           ) : (
@@ -100,19 +88,19 @@ export function NotificationBell() {
                   type="button"
                   onClick={() => onClick(n)}
                   className={cn(
-                    "flex w-full items-start gap-2 border-b border-border-subtle px-3 py-2.5 text-left transition-colors [transition-duration:var(--duration-fast)] last:border-b-0 hover:bg-surface-hover",
-                    !n.read && "bg-brand/5",
+                    "flex w-full items-start gap-2 border-b border-border px-3 py-2.5 text-left transition-colors [transition-duration:var(--duration-fast)] last:border-b-0 hover:bg-accent",
+                    !n.read && "bg-primary/5",
                   )}
                 >
                   <span
                     className={cn(
                       "mt-1.5 h-2 w-2 shrink-0 rounded-full",
-                      n.read ? "bg-transparent" : "bg-brand-text",
+                      n.read ? "bg-transparent" : "bg-primary",
                     )}
                   />
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm">{n.message}</span>
-                    <span className="block text-xs text-text-muted">
+                    <span className="block text-xs text-muted-foreground">
                       {relative(n.createdAt)}
                     </span>
                   </span>

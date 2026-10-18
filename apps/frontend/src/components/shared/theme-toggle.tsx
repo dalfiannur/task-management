@@ -2,16 +2,10 @@ import { useEffect, useState } from "react";
 import { MonitorIcon, MoonIcon, SunIcon } from "lucide-react";
 import { useTheme } from "next-themes";
 
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "sedjiwa-ui";
 
 /** Light / dark / system theme switcher. Backed by next-themes (class strategy),
- *  so switching swaps the design tokens in `styles/tokens.css` app-wide. */
+ *  so switching swaps sedjiwa-ui's `.dark` token set app-wide. */
 export function ThemeToggle() {
   const { theme, setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);

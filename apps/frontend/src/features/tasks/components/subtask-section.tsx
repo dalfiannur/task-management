@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Checkbox, Input, Label } from "sedjiwa-ui";
 import { cn } from "@/lib/utils";
 import type { Task } from "../types";
 import { statusToProto } from "../api/mappers";
@@ -63,14 +61,14 @@ export function SubtaskSection({
       <Label>
         Subtasks
         {children.length > 0 && (
-          <span className="ml-1 text-num text-text-muted">
+          <span className="ml-1 text-num text-muted-foreground">
             {children.filter((c) => c.status === "done").length}/
             {children.length}
           </span>
         )}
       </Label>
       {children.length > 0 && (
-        <ul className="divide-y divide-border-subtle rounded-lg border border-border-subtle">
+        <ul className="divide-y divide-border rounded-lg border border-border">
           {children.map((c) => {
             const done = c.status === "done";
             // Optimistic row — no server id to update or open yet.
@@ -88,7 +86,7 @@ export function SubtaskSection({
                   onClick={() => onOpenTask(c.id)}
                   className={cn(
                     "flex-1 truncate text-left text-sm",
-                    done && "text-text-muted line-through",
+                    done && "text-muted-foreground line-through",
                     pending && "opacity-60",
                   )}
                 >
@@ -101,13 +99,14 @@ export function SubtaskSection({
         </ul>
       )}
       <form onSubmit={addSubtask} className="flex items-center gap-2">
-        <Plus className="h-4 w-4 shrink-0 text-text-muted" />
-        <Input
-          value={quick}
-          onChange={(e) => setQuick(e.target.value)}
-          placeholder="Add a subtask…"
-          className="h-8"
-        />
+        <Plus className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <Input.Root size="sm">
+          <Input.Field
+            value={quick}
+            onChange={(e) => setQuick(e.target.value)}
+            placeholder="Add a subtask…"
+          />
+        </Input.Root>
       </form>
     </div>
   );

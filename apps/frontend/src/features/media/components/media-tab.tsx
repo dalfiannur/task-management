@@ -10,9 +10,7 @@ import {
   Upload,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Button, Input, Skeleton } from "sedjiwa-ui";
 import { EmptyState } from "@/components/shared/empty-state";
 import { cn } from "@/lib/utils";
 import { currentUserAtom, isAdminAtom } from "@/features/auth";
@@ -65,8 +63,8 @@ const segment = (on: boolean) =>
     "rounded-full text-sm",
     "[transition:background-color_var(--duration-fast)_var(--ease-out),color_var(--duration-fast)_var(--ease-out)]",
     on
-      ? "bg-surface-raised font-medium text-text shadow-1"
-      : "text-text-muted hover:text-text",
+      ? "bg-card font-medium text-foreground shadow-xs"
+      : "text-muted-foreground hover:text-foreground",
   );
 
 const nameOf = (f: MediaFile) => f.originalFileName || f.fileName;
@@ -218,7 +216,7 @@ export function MediaTab({ projectId }: { projectId: string }) {
       {dragging && (
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-3 z-20 flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-brand-text bg-brand-subtle/80 text-brand-text"
+          className="pointer-events-none absolute inset-3 z-20 flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-primary bg-primary/8 text-primary"
         >
           <CloudUpload className="h-10 w-10" strokeWidth={1.5} />
           <p className="text-sm font-medium">Drop files to upload</p>
@@ -232,7 +230,7 @@ export function MediaTab({ projectId }: { projectId: string }) {
           <div
             role="group"
             aria-label="Filter by type"
-            className="inline-flex gap-1 overflow-x-auto rounded-full bg-surface-sunken p-[3px]"
+            className="inline-flex gap-1 overflow-x-auto rounded-full bg-muted p-[3px]"
           >
             {FILTERS.map((f) => (
               <button
@@ -242,28 +240,29 @@ export function MediaTab({ projectId }: { projectId: string }) {
                 className={cn(segment(filter === f.key), "px-3 py-1")}
               >
                 {f.label}{" "}
-                <span className="text-num text-xs text-text-muted">
+                <span className="text-num text-xs text-muted-foreground">
                   {counts[f.key]}
                 </span>
               </button>
             ))}
           </div>
-          <div className="relative order-last w-full sm:order-none sm:w-auto sm:min-w-0 sm:max-w-xs sm:flex-1">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-text-subtle" />
-            <Input
+          <Input.Root appearance="search" className="order-last w-full sm:order-none sm:w-auto sm:min-w-0 sm:max-w-xs sm:flex-1">
+            <Input.LeadingIcon>
+              <Search />
+            </Input.LeadingIcon>
+            <Input.Field
               type="search"
               placeholder="Search files…"
               aria-label="Search files"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              className="!pl-8" /* beats the module's padding shorthand */
             />
-          </div>
+          </Input.Root>
           <div className="ml-auto flex items-center gap-2">
             <div
               role="group"
               aria-label="Layout"
-              className="inline-flex gap-1 rounded-full bg-surface-sunken p-[3px]"
+              className="inline-flex gap-1 rounded-full bg-muted p-[3px]"
             >
               {VIEWS.map(({ key, label, icon: Icon }) => (
                 <button
@@ -287,14 +286,14 @@ export function MediaTab({ projectId }: { projectId: string }) {
         view === "grid" ? (
           <div className={GRID}>
             {Array.from({ length: 10 }).map((_, i) => (
-              <Skeleton key={i} className="aspect-[4/5] w-full rounded-xl shadow-2" />
+              <Skeleton key={i} className="aspect-[4/5] w-full rounded-xl shadow-sm" />
             ))}
           </div>
         ) : (
-          <Skeleton className="h-72 w-full rounded-xl shadow-2" />
+          <Skeleton className="h-72 w-full rounded-xl shadow-sm" />
         )
       ) : files.length === 0 ? (
-        <div className="rounded-xl bg-surface-raised shadow-2">
+        <div className="rounded-xl bg-card shadow-sm">
           <EmptyState
             icon={FolderOpen}
             title="Project files live here"
@@ -308,7 +307,7 @@ export function MediaTab({ projectId }: { projectId: string }) {
           />
         </div>
       ) : visible.length === 0 ? (
-        <div className="rounded-xl bg-surface-raised shadow-2">
+        <div className="rounded-xl bg-card shadow-sm">
           <EmptyState
             variant="no-results"
             icon={SearchX}
@@ -346,7 +345,7 @@ export function MediaTab({ projectId }: { projectId: string }) {
               ))}
             </ul>
           ) : (
-            <div className="overflow-hidden rounded-xl bg-surface-raised shadow-2">
+            <div className="overflow-hidden rounded-xl bg-card shadow-sm">
               <MediaRowHeader />
               <ul>
                 {visible.map((f) => (

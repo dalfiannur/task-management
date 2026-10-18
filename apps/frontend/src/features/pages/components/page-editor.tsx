@@ -10,30 +10,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { Button, Input, Popover, PopoverContent, PopoverTrigger, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "sedjiwa-ui";
 import { RichTextEditor } from "@/components/shared/rich-text-editor";
 import { cn } from "@/lib/utils";
 import { useUserMap } from "@/features/users";
@@ -199,7 +176,7 @@ export function PageEditor({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-2 border-b border-border-subtle px-3 py-2">
+      <div className="flex items-center gap-2 border-b border-border px-3 py-2">
         <Button
           variant="ghost"
           size="icon"
@@ -249,10 +226,10 @@ export function PageEditor({
                 aria-label={icon ? "Change icon" : "Add icon"}
                 className={cn(
                   "mb-2 flex items-center justify-center rounded-lg",
-                  "transition-colors [transition-duration:var(--duration-fast)] hover:bg-surface-hover",
+                  "transition-colors [transition-duration:var(--duration-fast)] hover:bg-accent",
                   icon
                     ? "h-14 w-14 text-5xl leading-none"
-                    : "h-8 gap-1.5 px-2 text-sm text-text-muted",
+                    : "h-8 gap-1.5 px-2 text-sm text-muted-foreground",
                 )}
               >
                 {icon || (
@@ -274,8 +251,8 @@ export function PageEditor({
                       setIconOpen(false);
                     }}
                     className={cn(
-                      "flex h-8 w-8 items-center justify-center rounded-md text-lg hover:bg-surface-hover",
-                      icon === e && "bg-surface-sunken",
+                      "flex h-8 w-8 items-center justify-center rounded-md text-lg hover:bg-accent",
+                      icon === e && "bg-muted",
                     )}
                   >
                     {e}
@@ -284,13 +261,15 @@ export function PageEditor({
               </div>
               <div className="mt-3 flex items-center gap-2">
                 <span className="min-w-0 flex-1">
-                  <Input
-                    value={icon}
-                    onChange={(e) => setIcon(e.target.value)}
-                    placeholder="Or type one"
-                    maxLength={2}
-                    aria-label="Custom icon"
-                  />
+                  <Input.Root>
+                    <Input.Field
+                      value={icon}
+                      onChange={(e) => setIcon(e.target.value)}
+                      placeholder="Or type one"
+                      maxLength={2}
+                      aria-label="Custom icon"
+                    />
+                  </Input.Root>
                 </span>
                 {icon && (
                   <Button
@@ -313,10 +292,10 @@ export function PageEditor({
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Untitled"
             aria-label="Page title"
-            className="w-full bg-transparent text-3xl font-semibold tracking-tight text-text outline-none placeholder:text-text-subtle"
+            className="w-full bg-transparent text-3xl font-semibold tracking-tight text-foreground outline-none placeholder:text-muted-foreground"
           />
 
-          <p className="mt-2 text-xs text-text-muted">
+          <p className="mt-2 text-xs text-muted-foreground">
             Edited {editedAgo(page.updatedAt)}
             {editorName && <> by {editorName}</>}
             {page.createdAt && (
@@ -370,7 +349,7 @@ function SaveIndicator({
       <button
         type="button"
         onClick={onRetry}
-        className="flex items-center gap-1.5 text-xs text-danger hover:underline"
+        className="flex items-center gap-1.5 text-xs text-destructive hover:underline"
       >
         <AlertCircle className="h-3.5 w-3.5" />
         Not saved — retry
@@ -381,7 +360,7 @@ function SaveIndicator({
     <span
       role="status"
       aria-live="polite"
-      className="flex items-center gap-1.5 text-xs text-text-muted"
+      className="flex items-center gap-1.5 text-xs text-muted-foreground"
     >
       {status === "saving" ? (
         <>

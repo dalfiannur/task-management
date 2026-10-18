@@ -19,10 +19,10 @@ const BAR_H = 22;
 // Overdue overrides the status fill below — it is the one thing on this chart
 // that asks for action.
 const STATUS_BAR: Record<TaskStatus, string> = {
-  todo: "bg-brand-subtle text-brand-text",
-  in_progress: "bg-brand text-text-on-brand",
-  done: "bg-surface-hover text-text-muted",
-  cancelled: "bg-surface-sunken text-text-muted line-through",
+  todo: "bg-primary/10 text-primary",
+  in_progress: "bg-primary text-primary-foreground",
+  done: "bg-accent text-muted-foreground",
+  cancelled: "bg-muted text-muted-foreground line-through",
 };
 
 function rangeLabel(span: { start: Date; end: Date }) {
@@ -150,16 +150,16 @@ export function GanttBar({
         // ATAS fade tepi kanan, di BAWAH kolom nama yang sticky. Tanpa angka
         // eksplisit bar jatuh ke z-auto dan fade yang ber-z-index menang.
         "group absolute z-20 flex items-center rounded-md px-2 text-xs font-medium",
-        "outline-none focus-visible:ring-2 focus-visible:ring-focus",
-        "[transition:box-shadow_var(--duration-fast)_var(--ease-out)] hover:shadow-1",
+        "outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "[transition:box-shadow_var(--duration-fast)_var(--ease-out)] hover:shadow-xs",
         canEdit ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
-        overdue ? "bg-danger text-text-on-danger" : STATUS_BAR[task.status],
+        overdue ? "bg-destructive text-destructive-foreground" : STATUS_BAR[task.status],
         // Conflict ring loses to the drag ring — mid-drag feedback is the
         // more urgent signal, and the conflict is still visible once released.
         // The offset keeps it legible on an overdue (danger-filled) bar.
         conflict &&
-          "ring-2 ring-danger ring-offset-1 ring-offset-surface-raised",
-        drag && "ring-2 ring-focus",
+          "ring-2 ring-destructive ring-offset-1 ring-offset-surface-raised",
+        drag && "ring-2 ring-ring",
       )}
       title={[
         task.number ? `#${task.number} ${task.title}` : task.title,
@@ -178,7 +178,7 @@ export function GanttBar({
         />
       )}
       {narrow ? (
-        <span className="pointer-events-none absolute left-full ml-1.5 whitespace-nowrap text-text-muted">
+        <span className="pointer-events-none absolute left-full ml-1.5 whitespace-nowrap text-muted-foreground">
           <TaskNumber number={task.number} />
           {task.title}
         </span>

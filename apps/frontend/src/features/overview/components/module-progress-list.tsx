@@ -3,7 +3,7 @@ import type { ModuleProgress } from "../types";
 /** Per-module completion bars.
  *
  *  Bentuknya sengaja sama dengan daftar "Projects" di dashboard
- *  (`project-progress-list.tsx`): track `surface-sunken`, isi `bg-brand`, angka
+ *  (`project-progress-list.tsx`): track `surface-sunken`, isi `bg-primary`, angka
  *  `text-num` di kanan, satu baris keterangan kecil di bawah. Dua daftar
  *  progres yang menjawab pertanyaan sejenis tidak boleh punya dua bahasa visual.
  *
@@ -29,23 +29,23 @@ export function ModuleProgressList({
         return (
           <li
             key={m.moduleId}
-            className="border-b border-border-subtle px-4 py-3 last:border-b-0"
+            className="border-b border-border px-4 py-3 last:border-b-0"
           >
             <div className="flex items-center justify-between gap-3 text-sm">
               <span className="truncate font-medium">{m.moduleName}</span>
-              <span className="text-num shrink-0 text-xs text-text-muted">
+              <span className="text-num shrink-0 text-xs text-muted-foreground">
                 {m.done}/{m.total}
               </span>
             </div>
-            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-sunken">
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
               <div
-                className="h-full rounded-full bg-brand"
+                className="h-full rounded-full bg-primary"
                 style={{ width: `${pct}%` }}
               />
             </div>
-            <p className="mt-1.5 text-xs text-text-muted">
+            <p className="mt-1.5 text-xs text-muted-foreground">
               {overdue > 0 ? (
-                <span className="font-medium text-danger">
+                <span className="font-medium text-destructive">
                   <span className="text-num">{overdue}</span> overdue
                 </span>
               ) : m.total === 0 ? (

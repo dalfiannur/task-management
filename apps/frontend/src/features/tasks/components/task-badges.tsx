@@ -17,7 +17,7 @@ export function TaskNumber({
   return (
     <span
       className={cn(
-        "text-num mr-1.5 inline-block font-normal text-text-muted",
+        "text-num mr-1.5 inline-block font-normal text-muted-foreground",
         className,
       )}
     >
@@ -69,10 +69,10 @@ export function DueDate({
       className={cn(
         "text-num text-xs whitespace-nowrap",
         group === "overdue"
-          ? "font-medium text-danger"
+          ? "font-medium text-destructive"
           : group === "today"
-            ? "font-medium text-warning"
-            : "text-text-muted",
+            ? "font-medium text-warning-text"
+            : "text-muted-foreground",
         className,
       )}
     >

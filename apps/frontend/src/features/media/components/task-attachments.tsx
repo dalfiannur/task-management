@@ -1,14 +1,7 @@
 import { useRef, useState } from "react";
 import { Download, File, FileImage, Link2, Paperclip, Unlink } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Button, Label, Skeleton, Popover, PopoverContent, PopoverTrigger } from "sedjiwa-ui";
 import { EmptyState } from "@/components/shared/empty-state";
 import {
   useTaskMedia,
@@ -132,7 +125,7 @@ export function TaskAttachments({
         <Label>
           Attachments
           {!empty && (
-            <span className="text-num ml-1 text-text-muted">{files.length}</span>
+            <span className="text-num ml-1 text-muted-foreground">{files.length}</span>
           )}
         </Label>
         <div className="flex items-center gap-1">
@@ -163,7 +156,7 @@ export function TaskAttachments({
             </PopoverTrigger>
             <PopoverContent className="w-72 p-1" align="end">
               {linkable.length === 0 ? (
-                <p className="p-2 text-sm text-text-muted">
+                <p className="p-2 text-sm text-muted-foreground">
                   {projectFiles.length === 0
                     ? "No files in this project yet."
                     : "Every project file is already attached."}
@@ -179,13 +172,13 @@ export function TaskAttachments({
                         <button
                           type="button"
                           onClick={() => onLinkExisting(f)}
-                          className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors [transition-duration:var(--duration-fast)] hover:bg-surface-hover"
+                          className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors [transition-duration:var(--duration-fast)] hover:bg-accent"
                         >
-                          <Icon className="h-4 w-4 shrink-0 text-text-muted" />
+                          <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
                           <span className="min-w-0 flex-1 truncate text-left">
                             {displayName(f)}
                           </span>
-                          <span className="text-num shrink-0 text-xs text-text-muted">
+                          <span className="text-num shrink-0 text-xs text-muted-foreground">
                             {formatBytes(f.size)}
                           </span>
                         </button>
@@ -218,16 +211,16 @@ export function TaskAttachments({
           }
         />
       ) : (
-      <ul className="divide-y divide-border-subtle rounded-lg border border-border-subtle">
+      <ul className="divide-y divide-border rounded-lg border border-border">
         {files.map((f) => {
           const Icon = f.mimeType.startsWith("image/") ? FileImage : File;
           return (
             <li key={f.id} className="group flex items-center gap-2 px-3 py-2">
-              <Icon className="h-4 w-4 shrink-0 text-text-muted" />
+              <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
               <span className="min-w-0 flex-1 truncate text-sm">
                 {displayName(f)}
               </span>
-              <span className="text-num shrink-0 text-xs text-text-muted">
+              <span className="text-num shrink-0 text-xs text-muted-foreground">
                 {formatBytes(f.size)}
               </span>
               {/* Revealed on focus as well as hover — opacity alone hides these

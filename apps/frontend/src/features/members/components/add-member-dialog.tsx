@@ -1,17 +1,7 @@
 import { useState } from "react";
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Input } from "@/components/ui/input";
+import { Button, Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, Avatar, AvatarFallback, AvatarImage, Input } from "sedjiwa-ui";
 import { getInitials } from "@/lib/utils";
 import { useUserDirectory } from "@/features/users";
 import { useAddMember } from "../api/hooks";
@@ -67,15 +57,17 @@ export function AddMemberDialog({
             Search active users by name or phone.
           </DialogDescription>
         </DialogHeader>
-        <Input
-          placeholder="Search users…"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          autoFocus
-        />
+        <Input.Root>
+          <Input.Field
+            placeholder="Search users…"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            autoFocus
+          />
+        </Input.Root>
         <ul className="max-h-72 space-y-0.5 overflow-y-auto">
           {candidates.length === 0 ? (
-            <li className="p-3 text-sm text-text-muted">
+            <li className="p-3 text-sm text-muted-foreground">
               No matching users.
             </li>
           ) : (
@@ -85,7 +77,7 @@ export function AddMemberDialog({
                   type="button"
                   disabled={add.isPending}
                   onClick={() => addMember(u.id)}
-                  className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors [transition-duration:var(--duration-fast)] hover:bg-surface-hover disabled:opacity-50"
+                  className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors [transition-duration:var(--duration-fast)] hover:bg-accent disabled:opacity-50"
                 >
                   <Avatar>
                     {u.avatarUrl && <AvatarImage src={u.avatarUrl} />}
@@ -93,7 +85,7 @@ export function AddMemberDialog({
                   </Avatar>
                   <span className="flex-1">
                     <span className="block text-sm">{u.displayName}</span>
-                    <span className="block text-xs text-text-muted">
+                    <span className="block text-xs text-muted-foreground">
                       {u.phone}
                     </span>
                   </span>

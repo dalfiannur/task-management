@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { LayoutDashboard } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "sedjiwa-ui";
 import { KpiStrip } from "@/components/shared/kpi-strip";
 import { EmptyState } from "@/components/shared/empty-state";
 import { ProjectActivity } from "@/features/activity";
@@ -26,15 +26,15 @@ export function OverviewTab({ projectId }: { projectId: string }) {
       /* Skeleton mengikuti bentuk akhirnya supaya tidak ada lompatan layout
          saat data masuk. */
       <div className="space-y-6 p-4 sm:p-6">
-        <Skeleton className="h-[88px] w-full rounded-xl shadow-2" />
+        <Skeleton className="h-[88px] w-full rounded-xl shadow-sm" />
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="min-w-0 space-y-6 lg:col-span-2">
-            <Skeleton className="h-64 w-full rounded-xl shadow-2" />
-            <Skeleton className="h-56 w-full rounded-xl shadow-2" />
+            <Skeleton className="h-64 w-full rounded-xl shadow-sm" />
+            <Skeleton className="h-56 w-full rounded-xl shadow-sm" />
           </div>
           <div className="space-y-6">
-            <Skeleton className="h-48 w-full rounded-xl shadow-2" />
-            <Skeleton className="h-64 w-full rounded-xl shadow-2" />
+            <Skeleton className="h-48 w-full rounded-xl shadow-sm" />
+            <Skeleton className="h-64 w-full rounded-xl shadow-sm" />
           </div>
         </div>
       </div>
@@ -44,7 +44,7 @@ export function OverviewTab({ projectId }: { projectId: string }) {
   if (isError || !overview) {
     return (
       <div className="p-12 text-center">
-        <p className="text-danger">
+        <p className="text-destructive">
           {error?.message ?? "Couldn’t load this project’s overview."}
         </p>
       </div>
@@ -98,7 +98,7 @@ export function OverviewTab({ projectId }: { projectId: string }) {
               <Link
                 to="/projects/$projectId/all-tasks"
                 params={{ projectId }}
-                className="text-xs text-text-muted hover:text-text"
+                className="text-xs text-muted-foreground hover:text-foreground"
               >
                 All tasks →
               </Link>

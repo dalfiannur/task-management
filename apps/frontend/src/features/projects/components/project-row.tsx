@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "sedjiwa-ui";
 import { getInitials } from "@/lib/utils";
 import type { AppUser } from "@/features/auth";
 import type { Project } from "../types";
@@ -14,7 +14,7 @@ const ROW_GRID =
 
 export function ProjectRowHeader() {
   return (
-    <div className={`${ROW_GRID} text-label border-b border-border-subtle px-4 py-2`}>
+    <div className={`${ROW_GRID} text-label border-b border-border px-4 py-2`}>
       <span>Name</span>
       <span className="hidden md:block">Status</span>
       <span>Progress</span>
@@ -38,18 +38,18 @@ export function ProjectRow({
   const range = dateRangeLabel(project);
   return (
     <li
-      className={`${ROW_GRID} group relative border-b border-border-subtle px-4 py-3 text-sm transition-colors [transition-duration:var(--duration-fast)] last:border-b-0 focus-within:bg-surface-hover hover:bg-surface-hover`}
+      className={`${ROW_GRID} group relative border-b border-border px-4 py-3 text-sm transition-colors [transition-duration:var(--duration-fast)] last:border-b-0 focus-within:bg-accent hover:bg-accent`}
     >
       <div className="min-w-0">
         <Link
           to="/projects/$projectId"
           params={{ projectId: project.id }}
-          className="block truncate font-medium after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus"
+          className="block truncate font-medium after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-ring"
         >
           {project.name}
         </Link>
         {project.description && (
-          <p className="truncate text-xs text-text-muted">{project.description}</p>
+          <p className="truncate text-xs text-muted-foreground">{project.description}</p>
         )}
       </div>
 
@@ -60,7 +60,7 @@ export function ProjectRow({
       <span className="space-y-1">
         {tasks && (
           <>
-            <span className="text-num block text-xs text-text-muted">
+            <span className="text-num block text-xs text-muted-foreground">
               {tasks.total === 0 ? "—" : `${tasks.done}/${tasks.total}`}
             </span>
             <ProgressBar tasks={tasks} />
@@ -72,7 +72,7 @@ export function ProjectRow({
         {tasks && <DueNote tasks={tasks} />}
       </span>
 
-      <span className="hidden min-w-0 items-center gap-2 text-text-muted lg:flex">
+      <span className="hidden min-w-0 items-center gap-2 text-muted-foreground lg:flex">
         <Avatar size="sm">
           {owner?.avatarUrl && <AvatarImage src={owner.avatarUrl} />}
           <AvatarFallback>{getInitials(ownerName)}</AvatarFallback>
@@ -80,7 +80,7 @@ export function ProjectRow({
         <span className="truncate">{ownerName}</span>
       </span>
 
-      <span className="text-num hidden truncate text-xs text-text-muted lg:block">
+      <span className="text-num hidden truncate text-xs text-muted-foreground lg:block">
         {range ?? "—"}
       </span>
 

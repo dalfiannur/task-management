@@ -1,11 +1,4 @@
-import {
-  Fragment,
-  useEffect,
-  useRef,
-  useState,
-  type ReactElement,
-  type ReactNode,
-} from "react";
+import { Fragment, useRef, useState } from "react";
 import {
   Link,
   Outlet,
@@ -16,39 +9,57 @@ import {
 import { useAtom, useAtomValue, useSetAtom } from "jotai";
 import {
   Check,
-  ChevronsUpDown,
   FileBarChart,
   FolderKanban,
   KeyRound,
   LayoutDashboard,
   ListTodo,
   LogOut,
-  Menu,
-  PanelLeftClose,
-  PanelLeftOpen,
   Plus,
   Search,
   ShieldCheck,
   X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import {
+  Avatar,
+  AvatarFallback,
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
-import {
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Kbd,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupAction,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuAction,
+  SidebarMenuBadge,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarRail,
+  SidebarTrigger,
+  useSidebar,
+} from "sedjiwa-ui";
 import {
   Command,
   CommandEmpty,
@@ -57,14 +68,6 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { cn, getInitials } from "@/lib/utils";
 import { APP_NAME } from "@/lib/app-config";
@@ -78,7 +81,7 @@ import {
 } from "@/features/projects";
 import { SearchOverlay, searchOpenAtom } from "@/features/search";
 import { currentUserAtom, isAdminAtom } from "../atoms/session";
-import { mobileNavOpenAtom, sidebarCollapsedAtom } from "../atoms/sidebar";
+import { sidebarCollapsedAtom } from "../atoms/sidebar";
 import { useLogout } from "../api/hooks";
 
 type NavItem = { to: string; label: string; icon: LucideIcon };
@@ -105,389 +108,229 @@ const SECTIONS: { to: string; label: string }[] = [
   { to: "/settings/tokens", label: "Access tokens" },
 ];
 
-/** Authed shell: collapsible sidebar (a drawer below `md`) + an action bar
- *  carrying the breadcrumb over the outlet.
+/** Authed shell, built from sedjiwa-ui's `Sidebar*` primitives: an icon-rail
+ *  sidebar on desktop (a sheet below `md`, handled by the primitive) and a
+ *  sticky action bar carrying the breadcrumb over the outlet.
  *
- *  Sidebar duduk di --surface-sunken — satu-satunya jawaban legal untuk
- *  permukaan berbeda (spec §2), dan biru kembali hanya untuk aksi (§3.6).
- *  Pasangan warnanya terukur (lihat 4b3fbb8), jangan ditukar sembarangan:
- *   · hover = --surface-raised; --surface-hover di atas sunken 1.07:1, tak
- *     terlihat.
- *   · chip avatar = --surface-raised; sunken di atas sunken 1.00:1.
- *   · teks sekunder = --text-muted; --text-subtle DILARANG di atas sunken.
- *  Drawer mobile memakai permukaan yang sama agar semua pasangan ini tetap
- *  berlaku di sana.
- *
- *  Sidebar sticky setinggi layar sementara window yang menggulir, jadi ia tidak
- *  butuh scroll container sendiri. */
+ *  Collapsed is our persisted Jotai preference rather than the primitive's
+ *  cookie, so it survives the same way it did before the port. */
 export function AppShell() {
-  const collapsed = useAtomValue(sidebarCollapsedAtom);
-  const [mobileOpen, setMobileOpen] = useAtom(mobileNavOpenAtom);
+  const [collapsed, setCollapsed] = useAtom(sidebarCollapsedAtom);
   const setSearchOpen = useSetAtom(searchOpenAtom);
-  // Action bar duduk di atas kanvas dengan warna yang sama dan tanpa border,
-  // jadi tidak ada apa pun yang menandai batasnya saat konten lewat di
-  // bawahnya. Bayangan ini menggantikan border yang sengaja dilepas.
-  const [scrolled, setScrolled] = useState(false);
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 0);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
 
   return (
-    <TooltipProvider delayDuration={300}>
-      <div className="flex min-h-screen bg-surface">
-        <SearchOverlay />
-        <aside
-          className={cn(
-            "sticky top-0 hidden h-screen shrink-0 flex-col bg-surface-sunken md:flex print:hidden",
-            "transition-[width] [transition-duration:var(--duration-fast)] [transition-timing-function:var(--ease-out)]",
-            collapsed ? "w-14" : "w-56",
-          )}
-        >
-          <SidebarContent collapsed={collapsed} />
-        </aside>
-
-        {/* Drawer hanya punya jalan masuk dari hamburger `md:hidden`, jadi
-            tidak perlu disembunyikan di desktop. */}
-        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-          <SheetContent
-            side="left"
-            showCloseButton={false}
-            aria-describedby={undefined}
-            className="w-64 gap-0 bg-surface-sunken print:hidden"
+    <SidebarProvider
+      open={!collapsed}
+      onOpenChange={(open) => setCollapsed(!open)}
+    >
+      <SearchOverlay />
+      <AppSidebar />
+      <SidebarInset className="min-w-0">
+        <header className="sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 border-b bg-background px-4 print:hidden">
+          <SidebarTrigger className="-ml-1" />
+          <ShellBreadcrumb />
+          <Button
+            variant="outline"
+            size="sm"
+            className="shrink-0 text-muted-foreground hover:text-foreground sm:w-56 sm:justify-start"
+            aria-label="Search"
+            onClick={() => setSearchOpen(true)}
           >
-            <SheetTitle className="sr-only">Navigation</SheetTitle>
-            <SidebarContent
-              collapsed={false}
-              onNavigate={() => setMobileOpen(false)}
-            />
-          </SheetContent>
-        </Sheet>
-
-        <div className="flex min-w-0 flex-1 flex-col">
-          <header
-            className={cn(
-              "sticky top-0 z-40 flex h-14 shrink-0 items-center gap-2 bg-surface px-4 print:hidden",
-              "transition-shadow [transition-duration:var(--duration-fast)] [transition-timing-function:var(--ease-out)]",
-              scrolled && "shadow-1",
-            )}
-          >
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="-ml-2 md:hidden"
-              aria-label="Open navigation"
-              onClick={() => setMobileOpen(true)}
-            >
-              <Menu />
-            </Button>
-            <ShellBreadcrumb />
-            <Button
-              variant="outline"
-              size="sm"
-              className="shrink-0 text-text-muted hover:text-text sm:w-56 sm:justify-start"
-              aria-label="Search"
-              onClick={() => setSearchOpen(true)}
-            >
-              <Search className="h-4 w-4" />
-              <span className="hidden sm:inline">Search…</span>
-              {/* kbd hint sits on --surface-sunken, so its own text is
-                  --text-muted (tier 2) — --text-subtle on sunken fails
-                  contrast in light mode (accessibility.md). */}
-              <span className="ml-auto hidden items-center gap-0.5 sm:flex">
-                <kbd className="rounded border border-border bg-surface-sunken px-1 text-xs font-sans text-text-muted">
-                  ⌘
-                </kbd>
-                <kbd className="rounded border border-border bg-surface-sunken px-1 text-xs font-sans text-text-muted">
-                  K
-                </kbd>
-              </span>
-            </Button>
-            <div className="flex shrink-0 items-center gap-3">
-              <ThemeToggle />
-              <NotificationBell />
-            </div>
-          </header>
-          <main className="flex-1">
-            <Outlet />
-          </main>
+            <Search />
+            <span className="hidden sm:inline">Search…</span>
+            <span className="ml-auto hidden items-center gap-0.5 sm:flex">
+              <Kbd>⌘</Kbd>
+              <Kbd>K</Kbd>
+            </span>
+          </Button>
+          <div className="flex shrink-0 items-center gap-3">
+            <ThemeToggle />
+            <NotificationBell />
+          </div>
+        </header>
+        <div className="flex-1">
+          <Outlet />
         </div>
-      </div>
-    </TooltipProvider>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }
 
-/** Brand, nav, pinned projects, collapse toggle and user menu. Rendered twice:
- *  in the desktop aside and in the mobile drawer (never collapsed there). */
-function SidebarContent({
-  collapsed,
-  onNavigate,
-}: {
-  collapsed: boolean;
-  onNavigate?: () => void;
-}) {
+/** True when `to` is the current route or one of its descendants. */
+function useIsActive(to: string) {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  return pathname === to || pathname.startsWith(`${to}/`);
+}
+
+/** Closes the mobile sheet after a pick; a no-op on desktop. */
+function useCloseOnNavigate() {
+  const { isMobile, setOpenMobile } = useSidebar();
+  return () => {
+    if (isMobile) setOpenMobile(false);
+  };
+}
+
+function AppSidebar() {
   const isAdmin = useAtomValue(isAdminAtom);
-  const setCollapsed = useSetAtom(sidebarCollapsedAtom);
   const openCount = useAssignedOpenCount();
-  // The toggle only exists on the desktop aside; the drawer has no rail mode.
-  const collapsible = !onNavigate;
 
   return (
-    <>
-      <div
-        className={cn(
-          "flex h-14 shrink-0 items-center gap-2.5",
-          collapsed ? "justify-center" : "px-4",
-        )}
-      >
-        <span
-          aria-hidden="true"
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-brand text-sm font-semibold text-text-on-brand"
-        >
-          {APP_NAME.charAt(0)}
-        </span>
-        {/* Dua baris, bukan truncate: "Project Management" terpotong di w-56. */}
-        <span
-          className={cn(
-            "line-clamp-2 text-sm font-semibold leading-tight text-text",
-            collapsed && "sr-only",
-          )}
-        >
-          {APP_NAME}
-        </span>
-      </div>
+    <Sidebar collapsible="icon" className="print:hidden">
+      <SidebarHeader>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton size="lg" asChild>
+              <Link to="/dashboard">
+                <span
+                  aria-hidden="true"
+                  className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-md bg-primary text-sm font-semibold text-primary-foreground"
+                >
+                  {APP_NAME.charAt(0)}
+                </span>
+                {/* Dua baris, bukan truncate: "Project Management" terpotong. */}
+                <span className="line-clamp-2 text-sm font-semibold leading-tight">
+                  {APP_NAME}
+                </span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
 
-      <nav className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-3 pt-2 text-sm">
-        <div className="flex flex-col gap-0.5">
-          {MAIN_NAV.map((item) => (
-            <NavLink
-              key={item.to}
-              item={item}
-              collapsed={collapsed}
-              onNavigate={onNavigate}
-              badge={item.to === "/my-tasks" ? openCount : undefined}
-            />
-          ))}
-        </div>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {MAIN_NAV.map((item) => (
+                <NavLink
+                  key={item.to}
+                  item={item}
+                  badge={item.to === "/my-tasks" ? openCount : undefined}
+                />
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
 
-        <PinnedSection collapsed={collapsed} onNavigate={onNavigate} />
+        <PinnedSection />
 
         {isAdmin && (
-          <div className="flex flex-col gap-0.5">
-            <SectionHeading label="Admin" collapsed={collapsed} />
-            {ADMIN_NAV.map((item) => (
-              <NavLink
-                key={item.to}
-                item={item}
-                collapsed={collapsed}
-                onNavigate={onNavigate}
-              />
-            ))}
-          </div>
+          <SidebarGroup>
+            <SidebarGroupLabel>Admin</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {ADMIN_NAV.map((item) => (
+                  <NavLink key={item.to} item={item} />
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
         )}
-      </nav>
+      </SidebarContent>
 
-      <div className="flex flex-col gap-0.5 p-3">
-        {collapsible && (
-          <NavTooltip label="Expand sidebar" enabled={collapsed}>
-            <button
-              type="button"
-              onClick={() => setCollapsed((c) => !c)}
-              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-              aria-expanded={!collapsed}
-              className={cn(
-                "flex items-center gap-2.5 rounded-md py-1.5 text-sm text-text-muted transition-colors [transition-duration:var(--duration-fast)] hover:bg-surface-raised hover:text-text",
-                collapsed ? "justify-center px-0" : "px-2.5",
-              )}
-            >
-              {collapsed ? (
-                <PanelLeftOpen className="h-4 w-4 shrink-0" aria-hidden="true" />
-              ) : (
-                <PanelLeftClose className="h-4 w-4 shrink-0" aria-hidden="true" />
-              )}
-              {!collapsed && "Collapse"}
-            </button>
-          </NavTooltip>
-        )}
-        <UserMenu collapsed={collapsed} onNavigate={onNavigate} />
-      </div>
-    </>
+      <SidebarFooter>
+        <UserMenu />
+      </SidebarFooter>
+      <SidebarRail />
+    </Sidebar>
   );
 }
-
-/** Group heading; the collapsed rail has no room for text, so a hairline keeps
- *  the grouping visible. --text-muted, not --text-subtle: it sits on
- *  --surface-sunken. */
-function SectionHeading({
-  label,
-  collapsed,
-  action,
-}: {
-  label: string;
-  collapsed: boolean;
-  action?: ReactNode;
-}) {
-  if (collapsed) {
-    return <div aria-hidden="true" className="mx-2 mb-1.5 h-px bg-border" />;
-  }
-  return (
-    <div className="flex h-6 items-center justify-between pr-1 pb-0.5 pl-2.5">
-      <span className="text-xs font-medium text-text-muted">{label}</span>
-      {action}
-    </div>
-  );
-}
-
-// Aktif = --surface-raised + bar brand 3px yang menempel di tepi sidebar
-// (before:-left-3 membatalkan px-3 milik nav), ikon brand, teks medium. Hover
-// hanya mengganti latar, jadi aktif dan hover tetap bisa dibedakan.
-const ITEM_BASE =
-  "relative flex items-center gap-2.5 rounded-md py-1.5 transition-colors [transition-duration:var(--duration-fast)]";
-const ITEM_ACTIVE =
-  "bg-surface-raised text-text font-medium [&>svg]:text-brand-text before:absolute before:inset-y-1.5 before:-left-3 before:w-[3px] before:rounded-r-full before:bg-brand-text";
-const ITEM_INACTIVE = "text-text hover:bg-surface-raised [&>svg]:text-text-muted";
 
 function NavLink({
   item: { to, label, icon: Icon },
-  collapsed,
-  onNavigate,
   badge,
 }: {
   item: NavItem;
-  collapsed: boolean;
-  onNavigate?: () => void;
   badge?: number | null;
 }) {
+  const active = useIsActive(to);
+  const close = useCloseOnNavigate();
   const count = badge ?? 0;
   return (
-    <NavTooltip label={count > 0 ? `${label} · ${count}` : label} enabled={collapsed}>
-      <Link
-        to={to}
-        onClick={onNavigate}
-        aria-label={collapsed ? label : undefined}
-        // Semua WARNA di activeProps/inactiveProps, tidak satu pun di
-        // className dasar — TanStack Router MENGGABUNGKAN keduanya, jadi
-        // utility berspesifisitas sama diadu oleh urutan sumber CSS.
-        className={cn(ITEM_BASE, collapsed ? "justify-center px-0" : "px-2.5")}
-        activeProps={{ className: ITEM_ACTIVE }}
-        inactiveProps={{ className: ITEM_INACTIVE }}
+    <SidebarMenuItem>
+      <SidebarMenuButton
+        asChild
+        isActive={active}
+        tooltip={count > 0 ? `${label} · ${count}` : label}
       >
-        <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-        {!collapsed && <span className="min-w-0 flex-1 truncate">{label}</span>}
-        {count > 0 &&
-          (collapsed ? (
-            <span
-              aria-hidden="true"
-              className="absolute top-1 right-2 h-1.5 w-1.5 rounded-full bg-brand-text"
-            />
-          ) : (
-            <span className="text-num text-xs text-text-muted">
-              {count > 99 ? "99+" : count}
-              <span className="sr-only"> open</span>
-            </span>
-          ))}
-      </Link>
-    </NavTooltip>
+        <Link to={to} onClick={close}>
+          <Icon aria-hidden="true" />
+          <span>{label}</span>
+        </Link>
+      </SidebarMenuButton>
+      {count > 0 && (
+        <SidebarMenuBadge className="text-num">
+          {count > 99 ? "99+" : count}
+          <span className="sr-only"> open</span>
+        </SidebarMenuBadge>
+      )}
+    </SidebarMenuItem>
   );
 }
 
-function PinnedSection({
-  collapsed,
-  onNavigate,
-}: {
-  collapsed: boolean;
-  onNavigate?: () => void;
-}) {
+function PinnedSection() {
   const { ids } = usePinnedProjects();
+  const { state, isMobile } = useSidebar();
   // Nothing to show in the rail, and the rail has no room for the picker.
-  if (collapsed && ids.length === 0) return null;
+  if (state === "collapsed" && !isMobile && ids.length === 0) return null;
 
   return (
-    <div className="flex flex-col gap-0.5">
-      <SectionHeading
-        label="Pinned"
-        collapsed={collapsed}
-        action={<PinProjectPicker />}
-      />
-      {ids.length === 0 ? (
-        <p className="px-2.5 text-xs text-text-muted">
-          Pin a project for one-click access.
-        </p>
-      ) : (
-        ids.map((id) => (
-          <PinnedProjectLink
-            key={id}
-            id={id}
-            collapsed={collapsed}
-            onNavigate={onNavigate}
-          />
-        ))
-      )}
-    </div>
+    <SidebarGroup>
+      <SidebarGroupLabel>Pinned</SidebarGroupLabel>
+      <PinProjectPicker />
+      <SidebarGroupContent>
+        {ids.length === 0 ? (
+          <p className="px-2 text-xs text-muted-foreground">
+            Pin a project for one-click access.
+          </p>
+        ) : (
+          <SidebarMenu>
+            {ids.map((id) => (
+              <PinnedProjectLink key={id} id={id} />
+            ))}
+          </SidebarMenu>
+        )}
+      </SidebarGroupContent>
+    </SidebarGroup>
   );
 }
 
-function PinnedProjectLink({
-  id,
-  collapsed,
-  onNavigate,
-}: {
-  id: string;
-  collapsed: boolean;
-  onNavigate?: () => void;
-}) {
+function PinnedProjectLink({ id }: { id: string }) {
   const { project, isError } = useProject(id);
   const { unpin } = usePinnedProjects();
+  const active = useIsActive(`/projects/${id}`);
+  const close = useCloseOnNavigate();
   // Deleted, or no longer a member: hide it rather than show a dead link. The
   // id stays pinned, so it comes back if access does.
   if (isError) return null;
   const name = project?.name ?? "…";
 
   return (
-    <div className="group relative">
-      <NavTooltip label={name} enabled={collapsed}>
+    <SidebarMenuItem>
+      <SidebarMenuButton asChild isActive={active} tooltip={name}>
         <Link
           to="/projects/$projectId"
           params={{ projectId: id }}
-          onClick={onNavigate}
-          aria-label={collapsed ? name : undefined}
-          // Long names truncate in w-56; the rail already has a tooltip.
-          title={collapsed ? undefined : name}
-          // The unpin button only takes room while it can be seen.
-          className={cn(
-            ITEM_BASE,
-            collapsed
-              ? "justify-center px-0"
-              : "px-2.5 group-focus-within:pr-8 group-hover:pr-8",
-          )}
-          // Tanpa bar: menu Projects di atas ikut aktif di dalam project, dan
-          // dua bar sekaligus membuat keduanya tampak sama penting.
-          activeProps={{ className: "bg-surface-raised text-text font-medium" }}
-          inactiveProps={{ className: "text-text hover:bg-surface-raised" }}
+          onClick={close}
+          title={name}
         >
           <span
             aria-hidden="true"
-            className="flex h-4 w-4 shrink-0 items-center justify-center rounded-sm bg-surface-raised text-[10px] font-semibold text-text-muted ring-1 ring-border"
+            className="flex size-4 shrink-0 items-center justify-center rounded-sm bg-card text-[10px] font-semibold text-muted-foreground ring-1 ring-border"
           >
             {project ? getInitials(project.name).charAt(0) : ""}
           </span>
-          {!collapsed && <span className="min-w-0 flex-1 truncate">{name}</span>}
+          <span>{name}</span>
         </Link>
-      </NavTooltip>
-      {!collapsed && (
-        <button
-          type="button"
-          onClick={() => unpin(id)}
-          aria-label={`Unpin ${name}`}
-          className="absolute inset-y-0 right-1 my-auto flex h-6 w-6 items-center justify-center rounded-md text-text-muted opacity-0 transition-opacity [transition-duration:var(--duration-fast)] group-hover:opacity-100 hover:text-text focus-visible:opacity-100"
-        >
-          <X className="h-3.5 w-3.5" aria-hidden="true" />
-        </button>
-      )}
-    </div>
+      </SidebarMenuButton>
+      <SidebarMenuAction
+        showOnHover
+        onClick={() => unpin(id)}
+        aria-label={`Unpin ${name}`}
+      >
+        <X aria-hidden="true" />
+      </SidebarMenuAction>
+    </SidebarMenuItem>
   );
 }
 
@@ -513,13 +356,9 @@ function PinProjectPicker() {
       }}
     >
       <PopoverTrigger asChild>
-        <button
-          type="button"
-          aria-label="Pin a project"
-          className="flex h-6 w-6 items-center justify-center rounded-md text-text-muted transition-colors [transition-duration:var(--duration-fast)] hover:bg-surface-raised hover:text-text"
-        >
-          <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-        </button>
+        <SidebarGroupAction aria-label="Pin a project">
+          <Plus aria-hidden="true" />
+        </SidebarGroupAction>
       </PopoverTrigger>
       <PopoverContent side="right" align="start" className="w-64 p-0">
         <Command shouldFilter={false}>
@@ -545,7 +384,7 @@ function PinProjectPicker() {
                 >
                   <span className="min-w-0 flex-1 truncate">{p.name}</span>
                   {isPinned(p.id) && (
-                    <Check className="h-4 w-4 text-brand-text" aria-label="Pinned" />
+                    <Check className="h-4 w-4 text-primary" aria-label="Pinned" />
                   )}
                 </CommandItem>
               ))}
@@ -557,96 +396,69 @@ function PinProjectPicker() {
   );
 }
 
-/** Label tooltip for the icon-only rail; a passthrough when expanded. */
-function NavTooltip({
-  label,
-  enabled,
-  children,
-}: {
-  label: string;
-  enabled: boolean;
-  children: ReactElement;
-}) {
-  if (!enabled) return children;
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>{children}</TooltipTrigger>
-      <TooltipContent side="right" sideOffset={8}>
-        {label}
-      </TooltipContent>
-    </Tooltip>
-  );
-}
-
-function UserMenu({
-  collapsed,
-  onNavigate,
-}: {
-  collapsed: boolean;
-  onNavigate?: () => void;
-}) {
+function UserMenu() {
   const user = useAtomValue(currentUserAtom);
   const logout = useLogout();
   const navigate = useNavigate();
+  const close = useCloseOnNavigate();
+  const { state, isMobile } = useSidebar();
+  const rail = state === "collapsed" && !isMobile;
 
   if (!user) return null;
 
   function onSignOut() {
-    onNavigate?.();
+    close();
     logout();
     navigate({ to: "/login" });
   }
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          aria-label={collapsed ? `Account: ${user.displayName}` : undefined}
-          className={cn(
-            "flex w-full items-center gap-2.5 rounded-full py-2 text-left text-sm text-text transition-colors [transition-duration:var(--duration-fast)] hover:bg-surface-raised",
-            collapsed ? "justify-center px-0" : "px-3",
-          )}
-        >
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-surface-raised text-xs">
-            {getInitials(user.displayName)}
-          </span>
-          {!collapsed && (
-            <>
-              <span className="min-w-0 flex-1 truncate">{user.displayName}</span>
-              <ChevronsUpDown
-                className="h-3.5 w-3.5 shrink-0 text-text-muted"
-                aria-hidden="true"
-              />
-            </>
-          )}
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        side={collapsed ? "right" : "top"}
-        align={collapsed ? "end" : "start"}
-        className="w-[13rem]"
-      >
-        <DropdownMenuLabel className="flex flex-col font-normal">
-          <span className="truncate font-medium text-text">
-            {user.displayName}
-          </span>
-          <span className="truncate text-xs text-text-muted">{user.phone}</span>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link to="/settings/tokens" onClick={onNavigate}>
-            <KeyRound className="h-4 w-4" aria-hidden="true" />
-            Access tokens
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={onSignOut}>
-          <LogOut className="h-4 w-4" aria-hidden="true" />
-          Sign out
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <SidebarMenu>
+      <SidebarMenuItem>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <SidebarMenuButton
+              size="lg"
+              aria-label={rail ? `Account: ${user.displayName}` : undefined}
+            >
+              <Avatar size="sm">
+                <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
+              </Avatar>
+              <span className="grid min-w-0 flex-1 text-left leading-tight">
+                <span className="truncate font-medium">{user.displayName}</span>
+                <span className="truncate text-xs text-muted-foreground">
+                  {user.phone}
+                </span>
+              </span>
+            </SidebarMenuButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            side={rail ? "right" : "top"}
+            align={rail ? "end" : "start"}
+            className="w-[13rem]"
+          >
+            <DropdownMenuLabel className="flex flex-col font-normal">
+              <span className="truncate font-medium text-foreground">
+                {user.displayName}
+              </span>
+              <span className="truncate text-xs text-muted-foreground">{user.phone}</span>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link to="/settings/tokens" onClick={close}>
+                <KeyRound className="h-4 w-4" aria-hidden="true" />
+                Access tokens
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onSelect={onSignOut}>
+              <LogOut className="h-4 w-4" aria-hidden="true" />
+              Sign out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </SidebarMenuItem>
+    </SidebarMenu>
   );
 }
 
@@ -677,7 +489,7 @@ function ShellBreadcrumb() {
               {i > 0 && <BreadcrumbSeparator />}
               <BreadcrumbItem className={cn(last && "min-w-0")}>
                 {last ? (
-                  <BreadcrumbPage className="truncate font-medium text-text">
+                  <BreadcrumbPage className="truncate font-medium text-foreground">
                     {c.label}
                   </BreadcrumbPage>
                 ) : (

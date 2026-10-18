@@ -2,8 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useAtom } from "jotai";
 import { Printer } from "lucide-react";
 import { useMemo } from "react";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Button, Skeleton } from "sedjiwa-ui";
 import {
   ActivitySummary,
   ExportExcelButton,
@@ -53,13 +52,13 @@ function ReportsPage() {
       />
 
       {isError ? (
-        <p className="text-sm text-danger">
+        <p className="text-sm text-destructive">
           {error?.message ?? "Failed to load the report."}
         </p>
       ) : isLoading || !report ? (
         <div className="space-y-4">
-          <Skeleton className="h-20 w-full rounded-xl shadow-2" />
-          <Skeleton className="h-48 w-full rounded-xl shadow-2" />
+          <Skeleton className="h-20 w-full rounded-xl shadow-sm" />
+          <Skeleton className="h-48 w-full rounded-xl shadow-sm" />
         </div>
       ) : (
         <>

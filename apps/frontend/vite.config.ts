@@ -30,6 +30,9 @@ export default defineConfig(({ mode }) => {
       alias: {
         "@": path.resolve(__dirname, "./src"),
       },
+      // sedjiwa-ui lives in bun's isolated store with its own peer links; without
+      // this the dev pre-bundle gives it a second React and every hook throws.
+      dedupe: ["react", "react-dom"],
     },
     server: {
       host: '0.0.0.0',

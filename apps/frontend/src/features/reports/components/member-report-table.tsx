@@ -3,16 +3,16 @@ import type { MemberReportRow } from "../types";
 export function MemberReportTable({ rows }: { rows: MemberReportRow[] }) {
   if (rows.length === 0) {
     return (
-      <p className="rounded-xl bg-surface-raised p-6 text-center text-sm text-text-muted shadow-2">
+      <p className="rounded-xl bg-card p-6 text-center text-sm text-muted-foreground shadow-sm">
         No member activity in this period.
       </p>
     );
   }
   return (
-    <div className="overflow-x-auto rounded-xl bg-surface-raised shadow-2">
+    <div className="overflow-x-auto rounded-xl bg-card shadow-sm">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-border-subtle">
+          <tr className="border-b border-border">
             <th className="text-label px-4 py-3 text-left">Member</th>
             <th className="text-label px-4 py-3 text-right">Completed</th>
             <th className="text-label px-4 py-3 text-right">Started</th>
@@ -24,7 +24,7 @@ export function MemberReportTable({ rows }: { rows: MemberReportRow[] }) {
           {rows.map((r) => (
             <tr
               key={r.userId}
-              className="border-b border-border-subtle last:border-b-0 print:break-inside-avoid"
+              className="border-b border-border last:border-b-0 print:break-inside-avoid"
             >
               {/* A member whose user record is gone keeps its id, so their work
                   is still counted rather than silently disappearing. */}
@@ -36,7 +36,7 @@ export function MemberReportTable({ rows }: { rows: MemberReportRow[] }) {
               <td className="text-num px-4 py-3 text-right">{r.openAssigned}</td>
               <td className="text-num px-4 py-3 text-right">
                 {r.overdueAssigned > 0 ? (
-                  <span className="text-danger">{r.overdueAssigned}</span>
+                  <span className="text-destructive">{r.overdueAssigned}</span>
                 ) : (
                   r.overdueAssigned
                 )}

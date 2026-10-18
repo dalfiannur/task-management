@@ -3,14 +3,7 @@
 
 import { Copy } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from "sedjiwa-ui";
 
 export function ConnectPanel() {
   // Built from the page's own origin rather than hardcoded — dev (localhost)
@@ -51,9 +44,9 @@ export function ConnectPanel() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        <p className="font-mono text-xs text-text-muted">{endpoint}</p>
+        <p className="font-mono text-xs text-muted-foreground">{endpoint}</p>
         <div className="flex items-start gap-2">
-          <pre className="flex-1 overflow-x-auto rounded-md border border-border bg-surface-sunken p-3 text-xs text-text">
+          <pre className="flex-1 overflow-x-auto rounded-md border border-border bg-muted p-3 text-xs text-foreground">
             {snippet}
           </pre>
           <Button

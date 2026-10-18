@@ -2,8 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { FileText, Plus } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Button, Skeleton } from "sedjiwa-ui";
 import { EmptyState } from "@/components/shared/empty-state";
 import { cn } from "@/lib/utils";
 import { usePages, useCreatePage } from "../api/hooks";
@@ -74,7 +73,7 @@ export function PagesTab({
             layout saat data masuk. `rounded-xl` di sini baru benar-benar
             berlaku sejak radius dikeluarkan dari skeleton.module.css; sebelum
             itu ia dikalahkan diam-diam dan merender 8px. */}
-        <Skeleton className="h-[calc(100vh-17rem)] min-h-[28rem] w-full rounded-xl shadow-2" />
+        <Skeleton className="h-[calc(100vh-17rem)] min-h-[28rem] w-full rounded-xl shadow-sm" />
       </div>
     );
   }
@@ -95,7 +94,7 @@ export function PagesTab({
             Daftar halaman ikut dilepas, bukan dikosongkan: ia navigasi untuk
             konten yang belum ada, dan tombol "+"-nya menduplikasi CTA di sini
             (empty-states.md §3 — kontrol mati yang menutupi satu-satunya aksi). */}
-        <div className="rounded-xl bg-surface-raised shadow-2">
+        <div className="rounded-xl bg-card shadow-sm">
           <EmptyState
             icon={FileText}
             title="No pages yet"
@@ -119,7 +118,7 @@ export function PagesTab({
   // sendiri, dan aturan chrome desain ini melarang rule antar-region.
   return (
     /* Split-pane duduk di dalam SATU kartu raised, bukan rata di kanvas.
-       Ini yang membuat `border-border-subtle` di bawah sah: tokens.css
+       Ini yang membuat `border-border` di bawah sah: tokens.css
        mendefinisikannya sebagai hairline pemisah DI DALAM permukaan raised.
        Di kanvas ia grey-100 di atas grey-50 — 1.07:1 di light, pemisah yang
        secara efektif tidak ada.
@@ -132,10 +131,10 @@ export function PagesTab({
        overflow-hidden wajib: daftar halaman menggulir sendiri, dan tanpa ini
        ia menabrak keluar sudut membulat kartu. */
     <div className="p-6">
-      <div className="flex h-[calc(100vh-17rem)] min-h-[28rem] overflow-hidden rounded-xl bg-surface-raised shadow-2">
+      <div className="flex h-[calc(100vh-17rem)] min-h-[28rem] overflow-hidden rounded-xl bg-card shadow-sm">
         <aside
           className={cn(
-            "w-full shrink-0 border-border-subtle md:block md:w-72 md:border-r",
+            "w-full shrink-0 border-border md:block md:w-72 md:border-r",
             mobileEditor ? "hidden" : "block",
           )}
         >

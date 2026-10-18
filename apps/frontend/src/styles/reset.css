@@ -5,7 +5,7 @@
   border-width: 0;
   border-style: solid;
   border-color: var(--border);
-  outline-color: var(--focus);
+  outline-color: var(--ring);
 }
 
 html {
@@ -25,8 +25,8 @@ html {
 body {
   margin: 0;
   line-height: inherit;
-  background-color: var(--surface);
-  color: var(--text);
+  background-color: var(--background);
+  color: var(--foreground);
 }
 
 hr {
@@ -173,7 +173,7 @@ textarea {
 input::placeholder,
 textarea::placeholder {
   opacity: 1;
-  color: var(--text-muted);
+  color: var(--muted-foreground);
 }
 
 button, [role="button"] {

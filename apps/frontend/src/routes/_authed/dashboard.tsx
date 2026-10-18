@@ -31,7 +31,7 @@ function DashboardPage() {
           {greeting(now.getHours())}
           {firstName && `, ${firstName}`}
         </h1>
-        <p className="text-num mt-1 text-sm text-text-muted">
+        <p className="text-num mt-1 text-sm text-muted-foreground">
           {format(now, "EEEE, d MMMM yyyy")}
         </p>
       </header>
@@ -44,7 +44,7 @@ function DashboardPage() {
             <h2 className="text-label">Needs attention</h2>
             <Link
               to="/my-tasks"
-              className="text-xs text-text-muted hover:text-text"
+              className="text-xs text-muted-foreground hover:text-foreground"
             >
               All my tasks →
             </Link>

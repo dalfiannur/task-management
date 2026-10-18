@@ -1,15 +1,7 @@
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { Search, SlidersHorizontal, X } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
+import { Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Button } from "sedjiwa-ui";
 import { DatePickerField } from "@/components/shared/date-picker-field";
 import type { AppUser } from "@/features/auth";
 import type { Label } from "@/features/labels";
@@ -86,17 +78,18 @@ export function TaskFilterBar({
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative w-full sm:w-auto sm:min-w-0 sm:max-w-xs sm:flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-text-subtle" />
-          <Input
+        <Input.Root appearance="search" className="w-full sm:w-auto sm:min-w-0 sm:max-w-xs sm:flex-1">
+          <Input.LeadingIcon>
+            <Search />
+          </Input.LeadingIcon>
+          <Input.Field
             type="search"
             placeholder="Search tasks…"
             aria-label="Search tasks"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            className="!pl-8" /* beats the module's padding shorthand */
           />
-        </div>
+        </Input.Root>
         {actions && (
           <div className="ml-auto flex items-center gap-2">{actions}</div>
         )}
@@ -105,7 +98,7 @@ export function TaskFilterBar({
       <div className="flex flex-wrap items-center gap-2">
         <SlidersHorizontal
           aria-hidden="true"
-          className="h-4 w-4 text-text-subtle"
+          className="h-4 w-4 text-muted-foreground"
         />
         <Select
           value={filter.status ?? ALL}
@@ -183,13 +176,13 @@ export function TaskFilterBar({
 
         {/* One range over the task's lifetime: a task shows when its
             start…due span overlaps these bounds. Either end stands alone. */}
-        <div className="flex h-8 items-center gap-1 rounded-md border border-border-subtle px-1">
+        <div className="flex h-8 items-center gap-1 rounded-md border border-border px-1">
           <DatePickerField
             value={isoToDate(filter.from)}
             onChange={(d) => onChange({ from: dateToIso(d) })}
             placeholder="From"
           />
-          <span aria-hidden="true" className="text-text-subtle">
+          <span aria-hidden="true" className="text-muted-foreground">
             –
           </span>
           <DatePickerField
@@ -206,8 +199,8 @@ export function TaskFilterBar({
               <X className="mr-1 h-4 w-4" />
               Clear
             </Button>
-            <p className="ml-auto text-sm text-text-muted">
-              <span className="text-num font-medium text-text">{matched}</span>{" "}
+            <p className="ml-auto text-sm text-muted-foreground">
+              <span className="text-num font-medium text-foreground">{matched}</span>{" "}
               of <span className="text-num">{total}</span> task(s)
               {reorderNote && " · reordering is off while filtered"}
             </p>

@@ -11,7 +11,7 @@ import {
   Code,
   Link as LinkIcon,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "sedjiwa-ui";
 import { cn } from "@/lib/utils";
 
 export interface RichTextEditorProps {
@@ -48,7 +48,7 @@ function ToolbarButton({
       aria-label={label}
       aria-pressed={active}
       onClick={onClick}
-      className={cn("h-8 w-8", active && "bg-surface-sunken text-text")}
+      className={cn("h-8 w-8", active && "bg-muted text-foreground")}
     >
       {children}
     </Button>
@@ -111,7 +111,7 @@ export function RichTextEditor({
           className={cn(
             "flex flex-wrap items-center gap-0.5 p-1",
             doc
-              ? "sticky top-0 z-10 -mx-1 border-b border-border-subtle bg-surface-raised"
+              ? "sticky top-0 z-10 -mx-1 border-b border-border bg-card"
               : "border-b",
           )}
         >

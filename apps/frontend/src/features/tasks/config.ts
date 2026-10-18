@@ -16,23 +16,23 @@ export const TASK_STATUS_CONFIG: Record<
   // paling tenang, supaya yang sedang berjalan dan yang selesai bisa terbaca.
   todo: {
     label: "To do",
-    dot: "bg-text-muted",
-    badge: "bg-surface-sunken text-text-muted",
+    dot: "bg-muted-foreground",
+    badge: "bg-muted text-muted-foreground",
   },
   in_progress: {
     label: "In progress",
     dot: "bg-warning",
-    badge: "bg-warning-subtle text-warning",
+    badge: "bg-warning-subtle text-warning-text",
   },
   done: {
     label: "Done",
     dot: "bg-success",
-    badge: "bg-success-subtle text-success",
+    badge: "bg-success-subtle text-success-text",
   },
   cancelled: {
     label: "Cancelled",
-    dot: "bg-text-subtle",
-    badge: "bg-surface-sunken text-text-muted line-through",
+    dot: "bg-muted-foreground",
+    badge: "bg-muted text-muted-foreground line-through",
   },
 };
 
@@ -43,9 +43,9 @@ export const TASK_PRIORITY_CONFIG: Record<
   // Prioritas naik lewat warna DAN weight — bukan warna saja. "None" dan
   // "Low" sengaja tidak berwarna: memberi kelimanya warna sendiri membuat
   // "Urgent" berhenti terbaca sebagai kekecualian (aturan 4).
-  none: { label: "None", className: "text-text-subtle" },
-  low: { label: "Low", className: "text-text-muted" },
-  medium: { label: "Medium", className: "text-text font-medium" },
-  high: { label: "High", className: "text-warning font-semibold" },
-  urgent: { label: "Urgent", className: "text-danger font-semibold" },
+  none: { label: "None", className: "text-muted-foreground" },
+  low: { label: "Low", className: "text-muted-foreground" },
+  medium: { label: "Medium", className: "text-foreground font-medium" },
+  high: { label: "High", className: "text-warning-text font-semibold" },
+  urgent: { label: "Urgent", className: "text-destructive font-semibold" },
 };

@@ -162,14 +162,14 @@ export function SearchOverlay() {
       description="Search tasks, pages, comments, projects, and people"
     >
       {person && (
-        <div className="flex items-center gap-2 border-b border-border-subtle px-3 py-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-subtle py-1 pr-1 pl-2.5 text-xs font-medium text-brand-text">
+        <div className="flex items-center gap-2 border-b border-border px-3 py-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 py-1 pr-1 pl-2.5 text-xs font-medium text-primary">
             Assigned to {person.name}
             <button
               type="button"
               onClick={() => setPerson(null)}
               aria-label={`Clear "${person.name}" filter`}
-              className="rounded-full p-0.5 transition-colors [transition-duration:var(--duration-fast)] hover:bg-surface-hover"
+              className="rounded-full p-0.5 transition-colors [transition-duration:var(--duration-fast)] hover:bg-accent"
             >
               <X className="h-3 w-3" />
             </button>
@@ -183,16 +183,16 @@ export function SearchOverlay() {
       />
       <CommandList>
         {belowMin ? (
-          <div className="py-8 text-center text-sm text-text-muted">
+          <div className="py-8 text-center text-sm text-muted-foreground">
             Type at least {MIN_QUERY} characters to search.
           </div>
         ) : isError ? (
           // One clear row, no retry — the app must not unmount anything.
-          <div className="py-8 text-center text-sm text-danger">
+          <div className="py-8 text-center text-sm text-destructive">
             Search failed. Try again in a moment.
           </div>
         ) : isSearching ? (
-          <div className="py-8 text-center text-sm text-text-muted">
+          <div className="py-8 text-center text-sm text-muted-foreground">
             Searching…
           </div>
         ) : groups.length === 0 ? (
@@ -225,12 +225,12 @@ export function SearchOverlay() {
                         would just repeat what "Tasks" already implies. */}
                     {hit.kind !== "project" &&
                       (hit.parentTitle ? (
-                        <span className="block truncate text-xs text-text-subtle group-data-[selected=true]:text-brand-text">
+                        <span className="block truncate text-xs text-muted-foreground group-data-[selected=true]:text-primary">
                           Subtask of {hit.parentTitle}
                         </span>
                       ) : (
                         hit.projectName && (
-                          <span className="block truncate text-xs text-text-subtle group-data-[selected=true]:text-brand-text">
+                          <span className="block truncate text-xs text-muted-foreground group-data-[selected=true]:text-primary">
                             {hit.projectName}
                           </span>
                         )

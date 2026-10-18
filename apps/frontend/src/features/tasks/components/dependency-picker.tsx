@@ -1,11 +1,5 @@
 import { Ban, Check, TriangleAlert } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Button, Label, Popover, PopoverContent, PopoverTrigger } from "sedjiwa-ui";
 import { cn } from "@/lib/utils";
 import type { Task } from "../types";
 import { edgeConflicts } from "../task-graph";
@@ -60,7 +54,7 @@ export function DependencyPicker({
         <PopoverContent className="w-72 p-1" align="start">
           <ul className="max-h-56 space-y-0.5 overflow-y-auto">
             {candidates.length === 0 ? (
-              <li className="p-2 text-sm text-text-muted">
+              <li className="p-2 text-sm text-muted-foreground">
                 No other tasks in this project.
               </li>
             ) : (
@@ -71,7 +65,7 @@ export function DependencyPicker({
                     <button
                       type="button"
                       onClick={() => toggle(c.id)}
-                      className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors [transition-duration:var(--duration-fast)] hover:bg-surface-hover"
+                      className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors [transition-duration:var(--duration-fast)] hover:bg-accent"
                     >
                       <span className="flex-1 truncate text-left">
                         {c.title}
@@ -101,7 +95,7 @@ export function DependencyPicker({
                 key={b.id}
                 className={cn(
                   "flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm",
-                  conflicted ? "bg-danger-subtle text-danger" : "text-text-muted",
+                  conflicted ? "bg-destructive-subtle text-destructive" : "text-muted-foreground",
                 )}
               >
                 {conflicted && <TriangleAlert className="h-4 w-4 shrink-0" />}

@@ -1,142 +1,38 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+/* Warna, radius, dan varian dark datang dari sedjiwa-ui. @source membuat
+   Tailwind memindai JSX library supaya utilitas yang dipakai komponennya ikut
+   terbit. */
+@import "sedjiwa-ui/styles.css";
+@source "../node_modules/sedjiwa-ui/dist";
 
 @import "./styles/tokens.css" layer(base);
 @import "./styles/reset.css" layer(base);
 @import "./styles/animations.css" layer(base);
-@import "./styles/print.css" layer(base);
 /* No `layer(...)` here: this file defines `@utility` rules, which Tailwind
    v4 refuses to process inside a @layer block. */
 @import "./styles/dialog-utilities.css";
+/* No layer: the print palette must beat sedjiwa-ui's unlayered tokens. */
+@import "./styles/print.css";
 
-/* Class-based dark mode (driven by next-themes on <html>) */
-@custom-variant dark (&:is(.dark *));
-
-/* ============================================
-   Lapis semantik → utilitas Tailwind.
-   `inline` supaya nilai var yang dirujuk ikut berubah saat .dark aktif,
-   dan supaya Tailwind tidak menerbitkan ulang variabel yang sudah
-   didefinisikan tokens.css.
-   Hanya lapis 2 yang diekspos — --grey-* dan --brand-* bernomor sengaja
-   TIDAK dipetakan supaya primitif tidak bisa dipakai dari komponen.
-   ============================================ */
+/* Lapis token lokal → utilitas Tailwind. Warna dan radius dipetakan oleh
+   sedjiwa-ui/styles.css (yang juga mendefinisikan varian `dark`); di sini
+   hanya font dan easing yang tidak disediakannya. */
 @theme inline {
-  /* Permukaan */
-  --color-surface: var(--surface);
-  --color-surface-raised: var(--surface-raised);
-  --color-surface-sunken: var(--surface-sunken);
-  --color-surface-overlay: var(--surface-overlay);
-  --color-surface-chrome: var(--surface-chrome);
-  --color-surface-chrome-hover: var(--surface-chrome-hover);
-  --color-surface-chrome-active: var(--surface-chrome-active);
-  --color-text-on-chrome: var(--text-on-chrome);
-  --color-text-on-chrome-muted: var(--text-on-chrome-muted);
-  --color-surface-hover: var(--surface-hover);
-  /* Fill kontrol form — raised di light, sunken di dark. Lihat tokens.css. */
-  --color-surface-field: var(--surface-field);
-
-  /* Teks — tiga tier + label di atas fill */
-  --color-text: var(--text);
-  --color-text-muted: var(--text-muted);
-  --color-text-subtle: var(--text-subtle);
-  --color-text-on-brand: var(--text-on-brand);
-  --color-text-on-danger: var(--text-on-danger);
-
-  /* Brand */
-  --color-brand: var(--brand);
-  --color-brand-hover: var(--brand-hover);
-  --color-brand-subtle: var(--brand-subtle);
-  --color-brand-text: var(--brand-text);
-  --color-brand-soft: var(--brand-soft);
-
-  /* Batas & focus */
-  --color-border: var(--border);
-  --color-border-subtle: var(--border-subtle);
-  --color-border-strong: var(--border-strong);
-  --color-border-field: var(--border-field);
-  --color-focus: var(--focus);
-
-  /* Scrim — naungan di belakang modal/drawer. Sengaja sama di kedua tema. */
-  --color-scrim: var(--scrim);
-  --color-scrim-strong: var(--scrim-strong);
-
-  /* Status */
-  --color-danger: var(--danger);
-  --color-danger-subtle: var(--danger-subtle);
-  --color-warning: var(--warning);
-  --color-warning-subtle: var(--warning-subtle);
-  --color-success: var(--success);
-  --color-success-subtle: var(--success-subtle);
-
-  /* Radius — satu base 8px, sisanya diturunkan */
-  --radius-sm: var(--radius-sm);
-  --radius-md: var(--radius);
-  --radius-lg: var(--radius-lg);
-  --radius-xl: var(--radius-xl);
-  --radius-full: var(--radius-full);
-
-  /* Elevasi — satu token per peran (depth.md §3) */
-  --shadow-1: var(--shadow-1);
-  --shadow-2: var(--shadow-2);
-  --shadow-3: var(--shadow-3);
-  --shadow-4: var(--shadow-4);
-  --shadow-5: var(--shadow-5);
-  --shadow-inset: var(--shadow-inset);
-  --shadow-field: var(--shadow-field);
-
-  /* Skala spacing terkunci (aturan 5). Basis px, bukan rem: dengan basis rem
-     seluruh skala ikut bergeser kalau root font-size berubah, dan skala yang
-     bisa bergeser bukan skala. p-1→4 p-2→8 p-3→12 p-4→16 p-6→24 p-8→32
-     p-12→48 p-16→64 p-24→96 p-32→128 p-48→192 p-64→256. */
-  --spacing: 4px;
-
   --font-sans: var(--font-sans);
   --font-mono: var(--font-mono);
 
   --ease-out: var(--ease-out);
   --ease-in-out: var(--ease-in-out);
-
-  /* ---------- Skala tipografi terkunci (aturan 6) ----------
-     12 14 16 18 20 24 30 36 48 60 72, line-height berbanding terbalik
-     dengan ukuran: 12–14 → 1.6 · 16–20 → 1.5 · 24–30 → 1.35 ·
-     36–48 → 1.2 · 60–72 → 1.1. Letter-spacing -0.02em untuk ≥ 36px.
-     Ukuran di luar daftar ini sengaja tidak ada — text-[13px] gagal build,
-     bukan lolos diam-diam. */
-  --text-xs: 12px;
-  --text-xs--line-height: 1.6;
-  --text-sm: 14px;
-  --text-sm--line-height: 1.6;
-  --text-base: 16px;
-  --text-base--line-height: 1.5;
-  --text-lg: 18px;
-  --text-lg--line-height: 1.5;
-  --text-xl: 20px;
-  --text-xl--line-height: 1.5;
-  --text-2xl: 24px;
-  --text-2xl--line-height: 1.35;
-  --text-3xl: 30px;
-  --text-3xl--line-height: 1.35;
-  --text-4xl: 36px;
-  --text-4xl--line-height: 1.2;
-  --text-4xl--letter-spacing: -0.02em;
-  --text-5xl: 48px;
-  --text-5xl--line-height: 1.2;
-  --text-5xl--letter-spacing: -0.02em;
-  --text-6xl: 60px;
-  --text-6xl--line-height: 1.1;
-  --text-6xl--letter-spacing: -0.02em;
-  --text-7xl: 72px;
-  --text-7xl--line-height: 1.1;
-  --text-7xl--letter-spacing: -0.02em;
 }
 
 @layer base {
   /* Focus ring wajib — accessibility.md §3. Selalu :focus-visible supaya
      klik mouse tidak memunculkan ring. */
   :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
-    outline: 2px solid var(--focus);
+    outline: 2px solid var(--ring);
     outline-offset: 2px;
-    border-radius: var(--radius-sm);
+    border-radius: calc(var(--radius) - 4px);
   }
 
   /* Hit area 44×44 tanpa mengubah ukuran visual — accessibility.md §4.4.
@@ -165,7 +61,7 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: var(--text-subtle);
+    color: var(--muted-foreground);
   }
 
   /* Angka dan tanggal memakai mono bertabular supaya digit sejajar dalam
@@ -182,8 +78,7 @@
      Bukan overlay-scrollbar ala Radix: di grid yang lebarnya bisa 3x viewport,
      scrollbar yang baru muncul saat hover menyembunyikan satu-satunya petunjuk
      seberapa jauh isinya membentang. Ia diredam, bukan dihilangkan (aturan 4).
-     Thumb memakai --border-strong, sama dengan thumb ScrollArea, supaya kedua
-     jenis scrollbar di app ini tidak berwarna berbeda.
+     Thumb memakai --input, warna garis kontrol sedjiwa-ui.
 
      SENGAJA tanpa blok ::-webkit-scrollbar pendampingnya: sejak Chrome 121
      pseudo-element webkit DIMATIKAN untuk elemen yang punya scrollbar-width
@@ -194,12 +89,12 @@
      platform, bukan angka yang kita pilih. */
   .scrollbar-slim {
     scrollbar-width: thin;
-    scrollbar-color: var(--border-strong) transparent;
+    scrollbar-color: var(--input) transparent;
   }
 
   /* Tiptap editor placeholder */
   .tiptap p.is-editor-empty:first-child::before {
-    color: var(--text-subtle);
+    color: var(--muted-foreground);
     content: attr(data-placeholder);
     float: left;
     height: 0;
@@ -217,7 +112,7 @@
     max-width: none;
     font-size: var(--text-sm);
     line-height: 1.6;
-    color: var(--text);
+    color: var(--foreground);
   }
 
   /* Prosa dibatasi 20–35ch (aturan 6). Hanya paragraf — tabel, gambar, dan
@@ -285,17 +180,16 @@
   }
 
   .prose blockquote {
-    border-left: 4px solid var(--border-strong);
+    border-left: 4px solid var(--input);
     padding-left: 12px;
     margin-top: 0;
     margin-bottom: 8px;
     font-style: italic;
-    color: var(--text-muted);
+    color: var(--muted-foreground);
   }
 
   .prose pre {
-    background-color: var(--surface-sunken);
-    box-shadow: var(--shadow-inset);
+    background-color: var(--muted);
     border-radius: var(--radius);
     padding: 8px 12px;
     margin-top: 0;
@@ -311,8 +205,8 @@
 
   .prose code {
     font-family: var(--font-mono);
-    background-color: var(--surface-sunken);
-    border-radius: var(--radius-sm);
+    background-color: var(--muted);
+    border-radius: calc(var(--radius) - 4px);
     padding: 0 4px;
     font-size: var(--text-sm);
   }
@@ -325,7 +219,7 @@
 
   /* Link tidak boleh dibedakan warna saja — accessibility.md §4.2/§5. */
   .prose a {
-    color: var(--brand-text);
+    color: var(--primary);
     text-decoration: underline;
     text-underline-offset: 2px;
     cursor: pointer;
@@ -333,8 +227,8 @@
 
   .prose mark {
     background-color: var(--warning-subtle);
-    color: var(--warning);
-    border-radius: var(--radius-sm);
+    color: var(--warning-text);
+    border-radius: calc(var(--radius) - 4px);
     padding: 0 4px;
   }
 

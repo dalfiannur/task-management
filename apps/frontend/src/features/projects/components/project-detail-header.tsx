@@ -3,25 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useAtomValue } from "jotai";
 import { ChevronDown, Pin, PinOff, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { Button, Avatar, AvatarFallback, AvatarImage, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "sedjiwa-ui";
 import { getInitials } from "@/lib/utils";
 import { currentUserAtom, isAdminAtom } from "@/features/auth";
 import { useUserMap } from "@/features/users";
@@ -79,11 +61,11 @@ export function ProjectDetailHeader({ project }: { project: Project }) {
           <ProjectStatusBadge status={project.status} />
         </div>
         {project.description && (
-          <p className="max-w-2xl text-sm text-text-muted">
+          <p className="max-w-2xl text-sm text-muted-foreground">
             {project.description}
           </p>
         )}
-        <div className="flex items-center gap-3 text-sm text-text-muted">
+        <div className="flex items-center gap-3 text-sm text-muted-foreground">
           <span className="flex items-center gap-2">
             <Avatar size="sm">
               {owner?.avatarUrl && <AvatarImage src={owner.avatarUrl} />}

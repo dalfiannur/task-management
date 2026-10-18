@@ -1,12 +1,6 @@
 import { useState } from "react";
-import { Check, Settings2, Tag } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
+import { Settings2 } from "lucide-react";
+import { Button, Combobox } from "sedjiwa-ui";
 import { useLabels } from "../api/hooks";
 import { ManageLabelsDialog } from "./manage-labels-dialog";
 
@@ -23,64 +17,41 @@ export function LabelCombobox({
   const { labels } = useLabels(projectId);
   const [manageOpen, setManageOpen] = useState(false);
 
-  function toggle(id: string) {
-    onChange(value.includes(id) ? value.filter((v) => v !== id) : [...value, id]);
-  }
-
   return (
     <>
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button type="button" variant="outline" size="sm" className="justify-start">
-            <Tag className="mr-1 h-4 w-4" />
-            {value.length ? `${value.length} label(s)` : "Labels"}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-60 p-1" align="start">
-          <ul className="max-h-56 space-y-0.5 overflow-y-auto">
-            {labels.length === 0 ? (
-              <li className="p-2 text-sm text-text-muted">
-                No labels yet.
-              </li>
-            ) : (
-              labels.map((l) => {
-                const selected = value.includes(l.id);
-                return (
-                  <li key={l.id}>
-                    <button
-                      type="button"
-                      onClick={() => toggle(l.id)}
-                      className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors [transition-duration:var(--duration-fast)] hover:bg-surface-hover"
-                    >
-                      <span
-                        className="h-3 w-3 rounded-full"
-                        style={{ backgroundColor: l.color }}
-                      />
-                      <span className="flex-1 truncate text-left">{l.name}</span>
-                      <Check
-                        className={cn(
-                          "h-4 w-4",
-                          selected ? "opacity-100" : "opacity-0",
-                        )}
-                      />
-                    </button>
-                  </li>
-                );
-              })
-            )}
-          </ul>
-          <div className="border-t border-border-subtle pt-1">
-            <button
-              type="button"
-              onClick={() => setManageOpen(true)}
-              className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-text-muted transition-colors [transition-duration:var(--duration-fast)] hover:bg-surface-hover"
-            >
-              <Settings2 className="h-4 w-4" />
-              Manage labels
-            </button>
-          </div>
-        </PopoverContent>
-      </Popover>
+      <span className="inline-flex items-center gap-1">
+        <Combobox
+          multiple
+          size="sm"
+          options={labels}
+          getOptionValue={(l) => l.id}
+          getOptionLabel={(l) => l.name}
+          renderOption={(l) => (
+            <span className="flex min-w-0 items-center gap-2">
+              <span
+                className="h-3 w-3 shrink-0 rounded-full"
+                style={{ backgroundColor: l.color }}
+              />
+              <span className="truncate">{l.name}</span>
+            </span>
+          )}
+          value={value}
+          onValueChange={onChange}
+          placeholder="Labels"
+          searchPlaceholder="Search labels…"
+          emptyMessage="No labels yet."
+          className="min-w-40"
+        />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Manage labels"
+          onClick={() => setManageOpen(true)}
+        >
+          <Settings2 />
+        </Button>
+      </span>
       <ManageLabelsDialog
         projectId={projectId}
         open={manageOpen}

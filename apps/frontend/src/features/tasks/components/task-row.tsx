@@ -2,19 +2,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Button } from "@/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { Checkbox, Button, AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "sedjiwa-ui";
 import { cn } from "@/lib/utils";
 import type { AppUser } from "@/features/auth";
 import { LabelChips, type Label } from "@/features/labels";
@@ -100,20 +88,20 @@ export function TaskRow({
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={cn(
-        "group relative flex items-center gap-3 border-b border-border-subtle py-2.5 last:border-b-0",
+        "group relative flex items-center gap-3 border-b border-border py-2.5 last:border-b-0",
         // Subtasks (depth 1) get one extra indent step (24px, `pl-6`) on top
         // of the row's own 16px inset — pl-10 is that sum. Subtasks go one
         // level deep only, so this never needs to compound further.
         depth ? "pl-10 pr-4" : "px-4",
-        "transition-colors [transition-duration:var(--duration-fast)] hover:bg-surface-hover",
-        isDragging && "z-20 bg-surface-raised opacity-80 shadow-2",
+        "transition-colors [transition-duration:var(--duration-fast)] hover:bg-accent",
+        isDragging && "z-20 bg-card opacity-80 shadow-sm",
         pending && "opacity-60",
       )}
     >
       <button
         type="button"
         disabled={pending || dragDisabled}
-        className="relative z-10 -mx-1 cursor-grab text-text-muted/40 hover:text-text-muted disabled:cursor-default disabled:opacity-50"
+        className="relative z-10 -mx-1 cursor-grab text-muted-foreground/40 hover:text-muted-foreground disabled:cursor-default disabled:opacity-50"
         {...attributes}
         {...listeners}
         aria-label={
@@ -142,9 +130,9 @@ export function TaskRow({
             onClick={() => onEdit(task)}
             className={cn(
               "min-w-0 line-clamp-2 text-left text-sm outline-none md:line-clamp-1",
-              "after:absolute after:inset-0 after:content-[''] focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-focus",
-              depth ? "text-text-muted" : "font-medium text-text",
-              done && "text-text-muted line-through",
+              "after:absolute after:inset-0 after:content-[''] focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-ring",
+              depth ? "text-muted-foreground" : "font-medium text-foreground",
+              done && "text-muted-foreground line-through",
             )}
           >
             <TaskNumber number={task.number} />
@@ -152,14 +140,14 @@ export function TaskRow({
           </button>
           {progress && (
             <span
-              className="text-num shrink-0 rounded-full bg-surface-sunken px-1.5 text-xs text-text-muted"
+              className="text-num shrink-0 rounded-full bg-muted px-1.5 text-xs text-muted-foreground"
               title="Subtasks done"
             >
               {progress.done}/{progress.total}
             </span>
           )}
           {blocked && (
-            <span className="shrink-0 rounded-full bg-danger-subtle px-2 py-0.5 text-xs font-medium text-danger">
+            <span className="shrink-0 rounded-full bg-destructive-subtle px-2 py-0.5 text-xs font-medium text-destructive">
               Blocked
             </span>
           )}
@@ -185,7 +173,7 @@ export function TaskRow({
       </div>
       <div className={cn(TASK_COLS.priority, "hidden md:block")}>
         {task.priority === "none" ? (
-          <span className="text-xs text-text-subtle">—</span>
+          <span className="text-xs text-muted-foreground">—</span>
         ) : (
           <PriorityLabel priority={task.priority} />
         )}
@@ -252,7 +240,7 @@ export function TaskListHeader() {
   return (
     <div
       aria-hidden="true"
-      className="hidden items-center gap-3 border-b border-border-subtle bg-surface-sunken/40 px-4 py-1.5 text-label md:flex"
+      className="hidden items-center gap-3 border-b border-border bg-muted/40 px-4 py-1.5 text-label md:flex"
     >
       <span className="w-[2.25rem] shrink-0" />
       <span className="flex-1">Task</span>

@@ -14,25 +14,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Button, Input, AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "sedjiwa-ui";
 import { cn } from "@/lib/utils";
 import {
   Collapsible,
@@ -146,9 +128,9 @@ export function ModuleSection({
           module diam-diam menghapusnya sebagai tujuan pemindahan task. */}
       <section
         ref={setNodeRef}
-        className="overflow-hidden rounded-xl bg-surface-raised shadow-2"
+        className="overflow-hidden rounded-xl bg-card shadow-sm"
       >
-        <header className="flex items-center gap-3 border-b border-border-subtle px-4 py-2.5">
+        <header className="flex items-center gap-3 border-b border-border px-4 py-2.5">
           <CollapsibleTrigger asChild>
             <Button
               variant="ghost"
@@ -161,13 +143,13 @@ export function ModuleSection({
           </CollapsibleTrigger>
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
             <h3 className="truncate font-semibold">{module.name}</h3>
-            <span className="text-num rounded-full bg-surface-sunken px-2 text-xs text-text-muted">
+            <span className="text-num rounded-full bg-muted px-2 text-xs text-muted-foreground">
               {tasks.length === totalCount
                 ? totalCount
                 : `${tasks.length} / ${totalCount}`}
             </span>
             {stats.overdue > 0 && (
-              <span className="text-xs font-medium text-danger">
+              <span className="text-xs font-medium text-destructive">
                 <span className="text-num">{stats.overdue}</span> overdue
               </span>
             )}
@@ -180,17 +162,17 @@ export function ModuleSection({
                 aria-valuemax={100}
                 aria-valuenow={pct}
                 aria-label={`${module.name}: tasks done`}
-                className="h-1.5 w-28 overflow-hidden rounded-full bg-surface-sunken"
+                className="h-1.5 w-28 overflow-hidden rounded-full bg-muted"
               >
                 <div
                   className={cn(
                     "h-full rounded-full",
-                    pct === 100 ? "bg-success" : "bg-brand",
+                    pct === 100 ? "bg-success" : "bg-primary",
                   )}
                   style={{ width: `${pct}%` }}
                 />
               </div>
-              <span className="text-num min-w-[5.5rem] whitespace-nowrap text-xs text-text-muted">
+              <span className="text-num min-w-[5.5rem] whitespace-nowrap text-xs text-muted-foreground">
                 {stats.done}/{stats.total} · {pct}%
               </span>
             </div>
@@ -290,23 +272,29 @@ export function ModuleSection({
             {/* Reachable only unfiltered: a module the filter empties is
                 dropped from the list upstream, never rendered hollow. */}
             {tasks.length === 0 && (
-              <p className="px-4 py-3 text-sm text-text-muted">No tasks yet.</p>
+              <p className="px-4 py-3 text-sm text-muted-foreground">No tasks yet.</p>
             )}
           </div>
 
           <form
             onSubmit={addTask}
-            className="flex items-center gap-2 border-t border-border-subtle px-4 py-2"
+            className="flex items-center gap-2 border-t border-border px-4 py-2"
           >
-            <Plus className="h-4 w-4 shrink-0 text-text-muted" />
-            <Input
-              value={quick}
-              onChange={(e) => setQuick(e.target.value)}
-              placeholder="Add a task…"
-              aria-label={`Add a task to ${module.name}`}
-              /* `!` beats the Input module's own border/padding shorthand. */
-              className="!h-8 !border-0 !bg-transparent !px-0 !shadow-none !outline-none focus-visible:ring-0"
-            />
+            <Plus className="h-4 w-4 shrink-0 text-muted-foreground" />
+            {/* Inline row, not a boxed field: the surface classes are cancelled
+                on the Root (tailwind-merge lets these win over the variants). */}
+            <Input.Root
+              size="sm"
+              className="border-0 bg-transparent shadow-none focus-within:bg-transparent focus-within:ring-0 dark:bg-transparent"
+            >
+              <Input.Field
+                value={quick}
+                onChange={(e) => setQuick(e.target.value)}
+                placeholder="Add a task…"
+                aria-label={`Add a task to ${module.name}`}
+                className="px-0"
+              />
+            </Input.Root>
           </form>
         </CollapsibleContent>
       </section>

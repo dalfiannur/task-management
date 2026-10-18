@@ -21,13 +21,13 @@ export function Snippet({
   return (
     <span
       // group-data-[selected=true] repaints this to --brand-text when the
-      // parent CommandItem is keyboard-selected (bg-brand-subtle) — plain
+      // parent CommandItem is keyboard-selected (bg-primary/10) — plain
       // --text-muted there would be exactly the grey-on-color pairing
       // ui-design's rule 3 forbids. The nearest `.group` ancestor is the
       // CommandItem itself; see search-overlay.tsx.
       className={cn(
-        "block truncate text-xs text-text-muted group-data-[selected=true]:text-brand-text",
-        "[&_b]:font-semibold [&_b]:text-text",
+        "block truncate text-xs text-muted-foreground group-data-[selected=true]:text-primary",
+        "[&_b]:font-semibold [&_b]:text-foreground",
         className,
       )}
       dangerouslySetInnerHTML={{ __html: clean }}

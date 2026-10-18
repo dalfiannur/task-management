@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { CheckCircle2 } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "sedjiwa-ui";
 import { EmptyState } from "@/components/shared/empty-state";
 import { cn } from "@/lib/utils";
 import { PriorityLabel, TaskNumber } from "@/features/tasks";
@@ -24,12 +24,12 @@ export function NeedsAttention({ withinDays = 7 }: { withinDays?: number }) {
   });
 
   if (isLoading) {
-    return <Skeleton className="h-64 w-full rounded-xl shadow-2" />;
+    return <Skeleton className="h-64 w-full rounded-xl shadow-sm" />;
   }
 
   if (items.length === 0) {
     return (
-      <div className="rounded-xl bg-surface-raised shadow-2">
+      <div className="rounded-xl bg-card shadow-sm">
         <EmptyState
           variant="cleared"
           size="compact"
@@ -50,19 +50,19 @@ export function NeedsAttention({ withinDays = 7 }: { withinDays?: number }) {
   }
 
   return (
-    <div className="overflow-hidden rounded-xl bg-surface-raised shadow-2">
+    <div className="overflow-hidden rounded-xl bg-card shadow-sm">
       {GROUPS.filter((g) => grouped.has(g.key)).map((g) => {
         const rows = grouped.get(g.key)!;
         const late = g.key === "overdue";
         return (
           <section
             key={g.key}
-            className="border-b border-border-subtle last:border-b-0"
+            className="border-b border-border last:border-b-0"
           >
             {/* Plain concatenation: cn()'s tailwind-merge would drop
-                `text-label` next to `text-danger`. */}
+                `text-label` next to `text-destructive`. */}
             <h3
-              className={`text-label flex items-center gap-2 px-4 pb-1 pt-3${late ? " text-danger" : ""}`}
+              className={`text-label flex items-center gap-2 px-4 pb-1 pt-3${late ? " text-destructive" : ""}`}
             >
               {g.label}
               <span className="text-num font-normal">{rows.length}</span>
@@ -86,14 +86,14 @@ function AttentionRow({ item, late }: { item: MyTaskItem; late: boolean }) {
       <Link
         to="/projects/$projectId/all-tasks"
         params={{ projectId: item.projectId }}
-        className="flex items-center gap-3 px-4 py-2.5 transition-colors [transition-duration:var(--duration-fast)] hover:bg-surface-hover"
+        className="flex items-center gap-3 px-4 py-2.5 transition-colors [transition-duration:var(--duration-fast)] hover:bg-accent"
       >
         <span className="min-w-0 flex-1">
           <span className="block truncate text-sm">
           <TaskNumber number={task.number} />
           {task.title}
         </span>
-          <span className="block truncate text-xs text-text-muted">
+          <span className="block truncate text-xs text-muted-foreground">
             {item.projectName} · {item.moduleName}
           </span>
         </span>
@@ -101,7 +101,7 @@ function AttentionRow({ item, late }: { item: MyTaskItem; late: boolean }) {
         <span
           className={cn(
             "text-num w-20 shrink-0 text-right text-xs",
-            late ? "font-medium text-danger" : "text-text-muted",
+            late ? "font-medium text-destructive" : "text-muted-foreground",
           )}
           title={task.dueDate ?? undefined}
         >

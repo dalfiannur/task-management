@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "sedjiwa-ui";
 import { getInitials } from "@/lib/utils";
 import { formatProjectDateRange } from "@/features/projects";
 import type { Project } from "@/features/projects";
@@ -55,10 +55,10 @@ export function ProjectInfoCard({
   const range = formatProjectDateRange(project) ?? "No dates set";
 
   return (
-    <div className="rounded-xl bg-surface-raised px-4 py-1 shadow-2">
+    <div className="rounded-xl bg-card px-4 py-1 shadow-sm">
       {/* Heading "About" ada di kanvas (overview-tab), bukan di sini. Sekat pakai border-subtle, bukan border: di dalam permukaan raised
           `--border` terbaca sebagai jahitan (lihat catatan di members-tab). */}
-      <div className="divide-y divide-border-subtle">
+      <div className="divide-y divide-border">
         <Row label="Owner">
           <span className="flex items-center justify-end gap-2">
             <Avatar size="sm">
@@ -72,11 +72,11 @@ export function ProjectInfoCard({
         </Row>
 
         <Row label="Dates">
-          <span className="text-num text-text-muted">{range}</span>
+          <span className="text-num text-muted-foreground">{range}</span>
         </Row>
 
         <Row label="Contents">
-          <span className="text-num text-text-muted">
+          <span className="text-num text-muted-foreground">
             {pluralize(overview.moduleCount, "module")} ·{" "}
             {pluralize(overview.pageCount, "page")} · {overview.mediaCount}{" "}
             media
@@ -94,7 +94,7 @@ export function ProjectInfoCard({
                 <Avatar
                   key={id}
                   size="sm"
-                  className="-ml-1 ring-2 ring-surface-raised first:ml-0"
+                  className="-ml-1 ring-2 ring-card first:ml-0"
                   title={name}
                 >
                   {u?.avatarUrl && <AvatarImage src={u.avatarUrl} alt="" />}
@@ -106,7 +106,7 @@ export function ProjectInfoCard({
               );
             })}
             {rest > 0 && (
-              <span className="text-num ml-2 text-xs text-text-muted">
+              <span className="text-num ml-2 text-xs text-muted-foreground">
                 +{rest}
                 <span className="sr-only"> more members</span>
               </span>

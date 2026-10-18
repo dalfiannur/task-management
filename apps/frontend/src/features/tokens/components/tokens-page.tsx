@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
+import { Button } from "sedjiwa-ui";
 import { ConnectPanel } from "./connect-panel";
 import { CreateTokenDialog } from "./create-token-dialog";
 import { TokenTable } from "./token-table";
@@ -16,7 +16,7 @@ export function TokensPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Access tokens</h1>
-          <p className="text-sm text-text-muted">
+          <p className="text-sm text-muted-foreground">
             Personal access tokens for connecting an AI client to your account.
           </p>
         </div>

@@ -106,7 +106,7 @@ export function DependencyLayer({
           markerHeight={6}
           orient="auto"
         >
-          <path d="M0,0 L8,4 L0,8 Z" className="fill-border-strong" />
+          <path d="M0,0 L8,4 L0,8 Z" className="fill-input" />
         </marker>
         <marker
           id={CONFLICT_MARKER}
@@ -117,7 +117,7 @@ export function DependencyLayer({
           markerHeight={7}
           orient="auto"
         >
-          <path d="M0,0 L8,4 L0,8 Z" className="fill-danger" />
+          <path d="M0,0 L8,4 L0,8 Z" className="fill-destructive" />
         </marker>
       </defs>
       {edges.map((edge) => {
@@ -135,7 +135,7 @@ export function DependencyLayer({
             key={edge.id}
             d={edgePath(sx, sy, tx, ty)}
             fill="none"
-            className={conflict ? "stroke-danger" : "stroke-border-strong"}
+            className={conflict ? "stroke-destructive" : "stroke-input"}
             strokeWidth={conflict ? 2 : 1.5}
             strokeDasharray={conflict ? undefined : "3 3"}
             markerEnd={`url(#${conflict ? CONFLICT_MARKER : ARROW_MARKER})`}

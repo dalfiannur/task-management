@@ -1,14 +1,7 @@
 import { useState } from "react";
 import { ListChecks, SearchX } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "sedjiwa-ui";
 import { EmptyState } from "@/components/shared/empty-state";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import {
   TASK_STATUSES,
@@ -70,7 +63,7 @@ export function MyTasksView() {
       <h1 className="mb-6 text-2xl font-semibold">My tasks</h1>
 
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex gap-1 rounded-full bg-surface-sunken p-[3px]">
+        <div className="inline-flex gap-1 rounded-full bg-muted p-[3px]">
           {VIEWS.map((v) => (
             <button
               key={v.key}
@@ -79,8 +72,8 @@ export function MyTasksView() {
                 "rounded-full px-3 py-1 text-sm",
                 "[transition:background-color_var(--duration-fast)_var(--ease-out),color_var(--duration-fast)_var(--ease-out)]",
                 view === v.key
-                  ? "bg-surface-raised font-medium text-text shadow-1"
-                  : "text-text-muted hover:text-text",
+                  ? "bg-card font-medium text-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground",
               )}
             >
               {v.label}
@@ -129,10 +122,10 @@ export function MyTasksView() {
         )
       ) : (
         <>
-          <p className="mb-3 text-sm text-text-muted">
+          <p className="mb-3 text-sm text-muted-foreground">
             <span className="text-num">{total}</span> task(s)
           </p>
-          <div className="overflow-hidden rounded-xl bg-surface-raised shadow-2">
+          <div className="overflow-hidden rounded-xl bg-card shadow-sm">
             {items.map((it) => (
               <MyTaskRow key={it.task.id} item={it} />
             ))}

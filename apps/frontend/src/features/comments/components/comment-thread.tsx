@@ -3,8 +3,7 @@ import { useAtomValue } from "jotai";
 import { formatDistanceToNow, parseISO } from "date-fns";
 import { Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage, Button } from "sedjiwa-ui";
 import { cn, getInitials } from "@/lib/utils";
 import { currentUserAtom, isAdminAtom } from "@/features/auth";
 import { useProjectMembers } from "@/features/projects";
@@ -90,12 +89,12 @@ export function CommentThread({
       <h4 className="text-sm font-medium">
         Comments{" "}
         {comments.length > 0 && (
-          <span className="text-num text-text-muted">({comments.length})</span>
+          <span className="text-num text-muted-foreground">({comments.length})</span>
         )}
       </h4>
 
       {isLoading ? (
-        <p className="text-sm text-text-muted">Loading…</p>
+        <p className="text-sm text-muted-foreground">Loading…</p>
       ) : (
         <ul className="space-y-4">
           {comments.map((c) => {
@@ -115,7 +114,7 @@ export function CommentThread({
                   // is exactly what ui-design's "no grey on color" rule
                   // forbids. The border accent carries the "this one" signal
                   // instead.
-                  highlighted && "-mx-2 border-l-2 border-brand-text bg-surface-hover p-2",
+                  highlighted && "-mx-2 border-l-2 border-primary bg-accent p-2",
                 )}
               >
                 <Avatar className="h-7 w-7">
@@ -127,11 +126,11 @@ export function CommentThread({
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium">{name}</span>
-                    <span className="text-xs text-text-muted">
+                    <span className="text-xs text-muted-foreground">
                       {relative(c.createdAt)}
                     </span>
                     {c.updatedAt !== c.createdAt && (
-                      <span className="text-xs text-text-muted">
+                      <span className="text-xs text-muted-foreground">
                         (edited)
                       </span>
                     )}

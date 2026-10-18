@@ -2,21 +2,7 @@ import { useState } from "react";
 import { useAtomValue } from "jotai";
 import { ShieldCheck, ShieldOff, UserCheck, UserRoundCheck, UserX } from "lucide-react";
 import { toast } from "sonner";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { Avatar, AvatarFallback, AvatarImage, Badge, Button, Skeleton, AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger, Pagination } from "sedjiwa-ui";
 import { EmptyState } from "@/components/shared/empty-state";
 import { getInitials } from "@/lib/utils";
 import { currentUserAtom, type AppUser, type UserStatus } from "@/features/auth";
@@ -27,7 +13,6 @@ import {
   useSuspendUser,
   USERS_PAGE_SIZE,
 } from "../api/hooks";
-import { Pagination } from "./pagination";
 
 /**
  * The pending queue is a worklist, not an archive: it normally holds zero to a
@@ -90,9 +75,9 @@ function UserRow({
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium">
           {user.displayName}
-          {isSelf && <span className="ml-2 text-xs text-text-muted">you</span>}
+          {isSelf && <span className="ml-2 text-xs text-muted-foreground">you</span>}
         </p>
-        <p className="text-num truncate text-xs text-text-muted">{user.phone}</p>
+        <p className="text-num truncate text-xs text-muted-foreground">{user.phone}</p>
       </div>
       <div className="flex shrink-0 items-center gap-2">
         {user.isAdmin && <Badge variant="secondary">Admin</Badge>}
@@ -166,7 +151,7 @@ function UserRow({
 
 function UserList({ children }: { children: React.ReactNode }) {
   return (
-    <ul className="divide-y divide-border-subtle rounded-xl bg-surface-raised shadow-2">
+    <ul className="divide-y divide-border rounded-xl bg-card shadow-sm">
       {children}
     </ul>
   );
@@ -235,8 +220,8 @@ export function ManageUsersPage() {
     return (
       <div className="space-y-6 p-6" aria-busy="true" aria-label="Loading users">
         <Skeleton className="h-8 w-48 rounded-lg" />
-        <Skeleton className="h-24 w-full rounded-xl shadow-2" />
-        <Skeleton className="h-64 w-full rounded-xl shadow-2" />
+        <Skeleton className="h-24 w-full rounded-xl shadow-sm" />
+        <Skeleton className="h-64 w-full rounded-xl shadow-sm" />
       </div>
     );
   }
@@ -249,7 +234,7 @@ export function ManageUsersPage() {
         <h2 className="text-label">
           Pending approval
           {pendingQuery.total > 0 && (
-            <span className="text-num ml-1 text-text-muted">
+            <span className="text-num ml-1 text-muted-foreground">
               {pendingQuery.total}
             </span>
           )}
@@ -280,7 +265,7 @@ export function ManageUsersPage() {
             {pendingMore > 0 && (
               // No page control here on purpose; the queue drains as you work
               // it, so the rest surface on their own once these are handled.
-              <p className="text-xs text-text-muted">
+              <p className="text-xs text-muted-foreground">
                 <span className="text-num">{pendingMore}</span> more waiting —
                 approve or reject these first.
               </p>
@@ -292,7 +277,7 @@ export function ManageUsersPage() {
       <section className="space-y-2">
         <h2 className="text-label">
           All users
-          <span className="text-num ml-1 text-text-muted">
+          <span className="text-num ml-1 text-muted-foreground">
             {allQuery.total}
           </span>
         </h2>

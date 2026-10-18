@@ -15,25 +15,7 @@ import {
   Trash2,
   type LucideIcon,
 } from "lucide-react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, Avatar, AvatarFallback, AvatarImage, Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "sedjiwa-ui";
 import { cn, getInitials } from "@/lib/utils";
 import type { AppUser } from "@/features/auth";
 import { useMediaPreviewUrl } from "../api/hooks";
@@ -104,7 +86,7 @@ function Thumb({
   return (
     <div
       className={cn(
-        "flex items-center justify-center overflow-hidden bg-surface-sunken",
+        "flex items-center justify-center overflow-hidden bg-muted",
         className,
       )}
     >
@@ -120,7 +102,7 @@ function Thumb({
         <Icon
           aria-hidden="true"
           strokeWidth={1.5}
-          className={cn("text-text-subtle", iconClassName)}
+          className={cn("text-muted-foreground", iconClassName)}
         />
       )}
     </div>
@@ -192,7 +174,7 @@ function ItemMenu({
 export function MediaCard(props: MediaItemProps) {
   const { file, onDownload } = props;
   return (
-    <li className="group relative overflow-hidden rounded-xl bg-surface-raised shadow-2">
+    <li className="group relative overflow-hidden rounded-xl bg-card shadow-sm">
       <button
         type="button"
         onClick={() => onDownload(file)}
@@ -210,7 +192,7 @@ export function MediaCard(props: MediaItemProps) {
           <p className="truncate text-sm font-medium" title={nameOf(file)}>
             {nameOf(file)}
           </p>
-          <p className="text-num truncate text-xs text-text-muted">
+          <p className="text-num truncate text-xs text-muted-foreground">
             {formatBytes(file.size)} · {formatDate(file.createdAt)}
           </p>
         </div>
@@ -227,7 +209,7 @@ export function MediaRowHeader() {
   return (
     <div
       aria-hidden="true"
-      className="hidden items-center gap-3 border-b border-border-subtle bg-surface-sunken/40 px-4 py-1.5 text-label md:flex"
+      className="hidden items-center gap-3 border-b border-border bg-muted/40 px-4 py-1.5 text-label md:flex"
     >
       <span className="flex-1">Name</span>
       <span className={MEDIA_COLS.type}>Type</span>
@@ -243,7 +225,7 @@ export function MediaRow(props: MediaItemProps) {
   const { file, uploader, onDownload } = props;
   const uploaderName = uploader?.displayName || uploader?.phone || "Unknown";
   return (
-    <li className="flex items-center gap-3 border-b border-border-subtle px-4 py-2.5 last:border-b-0">
+    <li className="flex items-center gap-3 border-b border-border px-4 py-2.5 last:border-b-0">
       <div className="flex min-w-0 flex-1 items-center gap-3">
         <Thumb
           file={file}
@@ -260,7 +242,7 @@ export function MediaRow(props: MediaItemProps) {
             {nameOf(file)}
           </button>
           {/* Below md the columns are hidden; the details ride under the name. */}
-          <span className="text-num block truncate text-xs text-text-muted md:hidden">
+          <span className="text-num block truncate text-xs text-muted-foreground md:hidden">
             {formatBytes(file.size)} · {formatDate(file.createdAt)} ·{" "}
             {uploaderName}
           </span>
@@ -269,7 +251,7 @@ export function MediaRow(props: MediaItemProps) {
       <span
         className={cn(
           MEDIA_COLS.type,
-          "hidden truncate text-xs text-text-muted md:block",
+          "hidden truncate text-xs text-muted-foreground md:block",
         )}
       >
         {fileExtension(file)}
@@ -277,7 +259,7 @@ export function MediaRow(props: MediaItemProps) {
       <span
         className={cn(
           MEDIA_COLS.size,
-          "text-num hidden text-sm text-text-muted md:block",
+          "text-num hidden text-sm text-muted-foreground md:block",
         )}
       >
         {formatBytes(file.size)}
@@ -294,7 +276,7 @@ export function MediaRow(props: MediaItemProps) {
       <span
         className={cn(
           MEDIA_COLS.date,
-          "text-num hidden text-sm text-text-muted md:block",
+          "text-num hidden text-sm text-muted-foreground md:block",
         )}
       >
         {formatDate(file.createdAt)}

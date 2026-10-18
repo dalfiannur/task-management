@@ -49,7 +49,7 @@ Backend has `bun test` coverage for auth/user pure units (`apps/backend/src/**/*
 
 ### Frontend
 
-**Stack:** React 19, **TanStack Router** (file-based) + **TanStack Query**, **Connect** (`@connectrpc/connect` + `-web` + `-query`) over proto-generated clients, **Jotai** for local/UI state, Tailwind CSS, shadcn/ui (Radix primitives). No Apollo/GraphQL, no React Router, no Zustand, no CSS Modules.
+**Stack:** React 19, **TanStack Router** (file-based) + **TanStack Query**, **Connect** (`@connectrpc/connect` + `-web` + `-query`) over proto-generated clients, **Jotai** for local/UI state, Tailwind CSS v4, **[sedjiwa-ui](https://www.npmjs.com/package/sedjiwa-ui)** (shared Sedjiwa design system on Radix — components *and* theme tokens). No Apollo/GraphQL, no React Router, no Zustand, no CSS Modules.
 
 **Feature-based layout.** UI + data + state are colocated per domain under `src/features/<domain>/`, mapping 1:1 to the product flows:
 
@@ -70,8 +70,8 @@ src/
 │   ├── types.ts          # flat FE types (mapped from gen/)
 │   └── index.ts          # barrel — cross-feature imports go through here
 ├── components/
-│   ├── ui/               # shadcn/ui primitives (shared)
-│   └── shared/           # cross-feature helpers (currently just date-picker-field)
+│   ├── ui/               # only what sedjiwa-ui lacks: command (cmdk), collapsible
+│   └── shared/           # cross-feature adapters over sedjiwa-ui (date-picker-field, empty-state, stat-card, theme-toggle)
 └── lib/
     ├── connect.ts        # Connect transport (baseUrl /api/tasks-rs) + auth interceptor + client() factory
     ├── query.ts          # QueryClient
@@ -98,8 +98,11 @@ src/
 #### Styling
 
 - **Tailwind CSS utility classes** everywhere. There are no CSS Modules.
+- UI primitives and composites come from `sedjiwa-ui` (`import { Button, Dialog, … } from "sedjiwa-ui"`). Don't re-add local copies under `components/ui/`; restyle via tokens, not by forking a component. `src/index.css` imports `sedjiwa-ui/styles.css` + `@source`s its dist; `vite.config.ts` must keep `resolve.dedupe: ["react", "react-dom"]` (bun's isolated store otherwise gives sedjiwa-ui a second React in dev).
+- `Input` is compound: `<Input.Root><Input.Field … /></Input.Root>` (`appearance="search"` + `Input.LeadingIcon` for search boxes; put `aria-invalid` on the Root to get the error state).
 - Use `cn()` from `@/lib/utils` to merge/conditional classes.
-- CSS variables for theming: `var(--color-*)`, `var(--spacing-*)`, `var(--radius-*)`, etc.
+- Colour tokens are sedjiwa-ui's shadcn-shaped set: `bg-background/card/muted/accent/popover`, `text-foreground/muted-foreground/primary`, `border-border/input`, `bg-primary`, `text-destructive`, `*-success|warning|info|destructive-subtle` + `-text`. Light/dark via `.dark` (next-themes). Only fonts and motion (`--duration*`, `--ease-*`) are local, in `src/styles/tokens.css`.
+- sedjiwa-ui defaults some copy/locale to Indonesian (e.g. `DatePicker` `locale` = `id-ID`); pass English props explicitly.
 
 #### Data Hook Patterns (connect-query)
 
@@ -144,10 +147,11 @@ Flat FE types live in the feature's `types.ts`. Cross-feature imports go through
 |------|-----|----------|
 | User initials from name | `getInitials(name)` | `src/lib/utils.ts` |
 | Merge class names | `cn(...)` | `src/lib/utils.ts` |
-| Date picker with calendar | `<DatePickerField>` | `src/components/shared/date-picker-field.tsx` |
+| Date picker with calendar | `<DatePickerField>` (adapter over sedjiwa `DatePicker`: `Date` value + clear button) | `src/components/shared/date-picker-field.tsx` |
 | User/member selector | feature components (`AssigneePicker` in `features/tasks`, member pickers in `features/members`) | per feature |
-| Label selector | `<LabelCombobox>` | `src/features/labels` |
-| shadcn/ui primitives | Button, Dialog, Select, Popover, … | `src/components/ui/` |
+| Label selector | `<LabelCombobox>` (sedjiwa `Combobox` multiple) | `src/features/labels` |
+| UI primitives & composites | Button, Dialog, Select, Popover, Sidebar*, EmptyState, StatCard, Progress, Pagination, … | `sedjiwa-ui` |
+| Command palette list | `Command*` (cmdk) | `src/components/ui/command.tsx` |
 
 #### Notes
 

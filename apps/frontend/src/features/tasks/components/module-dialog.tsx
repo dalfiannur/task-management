@@ -1,16 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Button, Input, Label, Textarea, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "sedjiwa-ui";
 import type { Module } from "../types";
 import { useCreateModule, useUpdateModule } from "../api/hooks";
 
@@ -67,13 +57,15 @@ export function ModuleDialog({
         <form onSubmit={onSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="mod-name">Name</Label>
-            <Input
-              id="mod-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              autoFocus
-              required
-            />
+            <Input.Root>
+              <Input.Field
+                id="mod-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                autoFocus
+                required
+              />
+            </Input.Root>
           </div>
           <div className="space-y-2">
             <Label htmlFor="mod-desc">Description</Label>

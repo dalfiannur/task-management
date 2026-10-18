@@ -16,25 +16,25 @@ export interface KpiCell {
  *  cell marked `alert` takes colour (aturan 4). */
 export function KpiStrip({ cells }: { cells: KpiCell[] }) {
   return (
-    <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl bg-border-subtle shadow-2 sm:grid-cols-4">
+    <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl bg-border shadow-sm sm:grid-cols-4">
       {cells.map((c) => (
-        <div key={c.label} className="bg-surface-raised px-5 py-4">
+        <div key={c.label} className="bg-card px-5 py-4">
           {/* Not cn(): tailwind-merge reads `text-label` as a font-size and
-              would drop it in favour of `text-danger`. */}
-          <dt className={c.alert ? "text-label text-danger" : "text-label"}>
+              would drop it in favour of `text-destructive`. */}
+          <dt className={c.alert ? "text-label text-destructive" : "text-label"}>
             {c.label}
           </dt>
           <dd className="mt-1 flex items-baseline gap-2">
             <span
               className={cn(
                 "text-num text-2xl font-semibold",
-                c.alert ? "text-danger" : "text-text",
+                c.alert ? "text-destructive" : "text-foreground",
               )}
             >
               {c.value}
             </span>
             {c.hint && (
-              <span className="text-num text-xs text-text-muted">{c.hint}</span>
+              <span className="text-num text-xs text-muted-foreground">{c.hint}</span>
             )}
           </dd>
         </div>

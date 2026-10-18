@@ -1,6 +1,6 @@
 import { FileSpreadsheet, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
+import { Button } from "sedjiwa-ui";
 import { APP_NAME } from "@/lib/app-config";
 import { useExportReportXlsx } from "../api/hooks";
 import type { PeriodWindow } from "../types";

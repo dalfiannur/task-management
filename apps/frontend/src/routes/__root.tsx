@@ -1,6 +1,6 @@
 import { createRootRouteWithContext, Outlet } from "@tanstack/react-router";
 import type { QueryClient } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/sonner";
+import { Toaster } from "sedjiwa-ui";
 
 /** Router context injected in main.tsx — available to every route's loader/beforeLoad. */
 export interface RouterContext {

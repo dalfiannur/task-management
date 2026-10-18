@@ -10,28 +10,7 @@ import {
   UserMinus,
 } from "lucide-react";
 import { toast } from "sonner";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, Avatar, AvatarFallback, AvatarImage, Badge, Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, Input, Skeleton } from "sedjiwa-ui";
 import { KpiStrip } from "@/components/shared/kpi-strip";
 import { cn, getInitials } from "@/lib/utils";
 import { currentUserAtom, isAdminAtom } from "@/features/auth";
@@ -147,8 +126,8 @@ export function MembersTab({ projectId }: { projectId: string }) {
     return (
       <div className="space-y-4 p-6">
         <Skeleton className="h-9 w-full max-w-xs" />
-        <Skeleton className="h-[5.5rem] w-full rounded-xl shadow-2" />
-        <Skeleton className="h-48 w-full rounded-xl shadow-2" />
+        <Skeleton className="h-[5.5rem] w-full rounded-xl shadow-sm" />
+        <Skeleton className="h-48 w-full rounded-xl shadow-sm" />
       </div>
     );
   }
@@ -156,17 +135,18 @@ export function MembersTab({ projectId }: { projectId: string }) {
   return (
     <div className="space-y-4 p-6">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative w-full sm:w-auto sm:min-w-0 sm:max-w-xs sm:flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-text-subtle" />
-          <Input
+        <Input.Root appearance="search" className="w-full sm:w-auto sm:min-w-0 sm:max-w-xs sm:flex-1">
+          <Input.LeadingIcon>
+            <Search />
+          </Input.LeadingIcon>
+          <Input.Field
             type="search"
             placeholder="Search members…"
             aria-label="Search members"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            className="!pl-8" /* beats the module's padding shorthand */
           />
-        </div>
+        </Input.Root>
         <div className="ml-auto flex items-center gap-2">
           {iAmMember && !iAmOwner && (
             <Button
@@ -212,10 +192,10 @@ export function MembersTab({ projectId }: { projectId: string }) {
           </span>
         </h2>
 
-        <div className="overflow-hidden rounded-xl bg-surface-raised shadow-2">
+        <div className="overflow-hidden rounded-xl bg-card shadow-sm">
           <div
             aria-hidden="true"
-            className="hidden items-center gap-3 border-b border-border-subtle bg-surface-sunken/40 px-4 py-1.5 text-label md:flex"
+            className="hidden items-center gap-3 border-b border-border bg-muted/40 px-4 py-1.5 text-label md:flex"
           >
             <span className="flex-1">Member</span>
             <span className={COLS.open}>Open</span>
@@ -225,8 +205,8 @@ export function MembersTab({ projectId }: { projectId: string }) {
           </div>
 
           {visible.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 px-4 py-10 text-center text-sm text-text-muted">
-              <SearchX className="h-5 w-5 text-text-subtle" />
+            <div className="flex flex-col items-center gap-2 px-4 py-10 text-center text-sm text-muted-foreground">
+              <SearchX className="h-5 w-5 text-muted-foreground" />
               No members match “{q.trim()}”.
             </div>
           ) : (
@@ -246,7 +226,7 @@ export function MembersTab({ projectId }: { projectId: string }) {
           )}
 
           {canManage && rows.length === 1 && !needle && (
-            <p className="border-t border-border-subtle px-4 py-3 text-sm text-text-muted">
+            <p className="border-t border-border px-4 py-3 text-sm text-muted-foreground">
               No other members yet — add some to assign them tasks.
             </p>
           )}
@@ -301,7 +281,7 @@ function MemberRow({
   const pct = stats.total > 0 ? Math.round((stats.done / stats.total) * 100) : 0;
 
   return (
-    <li className="flex items-center gap-3 border-b border-border-subtle px-4 py-3 last:border-b-0">
+    <li className="flex items-center gap-3 border-b border-border px-4 py-3 last:border-b-0">
       <Avatar size="lg">
         {row.avatarUrl && <AvatarImage src={row.avatarUrl} />}
         <AvatarFallback>{getInitials(row.name)}</AvatarFallback>
@@ -309,20 +289,20 @@ function MemberRow({
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <span className="truncate text-sm font-medium">{row.name}</span>
-          {isMe && <span className="text-xs text-text-muted">(you)</span>}
+          {isMe && <span className="text-xs text-muted-foreground">(you)</span>}
           {row.isOwner && <Badge variant="secondary">Owner</Badge>}
         </div>
         {row.phone && (
-          <span className="block truncate text-xs text-text-muted">
+          <span className="block truncate text-xs text-muted-foreground">
             {row.phone}
           </span>
         )}
         {/* Below md the columns are hidden; the counts ride under the name. */}
         {!statsLoading && (
-          <span className="text-num block text-xs text-text-muted md:hidden">
+          <span className="text-num block text-xs text-muted-foreground md:hidden">
             {stats.open} open
             {stats.overdue > 0 && (
-              <span className="text-danger"> · {stats.overdue} overdue</span>
+              <span className="text-destructive"> · {stats.overdue} overdue</span>
             )}
             {stats.total > 0 && ` · ${pct}% done`}
           </span>
@@ -340,7 +320,7 @@ function MemberRow({
             className={cn(
               COLS.overdue,
               "text-num hidden text-sm md:block",
-              stats.overdue > 0 ? "font-medium text-danger" : "text-text-subtle",
+              stats.overdue > 0 ? "font-medium text-destructive" : "text-muted-foreground",
             )}
           >
             {stats.overdue}
@@ -354,22 +334,22 @@ function MemberRow({
                   aria-valuemax={100}
                   aria-valuenow={pct}
                   aria-label={`${row.name}: tasks done`}
-                  className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-sunken"
+                  className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted"
                 >
                   <div
                     className={cn(
                       "h-full rounded-full",
-                      pct === 100 ? "bg-success" : "bg-brand",
+                      pct === 100 ? "bg-success" : "bg-primary",
                     )}
                     style={{ width: `${pct}%` }}
                   />
                 </div>
-                <span className="text-num whitespace-nowrap text-xs text-text-muted">
+                <span className="text-num whitespace-nowrap text-xs text-muted-foreground">
                   {stats.done}/{stats.total}
                 </span>
               </>
             ) : (
-              <span className="text-xs text-text-subtle">No tasks</span>
+              <span className="text-xs text-muted-foreground">No tasks</span>
             )}
           </div>
         </>

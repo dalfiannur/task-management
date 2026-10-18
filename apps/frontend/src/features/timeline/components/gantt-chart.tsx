@@ -10,8 +10,7 @@ import { useAtom, useAtomValue } from "jotai";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { CalendarRange, ChevronRight, Crosshair, ListTodo } from "lucide-react";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Button, Skeleton } from "sedjiwa-ui";
 import { EmptyState } from "@/components/shared/empty-state";
 import { cn } from "@/lib/utils";
 import { useProjectMembers } from "@/features/projects";
@@ -316,7 +315,7 @@ export function GanttChart({ projectId }: { projectId: string }) {
           <Skeleton className="h-7 w-40 rounded-md" />
           <Skeleton className="h-8 w-56 rounded-full" />
         </div>
-        <Skeleton className="h-80 w-full rounded-xl shadow-2" />
+        <Skeleton className="h-80 w-full rounded-xl shadow-sm" />
       </div>
     );
   }
@@ -326,7 +325,7 @@ export function GanttChart({ projectId }: { projectId: string }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <h2 className="text-label">Timeline</h2>
-          <p className="text-num text-sm text-text-muted">
+          <p className="text-num text-sm text-muted-foreground">
             {scheduledCount} scheduled
             {unscheduled.length > 0 && (
               <>
@@ -338,7 +337,7 @@ export function GanttChart({ projectId }: { projectId: string }) {
                       .getElementById("timeline-unscheduled")
                       ?.scrollIntoView({ behavior: "smooth", block: "start" })
                   }
-                  className="underline-offset-2 hover:text-text hover:underline"
+                  className="underline-offset-2 hover:text-foreground hover:underline"
                 >
                   {unscheduled.length} unscheduled
                 </button>
@@ -360,7 +359,7 @@ export function GanttChart({ projectId }: { projectId: string }) {
           <div
             role="group"
             aria-label="Zoom"
-            className="inline-flex gap-1 rounded-full bg-surface-sunken p-[3px]"
+            className="inline-flex gap-1 rounded-full bg-muted p-[3px]"
           >
             {ZOOMS.map(({ key, label }) => (
               <button
@@ -372,8 +371,8 @@ export function GanttChart({ projectId }: { projectId: string }) {
                   "rounded-full px-3 py-1 text-sm",
                   "[transition:background-color_var(--duration-fast)_var(--ease-out),color_var(--duration-fast)_var(--ease-out)]",
                   zoom === key
-                    ? "bg-surface-raised font-medium text-text shadow-1"
-                    : "text-text-muted hover:text-text",
+                    ? "bg-card font-medium text-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground",
                 )}
               >
                 {label}
@@ -395,7 +394,7 @@ export function GanttChart({ projectId }: { projectId: string }) {
           }}
         />
       ) : !hasGrid ? (
-        <div className="rounded-xl bg-surface-raised shadow-2">
+        <div className="rounded-xl bg-card shadow-sm">
           <EmptyState
             size="compact"
             icon={ListTodo}
@@ -415,7 +414,7 @@ export function GanttChart({ projectId }: { projectId: string }) {
           <div
             ref={scrollRef}
             onScroll={measure}
-            className="scrollbar-slim overflow-x-auto rounded-xl bg-surface-raised shadow-2"
+            className="scrollbar-slim overflow-x-auto rounded-xl bg-card shadow-sm"
           >
             {/* w-max: tanpa ini flex item menyusut ke lebar viewport dan latar
                 baris modul berhenti di tengah grid. */}
@@ -436,17 +435,17 @@ export function GanttChart({ projectId }: { projectId: string }) {
                   urutan DOM saja tidak cukup. */}
               <div
                 className={cn(
-                  "sticky left-0 z-30 shrink-0 bg-surface-raised border-r",
+                  "sticky left-0 z-30 shrink-0 bg-card border-r",
                   "transition-colors [transition-duration:var(--duration)]",
                   // Saat kolom ini benar-benar menimpa grid, pemisahnya naik
                   // dari halus jadi landmark (depth.md §5).
-                  edge.start ? "border-border-strong" : "border-border-subtle",
+                  edge.start ? "border-input" : "border-border",
                 )}
                 style={{ width: NAME_COL }}
               >
                 <div
                   style={{ height: HEADER_H }}
-                  className="flex items-end border-b border-border-subtle px-3 pb-1.5 text-xs font-medium text-text-muted"
+                  className="flex items-end border-b border-border px-3 pb-1.5 text-xs font-medium text-muted-foreground"
                 >
                   Module / task
                 </div>
@@ -468,11 +467,11 @@ export function GanttChart({ projectId }: { projectId: string }) {
                           NAME_INDENT_BASE + (r.depth + 1) * NAME_INDENT_STEP - 8,
                       }}
                       className={cn(
-                        "flex w-full items-center gap-2 border-b border-border-subtle pr-3 text-left text-sm",
-                        "transition-colors [transition-duration:var(--duration-fast)] hover:bg-surface-hover",
+                        "flex w-full items-center gap-2 border-b border-border pr-3 text-left text-sm",
+                        "transition-colors [transition-duration:var(--duration-fast)] hover:bg-accent",
                         r.task.status === "done" || r.task.status === "cancelled"
-                          ? "text-text-muted"
-                          : "text-text",
+                          ? "text-muted-foreground"
+                          : "text-foreground",
                       )}
                     >
                       <span
@@ -504,13 +503,13 @@ export function GanttChart({ projectId }: { projectId: string }) {
               <div className="relative shrink-0" style={{ width: gridWidth }}>
                 {/* Header, tier 1: months (years at month zoom). */}
                 <div
-                  className="relative border-b border-border-subtle"
+                  className="relative border-b border-border"
                   style={{ height: GROUP_H }}
                 >
                   {groups.map((g) => (
                     <div
                       key={g.offset}
-                      className="absolute top-0 flex h-full border-l border-border-strong"
+                      className="absolute top-0 flex h-full border-l border-input"
                       style={{ left: g.offset * pxPerDay, width: g.days * pxPerDay }}
                     >
                       {/* Sticky just past the name column, so the month
@@ -519,7 +518,7 @@ export function GanttChart({ projectId }: { projectId: string }) {
                           as wide as its text — a full-width sticky box has
                           no room inside its parent to move. */}
                       <span
-                        className="sticky flex h-full items-center whitespace-nowrap pl-2 pr-2 text-xs font-medium text-text"
+                        className="sticky flex h-full items-center whitespace-nowrap pl-2 pr-2 text-xs font-medium text-foreground"
                         style={{ left: NAME_COL }}
                       >
                         {g.label}
@@ -529,13 +528,13 @@ export function GanttChart({ projectId }: { projectId: string }) {
                 </div>
                 {/* Header, tier 2: days / week starts / months. */}
                 <div
-                  className="relative border-b border-border-subtle"
+                  className="relative border-b border-border"
                   style={{ height: TICK_H }}
                 >
                   {weekends.map((o) => (
                     <div
                       key={o}
-                      className="absolute top-0 h-full bg-surface-sunken"
+                      className="absolute top-0 h-full bg-muted"
                       style={{ left: o * pxPerDay, width: pxPerDay }}
                     />
                   ))}
@@ -543,12 +542,12 @@ export function GanttChart({ projectId }: { projectId: string }) {
                     <div
                       key={t.offset}
                       className={cn(
-                        "text-num absolute top-0 flex h-full items-center border-l text-xs text-text-muted",
+                        "text-num absolute top-0 flex h-full items-center border-l text-xs text-muted-foreground",
                         zoom === "day" ? "justify-center" : "pl-1.5",
                         // Mayor memakai --border-STRONG, bukan --border: di
                         // dark --border dan --surface-raised dua-duanya
                         // grey-800, jadi garis landmark justru hilang.
-                        t.major ? "border-border-strong" : "border-border-subtle",
+                        t.major ? "border-input" : "border-border",
                       )}
                       style={{
                         left: t.offset * pxPerDay,
@@ -559,7 +558,7 @@ export function GanttChart({ projectId }: { projectId: string }) {
                     </div>
                   ))}
                   <div
-                    className="absolute bottom-0.5 z-[1] -translate-x-1/2 rounded-full bg-brand px-1.5 text-[10px] font-semibold leading-4 text-text-on-brand"
+                    className="absolute bottom-0.5 z-[1] -translate-x-1/2 rounded-full bg-primary px-1.5 text-[10px] font-semibold leading-4 text-primary-foreground"
                     style={{ left: todayX }}
                   >
                     Today
@@ -578,7 +577,7 @@ export function GanttChart({ projectId }: { projectId: string }) {
                       r.kind === "module" ? (
                         <div
                           key={r.id}
-                          className="absolute inset-x-0 bg-surface-sunken"
+                          className="absolute inset-x-0 bg-muted"
                           style={{ top: i * ROW_HEIGHT, height: ROW_HEIGHT }}
                         />
                       ) : null,
@@ -586,7 +585,7 @@ export function GanttChart({ projectId }: { projectId: string }) {
                     {weekends.map((o) => (
                       <div
                         key={o}
-                        className="absolute inset-y-0 bg-surface-sunken"
+                        className="absolute inset-y-0 bg-muted"
                         style={{ left: o * pxPerDay, width: pxPerDay }}
                       />
                     ))}
@@ -595,13 +594,13 @@ export function GanttChart({ projectId }: { projectId: string }) {
                         key={t.offset}
                         className={cn(
                           "absolute inset-y-0 border-l",
-                          t.major ? "border-border-strong" : "border-border-subtle",
+                          t.major ? "border-input" : "border-border",
                         )}
                         style={{ left: t.offset * pxPerDay }}
                       />
                     ))}
                     <div
-                      className="absolute inset-y-0 w-0.5 -translate-x-1/2 bg-brand-text"
+                      className="absolute inset-y-0 w-0.5 -translate-x-1/2 bg-primary"
                       style={{ left: todayX }}
                     />
                   </div>
@@ -610,7 +609,7 @@ export function GanttChart({ projectId }: { projectId: string }) {
                     <div
                       key={r.id}
                       style={{ height: ROW_HEIGHT }}
-                      className="relative border-b border-border-subtle"
+                      className="relative border-b border-border"
                     >
                       {r.kind === "task" ? (
                         <GanttBar
@@ -656,7 +655,7 @@ export function GanttChart({ projectId }: { projectId: string }) {
             aria-hidden
             className={cn(
               "pointer-events-none absolute inset-y-0 right-0 z-10 w-12 rounded-r-xl",
-              "bg-linear-to-l from-surface-raised to-transparent",
+              "bg-linear-to-l from-card to-transparent",
               "transition-opacity [transition-duration:var(--duration)]",
               edge.end ? "opacity-100" : "opacity-0",
             )}
@@ -711,23 +710,23 @@ function ModuleNameRow({
       onClick={() => setCollapsed(!collapsed)}
       aria-expanded={!collapsed}
       style={{ height: ROW_HEIGHT }}
-      className="flex w-full items-center gap-1.5 border-b border-border-subtle bg-surface-sunken px-2 text-left text-sm"
+      className="flex w-full items-center gap-1.5 border-b border-border bg-muted px-2 text-left text-sm"
     >
       <ChevronRight
         aria-hidden="true"
         className={cn(
-          "h-4 w-4 shrink-0 text-text-muted [transition:transform_var(--duration-fast)_var(--ease-out)]",
+          "h-4 w-4 shrink-0 text-muted-foreground [transition:transform_var(--duration-fast)_var(--ease-out)]",
           !collapsed && "rotate-90",
         )}
       />
       <span className="min-w-0 flex-1 truncate font-medium">{row.name}</span>
       {overdue > 0 && (
-        <span className="text-num shrink-0 rounded-full bg-danger-subtle px-1.5 text-xs font-medium text-danger">
+        <span className="text-num shrink-0 rounded-full bg-destructive-subtle px-1.5 text-xs font-medium text-destructive">
           {overdue}
           <span className="sr-only"> overdue</span>
         </span>
       )}
-      <span className="text-num shrink-0 text-xs text-text-muted">
+      <span className="text-num shrink-0 text-xs text-muted-foreground">
         {done}/{total}
         <span className="sr-only"> done</span>
       </span>
@@ -749,7 +748,7 @@ function ModuleSummaryBar({
   const pct = stats.total ? Math.round((stats.done / stats.total) * 100) : 0;
   return (
     <div
-      className="absolute overflow-hidden rounded-full bg-border-strong"
+      className="absolute overflow-hidden rounded-full bg-input"
       style={{
         left,
         width,

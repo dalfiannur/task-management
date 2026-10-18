@@ -1,12 +1,18 @@
 import type { LucideIcon } from "lucide-react";
 import { Link } from "@tanstack/react-router";
-import { Button } from "@/components/ui/button";
+import { Button, EmptyState as BaseEmptyState } from "sedjiwa-ui";
 import { cn } from "@/lib/utils";
 
 /** Aksi tunggal untuk empty state. Bisa tombol atau navigasi. */
 export type EmptyStateAction =
   | { label: string; onClick: () => void }
   | { label: string; to: string; params?: Record<string, string> };
+
+const TONE = {
+  "first-run": "default",
+  "no-results": "muted",
+  cleared: "success",
+} as const;
 
 /**
  * Empty state — `ui-design` aturan 9 + `references/empty-states.md`.
@@ -22,6 +28,8 @@ export type EmptyStateAction =
  *   first-run  → belum pernah ada isi. Nada onboarding, CTA membuat item pertama.
  *   no-results → filter/pencarian nol hasil. CTA MENGHAPUS FILTER, bukan "buat baru".
  *   cleared    → sudah dikosongkan user. Nada menenangkan.
+ *
+ * Tampilannya milik `EmptyState` sedjiwa-ui; keadaan dipetakan ke `tone`-nya.
  */
 export function EmptyState({
   variant = "first-run",
@@ -46,60 +54,33 @@ export function EmptyState({
   className?: string;
 }) {
   const compact = size === "compact";
+  const cta =
+    actionSlot ??
+    (action && (
+      <Button
+        // PRIMER — bukan secondary, bukan ghost.
+        size={compact ? "sm" : "default"}
+        asChild={"to" in action}
+        {...("onClick" in action ? { onClick: action.onClick } : {})}
+      >
+        {"to" in action ? (
+          <Link to={action.to} params={action.params}>
+            {action.label}
+          </Link>
+        ) : (
+          action.label
+        )}
+      </Button>
+    ));
   return (
-    <div
+    <BaseEmptyState
       data-variant={variant}
-      className={cn(
-        "mx-auto flex max-w-md flex-col items-center text-center",
-        // Mulai longgar, lalu dikurangi — aturan 8.
-        compact ? "px-4 py-8" : "px-6 py-16",
-        className,
-      )}
-    >
-      <Icon
-        aria-hidden="true"
-        className={cn(
-          // Diredupkan: ia konteks, bukan aksi.
-          "text-text-subtle",
-          compact ? "mb-3 h-8 w-8" : "mb-6 h-16 w-16",
-        )}
-        strokeWidth={1.5}
-      />
-      {/* Margin kecil: judul + kalimat pendukung adalah satu grup. */}
-      <p
-        className={cn(
-          "mb-2 font-semibold text-text",
-          compact ? "text-sm" : "text-xl",
-        )}
-      >
-        {title}
-      </p>
-      {/* Jarak antar-grup > dalam-grup (aturan 7), jadi CTA duduk lebih jauh. */}
-      <p
-        className={cn(
-          "max-w-[32ch] text-text-muted",
-          compact ? "mb-4 text-xs" : "mb-6 text-sm",
-        )}
-      >
-        {body}
-      </p>
-      {actionSlot}
-      {!actionSlot && action && (
-        <Button
-          // PRIMER — bukan secondary, bukan ghost.
-          size={compact ? "sm" : "default"}
-          asChild={"to" in action}
-          {...("onClick" in action ? { onClick: action.onClick } : {})}
-        >
-          {"to" in action ? (
-            <Link to={action.to} params={action.params}>
-              {action.label}
-            </Link>
-          ) : (
-            action.label
-          )}
-        </Button>
-      )}
-    </div>
+      tone={TONE[variant]}
+      icon={<Icon aria-hidden="true" />}
+      title={title}
+      description={body}
+      action={cta || undefined}
+      className={cn(compact && "py-8", className)}
+    />
   );
 }

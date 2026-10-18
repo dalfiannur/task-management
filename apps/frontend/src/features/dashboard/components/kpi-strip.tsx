@@ -1,4 +1,4 @@
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "sedjiwa-ui";
 import { KpiStrip as KpiStripView } from "@/components/shared/kpi-strip";
 import { useDashboardStats } from "../api/hooks";
 
@@ -8,7 +8,7 @@ export function KpiStrip() {
   const { stats, isLoading } = useDashboardStats();
 
   if (isLoading || !stats) {
-    return <Skeleton className="h-[88px] w-full rounded-xl shadow-2" />;
+    return <Skeleton className="h-[88px] w-full rounded-xl shadow-sm" />;
   }
 
   const donePct =

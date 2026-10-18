@@ -8,10 +8,8 @@ import {
   Search,
   SearchX,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, Input, Skeleton } from "sedjiwa-ui";
 import { EmptyState } from "@/components/shared/empty-state";
-import { Input } from "@/components/ui/input";
-import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useUserMap } from "@/features/users";
 import { useProjects } from "../api/hooks";
@@ -43,8 +41,8 @@ const segment = (on: boolean) =>
     "rounded-full text-sm",
     "[transition:background-color_var(--duration-fast)_var(--ease-out),color_var(--duration-fast)_var(--ease-out)]",
     on
-      ? "bg-surface-raised font-medium text-text shadow-1"
-      : "text-text-muted hover:text-text",
+      ? "bg-card font-medium text-foreground shadow-xs"
+      : "text-muted-foreground hover:text-foreground",
   );
 
 export function ProjectList() {
@@ -80,7 +78,7 @@ export function ProjectList() {
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Projects</h1>
-          <p className="mt-1 text-sm text-text-muted">
+          <p className="mt-1 text-sm text-muted-foreground">
             {isLoading || isError ? (
               "\u00a0"
             ) : (
@@ -104,7 +102,7 @@ export function ProjectList() {
           <div
             role="group"
             aria-label="Filter by status"
-            className="inline-flex gap-1 overflow-x-auto rounded-full bg-surface-sunken p-[3px]"
+            className="inline-flex gap-1 overflow-x-auto rounded-full bg-muted p-[3px]"
           >
             {FILTERS.map((f) => (
               <button
@@ -117,9 +115,11 @@ export function ProjectList() {
               </button>
             ))}
           </div>
-          <div className="relative order-last w-full sm:order-none sm:w-auto sm:min-w-0 sm:max-w-xs sm:flex-1">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-text-subtle" />
-            <Input
+          <Input.Root appearance="search" className="order-last w-full sm:order-none sm:w-auto sm:min-w-0 sm:max-w-xs sm:flex-1">
+            <Input.LeadingIcon>
+              <Search />
+            </Input.LeadingIcon>
+            <Input.Field
               type="search"
               placeholder="Search projects…"
               aria-label="Search projects"
@@ -128,13 +128,12 @@ export function ProjectList() {
                 setSearch(e.target.value);
                 setPage(1);
               }}
-              className="!pl-8" /* beats the module's padding shorthand */
             />
-          </div>
+          </Input.Root>
           <div
             role="group"
             aria-label="Layout"
-            className="ml-auto inline-flex gap-1 rounded-full bg-surface-sunken p-[3px]"
+            className="ml-auto inline-flex gap-1 rounded-full bg-muted p-[3px]"
           >
             {VIEWS.map(({ key, label, icon: Icon }) => (
               <button
@@ -153,7 +152,7 @@ export function ProjectList() {
       )}
 
       {isError ? (
-        <p className="text-sm text-danger">
+        <p className="text-sm text-destructive">
           {error?.message ?? "Failed to load projects."}
         </p>
       ) : isLoading ? (
@@ -212,7 +211,7 @@ export function ProjectList() {
               ))}
             </div>
           ) : (
-            <div className="overflow-hidden rounded-xl bg-surface-raised shadow-2">
+            <div className="overflow-hidden rounded-xl bg-card shadow-sm">
               <ProjectRowHeader />
               <ul>
                 {data.projects.map((p) => (
@@ -231,7 +230,7 @@ export function ProjectList() {
               >
                 Previous
               </Button>
-              <span className="text-sm text-text-muted">
+              <span className="text-sm text-muted-foreground">
                 Page {page} of {totalPages}
               </span>
               <Button

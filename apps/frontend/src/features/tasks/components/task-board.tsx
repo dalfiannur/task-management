@@ -152,22 +152,22 @@ function BoardColumn({
       ref={setNodeRef}
       aria-label={c.label}
       className={cn(
-        "flex w-72 shrink-0 snap-start flex-col rounded-xl bg-surface-sunken/60 p-2 lg:w-auto",
+        "flex w-72 shrink-0 snap-start flex-col rounded-xl bg-muted/60 p-2 lg:w-auto",
         "transition-shadow [transition-duration:var(--duration-fast)]",
-        isOver && "ring-2 ring-focus",
+        isOver && "ring-2 ring-ring",
       )}
     >
       <header className="flex items-center gap-2 px-2 pb-2 pt-1">
         <span aria-hidden="true" className={cn("h-2 w-2 rounded-full", c.dot)} />
         <h3 className="text-sm font-medium">{c.label}</h3>
-        <span className="text-num text-xs text-text-muted">{tasks.length}</span>
+        <span className="text-num text-xs text-muted-foreground">{tasks.length}</span>
       </header>
       <div className="flex min-h-24 flex-1 flex-col gap-2">
         {tasks.map((t) => (
           <DraggableCard key={t.id} task={t} ctx={ctx} />
         ))}
         {tasks.length === 0 && (
-          <p className="rounded-lg border border-dashed border-border-subtle px-3 py-6 text-center text-xs text-text-muted">
+          <p className="rounded-lg border border-dashed border-border px-3 py-6 text-center text-xs text-muted-foreground">
             No tasks
           </p>
         )}
@@ -215,22 +215,22 @@ function BoardCard({
   return (
     <article
       className={cn(
-        "group relative space-y-2 rounded-lg bg-surface-raised p-3 shadow-1",
-        "transition-shadow [transition-duration:var(--duration-fast)] hover:shadow-2",
-        overlay ? "rotate-1 cursor-grabbing shadow-3" : "cursor-grab",
+        "group relative space-y-2 rounded-lg bg-card p-3 shadow-xs",
+        "transition-shadow [transition-duration:var(--duration-fast)] hover:shadow-sm",
+        overlay ? "rotate-1 cursor-grabbing shadow-md" : "cursor-grab",
       )}
     >
-      <div className="flex items-center gap-2 text-xs text-text-muted">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <span className="truncate">{ctx.moduleName[task.moduleId]}</span>
         {ctx.blockedMap[task.id] && (
-          <span className="ml-auto shrink-0 rounded-full bg-danger-subtle px-2 py-0.5 font-medium text-danger">
+          <span className="ml-auto shrink-0 rounded-full bg-destructive-subtle px-2 py-0.5 font-medium text-destructive">
             Blocked
           </span>
         )}
       </div>
 
       {parent && (
-        <p className="flex items-center gap-1 truncate text-xs text-text-subtle">
+        <p className="flex items-center gap-1 truncate text-xs text-muted-foreground">
           <CornerDownRight aria-hidden="true" className="h-3 w-3 shrink-0" />
           <span className="truncate">{parent}</span>
         </p>
@@ -244,8 +244,8 @@ function BoardCard({
         onClick={() => ctx.onOpenTask(task.id)}
         className={cn(
           "line-clamp-2 block text-left text-sm font-medium outline-none",
-          "after:absolute after:inset-0 after:rounded-lg after:content-[''] focus-visible:after:outline-2 focus-visible:after:outline-focus",
-          done && "text-text-muted line-through",
+          "after:absolute after:inset-0 after:rounded-lg after:content-[''] focus-visible:after:outline-2 focus-visible:after:outline-ring",
+          done && "text-muted-foreground line-through",
         )}
       >
         <TaskNumber number={task.number} />
@@ -260,7 +260,7 @@ function BoardCard({
         <PriorityLabel priority={task.priority} />
         <DueDate task={task} />
         {progress && (
-          <span className="text-num text-xs text-text-muted" title="Subtasks done">
+          <span className="text-num text-xs text-muted-foreground" title="Subtasks done">
             {progress.done}/{progress.total}
           </span>
         )}

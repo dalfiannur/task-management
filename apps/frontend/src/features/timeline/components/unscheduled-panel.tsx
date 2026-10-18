@@ -23,7 +23,7 @@ export function UnscheduledPanel({
   return (
     <section
       id="timeline-unscheduled"
-      className="rounded-xl bg-surface-raised shadow-2"
+      className="rounded-xl bg-card shadow-sm"
     >
       <button
         type="button"
@@ -34,25 +34,25 @@ export function UnscheduledPanel({
         <ChevronRight
           aria-hidden="true"
           className={cn(
-            "h-4 w-4 text-text-muted [transition:transform_var(--duration-fast)_var(--ease-out)]",
+            "h-4 w-4 text-muted-foreground [transition:transform_var(--duration-fast)_var(--ease-out)]",
             open && "rotate-90",
           )}
         />
-        <CalendarOff aria-hidden="true" className="h-4 w-4 text-text-muted" />
+        <CalendarOff aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
         <h3 className="text-sm font-medium">Unscheduled</h3>
-        <span className="text-num rounded-full bg-surface-sunken px-2 text-xs text-text-muted">
+        <span className="text-num rounded-full bg-muted px-2 text-xs text-muted-foreground">
           {tasks.length}
         </span>
-        <span className="ml-auto hidden text-xs text-text-muted sm:inline">
+        <span className="ml-auto hidden text-xs text-muted-foreground sm:inline">
           Pick a date to place a task on the timeline
         </span>
       </button>
       {open && (
-        <ul className="border-t border-border-subtle px-2 py-2">
+        <ul className="border-t border-border px-2 py-2">
           {tasks.map((t) => (
             <li
               key={t.id}
-              className="flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors [transition-duration:var(--duration-fast)] hover:bg-surface-hover"
+              className="flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors [transition-duration:var(--duration-fast)] hover:bg-accent"
             >
               <span
                 aria-hidden="true"
@@ -73,7 +73,7 @@ export function UnscheduledPanel({
                   · {TASK_STATUS_CONFIG[t.status].label}
                 </span>
               </button>
-              <span className="hidden shrink-0 truncate text-xs text-text-muted sm:inline">
+              <span className="hidden shrink-0 truncate text-xs text-muted-foreground sm:inline">
                 {moduleNames[t.moduleId]}
               </span>
               {canEdit && (

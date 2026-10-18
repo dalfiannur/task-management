@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { Send } from "lucide-react";
 import type { Editor } from "@tiptap/react";
-import { Button } from "@/components/ui/button";
+import { Button } from "sedjiwa-ui";
 import { RichTextEditor } from "@/components/shared/rich-text-editor";
 import {
   buildMention,

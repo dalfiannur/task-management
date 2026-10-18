@@ -13,29 +13,29 @@ export function ActivitySummary({
 }) {
   if (total === 0) {
     return (
-      <p className="rounded-xl bg-surface-raised p-6 text-center text-sm text-text-muted shadow-2">
+      <p className="rounded-xl bg-card p-6 text-center text-sm text-muted-foreground shadow-sm">
         No recorded activity in this period.
       </p>
     );
   }
   return (
-    <div className="rounded-xl bg-surface-raised p-4 shadow-2 print:break-inside-avoid">
+    <div className="rounded-xl bg-card p-4 shadow-sm print:break-inside-avoid">
       <ul className="grid gap-2 sm:grid-cols-2">
         {rows.map((r) => (
           <li
             key={`${r.entity}-${r.action}`}
             className="flex items-baseline justify-between gap-3 text-sm"
           >
-            <span className="text-text-muted">
+            <span className="text-muted-foreground">
               {ENTITY_LABEL[r.entity]} {ACTION_LABEL[r.action]}
             </span>
             <span className="text-num font-medium">{r.count}</span>
           </li>
         ))}
       </ul>
-      <p className="mt-4 text-xs text-text-muted">
+      <p className="mt-4 text-xs text-muted-foreground">
         {total} recorded changes.{" "}
-        <Link to="/dashboard" className="text-brand-text underline print:hidden">
+        <Link to="/dashboard" className="text-primary underline print:hidden">
           See the activity feed
         </Link>
       </p>
