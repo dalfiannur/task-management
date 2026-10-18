@@ -45,7 +45,11 @@ export function CreateProjectDialog({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [sourceId, setSourceId] = useState(source?.id ?? BLANK);
-  const [startDate, setStartDate] = useState<Date | undefined>();
+  // Copies start today unless told otherwise: keeping a template's old dates
+  // would make every dated task overdue on arrival.
+  const [startDate, setStartDate] = useState<Date | undefined>(() =>
+    source ? new Date() : undefined,
+  );
   const { templates } = useTemplateProjects(open);
 
   // The preselected source may be a plain project, not in the templates list.
@@ -59,7 +63,7 @@ export function CreateProjectDialog({
     setName("");
     setDescription("");
     setSourceId(source?.id ?? BLANK);
-    setStartDate(undefined);
+    setStartDate(source ? new Date() : undefined);
   }
 
   function onSubmit(e: React.FormEvent) {
@@ -113,7 +117,13 @@ export function CreateProjectDialog({
           {(options.length > 0 || source) && (
             <div className="space-y-2">
               <Label htmlFor="project-source">Start from</Label>
-              <Select value={sourceId} onValueChange={setSourceId}>
+              <Select
+                value={sourceId}
+                onValueChange={(id) => {
+                  setSourceId(id);
+                  if (id !== BLANK && !startDate) setStartDate(new Date());
+                }}
+              >
                 <SelectTrigger id="project-source" className="w-full">
                   <SelectValue />
                 </SelectTrigger>
@@ -165,7 +175,8 @@ export function CreateProjectDialog({
                 placeholder="Keep the template's dates"
               />
               <p className="text-xs text-muted-foreground">
-                Task dates move so the copy starts on this day.
+                Task dates move so the copy starts on this day. Clear it to keep the
+                original dates.
               </p>
             </div>
           )}

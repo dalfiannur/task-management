@@ -474,7 +474,7 @@ export function TaskDialog({
                   onClick={() => setSaveTemplateOpen(true)}
                 >
                   <LayoutTemplate className="mr-1 h-4 w-4" />
-                  Save as template
+                  Save task as template
                 </Button>
               )}
               <Button

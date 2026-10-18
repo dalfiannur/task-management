@@ -51,7 +51,7 @@ export function SaveTemplateDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>Save as template</DialogTitle>
+          <DialogTitle>Save task as template</DialogTitle>
           <DialogDescription>
             Keeps the title, description, priority, estimate, labels and subtask
             titles for reuse in this project.
