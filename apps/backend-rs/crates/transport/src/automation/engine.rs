@@ -1,10 +1,20 @@
 //! The automation engine: matches a task change against the project's rules
-//! and runs their actions through the same core functions the RPCs use, as
-//! the rule's author — so membership, validation, activity, notifications
-//! and search come along, and an author who lost access stops the rule.
+//! and runs their actions through the same core functions the RPCs use, so
+//! validation, activity, notifications and search come along.
 //!
-//! Chaining is bounded by a task-local [`Chain`]: a person's change is depth
-//! 0; actions run at depth + 1, and a change made at depth 1 may only trigger
+//! Actions run as the project's **Automation** identity
+//! (`AuthUser::automation`): a member of the rule's project for the length of
+//! the run and nothing more, so a rule never does what needs an owner or an
+//! admin, never reaches another project, and keeps working after whoever
+//! wrote it leaves. Rows it writes — activity, comments, notifications — are
+//! tagged with the rule's id through the task-local [`Chain`].
+//!
+//! A rule in **observe** mode matches exactly like one that is on, changes
+//! nothing, and records one OBSERVED run saying what it would have done. It
+//! neither chains nor spends the action budget.
+//!
+//! Chaining is bounded by the same [`Chain`]: a person's change is depth 0;
+//! actions run at depth + 1, and a change made at depth 1 may only trigger
 //! further rules through status changes and subtask completion (see
 //! `domain::automation::may_chain`). One root change shares one action
 //! budget across the whole chain.
@@ -16,7 +26,7 @@ use std::sync::Arc;
 
 use auth::AuthUser;
 use domain::automation::{
-    fires_on, matches, may_chain, Action, Event, NotifyTarget, TaskFacts, Trigger,
+    fires_on, matches, may_chain, Action, Event, Mode, NotifyTarget, TaskFacts, Trigger,
     MAX_ACTIONS_PER_EVENT,
 };
 use domain::notification::NotificationType;
@@ -26,17 +36,16 @@ use persistence::Store;
 use time::{Date, Duration, OffsetDateTime};
 
 use super::record::{
-    all_subtasks_done, claim_fired, enabled_rules, insert_run, open_tasks_due_between, NewRun,
-    RuleRecord,
+    active_rules, all_subtasks_done, claim_fired, insert_run, open_tasks_due_between,
+    system_actor_id, NewRun, RuleRecord,
 };
 use crate::comments::comment_service::create_comment_core;
 use crate::notifications::{emit, NotifRefs, Notifier};
-use crate::projects::record::load_project;
+use crate::projects::record::{is_member, load_project};
+use crate::templates::record::template_project_ids;
 use crate::sedjiwa::tasks::comment::v1 as comment_pb;
 use crate::sedjiwa::tasks::work::v1 as work_pb;
-use crate::users::record::auth_user_for;
 use crate::work::task_record::{load_task, TaskRecord};
-use crate::work::require_member;
 use crate::work::task_service::{move_task_core, update_task_core};
 
 /// Triggers a change can fire (the rest are time-based).
@@ -46,6 +55,8 @@ const CHANGE_KINDS: [&str; 4] = ["status_changed", "task_created", "assignee_add
 struct Chain {
     depth: u8,
     budget: Arc<AtomicUsize>,
+    /// The rule whose actions are running, for provenance.
+    rule: Option<i64>,
 }
 
 tokio::task_local! {
@@ -53,9 +64,17 @@ tokio::task_local! {
 }
 
 fn current_chain() -> Chain {
-    CHAIN
-        .try_with(Chain::clone)
-        .unwrap_or_else(|_| Chain { depth: 0, budget: Arc::new(AtomicUsize::new(MAX_ACTIONS_PER_EVENT)) })
+    CHAIN.try_with(Chain::clone).unwrap_or_else(|_| Chain {
+        depth: 0,
+        budget: Arc::new(AtomicUsize::new(MAX_ACTIONS_PER_EVENT)),
+        rule: None,
+    })
+}
+
+/// The automation rule whose actions are running right now, if any. Record
+/// writers tag what they write with it; a person's change has none.
+pub(crate) fn current_rule() -> Option<i64> {
+    CHAIN.try_with(|c| c.rule).ok().flatten()
 }
 
 fn event_kind(e: &Event) -> &'static str {
@@ -109,7 +128,16 @@ async fn after_change_inner(
     if events.is_empty() {
         return;
     }
-    let rules = match enabled_rules(store, Some(project_id), &CHANGE_KINDS).await {
+    // A template project's tasks are blueprints: no rule acts on them.
+    match template_project_ids(store).await {
+        Ok(t) if t.iter().any(|p| p == project_id) => return,
+        Ok(_) => {}
+        Err(e) => {
+            tracing::warn!(error = %e, "failed to load template projects");
+            return;
+        }
+    }
+    let rules = match active_rules(store, Some(project_id), &CHANGE_KINDS).await {
         Ok(r) => r,
         Err(e) => {
             tracing::warn!(error = %e, project = %project_id, "failed to load automations");
@@ -122,7 +150,11 @@ async fn after_change_inner(
             if !rule.trigger.as_ref().is_some_and(|t| fires_on(t, e)) {
                 continue;
             }
-            let next = Chain { depth: chain.depth + 1, budget: chain.budget.clone() };
+            if rule.mode == Mode::Observe {
+                observe_rule(store, rule, task_id, event_kind(e), today).await;
+                continue;
+            }
+            let next = Chain { depth: chain.depth + 1, budget: chain.budget.clone(), rule: Some(rule.pid) };
             CHAIN.scope(next, run_rule(store, notifier, rule, task_id, event_kind(e), today)).await;
         }
     }
@@ -175,8 +207,28 @@ fn facts(t: &TaskRecord) -> TaskFacts {
     }
 }
 
+/// The task, if it exists and the rule's conditions hold for it now.
+async fn matching_task(store: &Store, rule: &RuleRecord, task_id: &str) -> Option<TaskRecord> {
+    let pid = task_id.parse::<i64>().ok()?;
+    let task = load_task(store, pid).await.ok()??;
+    matches(&rule.conditions, &facts(&task)).then_some(task)
+}
+
+async fn record_run(store: &Store, rule: &RuleRecord, task_id: &str, trigger_kind: &str, status: &str, detail: &str) {
+    let now = crate::timelog::record::now_iso();
+    if let Err(e) = insert_run(
+        store,
+        NewRun { automation_id: rule.pid, project_id: &rule.project_id, task_id, trigger_kind, status, detail, now: &now },
+    )
+    .await
+    {
+        tracing::warn!(error = %e, rule = rule.pid, "failed to record an automation run");
+    }
+}
+
 /// Run one rule on one task (conditions permitting) and record the run.
-/// `true` when it ran (whatever the outcome).
+/// `true` when it ran (whatever the outcome). Runs inside the rule's
+/// [`Chain`] scope.
 async fn run_rule(
     store: &Store,
     notifier: Option<&Arc<Notifier>>,
@@ -185,33 +237,21 @@ async fn run_rule(
     trigger_kind: &str,
     today: Date,
 ) -> bool {
-    let Ok(pid) = task_id.parse::<i64>() else { return false };
-    let task = match load_task(store, pid).await {
-        Ok(Some(t)) => t,
-        _ => return false,
-    };
-    if !matches(&rule.conditions, &facts(&task)) {
+    if matching_task(store, rule, task_id).await.is_none() {
         return false;
     }
     let budget = current_chain().budget;
     let mut done: Vec<String> = Vec::new();
     let mut status = "ok";
-    match auth_user_for(store, &rule.created_by).await {
-        // Every action needs the author's access to the project — notify and
-        // comment included, which would otherwise go out in the name of
-        // someone who has left.
-        Ok(Some(auth)) if require_member(store, &rule.project_id, &auth).await.is_err() => {
-            status = "failed";
-            done.push("the rule's author is no longer in this project".into());
-        }
-        Ok(Some(auth)) => {
+    match actor_for(store, rule).await {
+        Ok(actor) => {
             for action in &rule.actions {
                 if budget.fetch_update(Ordering::SeqCst, Ordering::SeqCst, |b| b.checked_sub(1)).is_err() {
                     status = "skipped";
                     done.push("stopped: too many automation actions for one change".into());
                     break;
                 }
-                match apply(store, notifier, &auth, rule, task_id, action, today).await {
+                match apply(store, notifier, &actor, rule, task_id, action, today).await {
                     Ok(what) => done.push(what),
                     Err(why) => {
                         status = "failed";
@@ -221,34 +261,26 @@ async fn run_rule(
                 }
             }
         }
-        Ok(None) => {
+        Err(why) => {
             status = "failed";
-            done.push("the rule's author is no longer an active user".into());
-        }
-        Err(e) => {
-            status = "failed";
-            done.push(format!("could not load the rule's author: {e}"));
+            done.push(why);
         }
     }
-    let detail = done.join("; ");
-    let now = crate::timelog::record::now_iso();
-    if let Err(e) = insert_run(
-        store,
-        NewRun {
-            automation_id: rule.pid,
-            project_id: &rule.project_id,
-            task_id,
-            trigger_kind,
-            status,
-            detail: &detail,
-            now: &now,
-        },
-    )
-    .await
-    {
-        tracing::warn!(error = %e, rule = rule.pid, "failed to record an automation run");
-    }
+    record_run(store, rule, task_id, trigger_kind, status, &done.join("; ")).await;
     true
+}
+
+/// The identity a rule acts as: the Automation actor, scoped to the rule's
+/// project. Fails when the project is gone.
+async fn actor_for(store: &Store, rule: &RuleRecord) -> Result<AuthUser, String> {
+    let pid: i64 = rule.project_id.parse().map_err(|_| "the rule's project is gone".to_string())?;
+    match load_project(store, pid).await {
+        Ok(Some(_)) => {}
+        Ok(None) => return Err("the rule's project is gone".into()),
+        Err(e) => return Err(format!("could not load the project: {e}")),
+    }
+    let id = system_actor_id(store).await.map_err(|e| format!("no automation identity: {e}"))?;
+    Ok(AuthUser::automation(&id, &rule.project_id))
 }
 
 fn reason(e: connectrpc_axum::ConnectError) -> String {
@@ -273,11 +305,35 @@ fn paragraph(text: &str) -> String {
     format!("<p>{escaped}</p>")
 }
 
+/// Who a notify action reaches right now, or why it cannot.
+async fn recipients(
+    store: &Store,
+    rule: &RuleRecord,
+    task: &TaskRecord,
+    target: NotifyTarget,
+    user_id: &str,
+) -> Result<Vec<String>, String> {
+    match target {
+        NotifyTarget::Assignees => Ok(task.assignee_ids.clone()),
+        NotifyTarget::Owner => match load_project(store, rule.project_id.parse().unwrap_or(0)).await {
+            Ok(Some(p)) => Ok(vec![p.owner_id]),
+            _ => Err("the project is gone".into()),
+        },
+        NotifyTarget::User => {
+            if is_member(store, &rule.project_id, user_id).await.map_err(|e| e.to_string())? {
+                Ok(vec![user_id.to_string()])
+            } else {
+                Err("the person to notify is no longer in this project".into())
+            }
+        }
+    }
+}
+
 /// Apply one action. `Ok` describes what it did; `Err` why it could not.
 async fn apply(
     store: &Store,
     notifier: Option<&Arc<Notifier>>,
-    auth: &AuthUser,
+    actor: &AuthUser,
     rule: &RuleRecord,
     task_id: &str,
     action: &Action,
@@ -289,7 +345,7 @@ async fn apply(
         .map_err(|e| e.to_string())?
         .ok_or_else(|| "the task no longer exists".to_string())?;
     let edit = |r: work_pb::UpdateTaskRequest, what: String| async move {
-        update_task_core(store, notifier, auth, r).await.map(|_| what).map_err(reason)
+        update_task_core(store, notifier, actor, r).await.map(|_| what).map_err(reason)
     };
     match action {
         Action::SetStatus { status_id } => {
@@ -330,6 +386,7 @@ async fn apply(
             ids.push(who);
             let mut r = update(task_id);
             r.assignee_ids = list(ids);
+            // The cores refuse a non-member assignee; that is the run's reason.
             edit(r, "assigned".into()).await
         }
         Action::UnassignAll => {
@@ -345,7 +402,7 @@ async fn apply(
                 return Ok("already in that module".into());
             }
             let r = work_pb::MoveTaskRequest { id: task_id.to_string(), module_id: module_id.clone(), order: i32::MAX };
-            move_task_core(store, auth, r).await.map(|_| "moved to another module".to_string()).map_err(reason)
+            move_task_core(store, actor, r).await.map(|_| "moved to another module".to_string()).map_err(reason)
         }
         Action::SetDueIn { days } => {
             let due = format_date(today + Duration::days(*days as i64));
@@ -358,32 +415,15 @@ async fn apply(
             edit(r, format!("set due date {due}")).await
         }
         Action::Notify { target, user_id, message } => {
-            let recipients: Vec<String> = match target {
-                NotifyTarget::Assignees => task.assignee_ids.clone(),
-                NotifyTarget::Owner => match load_project(store, rule.project_id.parse().unwrap_or(0)).await {
-                    Ok(Some(p)) => vec![p.owner_id],
-                    _ => Vec::new(),
-                },
-                NotifyTarget::User => vec![user_id.clone()],
-            };
+            let to = recipients(store, rule, &task, *target, user_id).await?;
             if let Some(n) = notifier {
                 let refs = NotifRefs::task(&rule.project_id, task_id);
-                for r in &recipients {
-                    // No actor: an automation is nobody, and the author must
-                    // still hear about their own rule.
-                    emit(
-                        store,
-                        n,
-                        r,
-                        NotificationType::Automation,
-                        "",
-                        format!("{}: {}", rule.name, message),
-                        refs.clone(),
-                    )
-                    .await;
+                for r in &to {
+                    emit(store, n, r, NotificationType::Automation, &actor.id, format!("{}: {}", rule.name, message), refs.clone())
+                        .await;
                 }
             }
-            Ok(format!("notified {}", recipients.len()))
+            Ok(format!("notified {}", to.len()))
         }
         Action::Comment { text } => {
             let r = comment_pb::CreateCommentRequest {
@@ -391,17 +431,117 @@ async fn apply(
                 content: paragraph(text),
                 mentioned_user_ids: Vec::new(),
             };
-            create_comment_core(store, notifier, auth, r).await.map(|_| "commented".to_string()).map_err(reason)
+            create_comment_core(store, notifier, actor, r).await.map(|_| "commented".to_string()).map_err(reason)
         }
     }
 }
 
+// ── Observe ──────────────────────────────────────────────────────────────────
+
+async fn name_in(store: &Store, sql: &str, id: &str, project_id: &str) -> Option<String> {
+    let pid: i64 = id.parse().ok()?;
+    sqlx::query_scalar::<_, String>(sql).bind(pid).bind(project_id).fetch_optional(store.pool()).await.ok()?
+}
+
+async fn user_name(store: &Store, id: &str) -> String {
+    let Ok(pid) = id.parse::<i64>() else { return "someone".into() };
+    sqlx::query_scalar::<_, String>("SELECT display_name FROM cmp_userprofile WHERE pid = $1")
+        .bind(pid)
+        .fetch_optional(store.pool())
+        .await
+        .ok()
+        .flatten()
+        .unwrap_or_else(|| "someone".into())
+}
+
+/// What `action` would do to `task` right now — or why it would fail, under
+/// the same rules a real run follows. Changes nothing.
+async fn would(store: &Store, rule: &RuleRecord, task: &TaskRecord, action: &Action, today: Date) -> String {
+    let p = &rule.project_id;
+    let gone = |what: &str| format!("would fail: the {what} is no longer in this project");
+    match action {
+        Action::SetStatus { status_id } => {
+            match name_in(store, "SELECT name FROM cmp_taskstatusdef WHERE pid = $1 AND project_id = $2", status_id, p).await {
+                Some(n) => format!("would set status → {n}"),
+                None => gone("status"),
+            }
+        }
+        Action::SetPriority { priority } => format!("would set priority → {priority}"),
+        Action::AddLabel { label_id } | Action::RemoveLabel { label_id } => {
+            let verb = if matches!(action, Action::AddLabel { .. }) { "add" } else { "remove" };
+            match name_in(store, "SELECT name FROM cmp_labelinfo WHERE pid = $1 AND project_id = $2", label_id, p).await {
+                Some(n) => format!("would {verb} label {n}"),
+                None => gone("label"),
+            }
+        }
+        Action::Assign { user_id } => {
+            let who = if user_id.is_empty() { task.created_by.clone() } else { user_id.clone() };
+            match is_member(store, p, &who).await {
+                Ok(true) => format!("would assign {}", user_name(store, &who).await),
+                _ => gone("person to assign"),
+            }
+        }
+        Action::UnassignAll => "would unassign everyone".into(),
+        Action::MoveToModule { module_id } => {
+            match name_in(
+                store,
+                "SELECT n.value FROM cmp_modulename n JOIN cmp_moduleprojectref r ON r.pid = n.pid \
+                 WHERE n.pid = $1 AND r.project_id = $2",
+                module_id,
+                p,
+            )
+            .await
+            {
+                Some(n) => format!("would move to {n}"),
+                None => gone("module"),
+            }
+        }
+        Action::SetDueIn { days } => format!("would set due date {}", format_date(today + Duration::days(*days as i64))),
+        Action::Notify { target, user_id, .. } => match recipients(store, rule, task, *target, user_id).await {
+            Ok(to) if to.is_empty() => "would notify nobody (no assignees)".into(),
+            Ok(to) => {
+                let mut names = Vec::with_capacity(to.len());
+                for id in &to {
+                    names.push(user_name(store, id).await);
+                }
+                format!("would notify {}", names.join(", "))
+            }
+            Err(why) => format!("would fail: {why}"),
+        },
+        Action::Comment { .. } => "would add a comment".into(),
+    }
+}
+
+/// Record what a rule in observe mode would do. Writes only the run.
+async fn observe_rule(store: &Store, rule: &RuleRecord, task_id: &str, trigger_kind: &str, today: Date) -> bool {
+    let Some(task) = matching_task(store, rule, task_id).await else { return false };
+    let mut lines = Vec::with_capacity(rule.actions.len());
+    match actor_for(store, rule).await {
+        Ok(_) => {
+            for a in &rule.actions {
+                lines.push(would(store, rule, &task, a, today).await);
+            }
+        }
+        Err(why) => lines.push(format!("would fail: {why}")),
+    }
+    record_run(store, rule, task_id, trigger_kind, "observed", &lines.join("; ")).await;
+    true
+}
+
+// ── Time-based ───────────────────────────────────────────────────────────────
+
 /// The time-based rules: overdue tasks, and tasks due within N days. Each
-/// (rule, task, due date) runs once. Returns how many runs happened.
+/// (rule, task, due date) runs once — and, separately, is observed once, so
+/// a rule switched from observe to on still acts on tasks it only watched.
+/// Returns how many runs (observed ones included) happened.
 pub async fn run_scheduled(store: &Store, notifier: Option<&Arc<Notifier>>, today: Date) -> anyhow::Result<i32> {
-    let rules = enabled_rules(store, None, &["overdue", "due_in"]).await?;
+    let rules = active_rules(store, None, &["overdue", "due_in"]).await?;
+    let templates = template_project_ids(store).await?;
     let mut count = 0;
     for rule in &rules {
+        if templates.iter().any(|p| p == &rule.project_id) {
+            continue;
+        }
         let (from, to) = match rule.trigger {
             Some(Trigger::Overdue) => (None, today - Duration::days(1)),
             Some(Trigger::DueIn { days }) => (Some(today), today + Duration::days(days as i64)),
@@ -414,15 +554,24 @@ pub async fn run_scheduled(store: &Store, notifier: Option<&Arc<Notifier>>, toda
             let task_id = pid.to_string();
             // Conditions first, so a task that does not match yet can still
             // run once it does.
-            let Ok(Some(task)) = load_task(store, pid).await else { continue };
-            if !matches(&rule.conditions, &facts(&task)) {
+            if matching_task(store, rule, &task_id).await.is_none() {
                 continue;
             }
-            if !claim_fired(store, rule.pid, &task_id, &due).await? {
+            let key = if rule.mode == Mode::Observe { format!("observe:{due}") } else { due };
+            if !claim_fired(store, rule.pid, &task_id, &key).await? {
                 continue;
             }
-            let chain = Chain { depth: 1, budget: Arc::new(AtomicUsize::new(MAX_ACTIONS_PER_EVENT)) };
-            if CHAIN.scope(chain, run_rule(store, notifier, rule, &task_id, kind, today)).await {
+            let ran = if rule.mode == Mode::Observe {
+                observe_rule(store, rule, &task_id, kind, today).await
+            } else {
+                let chain = Chain {
+                    depth: 1,
+                    budget: Arc::new(AtomicUsize::new(MAX_ACTIONS_PER_EVENT)),
+                    rule: Some(rule.pid),
+                };
+                CHAIN.scope(chain, run_rule(store, notifier, rule, &task_id, kind, today)).await
+            };
+            if ran {
                 count += 1;
             }
         }

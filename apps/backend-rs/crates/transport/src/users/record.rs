@@ -183,6 +183,10 @@ pub async fn auth_user_for(store: &Store, user_id: &str) -> anyhow::Result<Optio
     let Some(u) = load_user(store, pid).await? else {
         return Ok(None);
     };
+    // A system identity never acts through a token.
+    if crate::automation::record::is_system_user(store, user_id).await? {
+        return Ok(None);
+    }
     if u.status != UserStatus::Active {
         return Ok(None);
     }

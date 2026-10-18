@@ -9,6 +9,8 @@ export function mapComment(c: PbComment): Comment {
     content: c.content,
     mentionedUserIds: c.mentionedUserIds,
     createdAt: c.createdAt,
+    automationId: c.automationId,
+    automationName: c.automationName,
     updatedAt: c.updatedAt,
   };
 }

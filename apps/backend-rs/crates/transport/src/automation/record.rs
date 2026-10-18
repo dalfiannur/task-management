@@ -2,30 +2,32 @@
 //! (`cmp_automationrun`) and the once-per-due-date claims of the time-based
 //! rules (`cmp_automationfired`).
 
-use domain::automation::{Action, Conditions, Trigger};
+use domain::automation::{Action, Conditions, Mode, Trigger};
 use persistence::{entity, Store};
 use sqlx::postgres::PgRow;
-use sqlx::Row;
+use sqlx::{PgConnection, Row};
 
 #[derive(Debug, Clone)]
 pub(crate) struct RuleRecord {
     pub pid: i64,
     pub project_id: String,
     pub name: String,
-    pub enabled: bool,
+    pub mode: Mode,
     /// `None` when the stored JSON no longer parses: the rule never runs.
     pub trigger: Option<Trigger>,
     pub conditions: Conditions,
     pub actions: Vec<Action>,
     pub created_by: String,
+    pub updated_by: String,
     pub created_at: String,
     pub updated_at: String,
     pub run_count: i64,
     pub last_run_at: Option<String>,
 }
 
-const SELECT_RULE: &str = "SELECT a.pid, a.project_id, a.name, a.enabled, a.trigger, a.conditions, \
-       a.actions, a.created_by, a.created_at, a.updated_at, \
+const SELECT_RULE: &str = "SELECT a.pid, a.project_id, a.name, \
+       COALESCE(a.mode, CASE WHEN a.enabled THEN 'on' ELSE 'off' END) AS mode, a.trigger, a.conditions, \
+       a.actions, a.created_by, COALESCE(a.updated_by, a.created_by) AS updated_by, a.created_at, a.updated_at, \
        (SELECT count(*) FROM cmp_automationrun r WHERE r.automation_id = a.pid::text) AS run_count, \
        (SELECT max(r.created_at) FROM cmp_automationrun r WHERE r.automation_id = a.pid::text) AS last_run_at \
     FROM cmp_automation a";
@@ -39,12 +41,13 @@ fn read_rule(row: &PgRow) -> sqlx::Result<RuleRecord> {
         pid: row.try_get("pid")?,
         project_id: row.try_get("project_id")?,
         name: row.try_get("name")?,
-        enabled: row.try_get("enabled")?,
+        mode: Mode::parse(&row.try_get::<String, _>("mode")?).unwrap_or(Mode::Off),
         // A rule whose actions do not parse is as broken as a bad trigger.
         trigger: serde_json::from_str(&trigger).ok().filter(|_| parsed_actions.is_some()),
         conditions: serde_json::from_str(&conditions).unwrap_or_default(),
         actions: parsed_actions.unwrap_or_default(),
         created_by: row.try_get("created_by")?,
+        updated_by: row.try_get("updated_by")?,
         created_at: row.try_get("created_at")?,
         updated_at: row.try_get("updated_at")?,
         run_count: row.try_get("run_count")?,
@@ -76,15 +79,17 @@ pub(crate) async fn rules_for_project(store: &Store, project_id: &str) -> anyhow
     read_all(&rows)
 }
 
-/// Enabled rules of a project whose trigger is one of `kinds`.
-pub(crate) async fn enabled_rules(
+/// Rules that are on or observing, of a project (or every project), whose
+/// trigger is one of `kinds`.
+pub(crate) async fn active_rules(
     store: &Store,
     project_id: Option<&str>,
     kinds: &[&str],
 ) -> anyhow::Result<Vec<RuleRecord>> {
     let kinds: Vec<String> = kinds.iter().map(|k| k.to_string()).collect();
     let rows = sqlx::query(&format!(
-        "{SELECT_RULE} WHERE a.enabled AND a.trigger_kind = ANY($2) \
+        "{SELECT_RULE} WHERE COALESCE(a.mode, CASE WHEN a.enabled THEN 'on' ELSE 'off' END) IN ('on', 'observe') \
+         AND a.trigger_kind = ANY($2) \
          AND ($1::text IS NULL OR a.project_id = $1) ORDER BY a.pid"
     ))
     .bind(project_id)
@@ -110,20 +115,20 @@ pub(crate) async fn create_rule(
     store: &Store,
     project_id: &str,
     created_by: &str,
-    enabled: bool,
+    mode: Mode,
     f: RuleFields<'_>,
 ) -> anyhow::Result<i64> {
     let mut tx = store.pool().begin().await?;
     let pid = entity::new_pid(&mut tx).await?;
     sqlx::query(
-        "INSERT INTO cmp_automation (pid, project_id, name, enabled, trigger_kind, trigger, \
-         conditions, actions, created_by, created_at, updated_at) \
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $10)",
+        "INSERT INTO cmp_automation (pid, project_id, name, enabled, mode, trigger_kind, trigger, \
+         conditions, actions, created_by, updated_by, created_at, updated_at) \
+         VALUES ($1, $2, $3, $4 = 'on', $4, $5, $6, $7, $8, $9, $9, $10, $10)",
     )
     .bind(pid)
     .bind(project_id)
     .bind(f.name)
-    .bind(enabled)
+    .bind(mode.as_str())
     .bind(f.trigger.kind())
     .bind(json(f.trigger)?)
     .bind(json(f.conditions)?)
@@ -136,14 +141,14 @@ pub(crate) async fn create_rule(
     Ok(pid)
 }
 
-pub(crate) async fn update_rule(store: &Store, pid: i64, f: RuleFields<'_>) -> anyhow::Result<()> {
+pub(crate) async fn update_rule(store: &Store, pid: i64, updated_by: &str, f: RuleFields<'_>) -> anyhow::Result<()> {
     let mut tx = store.pool().begin().await?;
     if !entity::touch(&mut tx, pid).await? {
         return Ok(());
     }
     sqlx::query(
         "UPDATE cmp_automation SET name = $2, trigger_kind = $3, trigger = $4, conditions = $5, \
-         actions = $6, updated_at = $7 WHERE pid = $1",
+         actions = $6, updated_at = $7, updated_by = $8 WHERE pid = $1",
     )
     .bind(pid)
     .bind(f.name)
@@ -152,19 +157,24 @@ pub(crate) async fn update_rule(store: &Store, pid: i64, f: RuleFields<'_>) -> a
     .bind(json(f.conditions)?)
     .bind(json(&f.actions)?)
     .bind(f.now)
+    .bind(updated_by)
     .execute(&mut *tx)
     .await?;
     tx.commit().await?;
     Ok(())
 }
 
-pub(crate) async fn set_enabled(store: &Store, pid: i64, enabled: bool, now: &str) -> anyhow::Result<()> {
+pub(crate) async fn set_mode(store: &Store, pid: i64, mode: Mode, by: &str, now: &str) -> anyhow::Result<()> {
     let mut tx = store.pool().begin().await?;
     if entity::touch(&mut tx, pid).await? {
-        sqlx::query("UPDATE cmp_automation SET enabled = $2, updated_at = $3 WHERE pid = $1")
+        sqlx::query(
+            "UPDATE cmp_automation SET mode = $2, enabled = ($2 = 'on'), updated_at = $3, updated_by = $4 \
+             WHERE pid = $1",
+        )
             .bind(pid)
-            .bind(enabled)
+            .bind(mode.as_str())
             .bind(now)
+            .bind(by)
             .execute(&mut *tx)
             .await?;
     }
@@ -358,4 +368,47 @@ pub(crate) async fn all_subtasks_done(store: &Store, parent_id: &str) -> anyhow:
     .fetch_one(store.pool())
     .await?;
     Ok(open == 0 && done > 0)
+}
+
+// ── Provenance + the system actor ────────────────────────────────────────────
+
+/// Mark `pid` (an activity entry, comment or notification just inserted in
+/// `conn`'s transaction) as written by automation rule `automation_id`.
+pub(crate) async fn tag_source(conn: &mut PgConnection, pid: i64, automation_id: i64) -> sqlx::Result<()> {
+    sqlx::query("INSERT INTO cmp_automationsource (pid, automation_id) VALUES ($1, $2)")
+        .bind(pid)
+        .bind(automation_id.to_string())
+        .execute(conn)
+        .await?;
+    Ok(())
+}
+
+// Readers (activity, comments, notifications) select a row's provenance
+// with two scalar subqueries over cmp_automationsource: `automation_id`
+// (NULL = a person) and `automation_name` (NULL once the rule is deleted).
+
+/// Tag `pid` with the rule running right now, if any (see
+/// `engine::current_rule`). Call inside the insert's transaction.
+pub(crate) async fn tag_if_automated(conn: &mut PgConnection, pid: i64) -> sqlx::Result<()> {
+    match super::engine::current_rule() {
+        Some(rule) => tag_source(conn, pid, rule).await,
+        None => Ok(()),
+    }
+}
+
+/// The Automation identity's pid (created by the schema).
+pub(crate) async fn system_actor_id(store: &Store) -> anyhow::Result<String> {
+    let pid: i64 = sqlx::query_scalar("SELECT pid FROM cmp_systemtag WHERE kind = 'automation'")
+        .fetch_one(store.pool())
+        .await?;
+    Ok(pid.to_string())
+}
+
+/// True if `user_id` is a system identity (never a person).
+pub(crate) async fn is_system_user(store: &Store, user_id: &str) -> anyhow::Result<bool> {
+    let Ok(pid) = user_id.parse::<i64>() else { return Ok(false) };
+    Ok(sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM cmp_systemtag WHERE pid = $1)")
+        .bind(pid)
+        .fetch_one(store.pool())
+        .await?)
 }

@@ -184,7 +184,9 @@ async fn create_task_from_template(
         },
     )
     .await?;
-    for sub in &t.subtasks {
+    // A hand-edited row could hold a subtask without a title; skip it rather
+    // than fail halfway through creating the rest.
+    for sub in t.subtasks.iter().filter(|s| !s.title.trim().is_empty()) {
         let title = &sub.title;
         create_task_core(
             &store,

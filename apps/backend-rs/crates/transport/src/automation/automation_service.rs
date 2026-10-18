@@ -7,7 +7,7 @@ use std::sync::Arc;
 use auth::AuthUser;
 use axum::Extension;
 use connectrpc_axum::{ConnectError, ConnectRequest, ConnectResponse};
-use domain::automation::{name_ok, shape_error, Action, Conditions, NotifyTarget, Trigger};
+use domain::automation::{name_ok, shape_error, Action, Conditions, Mode, NotifyTarget, Trigger};
 use domain::task::TaskPriority;
 use domain::workload::parse_date;
 use persistence::Store;
@@ -110,7 +110,7 @@ fn to_proto(r: &RuleRecord) -> pb::Automation {
         id: r.pid.to_string(),
         project_id: r.project_id.clone(),
         name: r.name.clone(),
-        enabled: r.enabled,
+        mode: r.mode.to_proto(),
         trigger: r.trigger.as_ref().map(trigger_to),
         conditions: Some(pb::Conditions {
             priorities: r.conditions.priorities.clone(),
@@ -119,6 +119,7 @@ fn to_proto(r: &RuleRecord) -> pb::Automation {
         }),
         actions: r.actions.iter().map(action_to).collect(),
         created_by: r.created_by.clone(),
+        updated_by: r.updated_by.clone(),
         created_at: r.created_at.clone(),
         updated_at: r.updated_at.clone(),
         run_count: r.run_count as i32,
@@ -139,6 +140,7 @@ fn run_to_proto(r: &RunRecord) -> pb::AutomationRun {
             "ok" => pb::RunStatus::Ok,
             "failed" => pb::RunStatus::Failed,
             "skipped" => pb::RunStatus::Skipped,
+            "observed" => pb::RunStatus::Observed,
             _ => pb::RunStatus::Unspecified,
         } as i32,
         detail: r.detail.clone(),
@@ -262,6 +264,8 @@ async fn create_automation(
     let ConnectRequest(r) = req;
     require_member(&store, &r.project_id, &auth).await?;
     require_owner_or_admin(&store, &r.project_id, &auth).await?;
+    let mode = Mode::from_proto(r.mode)
+        .ok_or_else(|| ConnectError::new_invalid_argument("pick a mode: off, observe or on"))?;
     let p = parse(&r)?;
     validate(&store, &r.project_id, &p.trigger, &p.conditions, &p.actions).await?;
     let now = now();
@@ -269,7 +273,7 @@ async fn create_automation(
         &store,
         &r.project_id,
         &auth.id,
-        r.enabled,
+        mode,
         RuleFields { name: &p.name, trigger: &p.trigger, conditions: &p.conditions, actions: &p.actions, now: &now },
     )
     .await
@@ -293,6 +297,7 @@ async fn update_automation(
     rec::update_rule(
         &store,
         rule.pid,
+        &auth.id,
         RuleFields { name: &p.name, trigger: &p.trigger, conditions: &p.conditions, actions: &p.actions, now: &now },
     )
     .await
@@ -314,17 +319,19 @@ async fn delete_automation(
     Ok(ConnectResponse::new(pb::DeleteAutomationResponse { ok: true }))
 }
 
-async fn set_automation_enabled(
+async fn set_automation_mode(
     Extension(store): StoreExt,
     user: Option<Extension<AuthUser>>,
-    req: ConnectRequest<pb::SetAutomationEnabledRequest>,
+    req: ConnectRequest<pb::SetAutomationModeRequest>,
 ) -> Result<ConnectResponse<pb::Automation>, ConnectError> {
     let auth = require_auth(user)?;
     let ConnectRequest(r) = req;
     let rule = require_rule(&store, &r.id).await?;
     require_member(&store, &rule.project_id, &auth).await?;
     require_owner_or_admin(&store, &rule.project_id, &auth).await?;
-    rec::set_enabled(&store, rule.pid, r.enabled, &now()).await.map_err(internal)?;
+    let mode = Mode::from_proto(r.mode)
+        .ok_or_else(|| ConnectError::new_invalid_argument("pick a mode: off, observe or on"))?;
+    rec::set_mode(&store, rule.pid, mode, &auth.id, &now()).await.map_err(internal)?;
     Ok(ConnectResponse::new(to_proto(&require_rule(&store, &r.id).await?)))
 }
 
@@ -378,8 +385,8 @@ pub fn automation_router(store: Arc<Store>) -> axum::Router<()> {
         .create_automation::<_, (StoreExt, A, ConnectRequest<pb::SaveAutomationRequest>)>(create_automation)
         .update_automation::<_, (StoreExt, A, ConnectRequest<pb::SaveAutomationRequest>)>(update_automation)
         .delete_automation::<_, (StoreExt, A, ConnectRequest<pb::DeleteAutomationRequest>)>(delete_automation)
-        .set_automation_enabled::<_, (StoreExt, A, ConnectRequest<pb::SetAutomationEnabledRequest>)>(
-            set_automation_enabled,
+        .set_automation_mode::<_, (StoreExt, A, ConnectRequest<pb::SetAutomationModeRequest>)>(
+            set_automation_mode,
         )
         .list_automation_runs::<_, (StoreExt, A, ConnectRequest<pb::ListAutomationRunsRequest>)>(
             list_automation_runs,

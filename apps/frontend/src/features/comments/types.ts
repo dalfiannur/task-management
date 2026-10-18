@@ -8,4 +8,7 @@ export interface Comment {
   mentionedUserIds: string[];
   createdAt: string;
   updatedAt: string;
+  /** Set when an automation rule posted it; `automationName` "" once deleted. */
+  automationId?: string;
+  automationName?: string;
 }

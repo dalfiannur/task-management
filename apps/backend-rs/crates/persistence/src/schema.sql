@@ -488,3 +488,39 @@ CREATE TABLE IF NOT EXISTS cmp_automationfired (
     due_date TEXT NOT NULL
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_cmp_automationfired_key ON cmp_automationfired USING btree (automation_id, task_id, due_date);
+
+-- Automation mode: off, observe (match and log what would happen, change
+-- nothing) or on. Replaces `enabled`, which stays written in step (= on) so
+-- the NOT NULL column keeps working.
+ALTER TABLE cmp_automation ADD COLUMN IF NOT EXISTS mode TEXT;
+UPDATE cmp_automation SET mode = CASE WHEN enabled THEN 'on' ELSE 'off' END WHERE mode IS NULL;
+ALTER TABLE cmp_automation ADD COLUMN IF NOT EXISTS updated_by TEXT;
+UPDATE cmp_automation SET updated_by = created_by WHERE updated_by IS NULL;
+
+-- Which automation rule wrote a row (an activity entry, a comment, a
+-- notification). Absent = a person did it.
+CREATE TABLE IF NOT EXISTS cmp_automationsource (
+    pid BIGINT PRIMARY KEY REFERENCES arke_entities(pid) ON DELETE CASCADE,
+    automation_id TEXT NOT NULL
+);
+
+-- A built-in identity that is not a person. `kind = 'automation'`: the actor
+-- automation rules act as, scoped to the rule's project. It has a profile so
+-- by-id lookups can name it, and no phone or password, so it can never sign
+-- in. Created once, here.
+CREATE TABLE IF NOT EXISTS cmp_systemtag (
+    pid BIGINT PRIMARY KEY REFERENCES arke_entities(pid) ON DELETE CASCADE,
+    kind TEXT NOT NULL UNIQUE
+);
+WITH missing AS MATERIALIZED (
+    SELECT nextval(pg_get_serial_sequence('arke_entities', 'pid')) AS pid
+    WHERE NOT EXISTS (SELECT 1 FROM cmp_systemtag WHERE kind = 'automation')
+),
+ent AS (
+    INSERT INTO arke_entities (pid, version) SELECT pid, 0 FROM missing RETURNING pid
+),
+tag AS (
+    INSERT INTO cmp_systemtag (pid, kind) SELECT pid, 'automation' FROM ent RETURNING pid
+)
+INSERT INTO cmp_userprofile (pid, display_name, avatar_url, email)
+SELECT pid, 'Automation', '', '' FROM tag;

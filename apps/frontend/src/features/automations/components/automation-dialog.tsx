@@ -19,13 +19,15 @@ import {
 } from "sedjiwa-ui";
 import { cn } from "@/lib/utils";
 import { TASK_PRIORITIES, TASK_PRIORITY_CONFIG, type TaskPriority } from "@/features/tasks";
-import { draftToProto } from "../api/mappers";
-import { useCreateAutomation, useUpdateAutomation } from "../api/hooks";
+import { draftToProto, modeToProto } from "../api/mappers";
+import { useCreateAutomation, useSetAutomationMode, useUpdateAutomation } from "../api/hooks";
+import { ModeControl } from "./mode-control";
 import {
   MAX_ACTIONS,
   type Action,
   type ActionKind,
   type AutomationDraft,
+  type AutomationMode,
   type Conditions,
   type Trigger,
   type TriggerKind,
@@ -307,6 +309,7 @@ export function AutomationDialog({
   vocab,
   editingId,
   initial,
+  initialMode,
   open,
   onOpenChange,
 }: {
@@ -315,19 +318,24 @@ export function AutomationDialog({
   /** Set when editing an existing rule. */
   editingId?: string;
   initial: AutomationDraft;
+  /** New rules default to observe. */
+  initialMode: AutomationMode;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
   const create = useCreateAutomation();
   const update = useUpdateAutomation();
+  const setMode = useSetAutomationMode();
   const [draft, setDraft] = useState<AutomationDraft>(initial);
+  const [mode, setModeState] = useState<AutomationMode>(initialMode);
   const [seed, setSeed] = useState(initial);
   // Re-seed whenever a different rule or preset is opened.
   if (seed !== initial) {
     setSeed(initial);
     setDraft(initial);
+    setModeState(initialMode);
   }
-  const pending = create.isPending || update.isPending;
+  const pending = create.isPending || update.isPending || setMode.isPending;
   const t = draft.trigger;
   const setTrigger = (trigger: Trigger) => setDraft({ ...draft, trigger });
   const setConditions = (c: Partial<Conditions>) =>
@@ -355,20 +363,30 @@ export function AutomationDialog({
       },
       onError: (e: { message: string }) => toast.error(e.message || "Failed to save"),
     };
-    if (editingId) update.mutate({ id: editingId, projectId, ...body }, done);
-    else create.mutate({ projectId, enabled: true, ...body }, done);
+    if (editingId) {
+      update.mutate(
+        { id: editingId, projectId, ...body },
+        {
+          ...done,
+          onSuccess: () => {
+            if (mode === initialMode) return done.onSuccess();
+            setMode.mutate({ id: editingId, mode: modeToProto(mode) }, done);
+          },
+        },
+      );
+    } else create.mutate({ projectId, mode: modeToProto(mode), ...body }, done);
   }
 
   const statusOpts = [{ id: ANY, name: "Any status" }, ...vocab.statuses];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>{editingId ? "Edit automation" : "New automation"}</DialogTitle>
           <DialogDescription>
-            Runs as you, right after the change that triggers it. Overdue and due-soon
-            rules are checked every 15 minutes, once per task and due date.
+            Runs as ⚡ Automation, right after the change that triggers it. Overdue and
+            due-soon rules are checked every 15 minutes, once per task and due date.
           </DialogDescription>
         </DialogHeader>
         <form
@@ -385,6 +403,17 @@ export function AutomationDialog({
                 onChange={(e) => setDraft({ ...draft, name: e.target.value })}
                 placeholder="e.g. Done → unassign" />
             </Input.Root>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-sm text-muted-foreground">
+              {mode === "observe"
+                ? "Observe: logs what it would do and changes nothing."
+                : mode === "on"
+                  ? "On: acts on matching tasks."
+                  : "Off: never runs."}
+            </span>
+            <ModeControl label="Mode" value={mode} onChange={setModeState} size="md" />
           </div>
 
           <section className="space-y-2">

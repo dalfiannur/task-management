@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { AutomationTag } from "@/components/shared/automation-tag";
 import { useAtomValue } from "jotai";
 import { formatDistanceToNow, parseISO } from "date-fns";
 import { Pencil, Trash2 } from "lucide-react";
@@ -99,7 +100,7 @@ export function CommentThread({
         <ul className="space-y-4">
           {comments.map((c) => {
             const author = userMap[c.authorId];
-            const name = author?.displayName ?? c.authorId;
+            const name = c.automationId ? "Automation" : (author?.displayName ?? c.authorId);
             const mine = c.authorId === me?.id;
             const highlighted = c.id === highlightCommentId;
             return (
@@ -126,6 +127,9 @@ export function CommentThread({
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium">{name}</span>
+                    {c.automationId && (
+                      <AutomationTag projectId={projectId} name={c.automationName ?? ""} />
+                    )}
                     <span className="text-xs text-muted-foreground">
                       {relative(c.createdAt)}
                     </span>

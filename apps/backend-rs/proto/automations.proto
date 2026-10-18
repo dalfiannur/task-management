@@ -3,10 +3,16 @@ package sedjiwa.tasks.automation.v1;
 
 // Automations: per-project "when → if → then" rules over tasks.
 //
+// A rule is OFF, ON, or in OBSERVE: matched exactly as when on, but instead
+// of acting it records one OBSERVED run saying what it would have done.
+//
 // A rule runs right after the change that triggers it (a task created, a
 // status change, an assignee added, the last subtask done) or, for the
 // time-based triggers (overdue, due within N days), from a job every 15
-// minutes, once per task and due date. Actions run as the rule's author.
+// minutes, once per task and due date. Actions run as the project's
+// Automation identity: a system actor that is a member of this project only
+// and can never do what needs an owner or admin. Rows a rule writes
+// (activity, comments, notifications) carry its id.
 // An automation's own change triggers further rules only through status
 // changes and subtask completion, one level deep, and one triggering change
 // runs at most 10 actions. Members read rules and runs; the project owner or
@@ -16,7 +22,7 @@ service AutomationService {
   rpc CreateAutomation(SaveAutomationRequest) returns (Automation);
   rpc UpdateAutomation(SaveAutomationRequest) returns (Automation);
   rpc DeleteAutomation(DeleteAutomationRequest) returns (DeleteAutomationResponse);
-  rpc SetAutomationEnabled(SetAutomationEnabledRequest) returns (Automation);
+  rpc SetAutomationMode(SetAutomationModeRequest) returns (Automation);
   // Newest first; by project, optionally narrowed to one rule.
   rpc ListAutomationRuns(ListAutomationRunsRequest) returns (ListAutomationRunsResponse);
   // Admin: run the time-based rules now, as the periodic job does, for
@@ -78,11 +84,18 @@ message NotifyAction {
   string message = 3;           // 1..500 characters
 }
 
+enum AutomationMode {
+  AUTOMATION_MODE_UNSPECIFIED = 0;
+  AUTOMATION_MODE_OFF = 1;
+  AUTOMATION_MODE_OBSERVE = 2;
+  AUTOMATION_MODE_ON = 3;
+}
+
 message Automation {
   string id = 1;
   string project_id = 2;
   string name = 3;
-  bool enabled = 4;
+  AutomationMode mode = 4;
   Trigger trigger = 5;
   Conditions conditions = 6;
   repeated Action actions = 7;
@@ -91,6 +104,7 @@ message Automation {
   string updated_at = 10;
   int32 run_count = 11;
   optional string last_run_at = 12;
+  string updated_by = 13; // who last saved it (the writer, not the actor)
 }
 
 message ListAutomationsRequest { string project_id = 1; }
@@ -105,15 +119,15 @@ message SaveAutomationRequest {
   Trigger trigger = 4;
   Conditions conditions = 5;
   repeated Action actions = 6;
-  bool enabled = 7; // create only; use SetAutomationEnabled afterwards
+  AutomationMode mode = 7; // create only; use SetAutomationMode afterwards
 }
 
 message DeleteAutomationRequest { string id = 1; }
 message DeleteAutomationResponse { bool ok = 1; }
 
-message SetAutomationEnabledRequest {
+message SetAutomationModeRequest {
   string id = 1;
-  bool enabled = 2;
+  AutomationMode mode = 2;
 }
 
 enum RunStatus {
@@ -121,6 +135,7 @@ enum RunStatus {
   RUN_STATUS_OK = 1;
   RUN_STATUS_FAILED = 2;   // an action failed; later actions did not run
   RUN_STATUS_SKIPPED = 3;  // the action budget for the change ran out
+  RUN_STATUS_OBSERVED = 4; // observe mode: what it would have done; nothing changed
 }
 
 message AutomationRun {

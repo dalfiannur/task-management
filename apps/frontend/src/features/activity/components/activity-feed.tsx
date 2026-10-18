@@ -1,4 +1,5 @@
 import { formatDistanceToNow, parseISO } from "date-fns";
+import { AutomationTag } from "@/components/shared/automation-tag";
 import {
   Activity as ActivityIcon,
   CheckSquare,
@@ -83,7 +84,13 @@ export function ActivityFeed({
             </span>
             <div className="min-w-0 flex-1">
               <p className="text-sm">
-                {actor && <span className="font-medium">{actor} </span>}
+                {a.automationId ? (
+                  <>
+                    <AutomationTag projectId={a.projectId} name={a.automationName ?? ""} />{" "}
+                  </>
+                ) : (
+                  actor && <span className="font-medium">{actor} </span>
+                )}
                 {a.summary}
               </p>
               {a.changes.length > 0 && (

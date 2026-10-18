@@ -1,4 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
+import { AutomationTag } from "@/components/shared/automation-tag";
 import { formatDistanceToNow, parseISO } from "date-fns";
 import { CheckCheck } from "lucide-react";
 import { Button, NotificationButton, Popover, PopoverContent, PopoverTrigger } from "sedjiwa-ui";
@@ -100,6 +101,11 @@ export function NotificationBell() {
                   />
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm">{n.message}</span>
+                    {n.automationId && (
+                      <span className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+                        via <AutomationTag name={n.automationName ?? ""} />
+                      </span>
+                    )}
                     <span className="block text-xs text-muted-foreground">
                       {relative(n.createdAt)}
                     </span>

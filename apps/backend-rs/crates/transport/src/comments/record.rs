@@ -19,12 +19,17 @@ pub(crate) struct CommentRecord {
     pub mentioned_user_ids: Vec<String>,
     pub created_at: String,
     pub updated_at: String,
+    pub automation_id: Option<String>,
+    pub automation_name: Option<String>,
 }
 
 const SELECT_COMMENT: &str = "\
     SELECT pid, task_id, author_id, content, created_at, updated_at, \
            ARRAY(SELECT e.x FROM jsonb_array_elements_text(mentioned_user_ids) \
-                 WITH ORDINALITY AS e(x, n) ORDER BY e.n) AS mentioned_user_ids \
+                 WITH ORDINALITY AS e(x, n) ORDER BY e.n) AS mentioned_user_ids, \
+           (SELECT s.automation_id FROM cmp_automationsource s WHERE s.pid = cmp_commentinfo.pid) AS automation_id, \
+           (SELECT a.name FROM cmp_automationsource s JOIN cmp_automation a ON a.pid::text = s.automation_id \
+            WHERE s.pid = cmp_commentinfo.pid) AS automation_name \
     FROM cmp_commentinfo";
 
 fn read_comment(row: &PgRow) -> sqlx::Result<CommentRecord> {
@@ -36,6 +41,8 @@ fn read_comment(row: &PgRow) -> sqlx::Result<CommentRecord> {
         mentioned_user_ids: row.try_get("mentioned_user_ids")?,
         created_at: row.try_get("created_at")?,
         updated_at: row.try_get("updated_at")?,
+        automation_id: row.try_get("automation_id")?,
+        automation_name: row.try_get("automation_name")?,
     })
 }
 
@@ -48,6 +55,8 @@ pub(crate) fn to_proto(c: &CommentRecord) -> pb::Comment {
         mentioned_user_ids: c.mentioned_user_ids.clone(),
         created_at: c.created_at.clone(),
         updated_at: c.updated_at.clone(),
+        automation_id: c.automation_id.clone(),
+        automation_name: c.automation_id.as_ref().map(|_| c.automation_name.clone().unwrap_or_default()),
     }
 }
 
@@ -96,6 +105,7 @@ pub(crate) async fn create_comment(
     .bind(now)
     .execute(&mut *tx)
     .await?;
+    crate::automation::record::tag_if_automated(&mut tx, pid).await?;
     tx.commit().await?;
     Ok(pid)
 }

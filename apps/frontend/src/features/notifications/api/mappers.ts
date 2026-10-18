@@ -29,6 +29,8 @@ export function mapNotification(n: PbNotification): Notification {
     message: n.message,
     read: n.read,
     createdAt: n.createdAt,
+    automationId: n.automationId,
+    automationName: n.automationName,
     projectId: n.projectId,
     taskId: n.taskId,
     commentId: n.commentId,

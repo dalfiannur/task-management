@@ -27,11 +27,16 @@ pub(crate) struct ActivityRecord {
     pub summary: String,
     pub changes: Vec<FieldChange>,
     pub created_at: String,
+    pub automation_id: Option<String>,
+    pub automation_name: Option<String>,
 }
 
 const SELECT_ACTIVITY: &str = "\
     SELECT i.pid, i.project_id, i.actor_id, i.entity_type, i.entity_id, i.action, i.summary, \
            i.created_at, \
+           (SELECT s.automation_id FROM cmp_automationsource s WHERE s.pid = i.pid) AS automation_id, \
+           (SELECT a.name FROM cmp_automationsource s JOIN cmp_automation a ON a.pid::text = s.automation_id \
+            WHERE s.pid = i.pid) AS automation_name, \
            ARRAY(SELECT e.c->>'field' FROM jsonb_array_elements(ch.changes) WITH ORDINALITY AS e(c, n) ORDER BY e.n) AS ch_field, \
            ARRAY(SELECT e.c->>'from' FROM jsonb_array_elements(ch.changes) WITH ORDINALITY AS e(c, n) ORDER BY e.n) AS ch_from, \
            ARRAY(SELECT e.c->>'to' FROM jsonb_array_elements(ch.changes) WITH ORDINALITY AS e(c, n) ORDER BY e.n) AS ch_to \
@@ -72,6 +77,8 @@ fn read_activity(row: &PgRow) -> sqlx::Result<Option<ActivityRecord>> {
         summary: row.try_get("summary")?,
         changes,
         created_at: row.try_get("created_at")?,
+        automation_id: row.try_get("automation_id")?,
+        automation_name: row.try_get("automation_name")?,
     }))
 }
 
@@ -102,6 +109,8 @@ pub(crate) fn to_proto(a: &ActivityRecord) -> pb::Activity {
             })
             .collect(),
         created_at: a.created_at.clone(),
+        automation_id: a.automation_id.clone(),
+        automation_name: a.automation_id.as_ref().map(|_| a.automation_name.clone().unwrap_or_default()),
     }
 }
 
@@ -231,6 +240,7 @@ pub(crate) async fn create_activity(store: &Store, a: NewActivity<'_>) -> anyhow
     .bind(a.created_at)
     .execute(&mut *tx)
     .await?;
+    crate::automation::record::tag_if_automated(&mut tx, pid).await?;
     sqlx::query(
         "INSERT INTO cmp_activitychanges (pid, changes) VALUES ($1, COALESCE( \
              (SELECT jsonb_agg(jsonb_build_object('field', u.f, 'from', u.fr, 'to', u.t) ORDER BY u.n) \

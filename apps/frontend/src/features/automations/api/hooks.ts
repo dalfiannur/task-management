@@ -47,6 +47,6 @@ export function useDeleteAutomation() {
   return useMutation(AutomationService.method.deleteAutomation, { onSuccess: refresh });
 }
 
-export function useSetAutomationEnabled() {
-  return useMutation(AutomationService.method.setAutomationEnabled, { onSuccess: refresh });
+export function useSetAutomationMode() {
+  return useMutation(AutomationService.method.setAutomationMode, { onSuccess: refresh });
 }

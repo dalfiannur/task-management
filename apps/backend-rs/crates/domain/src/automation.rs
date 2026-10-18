@@ -17,6 +17,49 @@ pub const MAX_ACTIONS_PER_EVENT: usize = 10;
 /// How deep an automation's own change may trigger further automations.
 pub const MAX_DEPTH: u8 = 1;
 
+/// Whether a rule runs, only reports what it would do, or is off.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Mode {
+    Off,
+    /// Match as when on, act on nothing, record what would have happened.
+    Observe,
+    On,
+}
+
+impl Mode {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Off => "off",
+            Self::Observe => "observe",
+            Self::On => "on",
+        }
+    }
+    pub fn parse(s: &str) -> Option<Self> {
+        match s {
+            "off" => Some(Self::Off),
+            "observe" => Some(Self::Observe),
+            "on" => Some(Self::On),
+            _ => None,
+        }
+    }
+    /// Proto `AutomationMode`: 1 off, 2 observe, 3 on.
+    pub fn to_proto(self) -> i32 {
+        match self {
+            Self::Off => 1,
+            Self::Observe => 2,
+            Self::On => 3,
+        }
+    }
+    pub fn from_proto(code: i32) -> Option<Self> {
+        match code {
+            1 => Some(Self::Off),
+            2 => Some(Self::Observe),
+            3 => Some(Self::On),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum Trigger {
@@ -200,6 +243,15 @@ mod tests {
         assert!(!fires_on(&Trigger::TaskCreated, &e));
         assert!(fires_on(&Trigger::TaskCreated, &Event::Created));
         assert!(!fires_on(&Trigger::Overdue, &Event::Created));
+    }
+
+    #[test]
+    fn modes_round_trip() {
+        for m in [Mode::Off, Mode::Observe, Mode::On] {
+            assert_eq!(Mode::parse(m.as_str()), Some(m));
+            assert_eq!(Mode::from_proto(m.to_proto()), Some(m));
+        }
+        assert_eq!(Mode::from_proto(0), None);
     }
 
     #[test]

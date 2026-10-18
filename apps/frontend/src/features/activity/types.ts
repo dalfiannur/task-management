@@ -27,4 +27,7 @@ export interface Activity {
   summary: string;
   changes: FieldChange[];
   createdAt: string;
+  /** Set when an automation rule did it; `automationName` "" once deleted. */
+  automationId?: string;
+  automationName?: string;
 }

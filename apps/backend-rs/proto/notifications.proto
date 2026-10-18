@@ -21,6 +21,8 @@ message Notification {
   optional string project_id = 7;
   optional string task_id = 8;
   optional string comment_id = 9;
+  optional string automation_id = 10;   // set when an automation rule sent it
+  optional string automation_name = 11; // "" once that rule is deleted
 }
 enum NotificationType {
   NOTIFICATION_TYPE_UNSPECIFIED = 0;

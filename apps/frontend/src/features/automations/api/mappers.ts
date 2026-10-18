@@ -4,6 +4,7 @@ import {
   ConditionsSchema,
   EmptySchema,
   NotifyActionSchema,
+  AutomationMode as PbMode,
   NotifyTarget as PbTarget,
   RunStatus as PbRunStatus,
   TriggerSchema,
@@ -16,6 +17,7 @@ import type { TaskPriority } from "@/features/tasks";
 import type {
   Action,
   Automation,
+  AutomationMode,
   AutomationDraft,
   AutomationRun,
   NotifyTarget,
@@ -149,12 +151,27 @@ function actionToProto(a: Action): PbAction {
   return create(ActionSchema, { kind });
 }
 
+const MODE_FROM: Record<number, AutomationMode> = {
+  [PbMode.OFF]: "off",
+  [PbMode.OBSERVE]: "observe",
+  [PbMode.ON]: "on",
+};
+const MODE_TO: Record<AutomationMode, PbMode> = {
+  off: PbMode.OFF,
+  observe: PbMode.OBSERVE,
+  on: PbMode.ON,
+};
+
+export function modeToProto(m: AutomationMode): PbMode {
+  return MODE_TO[m];
+}
+
 export function mapAutomation(a: PbAutomation): Automation {
   return {
     id: a.id,
     projectId: a.projectId,
     name: a.name,
-    enabled: a.enabled,
+    mode: MODE_FROM[a.mode] ?? "off",
     trigger: triggerFromProto(a.trigger),
     conditions: {
       priorities: (a.conditions?.priorities ?? []) as TaskPriority[],
@@ -163,6 +180,7 @@ export function mapAutomation(a: PbAutomation): Automation {
     },
     actions: a.actions.map(actionFromProto).filter((x): x is Action => !!x),
     createdBy: a.createdBy,
+    updatedBy: a.updatedBy,
     runCount: a.runCount,
     lastRunAt: a.lastRunAt,
   };
@@ -172,6 +190,7 @@ const RUN_STATUS: Record<number, AutomationRun["status"]> = {
   [PbRunStatus.OK]: "ok",
   [PbRunStatus.FAILED]: "failed",
   [PbRunStatus.SKIPPED]: "skipped",
+  [PbRunStatus.OBSERVED]: "observed",
 };
 
 export function mapRun(r: PbRun): AutomationRun {

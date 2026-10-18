@@ -22,21 +22,23 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Skeleton,
-  Switch,
 } from "sedjiwa-ui";
 import { EmptyState } from "@/components/shared/empty-state";
 import { cn } from "@/lib/utils";
 import { currentUserAtom, isAdminAtom } from "@/features/auth";
-import { useProject } from "@/features/projects";
+import { useProject, useProjectMembers } from "@/features/projects";
+import { useUserMap } from "@/features/users";
 import {
   useAutomationRuns,
   useAutomations,
   useDeleteAutomation,
-  useSetAutomationEnabled,
+  useSetAutomationMode,
 } from "../api/hooks";
 import { describeRule, lastRunLabel, presets } from "../describe";
-import type { Automation, AutomationDraft, AutomationRun } from "../types";
+import { modeToProto } from "../api/mappers";
+import type { Automation, AutomationDraft, AutomationMode, AutomationRun } from "../types";
 import { AutomationDialog } from "./automation-dialog";
+import { ModeControl } from "./mode-control";
 import { useVocab } from "./use-vocab";
 
 const BLANK: AutomationDraft = {
@@ -50,6 +52,14 @@ const RUN_TONE: Record<AutomationRun["status"], string> = {
   ok: "text-success-subtle-text",
   failed: "text-destructive",
   skipped: "text-warning-subtle-text",
+  observed: "text-info-subtle-text",
+};
+
+const RUN_LABEL: Record<AutomationRun["status"], string> = {
+  ok: "ok",
+  failed: "failed",
+  skipped: "skipped",
+  observed: "would",
 };
 
 /** A project's automation rules and their recent runs. Owners and admins
@@ -62,12 +72,16 @@ export function AutomationsTab({ projectId }: { projectId: string }) {
   const vocab = useVocab(projectId);
   const { automations, isLoading } = useAutomations(projectId);
   const { runs } = useAutomationRuns(projectId);
-  const toggle = useSetAutomationEnabled();
+  const setMode = useSetAutomationMode();
+  const { memberIds } = useProjectMembers(projectId);
+  const userMap = useUserMap();
   const del = useDeleteAutomation();
-  const [dialog, setDialog] = useState<{ open: boolean; id?: string; draft: AutomationDraft }>({
-    open: false,
-    draft: BLANK,
-  });
+  const [dialog, setDialog] = useState<{
+    open: boolean;
+    id?: string;
+    draft: AutomationDraft;
+    mode: AutomationMode;
+  }>({ open: false, draft: BLANK, mode: "observe" });
   const [confirm, setConfirm] = useState<Automation | null>(null);
 
   const starters = useMemo(() => {
@@ -79,14 +93,16 @@ export function AutomationsTab({ projectId }: { projectId: string }) {
     });
   }, [vocab.statuses, vocab.labels]);
 
+  // New rules start observing: see what they would do before they act.
   function openNew(draft: AutomationDraft) {
-    setDialog({ open: true, draft });
+    setDialog({ open: true, draft, mode: "observe" });
   }
   function openEdit(a: Automation) {
     setDialog({
       open: true,
       id: a.id,
       draft: { name: a.name, trigger: a.trigger ?? BLANK.trigger, conditions: a.conditions, actions: a.actions },
+      mode: a.mode,
     });
   }
 
@@ -138,29 +154,31 @@ export function AutomationsTab({ projectId }: { projectId: string }) {
         <ul className="divide-y divide-border overflow-hidden rounded-xl bg-card shadow-sm">
           {automations.map((a) => (
             <li key={a.id} className="flex items-start gap-3 px-4 py-3">
-              <Switch
-                className="mt-0.5"
-                checked={a.enabled}
-                disabled={!canEdit || toggle.isPending}
-                aria-label={`${a.enabled ? "Pause" : "Turn on"} ${a.name}`}
-                onCheckedChange={(on) =>
-                  toggle.mutate(
-                    { id: a.id, enabled: on },
-                    { onError: (e) => toast.error(e.message || "Failed to update") },
-                  )
-                }
-              />
-              <div className={cn("min-w-0 flex-1", !a.enabled && "opacity-60")}>
-                <div className="flex items-center gap-2">
+              <div className={cn("min-w-0 flex-1", a.mode === "off" && "opacity-60")}>
+                <div className="flex flex-wrap items-center gap-2">
                   <span className="truncate text-sm font-medium">{a.name}</span>
-                  {!a.enabled && <Badge variant="secondary">Paused</Badge>}
+                  {a.mode === "observe" && <Badge variant="info">Observing</Badge>}
+                  {a.mode === "off" && <Badge variant="secondary">Off</Badge>}
                   {!a.trigger && <Badge variant="destructive">Broken</Badge>}
                 </div>
                 <p className="text-sm text-muted-foreground">{describeRule(a, vocab.names)}</p>
                 <p className="text-num text-xs text-muted-foreground">
-                  {a.runCount} run{a.runCount === 1 ? "" : "s"} · {lastRunLabel(a.lastRunAt)}
+                  {a.runCount} run{a.runCount === 1 ? "" : "s"} · {lastRunLabel(a.lastRunAt)} · created by{" "}
+                  {userMap[a.createdBy]?.displayName ?? "someone"}
+                  {!memberIds.includes(a.createdBy) && " (no longer in project)"}
                 </p>
               </div>
+              <ModeControl
+                label={`Mode of ${a.name}`}
+                value={a.mode}
+                disabled={!canEdit || setMode.isPending}
+                onChange={(mode) =>
+                  setMode.mutate(
+                    { id: a.id, mode: modeToProto(mode) },
+                    { onError: (e) => toast.error(e.message || "Failed to update") },
+                  )
+                }
+              />
               {canEdit && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -191,7 +209,7 @@ export function AutomationsTab({ projectId }: { projectId: string }) {
             {runs.map((r) => (
               <li key={r.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 px-4 py-2">
                 <span className={cn("w-14 shrink-0 text-xs font-medium uppercase", RUN_TONE[r.status])}>
-                  {r.status}
+                  {RUN_LABEL[r.status]}
                 </span>
                 <span className="shrink-0 font-medium">{r.automationName || "(deleted rule)"}</span>
                 {r.taskTitle ? (
@@ -206,7 +224,15 @@ export function AutomationsTab({ projectId }: { projectId: string }) {
                 ) : (
                   <span className="text-muted-foreground">(deleted task)</span>
                 )}
-                <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">{r.detail}</span>
+                <span
+                  className={cn(
+                    "min-w-0 flex-1 truncate text-xs text-muted-foreground",
+                    r.status === "observed" && "italic",
+                  )}
+                  title={r.detail}
+                >
+                  {r.detail}
+                </span>
                 <span className="text-num shrink-0 text-xs text-muted-foreground">
                   {format(new Date(r.createdAt), "MMM d, HH:mm")}
                 </span>
@@ -221,6 +247,7 @@ export function AutomationsTab({ projectId }: { projectId: string }) {
         vocab={vocab}
         editingId={dialog.id}
         initial={dialog.draft}
+        initialMode={dialog.mode}
         open={dialog.open}
         onOpenChange={(open) => setDialog((d) => ({ ...d, open }))}
       />

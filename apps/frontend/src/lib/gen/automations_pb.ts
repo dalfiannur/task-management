@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file automations.proto.
  */
 export const file_automations: GenFile = /*@__PURE__*/
-  fileDesc("ChFhdXRvbWF0aW9ucy5wcm90bxIbc2Vkaml3YS50YXNrcy5hdXRvbWF0aW9uLnYxInIKFFN0YXR1c0NoYW5nZWRUcmlnZ2VyEhsKDmZyb21fc3RhdHVzX2lkGAEgASgJSACIAQESGQoMdG9fc3RhdHVzX2lkGAIgASgJSAGIAQFCEQoPX2Zyb21fc3RhdHVzX2lkQg8KDV90b19zdGF0dXNfaWQiHAoMRHVlSW5UcmlnZ2VyEgwKBGRheXMYASABKAUiiQMKB1RyaWdnZXISSwoOc3RhdHVzX2NoYW5nZWQYASABKAsyMS5zZWRqaXdhLnRhc2tzLmF1dG9tYXRpb24udjEuU3RhdHVzQ2hhbmdlZFRyaWdnZXJIABI6Cgx0YXNrX2NyZWF0ZWQYAiABKAsyIi5zZWRqaXdhLnRhc2tzLmF1dG9tYXRpb24udjEuRW1wdHlIABI8Cg5hc3NpZ25lZV9hZGRlZBgDIAEoCzIiLnNlZGppd2EudGFza3MuYXV0b21hdGlvbi52MS5FbXB0eUgAEjsKDXN1YnRhc2tzX2RvbmUYBCABKAsyIi5zZWRqaXdhLnRhc2tzLmF1dG9tYXRpb24udjEuRW1wdHlIABI1CgdvdmVyZHVlGAUgASgLMiIuc2Vkaml3YS50YXNrcy5hdXRvbWF0aW9uLnYxLkVtcHR5SAASOwoGZHVlX2luGAYgASgLMikuc2Vkaml3YS50YXNrcy5hdXRvbWF0aW9uLnYxLkR1ZUluVHJpZ2dlckgAQgYKBGtpbmQiBwoFRW1wdHkiRwoKQ29uZGl0aW9ucxISCgpwcmlvcml0aWVzGAEgAygJEhEKCWxhYmVsX2lkcxgCIAMoCRISCgptb2R1bGVfaWRzGAMgAygJItICCgZBY3Rpb24SFwoNc2V0X3N0YXR1c19pZBgBIAEoCUgAEhYKDHNldF9wcmlvcml0eRgCIAEoCUgAEhYKDGFkZF9sYWJlbF9pZBgDIAEoCUgAEhkKD3JlbW92ZV9sYWJlbF9pZBgEIAEoCUgAEhgKDmFzc2lnbl91c2VyX2lkGAUgASgJSAASOgoMdW5hc3NpZ25fYWxsGAYgASgLMiIuc2Vkaml3YS50YXNrcy5hdXRvbWF0aW9uLnYxLkVtcHR5SAASGwoRbW92ZV90b19tb2R1bGVfaWQYByABKAlIABIZCg9zZXRfZHVlX2luX2RheXMYCCABKAVIABI7CgZub3RpZnkYCSABKAsyKS5zZWRqaXdhLnRhc2tzLmF1dG9tYXRpb24udjEuTm90aWZ5QWN0aW9uSAASEQoHY29tbWVudBgKIAEoCUgAQgYKBGtpbmQiawoMTm90aWZ5QWN0aW9uEjkKBnRhcmdldBgBIAEoDjIpLnNlZGppd2EudGFza3MuYXV0b21hdGlvbi52MS5Ob3RpZnlUYXJnZXQSDwoHdXNlcl9pZBgCIAEoCRIPCgdtZXNzYWdlGAMgASgJIu4CCgpBdXRvbWF0aW9uEgoKAmlkGAEgASgJEhIKCnByb2plY3RfaWQYAiABKAkSDAoEbmFtZRgDIAEoCRIPCgdlbmFibGVkGAQgASgIEjUKB3RyaWdnZXIYBSABKAsyJC5zZWRqaXdhLnRhc2tzLmF1dG9tYXRpb24udjEuVHJpZ2dlchI7Cgpjb25kaXRpb25zGAYgASgLMicuc2Vkaml3YS50YXNrcy5hdXRvbWF0aW9uLnYxLkNvbmRpdGlvbnMSNAoHYWN0aW9ucxgHIAMoCzIjLnNlZGppd2EudGFza3MuYXV0b21hdGlvbi52MS5BY3Rpb24SEgoKY3JlYXRlZF9ieRgIIAEoCRISCgpjcmVhdGVkX2F0GAkgASgJEhIKCnVwZGF0ZWRfYXQYCiABKAkSEQoJcnVuX2NvdW50GAsgASgFEhgKC2xhc3RfcnVuX2F0GAwgASgJSACIAQFCDgoMX2xhc3RfcnVuX2F0IiwKFkxpc3RBdXRvbWF0aW9uc1JlcXVlc3QSEgoKcHJvamVjdF9pZBgBIAEoCSJXChdMaXN0QXV0b21hdGlvbnNSZXNwb25zZRI8CgthdXRvbWF0aW9ucxgBIAMoCzInLnNlZGppd2EudGFza3MuYXV0b21hdGlvbi52MS5BdXRvbWF0aW9uIoACChVTYXZlQXV0b21hdGlvblJlcXVlc3QSCgoCaWQYASABKAkSEgoKcHJvamVjdF9pZBgCIAEoCRIMCgRuYW1lGAMgASgJEjUKB3RyaWdnZXIYBCABKAsyJC5zZWRqaXdhLnRhc2tzLmF1dG9tYXRpb24udjEuVHJpZ2dlchI7Cgpjb25kaXRpb25zGAUgASgLMicuc2Vkaml3YS50YXNrcy5hdXRvbWF0aW9uLnYxLkNvbmRpdGlvbnMSNAoHYWN0aW9ucxgGIAMoCzIjLnNlZGppd2EudGFza3MuYXV0b21hdGlvbi52MS5BY3Rpb24SDwoHZW5hYmxlZBgHIAEoCCIlChdEZWxldGVBdXRvbWF0aW9uUmVxdWVzdBIKCgJpZBgBIAEoCSImChhEZWxldGVBdXRvbWF0aW9uUmVzcG9uc2USCgoCb2sYASABKAgiOgobU2V0QXV0b21hdGlvbkVuYWJsZWRSZXF1ZXN0EgoKAmlkGAEgASgJEg8KB2VuYWJsZWQYAiABKAgi8gEKDUF1dG9tYXRpb25SdW4SCgoCaWQYASABKAkSFQoNYXV0b21hdGlvbl9pZBgCIAEoCRIXCg9hdXRvbWF0aW9uX25hbWUYAyABKAkSDwoHdGFza19pZBgEIAEoCRISCgp0YXNrX3RpdGxlGAUgASgJEhMKC3Rhc2tfbnVtYmVyGAYgASgFEg8KB3RyaWdnZXIYByABKAkSNgoGc3RhdHVzGAggASgOMiYuc2Vkaml3YS50YXNrcy5hdXRvbWF0aW9uLnYxLlJ1blN0YXR1cxIOCgZkZXRhaWwYCSABKAkSEgoKY3JlYXRlZF9hdBgKIAEoCSJsChlMaXN0QXV0b21hdGlvblJ1bnNSZXF1ZXN0EhIKCnByb2plY3RfaWQYASABKAkSGgoNYXV0b21hdGlvbl9pZBgCIAEoCUgAiAEBEg0KBWxpbWl0GAMgASgFQhAKDl9hdXRvbWF0aW9uX2lkIlYKGkxpc3RBdXRvbWF0aW9uUnVuc1Jlc3BvbnNlEjgKBHJ1bnMYASADKAsyKi5zZWRqaXdhLnRhc2tzLmF1dG9tYXRpb24udjEuQXV0b21hdGlvblJ1biI+Ch5SdW5TY2hlZHVsZWRBdXRvbWF0aW9uc1JlcXVlc3QSEgoFdG9kYXkYASABKAlIAIgBAUIICgZfdG9kYXkiLwofUnVuU2NoZWR1bGVkQXV0b21hdGlvbnNSZXNwb25zZRIMCgRydW5zGAEgASgFKnsKDE5vdGlmeVRhcmdldBIdChlOT1RJRllfVEFSR0VUX1VOU1BFQ0lGSUVEEAASGwoXTk9USUZZX1RBUkdFVF9BU1NJR05FRVMQARIXChNOT1RJRllfVEFSR0VUX09XTkVSEAISFgoSTk9USUZZX1RBUkdFVF9VU0VSEAMqaQoJUnVuU3RhdHVzEhoKFlJVTl9TVEFUVVNfVU5TUEVDSUZJRUQQABIRCg1SVU5fU1RBVFVTX09LEAESFQoRUlVOX1NUQVRVU19GQUlMRUQQAhIWChJSVU5fU1RBVFVTX1NLSVBQRUQQAzKOBwoRQXV0b21hdGlvblNlcnZpY2USfAoPTGlzdEF1dG9tYXRpb25zEjMuc2Vkaml3YS50YXNrcy5hdXRvbWF0aW9uLnYxLkxpc3RBdXRvbWF0aW9uc1JlcXVlc3QaNC5zZWRqaXdhLnRhc2tzLmF1dG9tYXRpb24udjEuTGlzdEF1dG9tYXRpb25zUmVzcG9uc2USbwoQQ3JlYXRlQXV0b21hdGlvbhIyLnNlZGppd2EudGFza3MuYXV0b21hdGlvbi52MS5TYXZlQXV0b21hdGlvblJlcXVlc3QaJy5zZWRqaXdhLnRhc2tzLmF1dG9tYXRpb24udjEuQXV0b21hdGlvbhJvChBVcGRhdGVBdXRvbWF0aW9uEjIuc2Vkaml3YS50YXNrcy5hdXRvbWF0aW9uLnYxLlNhdmVBdXRvbWF0aW9uUmVxdWVzdBonLnNlZGppd2EudGFza3MuYXV0b21hdGlvbi52MS5BdXRvbWF0aW9uEn8KEERlbGV0ZUF1dG9tYXRpb24SNC5zZWRqaXdhLnRhc2tzLmF1dG9tYXRpb24udjEuRGVsZXRlQXV0b21hdGlvblJlcXVlc3QaNS5zZWRqaXdhLnRhc2tzLmF1dG9tYXRpb24udjEuRGVsZXRlQXV0b21hdGlvblJlc3BvbnNlEnkKFFNldEF1dG9tYXRpb25FbmFibGVkEjguc2Vkaml3YS50YXNrcy5hdXRvbWF0aW9uLnYxLlNldEF1dG9tYXRpb25FbmFibGVkUmVxdWVzdBonLnNlZGppd2EudGFza3MuYXV0b21hdGlvbi52MS5BdXRvbWF0aW9uEoUBChJMaXN0QXV0b21hdGlvblJ1bnMSNi5zZWRqaXdhLnRhc2tzLmF1dG9tYXRpb24udjEuTGlzdEF1dG9tYXRpb25SdW5zUmVxdWVzdBo3LnNlZGppd2EudGFza3MuYXV0b21hdGlvbi52MS5MaXN0QXV0b21hdGlvblJ1bnNSZXNwb25zZRKUAQoXUnVuU2NoZWR1bGVkQXV0b21hdGlvbnMSOy5zZWRqaXdhLnRhc2tzLmF1dG9tYXRpb24udjEuUnVuU2NoZWR1bGVkQXV0b21hdGlvbnNSZXF1ZXN0Gjwuc2Vkaml3YS50YXNrcy5hdXRvbWF0aW9uLnYxLlJ1blNjaGVkdWxlZEF1dG9tYXRpb25zUmVzcG9uc2ViBnByb3RvMw");
+  fileDesc("ChFhdXRvbWF0aW9ucy5wcm90bxIbc2Vkaml3YS50YXNrcy5hdXRvbWF0aW9uLnYxInIKFFN0YXR1c0NoYW5nZWRUcmlnZ2VyEhsKDmZyb21fc3RhdHVzX2lkGAEgASgJSACIAQESGQoMdG9fc3RhdHVzX2lkGAIgASgJSAGIAQFCEQoPX2Zyb21fc3RhdHVzX2lkQg8KDV90b19zdGF0dXNfaWQiHAoMRHVlSW5UcmlnZ2VyEgwKBGRheXMYASABKAUiiQMKB1RyaWdnZXISSwoOc3RhdHVzX2NoYW5nZWQYASABKAsyMS5zZWRqaXdhLnRhc2tzLmF1dG9tYXRpb24udjEuU3RhdHVzQ2hhbmdlZFRyaWdnZXJIABI6Cgx0YXNrX2NyZWF0ZWQYAiABKAsyIi5zZWRqaXdhLnRhc2tzLmF1dG9tYXRpb24udjEuRW1wdHlIABI8Cg5hc3NpZ25lZV9hZGRlZBgDIAEoCzIiLnNlZGppd2EudGFza3MuYXV0b21hdGlvbi52MS5FbXB0eUgAEjsKDXN1YnRhc2tzX2RvbmUYBCABKAsyIi5zZWRqaXdhLnRhc2tzLmF1dG9tYXRpb24udjEuRW1wdHlIABI1CgdvdmVyZHVlGAUgASgLMiIuc2Vkaml3YS50YXNrcy5hdXRvbWF0aW9uLnYxLkVtcHR5SAASOwoGZHVlX2luGAYgASgLMikuc2Vkaml3YS50YXNrcy5hdXRvbWF0aW9uLnYxLkR1ZUluVHJpZ2dlckgAQgYKBGtpbmQiBwoFRW1wdHkiRwoKQ29uZGl0aW9ucxISCgpwcmlvcml0aWVzGAEgAygJEhEKCWxhYmVsX2lkcxgCIAMoCRISCgptb2R1bGVfaWRzGAMgAygJItICCgZBY3Rpb24SFwoNc2V0X3N0YXR1c19pZBgBIAEoCUgAEhYKDHNldF9wcmlvcml0eRgCIAEoCUgAEhYKDGFkZF9sYWJlbF9pZBgDIAEoCUgAEhkKD3JlbW92ZV9sYWJlbF9pZBgEIAEoCUgAEhgKDmFzc2lnbl91c2VyX2lkGAUgASgJSAASOgoMdW5hc3NpZ25fYWxsGAYgASgLMiIuc2Vkaml3YS50YXNrcy5hdXRvbWF0aW9uLnYxLkVtcHR5SAASGwoRbW92ZV90b19tb2R1bGVfaWQYByABKAlIABIZCg9zZXRfZHVlX2luX2RheXMYCCABKAVIABI7CgZub3RpZnkYCSABKAsyKS5zZWRqaXdhLnRhc2tzLmF1dG9tYXRpb24udjEuTm90aWZ5QWN0aW9uSAASEQoHY29tbWVudBgKIAEoCUgAQgYKBGtpbmQiawoMTm90aWZ5QWN0aW9uEjkKBnRhcmdldBgBIAEoDjIpLnNlZGppd2EudGFza3MuYXV0b21hdGlvbi52MS5Ob3RpZnlUYXJnZXQSDwoHdXNlcl9pZBgCIAEoCRIPCgdtZXNzYWdlGAMgASgJIqwDCgpBdXRvbWF0aW9uEgoKAmlkGAEgASgJEhIKCnByb2plY3RfaWQYAiABKAkSDAoEbmFtZRgDIAEoCRI5CgRtb2RlGAQgASgOMisuc2Vkaml3YS50YXNrcy5hdXRvbWF0aW9uLnYxLkF1dG9tYXRpb25Nb2RlEjUKB3RyaWdnZXIYBSABKAsyJC5zZWRqaXdhLnRhc2tzLmF1dG9tYXRpb24udjEuVHJpZ2dlchI7Cgpjb25kaXRpb25zGAYgASgLMicuc2Vkaml3YS50YXNrcy5hdXRvbWF0aW9uLnYxLkNvbmRpdGlvbnMSNAoHYWN0aW9ucxgHIAMoCzIjLnNlZGppd2EudGFza3MuYXV0b21hdGlvbi52MS5BY3Rpb24SEgoKY3JlYXRlZF9ieRgIIAEoCRISCgpjcmVhdGVkX2F0GAkgASgJEhIKCnVwZGF0ZWRfYXQYCiABKAkSEQoJcnVuX2NvdW50GAsgASgFEhgKC2xhc3RfcnVuX2F0GAwgASgJSACIAQESEgoKdXBkYXRlZF9ieRgNIAEoCUIOCgxfbGFzdF9ydW5fYXQiLAoWTGlzdEF1dG9tYXRpb25zUmVxdWVzdBISCgpwcm9qZWN0X2lkGAEgASgJIlcKF0xpc3RBdXRvbWF0aW9uc1Jlc3BvbnNlEjwKC2F1dG9tYXRpb25zGAEgAygLMicuc2Vkaml3YS50YXNrcy5hdXRvbWF0aW9uLnYxLkF1dG9tYXRpb24iqgIKFVNhdmVBdXRvbWF0aW9uUmVxdWVzdBIKCgJpZBgBIAEoCRISCgpwcm9qZWN0X2lkGAIgASgJEgwKBG5hbWUYAyABKAkSNQoHdHJpZ2dlchgEIAEoCzIkLnNlZGppd2EudGFza3MuYXV0b21hdGlvbi52MS5UcmlnZ2VyEjsKCmNvbmRpdGlvbnMYBSABKAsyJy5zZWRqaXdhLnRhc2tzLmF1dG9tYXRpb24udjEuQ29uZGl0aW9ucxI0CgdhY3Rpb25zGAYgAygLMiMuc2Vkaml3YS50YXNrcy5hdXRvbWF0aW9uLnYxLkFjdGlvbhI5CgRtb2RlGAcgASgOMisuc2Vkaml3YS50YXNrcy5hdXRvbWF0aW9uLnYxLkF1dG9tYXRpb25Nb2RlIiUKF0RlbGV0ZUF1dG9tYXRpb25SZXF1ZXN0EgoKAmlkGAEgASgJIiYKGERlbGV0ZUF1dG9tYXRpb25SZXNwb25zZRIKCgJvaxgBIAEoCCJhChhTZXRBdXRvbWF0aW9uTW9kZVJlcXVlc3QSCgoCaWQYASABKAkSOQoEbW9kZRgCIAEoDjIrLnNlZGppd2EudGFza3MuYXV0b21hdGlvbi52MS5BdXRvbWF0aW9uTW9kZSLyAQoNQXV0b21hdGlvblJ1bhIKCgJpZBgBIAEoCRIVCg1hdXRvbWF0aW9uX2lkGAIgASgJEhcKD2F1dG9tYXRpb25fbmFtZRgDIAEoCRIPCgd0YXNrX2lkGAQgASgJEhIKCnRhc2tfdGl0bGUYBSABKAkSEwoLdGFza19udW1iZXIYBiABKAUSDwoHdHJpZ2dlchgHIAEoCRI2CgZzdGF0dXMYCCABKA4yJi5zZWRqaXdhLnRhc2tzLmF1dG9tYXRpb24udjEuUnVuU3RhdHVzEg4KBmRldGFpbBgJIAEoCRISCgpjcmVhdGVkX2F0GAogASgJImwKGUxpc3RBdXRvbWF0aW9uUnVuc1JlcXVlc3QSEgoKcHJvamVjdF9pZBgBIAEoCRIaCg1hdXRvbWF0aW9uX2lkGAIgASgJSACIAQESDQoFbGltaXQYAyABKAVCEAoOX2F1dG9tYXRpb25faWQiVgoaTGlzdEF1dG9tYXRpb25SdW5zUmVzcG9uc2USOAoEcnVucxgBIAMoCzIqLnNlZGppd2EudGFza3MuYXV0b21hdGlvbi52MS5BdXRvbWF0aW9uUnVuIj4KHlJ1blNjaGVkdWxlZEF1dG9tYXRpb25zUmVxdWVzdBISCgV0b2RheRgBIAEoCUgAiAEBQggKBl90b2RheSIvCh9SdW5TY2hlZHVsZWRBdXRvbWF0aW9uc1Jlc3BvbnNlEgwKBHJ1bnMYASABKAUqewoMTm90aWZ5VGFyZ2V0Eh0KGU5PVElGWV9UQVJHRVRfVU5TUEVDSUZJRUQQABIbChdOT1RJRllfVEFSR0VUX0FTU0lHTkVFUxABEhcKE05PVElGWV9UQVJHRVRfT1dORVIQAhIWChJOT1RJRllfVEFSR0VUX1VTRVIQAyp/Cg5BdXRvbWF0aW9uTW9kZRIfChtBVVRPTUFUSU9OX01PREVfVU5TUEVDSUZJRUQQABIXChNBVVRPTUFUSU9OX01PREVfT0ZGEAESGwoXQVVUT01BVElPTl9NT0RFX09CU0VSVkUQAhIWChJBVVRPTUFUSU9OX01PREVfT04QAyqCAQoJUnVuU3RhdHVzEhoKFlJVTl9TVEFUVVNfVU5TUEVDSUZJRUQQABIRCg1SVU5fU1RBVFVTX09LEAESFQoRUlVOX1NUQVRVU19GQUlMRUQQAhIWChJSVU5fU1RBVFVTX1NLSVBQRUQQAxIXChNSVU5fU1RBVFVTX09CU0VSVkVEEAQyiAcKEUF1dG9tYXRpb25TZXJ2aWNlEnwKD0xpc3RBdXRvbWF0aW9ucxIzLnNlZGppd2EudGFza3MuYXV0b21hdGlvbi52MS5MaXN0QXV0b21hdGlvbnNSZXF1ZXN0GjQuc2Vkaml3YS50YXNrcy5hdXRvbWF0aW9uLnYxLkxpc3RBdXRvbWF0aW9uc1Jlc3BvbnNlEm8KEENyZWF0ZUF1dG9tYXRpb24SMi5zZWRqaXdhLnRhc2tzLmF1dG9tYXRpb24udjEuU2F2ZUF1dG9tYXRpb25SZXF1ZXN0Gicuc2Vkaml3YS50YXNrcy5hdXRvbWF0aW9uLnYxLkF1dG9tYXRpb24SbwoQVXBkYXRlQXV0b21hdGlvbhIyLnNlZGppd2EudGFza3MuYXV0b21hdGlvbi52MS5TYXZlQXV0b21hdGlvblJlcXVlc3QaJy5zZWRqaXdhLnRhc2tzLmF1dG9tYXRpb24udjEuQXV0b21hdGlvbhJ/ChBEZWxldGVBdXRvbWF0aW9uEjQuc2Vkaml3YS50YXNrcy5hdXRvbWF0aW9uLnYxLkRlbGV0ZUF1dG9tYXRpb25SZXF1ZXN0GjUuc2Vkaml3YS50YXNrcy5hdXRvbWF0aW9uLnYxLkRlbGV0ZUF1dG9tYXRpb25SZXNwb25zZRJzChFTZXRBdXRvbWF0aW9uTW9kZRI1LnNlZGppd2EudGFza3MuYXV0b21hdGlvbi52MS5TZXRBdXRvbWF0aW9uTW9kZVJlcXVlc3QaJy5zZWRqaXdhLnRhc2tzLmF1dG9tYXRpb24udjEuQXV0b21hdGlvbhKFAQoSTGlzdEF1dG9tYXRpb25SdW5zEjYuc2Vkaml3YS50YXNrcy5hdXRvbWF0aW9uLnYxLkxpc3RBdXRvbWF0aW9uUnVuc1JlcXVlc3QaNy5zZWRqaXdhLnRhc2tzLmF1dG9tYXRpb24udjEuTGlzdEF1dG9tYXRpb25SdW5zUmVzcG9uc2USlAEKF1J1blNjaGVkdWxlZEF1dG9tYXRpb25zEjsuc2Vkaml3YS50YXNrcy5hdXRvbWF0aW9uLnYxLlJ1blNjaGVkdWxlZEF1dG9tYXRpb25zUmVxdWVzdBo8LnNlZGppd2EudGFza3MuYXV0b21hdGlvbi52MS5SdW5TY2hlZHVsZWRBdXRvbWF0aW9uc1Jlc3BvbnNlYgZwcm90bzM");
 
 /**
  * @generated from message sedjiwa.tasks.automation.v1.StatusChangedTrigger
@@ -286,9 +286,9 @@ export type Automation = Message<"sedjiwa.tasks.automation.v1.Automation"> & {
   name: string;
 
   /**
-   * @generated from field: bool enabled = 4;
+   * @generated from field: sedjiwa.tasks.automation.v1.AutomationMode mode = 4;
    */
-  enabled: boolean;
+  mode: AutomationMode;
 
   /**
    * @generated from field: sedjiwa.tasks.automation.v1.Trigger trigger = 5;
@@ -329,6 +329,13 @@ export type Automation = Message<"sedjiwa.tasks.automation.v1.Automation"> & {
    * @generated from field: optional string last_run_at = 12;
    */
   lastRunAt?: string | undefined;
+
+  /**
+   * who last saved it (the writer, not the actor)
+   *
+   * @generated from field: string updated_by = 13;
+   */
+  updatedBy: string;
 };
 
 /**
@@ -410,11 +417,11 @@ export type SaveAutomationRequest = Message<"sedjiwa.tasks.automation.v1.SaveAut
   actions: Action[];
 
   /**
-   * create only; use SetAutomationEnabled afterwards
+   * create only; use SetAutomationMode afterwards
    *
-   * @generated from field: bool enabled = 7;
+   * @generated from field: sedjiwa.tasks.automation.v1.AutomationMode mode = 7;
    */
-  enabled: boolean;
+  mode: AutomationMode;
 };
 
 /**
@@ -459,25 +466,25 @@ export const DeleteAutomationResponseSchema: GenMessage<DeleteAutomationResponse
   messageDesc(file_automations, 12);
 
 /**
- * @generated from message sedjiwa.tasks.automation.v1.SetAutomationEnabledRequest
+ * @generated from message sedjiwa.tasks.automation.v1.SetAutomationModeRequest
  */
-export type SetAutomationEnabledRequest = Message<"sedjiwa.tasks.automation.v1.SetAutomationEnabledRequest"> & {
+export type SetAutomationModeRequest = Message<"sedjiwa.tasks.automation.v1.SetAutomationModeRequest"> & {
   /**
    * @generated from field: string id = 1;
    */
   id: string;
 
   /**
-   * @generated from field: bool enabled = 2;
+   * @generated from field: sedjiwa.tasks.automation.v1.AutomationMode mode = 2;
    */
-  enabled: boolean;
+  mode: AutomationMode;
 };
 
 /**
- * Describes the message sedjiwa.tasks.automation.v1.SetAutomationEnabledRequest.
- * Use `create(SetAutomationEnabledRequestSchema)` to create a new message.
+ * Describes the message sedjiwa.tasks.automation.v1.SetAutomationModeRequest.
+ * Use `create(SetAutomationModeRequestSchema)` to create a new message.
  */
-export const SetAutomationEnabledRequestSchema: GenMessage<SetAutomationEnabledRequest> = /*@__PURE__*/
+export const SetAutomationModeRequestSchema: GenMessage<SetAutomationModeRequest> = /*@__PURE__*/
   messageDesc(file_automations, 13);
 
 /**
@@ -664,6 +671,37 @@ export const NotifyTargetSchema: GenEnum<NotifyTarget> = /*@__PURE__*/
   enumDesc(file_automations, 0);
 
 /**
+ * @generated from enum sedjiwa.tasks.automation.v1.AutomationMode
+ */
+export enum AutomationMode {
+  /**
+   * @generated from enum value: AUTOMATION_MODE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: AUTOMATION_MODE_OFF = 1;
+   */
+  OFF = 1,
+
+  /**
+   * @generated from enum value: AUTOMATION_MODE_OBSERVE = 2;
+   */
+  OBSERVE = 2,
+
+  /**
+   * @generated from enum value: AUTOMATION_MODE_ON = 3;
+   */
+  ON = 3,
+}
+
+/**
+ * Describes the enum sedjiwa.tasks.automation.v1.AutomationMode.
+ */
+export const AutomationModeSchema: GenEnum<AutomationMode> = /*@__PURE__*/
+  enumDesc(file_automations, 1);
+
+/**
  * @generated from enum sedjiwa.tasks.automation.v1.RunStatus
  */
 export enum RunStatus {
@@ -690,21 +728,34 @@ export enum RunStatus {
    * @generated from enum value: RUN_STATUS_SKIPPED = 3;
    */
   SKIPPED = 3,
+
+  /**
+   * observe mode: what it would have done; nothing changed
+   *
+   * @generated from enum value: RUN_STATUS_OBSERVED = 4;
+   */
+  OBSERVED = 4,
 }
 
 /**
  * Describes the enum sedjiwa.tasks.automation.v1.RunStatus.
  */
 export const RunStatusSchema: GenEnum<RunStatus> = /*@__PURE__*/
-  enumDesc(file_automations, 1);
+  enumDesc(file_automations, 2);
 
 /**
  * Automations: per-project "when → if → then" rules over tasks.
  *
+ * A rule is OFF, ON, or in OBSERVE: matched exactly as when on, but instead
+ * of acting it records one OBSERVED run saying what it would have done.
+ *
  * A rule runs right after the change that triggers it (a task created, a
  * status change, an assignee added, the last subtask done) or, for the
  * time-based triggers (overdue, due within N days), from a job every 15
- * minutes, once per task and due date. Actions run as the rule's author.
+ * minutes, once per task and due date. Actions run as the project's
+ * Automation identity: a system actor that is a member of this project only
+ * and can never do what needs an owner or admin. Rows a rule writes
+ * (activity, comments, notifications) carry its id.
  * An automation's own change triggers further rules only through status
  * changes and subtask completion, one level deep, and one triggering change
  * runs at most 10 actions. Members read rules and runs; the project owner or
@@ -746,11 +797,11 @@ export const AutomationService: GenService<{
     output: typeof DeleteAutomationResponseSchema;
   },
   /**
-   * @generated from rpc sedjiwa.tasks.automation.v1.AutomationService.SetAutomationEnabled
+   * @generated from rpc sedjiwa.tasks.automation.v1.AutomationService.SetAutomationMode
    */
-  setAutomationEnabled: {
+  setAutomationMode: {
     methodKind: "unary";
-    input: typeof SetAutomationEnabledRequestSchema;
+    input: typeof SetAutomationModeRequestSchema;
     output: typeof AutomationSchema;
   },
   /**

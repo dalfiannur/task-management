@@ -42,7 +42,7 @@ pub(crate) async fn require_member(
     project_id: &str,
     auth: &AuthUser,
 ) -> Result<(), ConnectError> {
-    if auth.is_admin() {
+    if auth.is_admin() || auth.acts_for_project(project_id) {
         return Ok(());
     }
     if is_member(store, project_id, &auth.id)

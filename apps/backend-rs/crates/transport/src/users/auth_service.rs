@@ -182,6 +182,13 @@ async fn login(
     let Some(user) = user.filter(|u| verify_password(&r.password, &u.password_hash)) else {
         return Err(ConnectError::new_unauthenticated("invalid phone or password"));
     };
+    // A system identity never signs in, whatever credentials it might gain.
+    if crate::automation::record::is_system_user(&store, &user.pid.to_string())
+        .await
+        .map_err(internal)?
+    {
+        return Err(ConnectError::new_unauthenticated("invalid phone or password"));
+    }
     match user.status {
         UserStatus::Pending => {
             return Err(ConnectError::new_failed_precondition(

@@ -24,11 +24,16 @@ pub(crate) struct NotificationRecord {
     pub project_id: Option<String>,
     pub task_id: Option<String>,
     pub comment_id: Option<String>,
+    pub automation_id: Option<String>,
+    pub automation_name: Option<String>,
 }
 
 const SELECT_NOTIFICATION: &str = "\
     SELECT i.pid, i.recipient_id, i.kind, i.actor_id, i.message, i.read, i.created_at, \
-           r.project_id, r.task_id, r.comment_id \
+           r.project_id, r.task_id, r.comment_id, \
+           (SELECT s.automation_id FROM cmp_automationsource s WHERE s.pid = i.pid) AS automation_id, \
+           (SELECT a.name FROM cmp_automationsource s JOIN cmp_automation a ON a.pid::text = s.automation_id \
+            WHERE s.pid = i.pid) AS automation_name \
     FROM cmp_notificationinfo i LEFT JOIN cmp_notificationrefs r ON r.pid = i.pid";
 
 /// `None` for a stored kind this build does not know.
@@ -48,6 +53,8 @@ fn read_notification(row: &PgRow) -> sqlx::Result<Option<NotificationRecord>> {
         project_id: row.try_get("project_id")?,
         task_id: row.try_get("task_id")?,
         comment_id: row.try_get("comment_id")?,
+        automation_id: row.try_get("automation_id")?,
+        automation_name: row.try_get("automation_name")?,
     }))
 }
 
@@ -62,6 +69,8 @@ pub(crate) fn to_proto(n: &NotificationRecord) -> pb::Notification {
         project_id: n.project_id.clone(),
         task_id: n.task_id.clone(),
         comment_id: n.comment_id.clone(),
+        automation_id: n.automation_id.clone(),
+        automation_name: n.automation_id.as_ref().map(|_| n.automation_name.clone().unwrap_or_default()),
     }
 }
 
@@ -138,6 +147,8 @@ pub(crate) async fn create_notification(
     .bind(n.task_id)
     .bind(n.comment_id)
     .execute(&mut *tx)
+    .await?;
+    crate::automation::record::tag_if_automated(&mut tx, pid)
     .await?;
     tx.commit().await?;
     Ok(pid)

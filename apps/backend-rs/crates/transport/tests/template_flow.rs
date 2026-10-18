@@ -765,3 +765,33 @@ async fn templates_saved_with_plain_string_subtasks_still_work() {
         assert_eq!(subs.into_iter().map(|x| x.1).collect::<Vec<_>>(), want, "{shape} creates its subtasks in order");
     }
 }
+
+#[tokio::test]
+async fn using_a_template_skips_subtasks_without_a_title() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let owner = mk_user(&store).await;
+    let to = token(&owner);
+    let pid = project_with(&router, &owner, &[]).await;
+    let m = module(&router, &to, &pid, "M", None).await;
+    let t = s(&task(&router, &to, &m, json!({ "title": "Edited by hand" })).await, "id");
+    let tid = s(&ok(&router, &format!("{TPL}/SaveTaskTemplate"), &to, json!({ "taskId": t, "name": "hand" })).await, "id");
+    sqlx::query("UPDATE cmp_tasktemplate SET subtasks = $2::jsonb WHERE pid = $1")
+        .bind(tid.parse::<i64>().unwrap())
+        .bind(r#"["", "  ", {"name": "no title"}, {"title": ""}, "kept", {"title": "also kept"}]"#)
+        .execute(store.pool())
+        .await
+        .unwrap();
+    let made = ok(&router, &format!("{TPL}/CreateTaskFromTemplate"), &to, json!({ "templateId": tid, "moduleId": m })).await;
+    let mut subs: Vec<(i64, String)> = tasks_of(&router, &to, &pid)
+        .await
+        .iter()
+        .filter(|x| x["parentId"] == made["id"])
+        .map(|x| (num(x, "order"), s(x, "title")))
+        .collect();
+    subs.sort();
+    assert_eq!(subs.into_iter().map(|x| x.1).collect::<Vec<_>>(), vec!["kept", "also kept"],
+        "untitled subtasks are skipped instead of failing the whole create");
+}

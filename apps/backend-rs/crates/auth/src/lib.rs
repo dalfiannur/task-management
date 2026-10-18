@@ -31,6 +31,40 @@ impl AuthUser {
     pub fn has(&self, perm: &str) -> bool {
         self.is_admin() || self.permissions.iter().any(|p| p == perm)
     }
+
+    /// The system actor automation rules run as: a member of `project_id`
+    /// for the duration of a rule's actions, and nothing more — no admin, no
+    /// owner, no other project. Never minted into a token.
+    pub fn automation(actor_id: &str, project_id: &str) -> Self {
+        Self {
+            id: actor_id.to_string(),
+            permissions: vec![format!("{AUTOMATION_SCOPE}{project_id}")],
+        }
+    }
+
+    /// True when this is the automation actor scoped to `project_id`.
+    pub fn acts_for_project(&self, project_id: &str) -> bool {
+        self.permissions
+            .iter()
+            .any(|p| p.strip_prefix(AUTOMATION_SCOPE) == Some(project_id))
+    }
+}
+
+const AUTOMATION_SCOPE: &str = "automation:project:";
+
+#[cfg(test)]
+mod automation_scope_tests {
+    use super::*;
+
+    #[test]
+    fn automation_actor_is_scoped_to_one_project() {
+        let a = AuthUser::automation("9", "15");
+        assert!(a.acts_for_project("15"));
+        assert!(!a.acts_for_project("150"));
+        assert!(!a.acts_for_project("1"));
+        assert!(!a.is_admin());
+        assert!(!a.has("projects:create"));
+    }
 }
 
 #[derive(Debug, thiserror::Error, PartialEq)]

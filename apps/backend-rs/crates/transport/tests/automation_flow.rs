@@ -29,6 +29,7 @@ const COMMENT: &str = "/sedjiwa.tasks.comment.v1.CommentService";
 const NOTIF: &str = "/sedjiwa.tasks.notification.v1.NotificationService";
 const ACTIVITY: &str = "/sedjiwa.tasks.activity.v1.ActivityService";
 const AUTO: &str = "/sedjiwa.tasks.automation.v1.AutomationService";
+const DIR: &str = "/sedjiwa.tasks.auth.v1.UserDirectoryService";
 
 fn uniq() -> String {
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -62,6 +63,7 @@ async fn setup() -> Option<(Router, Arc<Store>)> {
         .merge(transport::activity_router(store.clone()))
         .merge(transport::notification_router(store.clone(), notifier.clone()))
         .merge(transport::automation_router(store.clone()))
+        .merge(transport::user_router(store.clone()))
         .layer(Extension(notifier))
         .layer(from_fn(auth_mw));
     Some((router, store))
@@ -96,6 +98,19 @@ async fn fails(router: &Router, path: &str, tok: &str, body: Value, code: &str) 
     let (st, v) = call(router, path, Some(tok), body).await;
     assert_ne!(st, StatusCode::OK, "{path} should fail: {v}");
     assert_eq!(v["code"], code, "{path}: {v}");
+}
+
+/// The ⚡ Automation system identity's user id.
+async fn system_id(store: &Store) -> String {
+    let pid: i64 = sqlx::query_scalar("SELECT pid FROM cmp_systemtag WHERE kind = 'automation'")
+        .fetch_one(store.pool())
+        .await
+        .unwrap();
+    pid.to_string()
+}
+
+async fn set_mode(router: &Router, tok: &str, id: &str, mode: &str) -> Value {
+    ok(router, &format!("{AUTO}/SetAutomationMode"), tok, json!({ "id": id, "mode": mode })).await
 }
 
 fn s(v: &Value, key: &str) -> String {
@@ -174,7 +189,7 @@ async fn proj(router: &Router, owner: &str, members: &[&str]) -> Proj {
 async fn rule(router: &Router, tok: &str, project: &str, name: &str, trigger: Value, actions: Value, conditions: Value) -> String {
     s(&ok(router, &format!("{AUTO}/CreateAutomation"), tok, json!({
         "projectId": project, "name": name, "trigger": trigger, "actions": actions,
-        "conditions": conditions, "enabled": true
+        "conditions": conditions, "mode": "AUTOMATION_MODE_ON"
     })).await, "id")
 }
 
@@ -222,7 +237,7 @@ async fn automation_rpcs_require_a_token() {
         ("CreateAutomation", json!({ "projectId": "1", "name": "x" })),
         ("UpdateAutomation", json!({ "id": "1", "name": "x" })),
         ("DeleteAutomation", json!({ "id": "1" })),
-        ("SetAutomationEnabled", json!({ "id": "1", "enabled": true })),
+        ("SetAutomationMode", json!({ "id": "1", "mode": "AUTOMATION_MODE_ON" })),
         ("ListAutomationRuns", json!({ "projectId": "1" })),
         ("RunScheduledAutomations", json!({})),
     ] {
@@ -243,7 +258,7 @@ async fn rules_are_managed_by_owner_or_admin_and_read_by_members() {
     let p = proj(&router, &owner, &[&member]).await;
     let body = json!({
         "projectId": p.id, "name": "  Label new work  ", "trigger": { "taskCreated": {} },
-        "actions": [{ "addLabelId": p.l1 }], "enabled": true
+        "actions": [{ "addLabelId": p.l1 }], "mode": "AUTOMATION_MODE_ON"
     });
     let create = format!("{AUTO}/CreateAutomation");
     fails(&router, &create, &tm, body.clone(), "permission_denied").await;
@@ -252,14 +267,19 @@ async fn rules_are_managed_by_owner_or_admin_and_read_by_members() {
     let r = ok(&router, &create, &to, body.clone()).await;
     let id = s(&r, "id");
     assert_eq!(r["name"], "Label new work", "the name is trimmed");
-    assert_eq!(r["enabled"], true);
+    assert_eq!(r["mode"], "AUTOMATION_MODE_ON");
+    assert_eq!(r["updatedBy"], owner.as_str(), "the creator is the first writer");
     assert_eq!(r["createdBy"], owner.as_str());
     assert!(r["trigger"]["taskCreated"].is_object(), "the trigger round-trips: {r}");
     assert_eq!(arr(&r, "actions")[0]["addLabelId"], p.l1.as_str());
+    fails(&router, &create, &to, json!({
+        "projectId": p.id, "name": "no mode", "trigger": { "taskCreated": {} }, "actions": [{ "addLabelId": p.l2 }]
+    }), "invalid_argument").await;
     let disabled = ok(&router, &create, &to, json!({
-        "projectId": p.id, "name": "off", "trigger": { "taskCreated": {} }, "actions": [{ "addLabelId": p.l2 }]
+        "projectId": p.id, "name": "off", "trigger": { "taskCreated": {} }, "actions": [{ "addLabelId": p.l2 }],
+        "mode": "AUTOMATION_MODE_OFF"
     })).await;
-    assert!(disabled["enabled"].is_null() || disabled["enabled"] == false, "enabled defaults to off");
+    assert_eq!(disabled["mode"], "AUTOMATION_MODE_OFF");
 
     // Members read; outsiders do not.
     let list = format!("{AUTO}/ListAutomations");
@@ -279,8 +299,11 @@ async fn rules_are_managed_by_owner_or_admin_and_read_by_members() {
     let r = ok(&router, &upd, &to, changed.clone()).await;
     assert_eq!(r["name"], "Renamed");
     assert_eq!(r["createdBy"], owner.as_str(), "an edit keeps the author");
+    assert_eq!(r["updatedBy"], owner.as_str());
     let r = ok(&router, &upd, &ta, { let mut c = changed.clone(); c["name"] = json!("By admin"); c }).await;
     assert_eq!(r["name"], "By admin", "a non-member admin can edit");
+    assert_eq!(r["updatedBy"], admin.as_str(), "updated_by follows the last writer");
+    assert_eq!(r["createdBy"], owner.as_str());
     // The project in an update body is ignored: a rule cannot be moved.
     let other = proj(&router, &member, &[]).await;
     let mut moved = changed.clone();
@@ -289,19 +312,24 @@ async fn rules_are_managed_by_owner_or_admin_and_read_by_members() {
     assert_eq!(r["projectId"], p.id.as_str(), "a rule stays in its project");
     fails(&router, &upd, &token(&member), { let mut c = changed.clone(); c["id"] = json!(id); c["projectId"] = json!(other.id); c }, "permission_denied").await;
 
-    let en = format!("{AUTO}/SetAutomationEnabled");
-    fails(&router, &en, &tm, json!({ "id": id, "enabled": false }), "permission_denied").await;
-    let r = ok(&router, &en, &to, json!({ "id": id, "enabled": false })).await;
-    assert!(r["enabled"].is_null() || r["enabled"] == false);
+    let en = format!("{AUTO}/SetAutomationMode");
+    fails(&router, &en, &tm, json!({ "id": id, "mode": "AUTOMATION_MODE_OFF" }), "permission_denied").await;
+    fails(&router, &en, &to, json!({ "id": id, "mode": "AUTOMATION_MODE_UNSPECIFIED" }), "invalid_argument").await;
+    fails(&router, &en, &to, json!({ "id": id }), "invalid_argument").await;
+    let r = ok(&router, &en, &to, json!({ "id": id, "mode": "AUTOMATION_MODE_OBSERVE" })).await;
+    assert_eq!(r["mode"], "AUTOMATION_MODE_OBSERVE");
+    assert_eq!(r["updatedBy"], owner.as_str(), "a mode change sets updated_by");
+    let r = ok(&router, &en, &to, json!({ "id": id, "mode": "AUTOMATION_MODE_OFF" })).await;
+    assert_eq!(r["mode"], "AUTOMATION_MODE_OFF");
     let l = ok(&router, &list, &tm, json!({ "projectId": p.id })).await;
-    assert!(arr(&l, "automations").iter().all(|a| a["enabled"].is_null() || a["enabled"] == false), "a follow-up read shows both off");
+    assert!(arr(&l, "automations").iter().all(|a| a["mode"] == "AUTOMATION_MODE_OFF"), "a follow-up read shows both off");
 
     let del = format!("{AUTO}/DeleteAutomation");
     fails(&router, &del, &tm, json!({ "id": id }), "permission_denied").await;
     ok(&router, &del, &ta, json!({ "id": id })).await;
     fails(&router, &del, &to, json!({ "id": id }), "not_found").await;
     fails(&router, &upd, &to, changed, "not_found").await;
-    fails(&router, &en, &to, json!({ "id": "abc", "enabled": true }), "not_found").await;
+    fails(&router, &en, &to, json!({ "id": "abc", "mode": "AUTOMATION_MODE_ON" }), "not_found").await;
 
     // The sweep is admin only.
     fails(&router, &format!("{AUTO}/RunScheduledAutomations"), &to, json!({}), "permission_denied").await;
@@ -319,14 +347,14 @@ async fn rules_are_validated_against_their_project() {
     let p = proj(&router, &owner, &[&member]).await;
     let q = proj(&router, &owner, &[]).await;
     let create = format!("{AUTO}/CreateAutomation");
-    let base = |trigger: Value, actions: Value| json!({ "projectId": p.id, "name": "r", "trigger": trigger, "actions": actions });
+    let base = |trigger: Value, actions: Value| json!({ "projectId": p.id, "name": "r", "trigger": trigger, "actions": actions, "mode": "AUTOMATION_MODE_ON" });
     let created = json!({ "taskCreated": {} });
     let note = |m: &str| json!([{ "comment": m }]);
 
     let cases: Vec<(Value, &str)> = vec![
         ({ let mut b = base(created.clone(), note("x")); b["name"] = json!("   "); b }, "blank name"),
         ({ let mut b = base(created.clone(), note("x")); b["name"] = json!("n".repeat(81)); b }, "81-char name"),
-        (json!({ "projectId": p.id, "name": "r", "actions": note("x") }), "no trigger"),
+        (json!({ "projectId": p.id, "name": "r", "actions": note("x"), "mode": "AUTOMATION_MODE_ON" }), "no trigger"),
         (base(json!({}), note("x")), "empty trigger"),
         (base(created.clone(), json!([])), "no actions"),
         (base(created.clone(), json!([{ "comment": "1" }, { "comment": "2" }, { "comment": "3" }, { "comment": "4" }, { "comment": "5" }, { "comment": "6" }])), "6 actions"),
@@ -365,7 +393,7 @@ async fn rules_are_validated_against_their_project() {
         { "notify": { "target": "NOTIFY_TARGET_USER", "userId": member, "message": "m" } }, { "setPriority": "urgent" }]))).await;
     let l = ok(&router, &format!("{AUTO}/ListAutomations"), &to, json!({ "projectId": p.id })).await;
     assert_eq!(arr(&l, "automations").len(), 4, "only the valid rules were saved");
-    fails(&router, &create, &to, json!({ "projectId": "999999999999", "name": "r", "trigger": created, "actions": note("x") }), "permission_denied").await;
+    fails(&router, &create, &to, json!({ "projectId": "999999999999", "name": "r", "trigger": created, "actions": note("x"), "mode": "AUTOMATION_MODE_ON" }), "permission_denied").await;
 }
 
 // ── The engine ───────────────────────────────────────────────────────────────
@@ -401,7 +429,9 @@ async fn each_trigger_fires_on_its_change() {
     let c = comments(&router, &tm, &tid).await;
     assert_eq!(c.len(), 1, "the assign rule commented");
     assert_eq!(c[0]["content"], "<p>welcome &lt;b&gt;aboard&lt;/b&gt; &amp; go</p>", "comment text is escaped and wrapped");
-    assert_eq!(c[0]["authorId"].as_str().or(c[0]["userId"].as_str()), Some(owner.as_str()), "it is written as the rule's author: {}", c[0]);
+    assert_eq!(c[0]["authorId"], system_id(&store).await.as_str(), "it is written as the Automation identity: {}", c[0]);
+    assert_eq!(c[0]["automationId"], assigned.as_str(), "and carries the rule");
+    assert_eq!(c[0]["automationName"], "on assign");
     update(&router, &tm, json!({ "id": tid, "assigneeIds": { "values": [member] }, "title": "Fresh again" })).await;
     assert_eq!(runs_of(&runs(&router, &tm, &p.id).await, &assigned).len(), 1, "re-saving the same assignees adds nobody");
     // Created with an assignee: both task_created and assignee_added.
@@ -444,7 +474,7 @@ async fn each_trigger_fires_on_its_change() {
     // Disabled rules never run.
     let before = runs_of(&runs(&router, &tm, &p.id).await, &created).len();
     assert_eq!(before, 9, "every create so far ran it, subtasks included");
-    ok(&router, &format!("{AUTO}/SetAutomationEnabled"), &to, json!({ "id": created, "enabled": false })).await;
+    set_mode(&router, &to, &created, "AUTOMATION_MODE_OFF").await;
     let t4 = task(&router, &tm, &p.m1, json!({ "title": "After pause" })).await;
     assert!(strs(&t4, "labelIds").is_empty(), "a paused rule does nothing");
     assert_eq!(runs_of(&runs(&router, &tm, &p.id).await, &created).len(), before, "and records no run");
@@ -525,16 +555,23 @@ async fn actions_change_the_task_as_the_rules_author() {
     assert_eq!(h[0]["status"], "RUN_STATUS_OK", "{}", h[0]);
     assert!(s(h[0], "detail").contains("label not there"), "removing an absent label is a no-op: {}", h[0]);
 
-    // Activity is recorded under the author.
+    // Activity: the person's change as the person; the rule's edits as Automation, tagged.
+    let sys = system_id(&store).await;
     let act = ok(&router, &format!("{ACTIVITY}/ListEntityActivity"), &to, json!({ "entityType": "TASK", "entityId": tid })).await;
-    let actors: Vec<String> = arr(&act, "activities").iter().map(|a| s(a, "actorId")).collect();
-    assert!(actors.contains(&owner), "the automation's edits are the author's activity: {act}");
+    let rows = arr(&act, "activities");
+    assert!(rows.iter().any(|a| s(a, "actorId") == member && a["automationId"].is_null()), "the member's own change is untagged: {act}");
+    let auto_rows: Vec<&Value> = rows.iter().filter(|a| s(a, "actorId") == sys).collect();
+    assert!(!auto_rows.is_empty(), "the rule's edits are the Automation identity's activity: {act}");
+    assert!(auto_rows.iter().all(|a| a["automationId"] == edits.as_str() || a["automationId"] == tells.as_str()), "tagged with the rule that made them: {act}");
+    assert!(auto_rows.iter().any(|a| a["automationName"] == name));
+    assert!(rows.iter().all(|a| s(a, "actorId") != owner), "nothing is attributed to the rule's author: {act}");
 
     // Notifications: type AUTOMATION, no actor, "<rule>: <message>"; the author hears too.
     let auto = |list: Vec<Value>| list.into_iter().filter(|n| n["type"] == "AUTOMATION").collect::<Vec<_>>();
     let mine = auto(notifications(&router, &tm).await);
     assert!(mine.iter().any(|n| n["message"] == "Heads up: started"), "assignees notified: {mine:?}");
-    assert!(mine.iter().all(|n| s(n, "actorId").is_empty()), "an automation has no actor");
+    assert!(mine.iter().all(|n| s(n, "actorId") == sys), "the actor is the Automation identity: {mine:?}");
+    assert!(mine.iter().all(|n| n["automationId"] == tells.as_str() && n["automationName"] == "Heads up"), "notifications carry the rule");
     assert!(mine.iter().all(|n| n["taskId"] == tid.as_str() && n["projectId"] == p.id.as_str()), "it links to the task");
     let owners = auto(notifications(&router, &to).await);
     assert!(owners.iter().any(|n| n["message"] == "Heads up: fyi owner"), "the owner — the rule's own author — is notified: {owners:?}");
@@ -566,7 +603,7 @@ async fn a_failing_action_stops_the_rest_of_the_rule() {
 }
 
 #[tokio::test]
-async fn a_rule_whose_author_is_inactive_fails_its_runs() {
+async fn a_rule_keeps_running_when_its_author_is_suspended() {
     let Some((router, store)) = setup().await else {
         eprintln!("skip: DATABASE_URL not set");
         return;
@@ -582,13 +619,14 @@ async fn a_rule_whose_author_is_inactive_fails_its_runs() {
         .unwrap();
     let t = task(&router, &to, &p.m1, json!({ "title": "x" })).await;
     let run = runs_of(&runs(&router, &to, &p.id).await, &r).into_iter().next().cloned().unwrap();
-    assert_eq!(run["status"], "RUN_STATUS_FAILED");
-    assert!(s(&run, "detail").contains("no longer an active user"), "{run}");
-    assert!(comments(&router, &to, &s(&t, "id")).await.is_empty(), "nothing ran");
+    assert_eq!(run["status"], "RUN_STATUS_OK", "rules run as the project, not the author: {run}");
+    let c = comments(&router, &to, &s(&t, "id")).await;
+    assert_eq!(c.len(), 1);
+    assert_eq!(c[0]["authorId"], system_id(&store).await.as_str());
 }
 
 #[tokio::test]
-async fn a_rule_stops_acting_once_its_author_loses_access() {
+async fn a_rule_keeps_running_after_its_author_leaves_and_follows_the_owner() {
     let Some((router, store)) = setup().await else {
         eprintln!("skip: DATABASE_URL not set");
         return;
@@ -597,15 +635,24 @@ async fn a_rule_stops_acting_once_its_author_loses_access() {
     let (ta, tb) = (token(&a), token(&b));
     let p = proj(&router, &a, &[&b]).await;
     let r = rule(&router, &ta, &p.id, "A's notify", json!({ "taskCreated": {} }),
-        json!([{ "notify": { "target": "NOTIFY_TARGET_ASSIGNEES", "message": "ping" } }]), json!({})).await;
+        json!([{ "notify": { "target": "NOTIFY_TARGET_ASSIGNEES", "message": "ping" } },
+               { "notify": { "target": "NOTIFY_TARGET_OWNER", "message": "owner ping" } }]), json!({})).await;
     // A hands the project to B and leaves it.
     ok(&router, &format!("{PROJECT}/TransferProjectOwnership"), &ta, json!({ "id": p.id, "newOwnerId": b })).await;
     ok(&router, &format!("{PROJECT}/LeaveProject"), &ta, json!({ "projectId": p.id })).await;
     task(&router, &tb, &p.m1, json!({ "title": "after A left", "assigneeIds": [b] })).await;
     let run = runs_of(&runs(&router, &tb, &p.id).await, &r).into_iter().next().cloned().unwrap();
-    assert_eq!(run["status"], "RUN_STATUS_FAILED", "a rule acts as its author, who has no access any more: {run}");
-    let got = notifications(&router, &tb).await.into_iter().filter(|n| n["type"] == "AUTOMATION").count();
-    assert_eq!(got, 0, "so no notification goes out on A's behalf");
+    assert_eq!(run["status"], "RUN_STATUS_OK", "the rule runs as the project after its author left: {run}");
+    let got: Vec<Value> = notifications(&router, &tb).await.into_iter().filter(|n| n["type"] == "AUTOMATION").collect();
+    assert!(got.iter().any(|n| n["message"] == "A's notify: ping"), "the assignee is notified: {got:?}");
+    assert!(got.iter().any(|n| n["message"] == "A's notify: owner ping"), "OWNER resolves to the new owner B: {got:?}");
+    let sys = system_id(&store).await;
+    assert!(got.iter().all(|n| s(n, "actorId") == sys), "sent as Automation, not as A");
+    let to_a = notifications(&router, &ta).await.into_iter().filter(|n| n["message"] == "A's notify: owner ping").count();
+    assert_eq!(to_a, 0, "the old owner no longer gets OWNER notifications");
+    // The rule card says who made it, and the author is gone from the project.
+    let l = ok(&router, &format!("{AUTO}/ListAutomations"), &tb, json!({ "projectId": p.id })).await;
+    assert_eq!(arr(&l, "automations")[0]["createdBy"], a.as_str());
 }
 
 #[tokio::test]
@@ -682,7 +729,7 @@ async fn time_based_rules_fire_once_per_due_date() {
     let soon = rule(&router, &to, &p.id, "soon", json!({ "dueIn": { "days": 3 } }), json!([{ "comment": "due soon" }]), json!({})).await;
     let picky = rule(&router, &to, &p.id, "late and urgent", json!({ "overdue": {} }), json!([{ "comment": "urgent and late" }]), json!({ "priorities": ["urgent"] })).await;
     let off = rule(&router, &to, &p.id, "paused", json!({ "overdue": {} }), json!([{ "comment": "never" }]), json!({})).await;
-    ok(&router, &format!("{AUTO}/SetAutomationEnabled"), &to, json!({ "id": off, "enabled": false })).await;
+    set_mode(&router, &to, &off, "AUTOMATION_MODE_OFF").await;
 
     let mk = |title: &str, extra: Value| {
         let mut b = json!({ "title": title });
@@ -789,4 +836,237 @@ async fn run_history_is_newest_first_limited_and_goes_with_its_rule() {
     .await
     .unwrap();
     assert_eq!(left, 0, "no orphan run or claim rows");
+}
+
+// ── Observe mode ─────────────────────────────────────────────────────────────
+
+/// Activity rows on a task.
+async fn activity(router: &Router, tok: &str, task: &str) -> Vec<Value> {
+    arr(&ok(router, &format!("{ACTIVITY}/ListEntityActivity"), tok, json!({ "entityType": "TASK", "entityId": task })).await, "activities")
+}
+
+#[tokio::test]
+async fn observe_mode_says_what_it_would_do_and_changes_nothing() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let (owner, member) = (mk_user(&store).await, mk_user(&store).await);
+    let (to, tm) = (token(&owner), token(&member));
+    let p = proj(&router, &owner, &[&member]).await;
+    let r = s(&ok(&router, &format!("{AUTO}/CreateAutomation"), &to, json!({
+        "projectId": p.id, "name": "Archive done", "mode": "AUTOMATION_MODE_OBSERVE",
+        "trigger": { "statusChanged": { "toStatusId": p.done } },
+        "actions": [{ "moveToModuleId": p.m2 }, { "notify": { "target": "NOTIFY_TARGET_OWNER", "message": "finished" } }]
+    })).await, "id");
+    let auto_notes = |tok: String| {
+        let router = router.clone();
+        async move { notifications(&router, &tok).await.into_iter().filter(|n| n["type"] == "AUTOMATION").count() }
+    };
+
+    let t = s(&task(&router, &tm, &p.m1, json!({ "title": "Observed" })).await, "id");
+    let reply = update(&router, &tm, json!({ "id": t, "statusId": p.done })).await;
+    assert_eq!(reply["moduleId"], p.m1.as_str(), "observe changes nothing in the reply");
+    let got = get(&router, &tm, &t).await;
+    assert_eq!(got["moduleId"], p.m1.as_str(), "the task stays in its module");
+    assert_eq!(auto_notes(to.clone()).await, 0, "nobody is notified");
+    assert!(comments(&router, &tm, &t).await.is_empty(), "no comment");
+    let act = activity(&router, &tm, &t).await;
+    assert!(act.iter().all(|a| s(a, "actorId") == member && a["automationId"].is_null()), "only the person's own activity: {act:?}");
+    let all = runs(&router, &tm, &p.id).await;
+    let mine = runs_of(&all, &r);
+    assert_eq!(mine.len(), 1, "exactly one run");
+    assert_eq!(mine[0]["status"], "RUN_STATUS_OBSERVED");
+    let detail = s(mine[0], "detail");
+    assert!(detail.contains("would move to M2"), "the run names the move: {detail}");
+    assert!(detail.contains("would notify"), "and the notification: {detail}");
+
+    // Switched on, the next change does both.
+    set_mode(&router, &to, &r, "AUTOMATION_MODE_ON").await;
+    let t2 = s(&task(&router, &tm, &p.m1, json!({ "title": "For real" })).await, "id");
+    update(&router, &tm, json!({ "id": t2, "statusId": p.done })).await;
+    assert_eq!(get(&router, &tm, &t2).await["moduleId"], p.m2.as_str(), "on: moved");
+    assert_eq!(auto_notes(to.clone()).await, 1, "on: the owner is notified");
+    let latest = runs_of(&runs(&router, &tm, &p.id).await, &r)[0].clone();
+    assert_eq!(latest["status"], "RUN_STATUS_OK");
+
+    // An observer that would fail says so, and still changes nothing.
+    let q = proj(&router, &owner, &[&member]).await;
+    let f = s(&ok(&router, &format!("{AUTO}/CreateAutomation"), &to, json!({
+        "projectId": q.id, "name": "Doomed", "mode": "AUTOMATION_MODE_OBSERVE",
+        "trigger": { "taskCreated": {} },
+        "actions": [{ "moveToModuleId": q.m2 }, { "notify": { "target": "NOTIFY_TARGET_USER", "userId": member, "message": "x" } }]
+    })).await, "id");
+    ok(&router, &format!("{MODULE}/DeleteModule"), &to, json!({ "id": q.m2 })).await;
+    ok(&router, &format!("{PROJECT}/RemoveProjectMember"), &to, json!({ "projectId": q.id, "userId": member })).await;
+    task(&router, &to, &q.m1, json!({ "title": "x" })).await;
+    let run = runs_of(&runs(&router, &to, &q.id).await, &f)[0].clone();
+    assert_eq!(run["status"], "RUN_STATUS_OBSERVED");
+    let detail = s(&run, "detail");
+    assert!(detail.matches("would fail").count() >= 2, "both the gone module and the ex-member are called out: {detail}");
+}
+
+#[tokio::test]
+async fn an_observer_neither_chains_nor_spends_the_budget() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let owner = mk_user(&store).await;
+    let to = token(&owner);
+    let p = proj(&router, &owner, &[]).await;
+    let five = json!([{ "comment": "1" }, { "comment": "2" }, { "comment": "3" }, { "comment": "4" }, { "comment": "5" }]);
+    // The observer is created first, so it would be first to spend the budget.
+    let obs = s(&ok(&router, &format!("{AUTO}/CreateAutomation"), &to, json!({
+        "projectId": p.id, "name": "watcher", "mode": "AUTOMATION_MODE_OBSERVE", "trigger": { "taskCreated": {} },
+        "actions": [{ "setStatusId": p.in_progress }, { "comment": "a" }, { "comment": "b" }, { "comment": "c" }, { "comment": "d" }]
+    })).await, "id");
+    let r1 = rule(&router, &to, &p.id, "r1", json!({ "taskCreated": {} }), five.clone(), json!({})).await;
+    let r2 = rule(&router, &to, &p.id, "r2", json!({ "taskCreated": {} }), five, json!({})).await;
+    // Would be chained to by the observer's status change, if observers chained.
+    let chained = rule(&router, &to, &p.id, "on start", json!({ "statusChanged": { "toStatusId": p.in_progress } }), json!([{ "comment": "chained" }]), json!({})).await;
+    let t = s(&task(&router, &to, &p.m1, json!({ "title": "Busy" })).await, "id");
+    let all = runs(&router, &to, &p.id).await;
+    assert_eq!(runs_of(&all, &obs)[0]["status"], "RUN_STATUS_OBSERVED");
+    assert_eq!(runs_of(&all, &r1)[0]["status"], "RUN_STATUS_OK");
+    assert_eq!(runs_of(&all, &r2)[0]["status"], "RUN_STATUS_OK", "the observer spent none of the budget");
+    assert!(runs_of(&all, &chained).is_empty(), "an observer's would-be change triggers nothing");
+    assert_eq!(comments(&router, &to, &t).await.len(), 10, "exactly the two real rules' ten comments");
+    assert_eq!(get(&router, &to, &t).await["statusId"], p.todo.as_str(), "the observer did not move the status");
+}
+
+#[tokio::test]
+async fn observed_time_based_rules_claim_separately_from_real_fires() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let (owner, admin) = (mk_user(&store).await, mk_user(&store).await);
+    let (to, ta) = (token(&owner), admin_token(&admin));
+    let p = proj(&router, &owner, &[]).await;
+    let today = "2032-03-10";
+    let r = s(&ok(&router, &format!("{AUTO}/CreateAutomation"), &to, json!({
+        "projectId": p.id, "name": "late flag", "mode": "AUTOMATION_MODE_OBSERVE",
+        "trigger": { "overdue": {} }, "actions": [{ "addLabelId": p.l1 }]
+    })).await, "id");
+    let a = s(&task(&router, &to, &p.m1, json!({ "title": "late a", "dueDate": "2032-03-01" })).await, "id");
+    let b = s(&task(&router, &to, &p.m1, json!({ "title": "late b", "dueDate": "2032-03-05" })).await, "id");
+    let sweep = || {
+        let (router, ta) = (router.clone(), ta.clone());
+        async move { ok(&router, &format!("{AUTO}/RunScheduledAutomations"), &ta, json!({ "today": today })).await }
+    };
+    sweep().await;
+    sweep().await;
+    let mine: Vec<Value> = runs_of(&runs(&router, &to, &p.id).await, &r).into_iter().cloned().collect();
+    assert_eq!(mine.len(), 2, "one observed run per task and due date, across sweeps: {mine:?}");
+    assert!(mine.iter().all(|x| x["status"] == "RUN_STATUS_OBSERVED"));
+    assert!(strs(&get(&router, &to, &a).await, "labelIds").is_empty(), "observe added no label");
+
+    set_mode(&router, &to, &r, "AUTOMATION_MODE_ON").await;
+    sweep().await;
+    let mine: Vec<Value> = runs_of(&runs(&router, &to, &p.id).await, &r).into_iter().cloned().collect();
+    assert_eq!(mine.iter().filter(|x| x["status"] == "RUN_STATUS_OK").count(), 2, "on: the next sweep acts on the tasks it only observed");
+    for t in [&a, &b] {
+        assert_eq!(strs(&get(&router, &to, t).await, "labelIds"), vec![p.l1.clone()]);
+    }
+    sweep().await;
+    assert_eq!(runs_of(&runs(&router, &to, &p.id).await, &r).len(), 4, "and only once");
+}
+
+// ── Provenance and the Automation identity ──────────────────────────────────
+
+#[tokio::test]
+async fn chained_rows_carry_their_own_rule_and_survive_its_deletion() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let owner = mk_user(&store).await;
+    let to = token(&owner);
+    let p = proj(&router, &owner, &[]).await;
+    let starter = rule(&router, &to, &p.id, "starter", json!({ "taskCreated": {} }), json!([{ "setStatusId": p.in_progress }]), json!({})).await;
+    let follower = rule(&router, &to, &p.id, "follower", json!({ "statusChanged": { "toStatusId": p.in_progress } }), json!([{ "comment": "on it" }]), json!({})).await;
+    let t = s(&task(&router, &to, &p.m1, json!({ "title": "Chain" })).await, "id");
+    let c = comments(&router, &to, &t).await;
+    assert_eq!(c.len(), 1);
+    assert_eq!(c[0]["automationId"], follower.as_str(), "the chained rule's comment carries the chained rule");
+    let act = activity(&router, &to, &t).await;
+    let sys = system_id(&store).await;
+    assert!(act.iter().any(|a| a["automationId"] == starter.as_str() && s(a, "actorId") == sys), "the status change carries the starter: {act:?}");
+    assert!(act.iter().any(|a| s(a, "actorId") == owner && a["automationId"].is_null()), "the creation is the person's own: {act:?}");
+
+    // A manual change has no provenance.
+    ok(&router, &format!("{COMMENT}/CreateComment"), &to, json!({ "taskId": t, "content": "by hand" })).await;
+    let c = comments(&router, &to, &t).await;
+    let manual = c.iter().find(|x| x["content"] == "by hand").unwrap();
+    assert!(manual["automationId"].is_null(), "manual comments are untagged: {manual}");
+
+    // Deleting the rule keeps the trace but loses the name.
+    ok(&router, &format!("{AUTO}/DeleteAutomation"), &to, json!({ "id": follower })).await;
+    let c = comments(&router, &to, &t).await;
+    let auto = c.iter().find(|x| x["content"] == "<p>on it</p>").unwrap();
+    assert_eq!(auto["automationId"], follower.as_str());
+    assert!(auto["automationName"].is_null() || auto["automationName"] == "", "a deleted rule has no name: {auto}");
+}
+
+#[tokio::test]
+async fn the_automation_identity_acts_only_as_a_project_member() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let (owner, member, admin) = (mk_user(&store).await, mk_user(&store).await, mk_user(&store).await);
+    let (to, ta) = (token(&owner), admin_token(&admin));
+    let p = proj(&router, &owner, &[&member]).await;
+    let sys = system_id(&store).await;
+
+    // People leave; rules that name them fail with a reason.
+    let assign = rule(&router, &to, &p.id, "assign M", json!({ "taskCreated": {} }), json!([{ "assignUserId": member }]), json!({})).await;
+    let tell = rule(&router, &to, &p.id, "tell M", json!({ "taskCreated": {} }),
+        json!([{ "notify": { "target": "NOTIFY_TARGET_USER", "userId": member, "message": "hey" } }]), json!({})).await;
+    ok(&router, &format!("{PROJECT}/RemoveProjectMember"), &to, json!({ "projectId": p.id, "userId": member })).await;
+    let t = s(&task(&router, &to, &p.m1, json!({ "title": "after M left" })).await, "id");
+    let all = runs(&router, &to, &p.id).await;
+    for (r, why) in [(&assign, "assign"), (&tell, "notify")] {
+        let run = runs_of(&all, r)[0];
+        assert_eq!(run["status"], "RUN_STATUS_FAILED", "{why} a non-member fails: {run}");
+        assert!(!s(run, "detail").is_empty());
+    }
+    assert!(strs(&get(&router, &to, &t).await, "assigneeIds").is_empty(), "nobody was assigned");
+    let notes = notifications(&router, &token(&member)).await;
+    assert!(notes.iter().all(|n| n["message"] != "tell M: hey"), "the ex-member is not notified");
+
+    // The identity is invisible to people: not in the directory, not assignable, not a member.
+    let list = ok(&router, &format!("{DIR}/ListUsers"), &ta, json!({ "pageSize": 1000 })).await;
+    assert!(arr(&list, "users").iter().all(|u| s(u, "id") != sys), "not in ListUsers");
+    let found = ok(&router, &format!("{DIR}/SearchUsers"), &to, json!({ "q": "Automation" })).await;
+    assert!(arr(&found, "users").iter().all(|u| s(u, "id") != sys), "not in the picker search");
+    fails(&router, &format!("{TASK}/UpdateTask"), &to, json!({ "id": t, "assigneeIds": { "values": [sys] } }), "invalid_argument").await;
+    let members = ok(&router, &format!("{PROJECT}/ListProjectMembers"), &to, json!({ "projectId": p.id })).await;
+    assert!(arr(&members, "members").iter().all(|m| s(m, "userId") != sys), "not a project member");
+    let (st, v) = call(&router, &format!("{PROJECT}/AddProjectMember"), Some(&to), json!({ "projectId": p.id, "userId": sys })).await;
+    assert_ne!(st, StatusCode::OK, "the Automation identity cannot be added to a project: {v}");
+    // It can never act through a personal access token (MCP resolves a token's owner here).
+    assert!(transport::api::auth_user_for(&store, &sys).await.unwrap().is_none(), "a token owned by the system identity resolves to nobody");
+    assert!(transport::api::auth_user_for(&store, &owner).await.unwrap().is_some(), "while a person's does");
+}
+
+#[tokio::test]
+async fn rules_never_fire_in_template_projects() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let (owner, admin) = (mk_user(&store).await, mk_user(&store).await);
+    let to = token(&owner);
+    let p = proj(&router, &owner, &[]).await;
+    let on_create = rule(&router, &to, &p.id, "on create", json!({ "taskCreated": {} }), json!([{ "comment": "hi" }]), json!({})).await;
+    let late = rule(&router, &to, &p.id, "late", json!({ "overdue": {} }), json!([{ "comment": "late" }]), json!({})).await;
+    ok(&router, &format!("{PROJECT}/SetProjectTemplate"), &to, json!({ "id": p.id, "isTemplate": true })).await;
+    let t = s(&task(&router, &to, &p.m1, json!({ "title": "in a template", "dueDate": "2033-01-01" })).await, "id");
+    ok(&router, &format!("{AUTO}/RunScheduledAutomations"), &admin_token(&admin), json!({ "today": "2033-01-10" })).await;
+    let all = runs(&router, &to, &p.id).await;
+    assert!(runs_of(&all, &on_create).is_empty(), "no change-triggered run in a template");
+    assert!(runs_of(&all, &late).is_empty(), "no time-based run in a template");
+    assert!(comments(&router, &to, &t).await.is_empty());
 }

@@ -19,4 +19,7 @@ export interface Notification {
   projectId?: string;
   taskId?: string;
   commentId?: string;
+  /** Set when an automation rule sent it; `automationName` "" once deleted. */
+  automationId?: string;
+  automationName?: string;
 }

@@ -25,6 +25,9 @@ message Activity {
   string summary = 7;
   repeated FieldChange changes = 8;
   string created_at = 9;
+  // 10 is reserved for the linked task of a time entry.
+  optional string automation_id = 11;   // set when an automation rule wrote it
+  optional string automation_name = 12; // "" once that rule is deleted
 }
 enum EntityType {
   ENTITY_TYPE_UNSPECIFIED = 0;

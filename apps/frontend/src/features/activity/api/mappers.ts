@@ -45,5 +45,7 @@ export function mapActivity(a: PbActivity): Activity {
     summary: a.summary,
     changes: a.changes.map((c) => ({ field: c.field, from: c.from, to: c.to })),
     createdAt: a.createdAt,
+    automationId: a.automationId,
+    automationName: a.automationName,
   };
 }

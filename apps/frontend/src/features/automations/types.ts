@@ -35,21 +35,26 @@ export type Action =
 
 export type ActionKind = Action["kind"];
 
+/** off: never runs. observe: matches and logs what it would do, changes
+ *  nothing. on: acts. */
+export type AutomationMode = "off" | "observe" | "on";
+
 export interface Automation {
   id: string;
   projectId: string;
   name: string;
-  enabled: boolean;
+  mode: AutomationMode;
   /** Undefined when the stored rule no longer parses. */
   trigger?: Trigger;
   conditions: Conditions;
   actions: Action[];
   createdBy: string;
+  updatedBy: string;
   runCount: number;
   lastRunAt?: string;
 }
 
-export type RunStatus = "ok" | "failed" | "skipped";
+export type RunStatus = "ok" | "failed" | "skipped" | "observed";
 
 export interface AutomationRun {
   id: string;

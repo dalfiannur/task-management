@@ -20,6 +20,8 @@ message Comment {
   repeated string mentioned_user_ids = 5;
   string created_at = 6;
   string updated_at = 7;
+  optional string automation_id = 8;   // set when an automation rule posted it
+  optional string automation_name = 9; // "" once that rule is deleted
 }
 
 message ListCommentsRequest {
