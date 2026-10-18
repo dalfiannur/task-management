@@ -2147,3 +2147,21 @@ async fn create_project_from_template_copies_and_respects_membership() {
         "a bad start_date is refused"
     );
 }
+
+#[tokio::test]
+async fn create_task_refuses_an_impossible_due_date() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    let (_project_id, module_id) = seed_project_and_module(&store, &user).await;
+    for bad in ["2026-02-30", "2026-13-01", "2026-10-19T08:00:00Z"] {
+        assert!(
+            tools_call_refused(&router, &token, "create_task",
+                json!({ "module_id": module_id, "title": "x", "due_date": bad })).await,
+            "due_date {bad} is refused"
+        );
+    }
+    let (err, t) = tools_call(&router, &token, "create_task",
+        json!({ "module_id": module_id, "title": "leap", "due_date": "2028-02-29" })).await;
+    assert!(!err, "a real leap day is accepted: {t}");
+}
