@@ -84,9 +84,25 @@ export function describeRule(
   return `${describeTrigger(r.trigger, n)}${cond ? `, ${cond}` : ""} → ${r.actions.map((a) => describeAction(a, n)).join(", ")}`;
 }
 
-export function lastRunLabel(iso?: string): string {
-  if (!iso) return "never ran";
-  return `last ran ${formatDistanceToNowStrict(new Date(iso), { addSuffix: true })}`;
+/** "3 runs · 5 observed · last ran 2h ago"; zero parts are left out, and a
+ *  rule that has only been observed reads "5 observed · never run". "last
+ *  ran" is the latest real run; an observing rule also says when it last
+ *  observed. */
+export function runsLabel(r: {
+  mode?: string;
+  runCount: number;
+  observedCount: number;
+  lastRunAt?: string;
+  lastObservedAt?: string;
+}): string {
+  const ago = (iso: string) => formatDistanceToNowStrict(new Date(iso), { addSuffix: true });
+  const parts: string[] = [];
+  if (r.runCount > 0) parts.push(`${r.runCount} run${r.runCount === 1 ? "" : "s"}`);
+  if (r.observedCount > 0) parts.push(`${r.observedCount} observed`);
+  if (r.runCount === 0) parts.push("never run");
+  else if (r.lastRunAt) parts.push(`last ran ${ago(r.lastRunAt)}`);
+  if (r.mode === "observe" && r.lastObservedAt) parts.push(`observed ${ago(r.lastObservedAt)}`);
+  return parts.join(" · ");
 }
 
 const NO_CONDITIONS: Conditions = { priorities: [], labelIds: [], moduleIds: [] };

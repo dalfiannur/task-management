@@ -23,13 +23,17 @@ pub(crate) struct RuleRecord {
     pub updated_at: String,
     pub run_count: i64,
     pub last_run_at: Option<String>,
+    pub observed_count: i64,
+    pub last_observed_at: Option<String>,
 }
 
 const SELECT_RULE: &str = "SELECT a.pid, a.project_id, a.name, \
        COALESCE(a.mode, CASE WHEN a.enabled THEN 'on' ELSE 'off' END) AS mode, a.trigger, a.conditions, \
        a.actions, a.created_by, COALESCE(a.updated_by, a.created_by) AS updated_by, a.created_at, a.updated_at, \
-       (SELECT count(*) FROM cmp_automationrun r WHERE r.automation_id = a.pid::text) AS run_count, \
-       (SELECT max(r.created_at) FROM cmp_automationrun r WHERE r.automation_id = a.pid::text) AS last_run_at \
+       (SELECT count(*) FROM cmp_automationrun r WHERE r.automation_id = a.pid::text AND r.status <> 'observed') AS run_count, \
+       (SELECT max(r.created_at) FROM cmp_automationrun r WHERE r.automation_id = a.pid::text AND r.status <> 'observed') AS last_run_at, \
+       (SELECT count(*) FROM cmp_automationrun r WHERE r.automation_id = a.pid::text AND r.status = 'observed') AS observed_count, \
+       (SELECT max(r.created_at) FROM cmp_automationrun r WHERE r.automation_id = a.pid::text AND r.status = 'observed') AS last_observed_at \
     FROM cmp_automation a";
 
 fn read_rule(row: &PgRow) -> sqlx::Result<RuleRecord> {
@@ -52,6 +56,8 @@ fn read_rule(row: &PgRow) -> sqlx::Result<RuleRecord> {
         updated_at: row.try_get("updated_at")?,
         run_count: row.try_get("run_count")?,
         last_run_at: row.try_get("last_run_at")?,
+        observed_count: row.try_get("observed_count")?,
+        last_observed_at: row.try_get("last_observed_at")?,
     })
 }
 

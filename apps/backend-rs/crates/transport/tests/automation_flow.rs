@@ -569,15 +569,17 @@ async fn actions_change_the_task_as_the_rules_author() {
     // Notifications: type AUTOMATION, no actor, "<rule>: <message>"; the author hears too.
     let auto = |list: Vec<Value>| list.into_iter().filter(|n| n["type"] == "AUTOMATION").collect::<Vec<_>>();
     let mine = auto(notifications(&router, &tm).await);
-    assert!(mine.iter().any(|n| n["message"] == "Heads up: started"), "assignees notified: {mine:?}");
+    assert!(mine.iter().any(|n| n["message"] == "started"), "assignees notified, with the plain message: {mine:?}");
+    assert!(mine.iter().all(|n| !s(n, "message").starts_with("Heads up:")), "the rule name is not repeated in the message: {mine:?}");
     assert!(mine.iter().all(|n| s(n, "actorId") == sys), "the actor is the Automation identity: {mine:?}");
     assert!(mine.iter().all(|n| n["automationId"] == tells.as_str() && n["automationName"] == "Heads up"), "notifications carry the rule");
     assert!(mine.iter().all(|n| n["taskId"] == tid.as_str() && n["projectId"] == p.id.as_str()), "it links to the task");
     let owners = auto(notifications(&router, &to).await);
-    assert!(owners.iter().any(|n| n["message"] == "Heads up: fyi owner"), "the owner — the rule's own author — is notified: {owners:?}");
+    assert!(owners.iter().any(|n| n["message"] == "fyi owner" && n["automationName"] == "Heads up"), "the owner — the rule's own author — is notified: {owners:?}");
     let watchers = auto(notifications(&router, &token(&watcher)).await);
     assert_eq!(watchers.len(), 1);
-    assert_eq!(watchers[0]["message"], "Heads up: fyi watcher");
+    assert_eq!(watchers[0]["message"], "fyi watcher");
+    assert_eq!(watchers[0]["automationName"], "Heads up", "the name travels in the tag");
 }
 
 #[tokio::test]
@@ -644,11 +646,11 @@ async fn a_rule_keeps_running_after_its_author_leaves_and_follows_the_owner() {
     let run = runs_of(&runs(&router, &tb, &p.id).await, &r).into_iter().next().cloned().unwrap();
     assert_eq!(run["status"], "RUN_STATUS_OK", "the rule runs as the project after its author left: {run}");
     let got: Vec<Value> = notifications(&router, &tb).await.into_iter().filter(|n| n["type"] == "AUTOMATION").collect();
-    assert!(got.iter().any(|n| n["message"] == "A's notify: ping"), "the assignee is notified: {got:?}");
-    assert!(got.iter().any(|n| n["message"] == "A's notify: owner ping"), "OWNER resolves to the new owner B: {got:?}");
+    assert!(got.iter().any(|n| n["message"] == "ping"), "the assignee is notified: {got:?}");
+    assert!(got.iter().any(|n| n["message"] == "owner ping"), "OWNER resolves to the new owner B: {got:?}");
     let sys = system_id(&store).await;
     assert!(got.iter().all(|n| s(n, "actorId") == sys), "sent as Automation, not as A");
-    let to_a = notifications(&router, &ta).await.into_iter().filter(|n| n["message"] == "A's notify: owner ping").count();
+    let to_a = notifications(&router, &ta).await.into_iter().filter(|n| n["message"] == "owner ping").count();
     assert_eq!(to_a, 0, "the old owner no longer gets OWNER notifications");
     // The rule card says who made it, and the author is gone from the project.
     let l = ok(&router, &format!("{AUTO}/ListAutomations"), &tb, json!({ "projectId": p.id })).await;
@@ -1034,7 +1036,7 @@ async fn the_automation_identity_acts_only_as_a_project_member() {
     }
     assert!(strs(&get(&router, &to, &t).await, "assigneeIds").is_empty(), "nobody was assigned");
     let notes = notifications(&router, &token(&member)).await;
-    assert!(notes.iter().all(|n| n["message"] != "tell M: hey"), "the ex-member is not notified");
+    assert!(notes.iter().all(|n| n["message"] != "hey" && n["automationName"] != "tell M"), "the ex-member is not notified");
 
     // The identity is invisible to people: not in the directory, not assignable, not a member.
     let list = ok(&router, &format!("{DIR}/ListUsers"), &ta, json!({ "pageSize": 1000 })).await;
@@ -1069,4 +1071,65 @@ async fn rules_never_fire_in_template_projects() {
     assert!(runs_of(&all, &on_create).is_empty(), "no change-triggered run in a template");
     assert!(runs_of(&all, &late).is_empty(), "no time-based run in a template");
     assert!(comments(&router, &to, &t).await.is_empty());
+}
+
+#[tokio::test]
+async fn real_and_observed_runs_are_counted_apart() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let (owner, member) = (mk_user(&store).await, mk_user(&store).await);
+    let to = token(&owner);
+    let p = proj(&router, &owner, &[&member]).await;
+    let r = rule(&router, &to, &p.id, "assign M", json!({ "taskCreated": {} }), json!([{ "assignUserId": member }]), json!({})).await;
+    let rule_row = || {
+        let (router, to, pid, r) = (router.clone(), to.clone(), p.id.clone(), r.clone());
+        async move {
+            let l = ok(&router, &format!("{AUTO}/ListAutomations"), &to, json!({ "projectId": pid })).await;
+            arr(&l, "automations").into_iter().find(|a| s(a, "id") == r).unwrap()
+        }
+    };
+    let fresh = rule_row().await;
+    assert_eq!(num(&fresh, "runCount"), 0);
+    assert_eq!(num(&fresh, "observedCount"), 0);
+    assert!(fresh["lastRunAt"].is_null() && fresh["lastObservedAt"].is_null(), "nothing yet: {fresh}");
+
+    // 2 OK, then 1 FAILED (the member left), then 4 OBSERVED.
+    for i in 0..2 {
+        task(&router, &to, &p.m1, json!({ "title": format!("ok {i}") })).await;
+    }
+    ok(&router, &format!("{PROJECT}/RemoveProjectMember"), &to, json!({ "projectId": p.id, "userId": member })).await;
+    task(&router, &to, &p.m1, json!({ "title": "fails" })).await;
+    let mid = rule_row().await;
+    assert_eq!(num(&mid, "runCount"), 3, "OK and FAILED runs both count as real runs");
+    assert!(mid["lastObservedAt"].is_null());
+    set_mode(&router, &to, &r, "AUTOMATION_MODE_OBSERVE").await;
+    for i in 0..4 {
+        task(&router, &to, &p.m1, json!({ "title": format!("watched {i}") })).await;
+    }
+    let row = rule_row().await;
+    assert_eq!(num(&row, "runCount"), 3, "observed runs are not runs");
+    assert_eq!(num(&row, "observedCount"), 4);
+    assert!(row["lastObservedAt"].is_string(), "{row}");
+    assert!(row["lastRunAt"].is_string(), "{row}");
+    assert!(s(&row, "lastRunAt") < s(&row, "lastObservedAt"), "last_run_at is the latest real run, before the observations: {row}");
+    assert_eq!(row["lastRunAt"], mid["lastRunAt"], "observing does not move last_run_at");
+    let statuses: Vec<String> = runs_of(&runs(&router, &to, &p.id).await, &r).iter().map(|x| s(x, "status")).collect();
+    assert_eq!(statuses.iter().filter(|x| *x == "RUN_STATUS_OK").count(), 2);
+    assert_eq!(statuses.iter().filter(|x| *x == "RUN_STATUS_FAILED").count(), 1);
+    assert_eq!(statuses.iter().filter(|x| *x == "RUN_STATUS_OBSERVED").count(), 4);
+
+    // An observe-only rule.
+    let o = s(&ok(&router, &format!("{AUTO}/CreateAutomation"), &to, json!({
+        "projectId": p.id, "name": "just watching", "mode": "AUTOMATION_MODE_OBSERVE",
+        "trigger": { "taskCreated": {} }, "actions": [{ "comment": "x" }]
+    })).await, "id");
+    task(&router, &to, &p.m1, json!({ "title": "seen" })).await;
+    let l = ok(&router, &format!("{AUTO}/ListAutomations"), &to, json!({ "projectId": p.id })).await;
+    let only = arr(&l, "automations").into_iter().find(|a| s(a, "id") == o).unwrap();
+    assert_eq!(num(&only, "runCount"), 0, "observe-only: no real run");
+    assert_eq!(num(&only, "observedCount"), 1);
+    assert!(only["lastRunAt"].is_null(), "no real run, no last_run_at: {only}");
+    assert!(only["lastObservedAt"].is_string());
 }

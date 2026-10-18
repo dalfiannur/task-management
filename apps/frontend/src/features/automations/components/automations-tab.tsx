@@ -34,7 +34,7 @@ import {
   useDeleteAutomation,
   useSetAutomationMode,
 } from "../api/hooks";
-import { describeRule, lastRunLabel, presets } from "../describe";
+import { describeRule, presets, runsLabel } from "../describe";
 import { modeToProto } from "../api/mappers";
 import type { Automation, AutomationDraft, AutomationMode, AutomationRun } from "../types";
 import { AutomationDialog } from "./automation-dialog";
@@ -163,7 +163,7 @@ export function AutomationsTab({ projectId }: { projectId: string }) {
                 </div>
                 <p className="text-sm text-muted-foreground">{describeRule(a, vocab.names)}</p>
                 <p className="text-num text-xs text-muted-foreground">
-                  {a.runCount} run{a.runCount === 1 ? "" : "s"} · {lastRunLabel(a.lastRunAt)} · created by{" "}
+                  {runsLabel(a)} · created by{" "}
                   {userMap[a.createdBy]?.displayName ?? "someone"}
                   {!memberIds.includes(a.createdBy) && " (no longer in project)"}
                 </p>

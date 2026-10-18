@@ -124,6 +124,8 @@ fn to_proto(r: &RuleRecord) -> pb::Automation {
         updated_at: r.updated_at.clone(),
         run_count: r.run_count as i32,
         last_run_at: r.last_run_at.clone(),
+        observed_count: r.observed_count as i32,
+        last_observed_at: r.last_observed_at.clone(),
     }
 }
 

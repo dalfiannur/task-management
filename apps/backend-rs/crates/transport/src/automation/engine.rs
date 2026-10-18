@@ -419,7 +419,7 @@ async fn apply(
             if let Some(n) = notifier {
                 let refs = NotifRefs::task(&rule.project_id, task_id);
                 for r in &to {
-                    emit(store, n, r, NotificationType::Automation, &actor.id, format!("{}: {}", rule.name, message), refs.clone())
+                    emit(store, n, r, NotificationType::Automation, &actor.id, message.clone(), refs.clone())
                         .await;
                 }
             }

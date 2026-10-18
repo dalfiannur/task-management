@@ -183,6 +183,8 @@ export function mapAutomation(a: PbAutomation): Automation {
     updatedBy: a.updatedBy,
     runCount: a.runCount,
     lastRunAt: a.lastRunAt,
+    observedCount: a.observedCount,
+    lastObservedAt: a.lastObservedAt,
   };
 }
 

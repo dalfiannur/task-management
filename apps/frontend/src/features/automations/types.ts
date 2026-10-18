@@ -50,8 +50,12 @@ export interface Automation {
   actions: Action[];
   createdBy: string;
   updatedBy: string;
+  /** Real runs: ok, failed, skipped. */
   runCount: number;
+  /** Latest real run (ok, failed, skipped). */
   lastRunAt?: string;
+  observedCount: number;
+  lastObservedAt?: string;
 }
 
 export type RunStatus = "ok" | "failed" | "skipped" | "observed";

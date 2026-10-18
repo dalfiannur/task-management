@@ -102,9 +102,11 @@ message Automation {
   string created_by = 8;
   string created_at = 9;
   string updated_at = 10;
-  int32 run_count = 11;
-  optional string last_run_at = 12;
+  int32 run_count = 11;              // real runs: ok, failed, skipped
+  optional string last_run_at = 12;  // latest real run (ok, failed, skipped)
   string updated_by = 13; // who last saved it (the writer, not the actor)
+  int32 observed_count = 14;            // OBSERVED runs
+  optional string last_observed_at = 15;
 }
 
 message ListAutomationsRequest { string project_id = 1; }
