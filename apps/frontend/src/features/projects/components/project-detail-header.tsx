@@ -1,20 +1,21 @@
 import { useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { useAtomValue } from "jotai";
-import { ChevronDown, Pin, PinOff, Trash2 } from "lucide-react";
+import { ChevronDown, Copy, LayoutTemplate, Pin, PinOff, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { Button, Avatar, AvatarFallback, AvatarImage, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "sedjiwa-ui";
+import { Badge, Button, Avatar, AvatarFallback, AvatarImage, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "sedjiwa-ui";
 import { getInitials } from "@/lib/utils";
 import { currentUserAtom, isAdminAtom } from "@/features/auth";
 import { useUserMap } from "@/features/users";
 import { ExportDialog } from "@/features/exports";
 import type { Project, ProjectStatus } from "../types";
 import { PROJECT_STATUSES, STATUS_LABEL } from "../types";
-import { useSetProjectStatus, useDeleteProject } from "../api/hooks";
+import { useSetProjectStatus, useDeleteProject, useSetProjectTemplate } from "../api/hooks";
 import { usePinnedProjects } from "../atoms/pins";
 import { formatProjectDateRange, statusToProto } from "../api/mappers";
 import { ProjectStatusBadge } from "./project-status-badge";
 import { TransferOwnershipDialog } from "./transfer-ownership-dialog";
+import { CreateProjectDialog } from "./create-project-dialog";
 
 export function ProjectDetailHeader({ project }: { project: Project }) {
   const navigate = useNavigate();
@@ -23,6 +24,7 @@ export function ProjectDetailHeader({ project }: { project: Project }) {
   const ownerMap = useUserMap();
   const setStatus = useSetProjectStatus();
   const del = useDeleteProject();
+  const setTemplate = useSetProjectTemplate();
   const [transferOpen, setTransferOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const pins = usePinnedProjects();
@@ -37,6 +39,22 @@ export function ProjectDetailHeader({ project }: { project: Project }) {
     setStatus.mutate(
       { id: project.id, status: statusToProto(status) },
       { onError: (err) => toast.error(err.message || "Failed to set status") },
+    );
+  }
+
+  function toggleTemplate() {
+    const on = !project.isTemplate;
+    setTemplate.mutate(
+      { id: project.id, isTemplate: on },
+      {
+        onSuccess: () =>
+          toast.success(
+            on
+              ? "Saved as a template. It now appears under Projects → Templates."
+              : "No longer a template.",
+          ),
+        onError: (err) => toast.error(err.message || "Failed to update"),
+      },
     );
   }
 
@@ -59,6 +77,7 @@ export function ProjectDetailHeader({ project }: { project: Project }) {
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-semibold">{project.name}</h1>
           <ProjectStatusBadge status={project.status} />
+          {project.isTemplate && <Badge variant="secondary">Template</Badge>}
         </div>
         {project.description && (
           <p className="max-w-2xl text-sm text-muted-foreground">
@@ -92,8 +111,29 @@ export function ProjectDetailHeader({ project }: { project: Project }) {
           {pinned ? "Unpin" : "Pin"}
         </Button>
 
+        <CreateProjectDialog
+          source={{ id: project.id, name: project.name }}
+          trigger={
+            <Button variant={project.isTemplate ? "default" : "outline"} size="sm">
+              <Copy className="h-4 w-4" />
+              {project.isTemplate ? "Use template" : "Duplicate"}
+            </Button>
+          }
+        />
+
         {canManage && (
           <>
+            <Button
+              variant="outline"
+              size="sm"
+              aria-pressed={project.isTemplate}
+              disabled={setTemplate.isPending}
+              onClick={toggleTemplate}
+            >
+              <LayoutTemplate className="h-4 w-4" />
+              {project.isTemplate ? "Unmark template" : "Save as template"}
+            </Button>
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">

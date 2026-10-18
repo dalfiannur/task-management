@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
+import { LayoutTemplate } from "lucide-react";
 import { format } from "date-fns";
 import { Button, Input, Skeleton, Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "sedjiwa-ui";
 import { RichTextEditor } from "@/components/shared/rich-text-editor";
@@ -21,6 +22,7 @@ import { formatMinutes, parseEstimate } from "../estimate";
 import { AssigneePicker } from "./assignee-picker";
 import { SubtaskSection } from "./subtask-section";
 import { DependencyPicker } from "./dependency-picker";
+import { SaveTemplateDialog } from "./save-template-dialog";
 
 function isoToDate(v?: string): Date | undefined {
   return v ? new Date(v) : undefined;
@@ -113,6 +115,7 @@ export function TaskDialog({
   // duplicated id would point one footer at the other dialog's form.
   const formId = useId();
 
+  const [saveTemplateOpen, setSaveTemplateOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   // "" = the project's first To Do status, which is where a new task starts.
@@ -237,6 +240,7 @@ export function TaskDialog({
   }
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       {/* Padding moves off the content box and onto each band, so the header
           and footer rules span the full width and the middle band is the only
@@ -462,6 +466,17 @@ export function TaskDialog({
             </div>
 
             <DialogFooter className="shrink-0 border-t border-border px-6 py-4">
+              {task && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="sm:mr-auto"
+                  onClick={() => setSaveTemplateOpen(true)}
+                >
+                  <LayoutTemplate className="mr-1 h-4 w-4" />
+                  Save as template
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="ghost"
@@ -481,5 +496,13 @@ export function TaskDialog({
         )}
       </DialogContent>
     </Dialog>
+    {task && (
+      <SaveTemplateDialog
+        task={task}
+        open={saveTemplateOpen}
+        onOpenChange={setSaveTemplateOpen}
+      />
+    )}
+    </>
   );
 }

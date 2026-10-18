@@ -19,13 +19,14 @@ import { ProjectCard } from "./project-card";
 import { ProjectRow, ProjectRowHeader } from "./project-row";
 import { CreateProjectDialog } from "./create-project-dialog";
 
-type Filter = ProjectStatus | "all";
+type Filter = ProjectStatus | "all" | "templates";
 
 const FILTERS: { key: Filter; label: string; statuses: ProjectStatus[] }[] = [
   { key: "active", label: "Active", statuses: ["active"] },
   { key: "completed", label: "Completed", statuses: ["completed"] },
   { key: "archived", label: "Archived", statuses: ["archived"] },
   { key: "all", label: "All", statuses: [] },
+  { key: "templates", label: "Templates", statuses: [] },
 ];
 
 const VIEWS: { key: ProjectsView; label: string; icon: typeof List }[] = [
@@ -56,6 +57,7 @@ export function ProjectList() {
     statuses,
     search,
     page,
+    templates: filter === "templates",
   });
   const ownerMap = useUserMap();
 
@@ -84,8 +86,14 @@ export function ProjectList() {
             ) : (
               <>
                 <span className="text-num">{data.total}</span>{" "}
-                {filter === "all" ? "" : `${filter} `}
-                {data.total === 1 ? "project" : "projects"}
+                {filter === "all" || filter === "templates" ? "" : `${filter} `}
+                {filter === "templates"
+                  ? data.total === 1
+                    ? "template"
+                    : "templates"
+                  : data.total === 1
+                    ? "project"
+                    : "projects"}
                 {searching && <> matching “{search.trim()}”</>}
               </>
             )}
@@ -182,6 +190,14 @@ export function ProjectList() {
                 setPage(1);
               },
             }}
+          />
+        ) : filter === "templates" ? (
+          <EmptyState
+            variant="no-results"
+            icon={FolderSearch}
+            title="No templates yet"
+            body="Mark a project as a template from its header to reuse its statuses, modules and tasks when starting new projects."
+            action={{ label: "Show active projects", onClick: () => selectFilter("active") }}
           />
         ) : filtered ? (
           <EmptyState

@@ -27,15 +27,18 @@ export interface ProjectsQuery {
   statuses: ProjectStatus[];
   search?: string;
   page: number;
+  /** List templates instead of projects. */
+  templates?: boolean;
 }
 
 /** Member-scoped, filtered, paginated list. */
-export function useProjects({ statuses, search, page }: ProjectsQuery) {
+export function useProjects({ statuses, search, page, templates = false }: ProjectsQuery) {
   const result = useQuery(ProjectService.method.listProjects, {
     status: statuses.map(statusToProto),
     search: search || undefined,
     page,
     limit: PAGE_SIZE,
+    templates,
   });
   const data: ProjectList = {
     projects: result.data?.projects.map(mapProject) ?? [],
@@ -77,6 +80,29 @@ export function useProjectMembers(projectId: string) {
 
 export function useCreateProject() {
   return useMutation(ProjectService.method.createProject, {
+    onSuccess: invalidateProjects,
+  });
+}
+
+/** Every template the caller can use, by name — for "start from". */
+export function useTemplateProjects(enabled = true) {
+  const result = useQuery(
+    ProjectService.method.listProjects,
+    { page: 1, limit: 200, templates: true },
+    { enabled },
+  );
+  const templates = useMemo(
+    () =>
+      (result.data?.projects.map(mapProject) ?? []).sort((a, b) =>
+        a.name.localeCompare(b.name),
+      ),
+    [result.data],
+  );
+  return { ...result, templates };
+}
+
+export function useSetProjectTemplate() {
+  return useMutation(ProjectService.method.setProjectTemplate, {
     onSuccess: invalidateProjects,
   });
 }

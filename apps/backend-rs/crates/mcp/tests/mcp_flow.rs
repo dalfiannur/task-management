@@ -451,10 +451,11 @@ async fn tools_list_returns_the_registry() {
     .await;
     assert_eq!(st, StatusCode::OK, "{body:?}");
     let tools = body["result"]["tools"].as_array().unwrap();
-    assert_eq!(tools.len(), 16);
+    assert_eq!(tools.len(), 17);
     let names: Vec<&str> = tools.iter().map(|t| t["name"].as_str().unwrap()).collect();
     assert!(names.contains(&"create_task"));
     assert!(names.contains(&"log_time"));
+    assert!(names.contains(&"create_project_from_template"));
     assert!(!names.contains(&"delete_task"), "delete sengaja tidak diekspos");
     for t in tools {
         assert!(t["description"].as_str().is_some_and(|d| !d.is_empty()));
@@ -2054,4 +2055,95 @@ async fn log_time_records_an_entry_and_validates_input() {
     );
     let (_, fetched) = tools_call(&router, &token, "get_task", json!({ "task_id": task_id })).await;
     assert_eq!(fetched["logged_minutes"], 90, "refused calls logged nothing");
+}
+
+#[tokio::test]
+async fn list_projects_templates_flag_splits_projects_from_templates() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    let (project_id, module_id) = seed_project_and_module(&store, &user).await;
+    let (err, t) = tools_call(&router, &token, "create_task",
+        json!({ "module_id": module_id, "title": "templated", "due_date": "2026-03-05" })).await;
+    assert!(!err, "create_task: {t}");
+
+    // list_projects: a project until marked; `templates` flips the listing.
+    let ids = |v: &Value| -> Vec<String> {
+        v["projects"].as_array().or_else(|| v.as_array()).map(|a| a.iter().filter_map(|p| p["id"].as_str().map(String::from)).collect()).unwrap_or_default()
+    };
+    let (_, plain) = tools_call(&router, &token, "list_projects", json!({ "limit": 200 })).await;
+    assert!(ids(&plain).contains(&project_id), "listed as a project: {plain}");
+    // Mark it through the real RPC (the mark has no `persistence::rows` type to seed).
+    mark_template(&store, &user, &project_id).await;
+    let (_, plain) = tools_call(&router, &token, "list_projects", json!({ "limit": 200 })).await;
+    assert!(!ids(&plain).contains(&project_id), "a template leaves the default listing: {plain}");
+    let (_, tpls) = tools_call(&router, &token, "list_projects", json!({ "limit": 200, "templates": true })).await;
+    assert!(ids(&tpls).contains(&project_id), "templates=true lists it: {tpls}");
+
+}
+
+/// Owner marks `project_id` as a template via `ProjectService/SetProjectTemplate`.
+async fn mark_template(store: &Arc<persistence::Store>, owner: &str, project_id: &str) {
+    let user = auth::verify_jwt(
+        &auth::sign_jwt("mcp-test", owner, &[], 9_999_999_999).unwrap(),
+        "mcp-test",
+    )
+    .unwrap();
+    let router = transport::project_router(store.clone()).layer(axum::Extension(user));
+    let req = Request::builder()
+        .method("POST")
+        .uri("/sedjiwa.tasks.project.v1.ProjectService/SetProjectTemplate")
+        .header(CONTENT_TYPE, "application/json")
+        .body(Body::from(json!({ "id": project_id, "isTemplate": true }).to_string()))
+        .unwrap();
+    let resp = router.oneshot(req).await.unwrap();
+    let status = resp.status();
+    let body = to_bytes(resp.into_body(), usize::MAX).await.unwrap();
+    assert_eq!(status, StatusCode::OK, "SetProjectTemplate: {}", String::from_utf8_lossy(&body));
+}
+
+#[tokio::test]
+async fn create_project_from_template_copies_and_respects_membership() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    let (project_id, module_id) = seed_project_and_module(&store, &user).await;
+    let (err, t) = tools_call(&router, &token, "create_task",
+        json!({ "module_id": module_id, "title": "templated", "due_date": "2026-03-05" })).await;
+    assert!(!err, "create_task: {t}");
+    mark_template(&store, &user, &project_id).await;
+
+    let (_, raw) = rpc(&router, Some(&token),
+        json!({ "jsonrpc": "2.0", "id": 49, "method": "tools/call",
+                "params": { "name": "create_project_from_template",
+                            "arguments": { "source_project_id": project_id, "name": "From MCP", "start_date": "2026-11-02" } } })).await;
+    assert_eq!(raw["result"]["isError"], false, "create_project_from_template: {raw}");
+    let copy: Value = serde_json::from_str(raw["result"]["content"][0]["text"].as_str().unwrap()).unwrap();
+    assert_eq!(copy["name"], "From MCP");
+    assert_eq!(copy["start_date"], "2026-11-02");
+    let new_id = copy["id"].as_str().unwrap().to_string();
+    assert_ne!(new_id, project_id);
+    let (_, tasks) = tools_call(&router, &token, "list_tasks", json!({ "project_id": new_id })).await;
+    let list = tasks["tasks"].as_array().or_else(|| tasks.as_array()).cloned().unwrap_or_default();
+    assert_eq!(list.len(), 1, "the task came along: {tasks}");
+    assert_eq!(list[0]["title"], "templated");
+    assert_eq!(list[0]["due_date"], "2026-11-02", "dates shifted to the new start");
+
+    // Malformed vs refused.
+    let (_, body) = rpc(&router, Some(&token),
+        json!({ "jsonrpc": "2.0", "id": 50, "method": "tools/call",
+                "params": { "name": "create_project_from_template", "arguments": { "name": "x" } } })).await;
+    assert_eq!(body["error"]["code"], -32602, "a missing source is invalid params: {body:?}");
+    let outsider = seed_active_user(&store).await;
+    let outsider_token = issue_token(&store, &outsider).await;
+    assert!(
+        tools_call_refused(&router, &outsider_token, "create_project_from_template",
+            json!({ "source_project_id": project_id, "name": "steal" })).await,
+        "a non-member cannot copy"
+    );
+    assert!(
+        tools_call_refused(&router, &token, "create_project_from_template",
+            json!({ "source_project_id": project_id, "name": "x", "start_date": "2026-13-01" })).await,
+        "a bad start_date is refused"
+    );
 }

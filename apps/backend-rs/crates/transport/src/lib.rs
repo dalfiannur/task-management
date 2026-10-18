@@ -27,6 +27,7 @@ mod pages;
 mod projects;
 mod reports;
 mod search;
+mod templates;
 mod timelog;
 mod tokens;
 mod users;
@@ -48,6 +49,7 @@ pub use tokens::token_router;
 pub use users::{auth_router, user_router, JwtConfig};
 pub use timelog::time_router;
 pub use workload::workload_router;
+pub use templates::template_router;
 pub use views::view_router;
 pub use work::{module_router, status_router, task_router};
 

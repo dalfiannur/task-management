@@ -4,7 +4,7 @@
 
 use serde_json::{json, Value};
 use transport::api::{
-    create_module_core, delete_module_core, get_project_core, list_modules_core,
+    create_module_core, create_project_core, delete_module_core, get_project_core, list_modules_core,
     list_projects_core, module_task_count, project_pb, update_module_core, work_pb,
 };
 
@@ -27,12 +27,14 @@ pub const LIST_PROJECTS: ToolMeta = ToolMeta {
     name: "list_projects",
     description: "List projects the caller is a member of (admins see all). \
                   Call this first when you don't know a project id yet — its \
-                  results feed list_modules and list_tasks.",
+                  results feed list_modules and list_tasks. Pass \
+                  templates=true to list project templates instead.",
     schema: || {
         json!({
             "type": "object",
             "properties": {
-                "limit": { "type": "integer", "minimum": 1, "maximum": 200 }
+                "limit": { "type": "integer", "minimum": 1, "maximum": 200 },
+                "templates": { "type": "boolean" }
             }
         })
     },
@@ -50,6 +52,7 @@ pub async fn list_projects(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> 
         search: None,
         page: 1,
         limit: limit_arg(args)? as u32,
+        templates: args.get("templates").and_then(Value::as_bool).unwrap_or(false),
     };
     let resp = list_projects_core(&ctx.store, &ctx.auth, req).await?;
     let rows: Vec<Value> = resp
@@ -261,4 +264,45 @@ pub async fn delete_module(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> 
     let req = work_pb::DeleteModuleRequest { id: module_id };
     let resp = delete_module_core(&ctx.store, &ctx.auth, req).await?;
     Ok(json!({ "ok": resp.ok }))
+}
+
+pub const CREATE_PROJECT_FROM_TEMPLATE: ToolMeta = ToolMeta {
+    name: "create_project_from_template",
+    description: "Create a project as a copy of another (usually a template \
+                  from list_projects templates=true): its statuses, labels, \
+                  modules and tasks with subtasks, estimates and dependencies. \
+                  Assignees, comments and time are not copied. With \
+                  start_date (yyyy-MM-dd) every date moves so the copy starts \
+                  then. The caller becomes the owner.",
+    schema: || {
+        json!({
+            "type": "object",
+            "properties": {
+                "source_project_id": { "type": "string" },
+                "name": { "type": "string" },
+                "description": { "type": "string" },
+                "start_date": { "type": "string" }
+            },
+            "required": ["source_project_id", "name"]
+        })
+    },
+    handler: |ctx, args| Box::pin(create_project_from_template(ctx, args)),
+};
+
+pub async fn create_project_from_template(ctx: &Ctx, args: &Value) -> Result<Value, ToolError> {
+    let req = project_pb::CreateProjectRequest {
+        name: str_arg(args, "name")?,
+        description: opt_str(args, "description"),
+        owner_id: None,
+        from_project_id: Some(str_arg(args, "source_project_id")?),
+        start_date: opt_str(args, "start_date"),
+    };
+    let p = create_project_core(&ctx.store, &ctx.auth, req).await?;
+    Ok(json!({
+        "id": p.id,
+        "name": p.name,
+        "status": status_label(p.status),
+        "start_date": p.start_date,
+        "end_date": p.end_date,
+    }))
 }

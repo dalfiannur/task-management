@@ -12,6 +12,8 @@ service ProjectService {
   rpc SetProjectStatus(SetProjectStatusRequest) returns (Project);
   rpc TransferProjectOwnership(TransferProjectOwnershipRequest) returns (Project);
   rpc DeleteProject(DeleteProjectRequest) returns (DeleteProjectResponse);
+  // Owner/admin: mark or unmark the project as a template.
+  rpc SetProjectTemplate(SetProjectTemplateRequest) returns (Project);
 
   // Members tab.
   rpc ListProjectMembers(ListProjectMembersRequest) returns (ListProjectMembersResponse);
@@ -47,6 +49,14 @@ message CreateProjectRequest {
   string name = 1;
   optional string description = 2;
   optional string owner_id = 3; // empty → owner = caller
+  // Copy another project's workflow statuses, labels, modules, tasks (with
+  // subtasks, estimates and dependencies) and working days. Not copied:
+  // assignees, comments, time, media, pages. Tasks start in the first To Do
+  // status; cancelled ones are skipped. The caller must be a member of it.
+  optional string from_project_id = 4;
+  // With `from_project_id`: the new project's start. Every copied date moves
+  // by (start_date − the source's start, or its earliest task date).
+  optional string start_date = 5;
 }
 
 message ListProjectsRequest {
@@ -54,6 +64,8 @@ message ListProjectsRequest {
   optional string search = 2;
   uint32 page = 3;   // 1-based; 0/absent → 1
   uint32 limit = 4;  // default 12
+  // false/absent: projects only. true: templates only.
+  bool templates = 5;
 }
 message ListProjectsResponse {
   repeated Project projects = 1;
@@ -72,6 +84,10 @@ message TransferProjectOwnershipRequest {
 }
 message DeleteProjectRequest { string id = 1; }
 message DeleteProjectResponse { bool ok = 1; }
+message SetProjectTemplateRequest {
+  string id = 1;
+  bool is_template = 2;
+}
 
 message Project {
   string id = 1;
@@ -84,6 +100,7 @@ message Project {
   // Task progress. Set by ListProjects only; absent elsewhere. Same rules as
   // the dashboard's ProjectProgress: cancelled tasks count nowhere.
   optional TaskCounts tasks = 8;
+  bool is_template = 9;
 }
 
 message TaskCounts {

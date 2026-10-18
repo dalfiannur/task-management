@@ -17,6 +17,7 @@ use time::OffsetDateTime;
 
 use super::record::{self as wl, CalendarRow, OpenTask};
 use crate::projects::record::{load_all_projects, load_project, member_project_ids};
+use crate::templates::record::template_project_ids;
 use crate::sedjiwa::tasks::workload::v1 as pb;
 use crate::sedjiwa::tasks::workload::v1::workload_service_connect::WorkloadServiceBuilder;
 use crate::work::{internal, parse_pid, require_auth, require_member, require_owner_or_admin, StoreExt};
@@ -234,6 +235,9 @@ pub async fn workload_core(
             .collect(),
         None => member_project_ids(store, &auth.id).await.map_err(internal)?,
     };
+    // Templates are blueprints, not work anyone is doing.
+    let templates = template_project_ids(store).await.map_err(internal)?;
+    let projects: Vec<String> = projects.into_iter().filter(|p| !templates.contains(p)).collect();
 
     let tasks = wl::open_tasks(store, &projects).await.map_err(internal)?;
     let mut user_ids = wl::members_of(store, &projects).await.map_err(internal)?;
