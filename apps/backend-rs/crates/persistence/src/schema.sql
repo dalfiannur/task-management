@@ -541,3 +541,12 @@ CREATE INDEX IF NOT EXISTS idx_cmp_activitytask_task_id ON cmp_activitytask USIN
 -- "Tasks assigned to these people" (workload's other-projects load, My
 -- tasks, assignee filters) without scanning every task.
 CREATE INDEX IF NOT EXISTS idx_cmp_taskassignees_user_ids ON cmp_taskassignees USING gin (user_ids);
+
+-- A project moved to the trash: hidden from every read as if it did not
+-- exist, restorable by an admin, removed for good only when an admin purges
+-- it. Absent = live.
+CREATE TABLE IF NOT EXISTS cmp_projectdeleted (
+    pid BIGINT PRIMARY KEY REFERENCES arke_entities(pid) ON DELETE CASCADE,
+    deleted_at TEXT NOT NULL,
+    deleted_by TEXT NOT NULL
+);

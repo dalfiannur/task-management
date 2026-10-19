@@ -477,16 +477,19 @@ async fn calendars_inherit_and_shape_capacity() {
     assert_eq!(cal["workingDays"], Value::Null);
     assert_eq!(cal["effectiveDays"], json!([1, 2, 3, 4, 5]));
 
-    // Deleting the project removes its calendar row.
+    // Trashing the project hides its calendar and keeps the row for a restore
+    // (the purge, which removes it with the project entity, is in trash_flow).
     let project_pid: i64 = pid.parse().unwrap();
     ok(&router, &set_cal, &to, json!({ "scope": "CALENDAR_SCOPE_PROJECT", "id": pid, "workingDays": [2] })).await;
     ok(&router, &format!("{PROJECT}/DeleteProject"), &to, json!({ "id": pid })).await;
+    fails(&router, &get_cal, &to, json!({ "scope": "CALENDAR_SCOPE_PROJECT", "id": pid }), "not_found").await;
+    fails(&router, &set_cal, &to, json!({ "scope": "CALENDAR_SCOPE_PROJECT", "id": pid, "workingDays": [3] }), "not_found").await;
     let left: i64 = sqlx::query_scalar("SELECT count(*) FROM cmp_workcalendar WHERE pid = $1")
         .bind(project_pid)
         .fetch_one(store.pool())
         .await
         .unwrap();
-    assert_eq!(left, 0, "a deleted project's calendar goes with it");
+    assert_eq!(left, 1, "a trashed project's calendar row is kept for a restore");
 }
 
 #[tokio::test]

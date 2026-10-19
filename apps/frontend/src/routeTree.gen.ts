@@ -18,6 +18,7 @@ import { Route as AuthedDashboardRouteImport } from './routes/_authed/dashboard'
 import { Route as AuthedMyTasksRouteImport } from './routes/_authed/my-tasks'
 import { Route as AuthedReportsRouteImport } from './routes/_authed/reports'
 import { Route as AuthedWorkloadRouteImport } from './routes/_authed/workload'
+import { Route as AuthedAdminTrashRouteImport } from './routes/_authed/admin/trash'
 import { Route as AuthedAdminUsersRouteImport } from './routes/_authed/admin/users'
 import { Route as AuthedProjectsIndexRouteImport } from './routes/_authed/projects/index'
 import { Route as AuthedProjectsProjectIdRouteImport } from './routes/_authed/projects/$projectId'
@@ -73,6 +74,11 @@ const AuthedReportsRoute = AuthedReportsRouteImport.update({
 const AuthedWorkloadRoute = AuthedWorkloadRouteImport.update({
   id: '/workload',
   path: '/workload',
+  getParentRoute: () => AuthedRoute,
+} as any)
+const AuthedAdminTrashRoute = AuthedAdminTrashRouteImport.update({
+  id: '/admin/trash',
+  path: '/admin/trash',
   getParentRoute: () => AuthedRoute,
 } as any)
 const AuthedAdminUsersRoute = AuthedAdminUsersRouteImport.update({
@@ -153,6 +159,7 @@ export interface FileRoutesByFullPath {
   '/my-tasks': typeof AuthedMyTasksRoute
   '/reports': typeof AuthedReportsRoute
   '/workload': typeof AuthedWorkloadRoute
+  '/admin/trash': typeof AuthedAdminTrashRoute
   '/admin/users': typeof AuthedAdminUsersRoute
   '/projects/$projectId': typeof AuthedProjectsProjectIdRouteWithChildren
   '/settings/tokens': typeof AuthedSettingsTokensRoute
@@ -175,6 +182,7 @@ export interface FileRoutesByTo {
   '/my-tasks': typeof AuthedMyTasksRoute
   '/reports': typeof AuthedReportsRoute
   '/workload': typeof AuthedWorkloadRoute
+  '/admin/trash': typeof AuthedAdminTrashRoute
   '/admin/users': typeof AuthedAdminUsersRoute
   '/settings/tokens': typeof AuthedSettingsTokensRoute
   '/projects': typeof AuthedProjectsIndexRoute
@@ -198,6 +206,7 @@ export interface FileRoutesById {
   '/_authed/my-tasks': typeof AuthedMyTasksRoute
   '/_authed/reports': typeof AuthedReportsRoute
   '/_authed/workload': typeof AuthedWorkloadRoute
+  '/_authed/admin/trash': typeof AuthedAdminTrashRoute
   '/_authed/admin/users': typeof AuthedAdminUsersRoute
   '/_authed/projects/$projectId': typeof AuthedProjectsProjectIdRouteWithChildren
   '/_authed/settings/tokens': typeof AuthedSettingsTokensRoute
@@ -222,6 +231,7 @@ export interface FileRouteTypes {
     | '/my-tasks'
     | '/reports'
     | '/workload'
+    | '/admin/trash'
     | '/admin/users'
     | '/projects/$projectId'
     | '/settings/tokens'
@@ -244,6 +254,7 @@ export interface FileRouteTypes {
     | '/my-tasks'
     | '/reports'
     | '/workload'
+    | '/admin/trash'
     | '/admin/users'
     | '/settings/tokens'
     | '/projects'
@@ -266,6 +277,7 @@ export interface FileRouteTypes {
     | '/_authed/my-tasks'
     | '/_authed/reports'
     | '/_authed/workload'
+    | '/_authed/admin/trash'
     | '/_authed/admin/users'
     | '/_authed/projects/$projectId'
     | '/_authed/settings/tokens'
@@ -351,6 +363,13 @@ declare module '@tanstack/react-router' {
       path: '/workload'
       fullPath: '/workload'
       preLoaderRoute: typeof AuthedWorkloadRouteImport
+      parentRoute: typeof AuthedRoute
+    }
+    '/_authed/admin/trash': {
+      id: '/_authed/admin/trash'
+      path: '/admin/trash'
+      fullPath: '/admin/trash'
+      preLoaderRoute: typeof AuthedAdminTrashRouteImport
       parentRoute: typeof AuthedRoute
     }
     '/_authed/admin/users': {
@@ -474,6 +493,7 @@ interface AuthedRouteChildren {
   AuthedMyTasksRoute: typeof AuthedMyTasksRoute
   AuthedReportsRoute: typeof AuthedReportsRoute
   AuthedWorkloadRoute: typeof AuthedWorkloadRoute
+  AuthedAdminTrashRoute: typeof AuthedAdminTrashRoute
   AuthedAdminUsersRoute: typeof AuthedAdminUsersRoute
   AuthedProjectsProjectIdRoute: typeof AuthedProjectsProjectIdRouteWithChildren
   AuthedSettingsTokensRoute: typeof AuthedSettingsTokensRoute
@@ -485,6 +505,7 @@ const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedMyTasksRoute: AuthedMyTasksRoute,
   AuthedReportsRoute: AuthedReportsRoute,
   AuthedWorkloadRoute: AuthedWorkloadRoute,
+  AuthedAdminTrashRoute: AuthedAdminTrashRoute,
   AuthedAdminUsersRoute: AuthedAdminUsersRoute,
   AuthedProjectsProjectIdRoute: AuthedProjectsProjectIdRouteWithChildren,
   AuthedSettingsTokensRoute: AuthedSettingsTokensRoute,

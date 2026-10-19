@@ -347,12 +347,13 @@ async fn authority_status_transfer_delete() {
     .await;
     assert_ne!(st, StatusCode::OK, "former owner loses authority");
 
-    // New owner B deletes → project gone, memberships cleared.
+    // New owner B deletes → the project goes to the trash: gone for everyone,
+    // memberships kept until an admin purges it (trash_flow covers the purge).
     let (st, _) = call(&router, "DeleteProject", Some(&user_token(&b)), json!({ "id": id })).await;
     assert_eq!(st, StatusCode::OK);
     let (st, _) = call(&router, "GetProject", Some(&admin_token(&format!("adm{}", uniq()))), json!({ "id": id })).await;
-    assert_ne!(st, StatusCode::OK, "deleted project is gone");
-    assert!(members(&store, &id).await.is_empty(), "memberships cleared");
+    assert_ne!(st, StatusCode::OK, "a trashed project is gone, even for an admin");
+    assert!(!members(&store, &id).await.is_empty(), "memberships are kept while it is in the trash");
 }
 
 #[tokio::test]
@@ -445,7 +446,7 @@ async fn create_for_another_owner_then_delete_clears_memberships() {
 
     let (st, _) = call(&router, "DeleteProject", Some(&user_token(&b)), json!({ "id": id })).await;
     assert_eq!(st, StatusCode::OK, "owner deletes");
-    assert!(members(&store, &id).await.is_empty(), "memberships deleted");
+    assert_eq!(members(&store, &id).await, both, "memberships are kept while it is in the trash");
     let (st, _) = call(&router, "GetProject", Some(&admin_token(&a)), json!({ "id": id })).await;
-    assert_eq!(st, StatusCode::NOT_FOUND);
+    assert_eq!(st, StatusCode::NOT_FOUND, "but the project is gone");
 }

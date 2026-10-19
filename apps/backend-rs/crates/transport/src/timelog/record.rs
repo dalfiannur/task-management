@@ -304,14 +304,3 @@ pub(crate) async fn delete_entries_for_tasks(conn: &mut PgConnection, task_ids: 
     Ok(())
 }
 
-/// Remove every time entry of `project_id`, inside the caller's transaction.
-pub(crate) async fn delete_entries_for_project(conn: &mut PgConnection, project_id: &str) -> sqlx::Result<()> {
-    sqlx::query(
-        "DELETE FROM arke_entities WHERE pid IN \
-         (SELECT pid FROM cmp_timeentry WHERE project_id = $1)",
-    )
-    .bind(project_id)
-    .execute(conn)
-    .await?;
-    Ok(())
-}

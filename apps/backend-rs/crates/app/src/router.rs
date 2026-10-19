@@ -55,6 +55,7 @@ pub fn build_router(
         .merge(transport::page_router(store.clone()))
         .merge(transport::label_router(store.clone()))
         .merge(transport::comment_router(store.clone()))
+        .merge(transport::trash_router(store.clone(), media_storage.clone()))
         .merge(transport::media_router(store.clone(), media_storage))
         .merge(transport::activity_router(store.clone()))
         .merge(transport::dashboard_router(store.clone()))

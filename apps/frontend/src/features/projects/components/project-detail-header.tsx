@@ -58,17 +58,18 @@ export function ProjectDetailHeader({ project }: { project: Project }) {
     );
   }
 
-  function onDelete() {
-    del.mutate(
-      { id: project.id },
-      {
-        onSuccess: () => {
-          toast.success("Project deleted.");
-          navigate({ to: "/projects" });
-        },
-        onError: (err) => toast.error(err.message || "Delete failed"),
-      },
-    );
+  // Awaited rather than per-call callbacks: the hook's invalidation refetches
+  // this (now trashed) project first, which unmounts the header, and React
+  // Query skips per-call callbacks of an unmounted observer.
+  async function onDelete() {
+    try {
+      await del.mutateAsync({ id: project.id });
+    } catch (err) {
+      toast.error((err as Error).message || "Delete failed");
+      return;
+    }
+    toast.success("Project moved to the trash.");
+    navigate({ to: "/projects" });
   }
 
   return (
@@ -171,7 +172,7 @@ export function ProjectDetailHeader({ project }: { project: Project }) {
 
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" aria-label="Delete project" title="Delete project">
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </AlertDialogTrigger>
@@ -179,13 +180,18 @@ export function ProjectDetailHeader({ project }: { project: Project }) {
                 <AlertDialogHeader>
                   <AlertDialogTitle>Delete this project?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This permanently removes “{project.name}” and its memberships.
-                    This cannot be undone.
+                    “{project.name}” moves to the trash and disappears for everyone,
+                    with all its tasks, pages and files kept. An admin can restore it
+                    or delete it for good.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={onDelete}>Delete</AlertDialogAction>
+                  <AlertDialogAction asChild>
+                    <Button variant="destructive" onClick={onDelete}>
+                      Move to trash
+                    </Button>
+                  </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>

@@ -11,7 +11,7 @@ use domain::task::TaskStatus;
 use domain::template::{shift_date, TemplateSubtask};
 use persistence::{entity, Store};
 use sqlx::postgres::PgRow;
-use sqlx::{PgConnection, Row};
+use sqlx::Row;
 
 use crate::projects::record::create_project_on;
 
@@ -503,16 +503,3 @@ pub(crate) async fn template_project_ids(store: &Store) -> anyhow::Result<HashSe
         .collect())
 }
 
-/// Remove `project_id`'s task templates, inside the caller's delete
-/// transaction (they are keyed by a text project id, so no cascade reaches
-/// them).
-pub(crate) async fn delete_templates_for_project(conn: &mut PgConnection, project_id: &str) -> sqlx::Result<()> {
-    sqlx::query(
-        "DELETE FROM arke_entities WHERE pid IN \
-         (SELECT pid FROM cmp_tasktemplate WHERE project_id = $1)",
-    )
-    .bind(project_id)
-    .execute(conn)
-    .await?;
-    Ok(())
-}

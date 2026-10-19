@@ -149,6 +149,7 @@ pub(crate) async fn open_tasks_elsewhere(
     let rows = sqlx::query(&format!(
         "{OPEN_TASKS} WHERE a.user_ids ?| $1::text[] AND NOT (mp.project_id = ANY($2)) \
          AND EXISTS (SELECT 1 FROM cmp_projectname pn WHERE pn.pid::text = mp.project_id) \
+         AND NOT EXISTS (SELECT 1 FROM cmp_projectdeleted d WHERE d.pid::text = mp.project_id) \
          AND {OPEN_TASK_RULES} {OPEN_TASK_ORDER}"
     ))
     .bind(people)

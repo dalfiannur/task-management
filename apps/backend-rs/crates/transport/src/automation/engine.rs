@@ -546,7 +546,9 @@ pub async fn run_scheduled(store: &Store, notifier: Option<&Arc<Notifier>>, toda
     let templates = template_project_ids(store).await?;
     let mut count = 0;
     for rule in &rules {
-        if templates.iter().any(|p| p == &rule.project_id) {
+        if templates.iter().any(|p| p == &rule.project_id)
+            || crate::projects::record::is_trashed(store, &rule.project_id).await?
+        {
             continue;
         }
         let (from, to) = match rule.trigger {

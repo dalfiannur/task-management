@@ -37,7 +37,8 @@ const SELECT_PROJECT: &str = "\
     JOIN cmp_projectstatuscomponent s ON s.pid = n.pid \
     LEFT JOIN cmp_projectdescription d ON d.pid = n.pid \
     LEFT JOIN cmp_projectdates dt ON dt.pid = n.pid \
-    LEFT JOIN cmp_projecttemplatemark tm ON tm.pid = n.pid";
+    LEFT JOIN cmp_projecttemplatemark tm ON tm.pid = n.pid \
+    LEFT JOIN cmp_projectdeleted del ON del.pid = n.pid";
 
 /// `None` for a stored status this build does not know.
 fn read_project(row: &PgRow) -> sqlx::Result<Option<ProjectRecord>> {
@@ -74,7 +75,7 @@ pub(crate) fn to_proto(p: &ProjectRecord) -> pb::Project {
 // ── Reads ────────────────────────────────────────────────────────────────────
 
 pub(crate) async fn load_project(store: &Store, pid: i64) -> anyhow::Result<Option<ProjectRecord>> {
-    let row = sqlx::query(&format!("{SELECT_PROJECT} WHERE n.pid = $1"))
+    let row = sqlx::query(&format!("{SELECT_PROJECT} WHERE n.pid = $1 AND del.pid IS NULL"))
         .bind(pid)
         .fetch_optional(store.pool())
         .await?;
@@ -86,7 +87,7 @@ pub(crate) async fn load_project(store: &Store, pid: i64) -> anyhow::Result<Opti
 
 /// Every project, oldest first.
 pub(crate) async fn load_all_projects(store: &Store) -> anyhow::Result<Vec<ProjectRecord>> {
-    let rows = sqlx::query(&format!("{SELECT_PROJECT} ORDER BY n.pid"))
+    let rows = sqlx::query(&format!("{SELECT_PROJECT} WHERE del.pid IS NULL ORDER BY n.pid"))
         .fetch_all(store.pool())
         .await?;
     let mut out = Vec::with_capacity(rows.len());
@@ -120,13 +121,16 @@ async fn is_member_on(
     .await
 }
 
-/// Project ids `user_id` is a member of.
+/// Live project ids `user_id` is a member of (trashed projects left out).
 pub(crate) async fn member_project_ids(
     store: &Store,
     user_id: &str,
 ) -> anyhow::Result<Vec<String>> {
     Ok(sqlx::query_scalar(
-        "SELECT project_id FROM cmp_projectmembership WHERE user_id = $1 ORDER BY pid",
+        "SELECT m.project_id FROM cmp_projectmembership m \
+         WHERE m.user_id = $1 \
+           AND NOT EXISTS (SELECT 1 FROM cmp_projectdeleted d WHERE d.pid::text = m.project_id) \
+         ORDER BY m.pid",
     )
     .bind(user_id)
     .fetch_all(store.pool())
@@ -309,20 +313,110 @@ pub(crate) async fn remove_member(
     Ok(removed.rows_affected() > 0)
 }
 
-/// Delete the project entity and every membership of it. Modules, tasks and the
-/// rest are the other flows' cascade, as before.
-pub(crate) async fn delete_project(store: &Store, pid: i64) -> anyhow::Result<()> {
-    let mut tx = store.pool().begin().await?;
-    sqlx::query(
-        "DELETE FROM arke_entities WHERE pid IN \
-         (SELECT pid FROM cmp_projectmembership WHERE project_id = $1)",
+// ── Trash ────────────────────────────────────────────────────────────────────
+//
+// `load_project`, `load_all_projects` and `member_project_ids` see live
+// projects only, so every read built on them (dashboards, reports, search,
+// workload, My tasks) drops a trashed project; `require_live` makes the
+// per-request member checks answer `not_found` for it, admins included.
+
+/// Every live project id (trashed ones left out) — the admin's scope.
+pub(crate) async fn live_project_ids(store: &Store) -> anyhow::Result<Vec<String>> {
+    Ok(load_all_projects(store).await?.iter().map(|p| p.pid.to_string()).collect())
+}
+
+/// Whether `project_id` is in the trash.
+pub(crate) async fn is_trashed(store: &Store, project_id: &str) -> anyhow::Result<bool> {
+    Ok(sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM cmp_projectdeleted WHERE pid::text = $1)",
     )
-    .bind(pid.to_string())
-    .execute(&mut *tx)
-    .await?;
-    crate::timelog::record::delete_entries_for_project(&mut tx, &pid.to_string()).await?;
-    crate::templates::record::delete_templates_for_project(&mut tx, &pid.to_string()).await?;
-    entity::delete(&mut tx, pid).await?;
+    .bind(project_id)
+    .fetch_one(store.pool())
+    .await?)
+}
+
+/// `not_found` for a trashed project: it does not exist for anyone until an
+/// admin restores it.
+pub(crate) async fn require_live(
+    store: &Store,
+    project_id: &str,
+) -> Result<(), connectrpc_axum::ConnectError> {
+    match is_trashed(store, project_id).await {
+        Ok(false) => Ok(()),
+        Ok(true) => Err(connectrpc_axum::ConnectError::new_not_found("project not found")),
+        Err(e) => Err(crate::work::internal(e)),
+    }
+}
+
+/// Move a project to the trash. Nothing else changes, so a restore brings
+/// everything back exactly.
+pub(crate) async fn trash_project(store: &Store, pid: i64, by: &str, now: &str) -> anyhow::Result<()> {
+    let mut tx = store.pool().begin().await?;
+    if entity::touch(&mut tx, pid).await? {
+        sqlx::query(
+            "INSERT INTO cmp_projectdeleted (pid, deleted_at, deleted_by) VALUES ($1, $2, $3) \
+             ON CONFLICT (pid) DO NOTHING",
+        )
+        .bind(pid)
+        .bind(now)
+        .bind(by)
+        .execute(&mut *tx)
+        .await?;
+    }
     tx.commit().await?;
     Ok(())
 }
+
+pub(crate) async fn restore_project(store: &Store, pid: i64) -> anyhow::Result<()> {
+    let mut tx = store.pool().begin().await?;
+    if entity::touch(&mut tx, pid).await? {
+        sqlx::query("DELETE FROM cmp_projectdeleted WHERE pid = $1")
+            .bind(pid)
+            .execute(&mut *tx)
+            .await?;
+    }
+    tx.commit().await?;
+    Ok(())
+}
+
+/// A trashed project with when and by whom.
+#[derive(Debug, Clone)]
+pub(crate) struct TrashedProject {
+    pub project: ProjectRecord,
+    pub deleted_at: String,
+    pub deleted_by: String,
+}
+
+/// Every trashed project, most recently deleted first.
+pub(crate) async fn trashed_projects(store: &Store) -> anyhow::Result<Vec<TrashedProject>> {
+    let rows = sqlx::query(&format!(
+        "{SELECT_PROJECT} WHERE del.pid IS NOT NULL ORDER BY del.deleted_at DESC, n.pid DESC"
+    ))
+    .fetch_all(store.pool())
+    .await?;
+    let mut out = Vec::with_capacity(rows.len());
+    for row in &rows {
+        let Some(project) = read_project(row)? else { continue };
+        let (deleted_at, deleted_by): (String, String) = sqlx::query_as(
+            "SELECT deleted_at, deleted_by FROM cmp_projectdeleted WHERE pid = $1",
+        )
+        .bind(project.pid)
+        .fetch_one(store.pool())
+        .await?;
+        out.push(TrashedProject { project, deleted_at, deleted_by });
+    }
+    Ok(out)
+}
+
+/// A trashed project for the trash flows (a live one reads as `None`).
+pub(crate) async fn load_trashed(store: &Store, pid: i64) -> anyhow::Result<Option<ProjectRecord>> {
+    let row = sqlx::query(&format!("{SELECT_PROJECT} WHERE n.pid = $1 AND del.pid IS NOT NULL"))
+        .bind(pid)
+        .fetch_optional(store.pool())
+        .await?;
+    Ok(match row {
+        Some(row) => read_project(&row)?,
+        None => None,
+    })
+}
+

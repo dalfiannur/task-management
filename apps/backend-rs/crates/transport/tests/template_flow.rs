@@ -697,7 +697,7 @@ async fn task_templates_are_deleted_by_author_owner_or_admin() {
 }
 
 #[tokio::test]
-async fn deleting_a_project_removes_its_task_templates() {
+async fn trashing_a_project_hides_its_task_templates_until_purge() {
     let Some((router, store)) = setup().await else {
         eprintln!("skip: DATABASE_URL not set");
         return;
@@ -707,21 +707,26 @@ async fn deleting_a_project_removes_its_task_templates() {
     let pid = project_with(&router, &owner, &[]).await;
     let m = module(&router, &to, &pid, "M", None).await;
     let t = s(&task(&router, &to, &m, json!({ "title": "T" })).await, "id");
-    ok(&router, &format!("{TPL}/SaveTaskTemplate"), &to, json!({ "taskId": t, "name": "keep?" })).await;
+    let tid = s(&ok(&router, &format!("{TPL}/SaveTaskTemplate"), &to, json!({ "taskId": t, "name": "keep?" })).await, "id");
     ok(&router, &format!("{PROJECT}/SetProjectTemplate"), &to, json!({ "id": pid, "isTemplate": true })).await;
     ok(&router, &format!("{PROJECT}/DeleteProject"), &to, json!({ "id": pid })).await;
+    // In the trash: nothing of it is reachable…
+    fails(&router, &format!("{TPL}/ListTaskTemplates"), &to, json!({ "projectId": pid }), "not_found").await;
+    fails(&router, &format!("{TPL}/CreateTaskFromTemplate"), &to, json!({ "templateId": tid, "moduleId": m }), "not_found").await;
+    assert!(!list_projects(&router, &to, true).await.contains(&pid), "a trashed template is not offered as a template");
+    // …but its rows are kept for a restore (the purge is covered in trash_flow).
     let marks: i64 = sqlx::query_scalar("SELECT count(*) FROM cmp_projecttemplatemark WHERE pid = $1")
         .bind(pid.parse::<i64>().unwrap())
         .fetch_one(store.pool())
         .await
         .unwrap();
-    assert_eq!(marks, 0, "its template mark goes");
+    assert_eq!(marks, 1, "the template mark is kept while trashed");
     let left: i64 = sqlx::query_scalar("SELECT count(*) FROM cmp_tasktemplate WHERE project_id = $1")
         .bind(&pid)
         .fetch_one(store.pool())
         .await
         .unwrap();
-    assert_eq!(left, 0, "a deleted project's task templates go with it");
+    assert_eq!(left, 1, "the task template is kept while trashed");
 }
 
 #[tokio::test]

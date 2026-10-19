@@ -233,10 +233,13 @@ async fn list_time_entries(
     } else if let Some(p) = &project_id {
         require_member(&store, p, &auth).await?;
     } else if user_id.is_some() {
-        // Someone's entries across projects: only where the caller is a member.
-        if !auth.is_admin() {
-            projects = Some(member_project_ids(&store, &auth.id).await.map_err(internal)?);
-        }
+        // Someone's entries across projects: where the caller is a member
+        // (an admin: every live project — never a trashed one).
+        projects = Some(if auth.is_admin() {
+            crate::projects::record::live_project_ids(&store).await.map_err(internal)?
+        } else {
+            member_project_ids(&store, &auth.id).await.map_err(internal)?
+        });
     } else {
         return Err(ConnectError::new_invalid_argument(
             "task_id, project_id or user_id is required",

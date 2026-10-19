@@ -1,0 +1,41 @@
+syntax = "proto3";
+package sedjiwa.tasks.trash.v1;
+
+// The project trash. DeleteProject (ProjectService) moves a project here: it
+// then does not exist for any read — lists, dashboards, reports, search,
+// workload, My tasks, the project's own pages — until an admin restores it.
+// Nothing is removed until an admin purges it. Admin only.
+service ProjectTrashService {
+  rpc ListDeletedProjects(ListDeletedProjectsRequest) returns (ListDeletedProjectsResponse);
+  rpc RestoreProject(RestoreProjectRequest) returns (RestoreProjectResponse);
+  // Remove a trashed project and everything in it for good: modules, tasks,
+  // comments, pages, media (and its stored files), time, automations,
+  // activity. Cannot be undone.
+  rpc PurgeProject(PurgeProjectRequest) returns (PurgeProjectResponse);
+  // Remove, for good, data whose project no longer exists at all (left by
+  // deletes made before projects went to the trash).
+  rpc PurgeLeftovers(PurgeLeftoversRequest) returns (PurgeLeftoversResponse);
+}
+
+message DeletedProject {
+  string id = 1;
+  string name = 2;
+  string owner_id = 3;
+  string deleted_at = 4;
+  string deleted_by = 5;
+}
+
+message ListDeletedProjectsRequest {}
+message ListDeletedProjectsResponse {
+  repeated DeletedProject projects = 1; // most recently deleted first
+  int32 leftover_count = 2;             // projects' worth of leftover data
+}
+
+message RestoreProjectRequest { string id = 1; }
+message RestoreProjectResponse { bool ok = 1; }
+
+message PurgeProjectRequest { string id = 1; }
+message PurgeProjectResponse { bool ok = 1; }
+
+message PurgeLeftoversRequest {}
+message PurgeLeftoversResponse { int32 projects = 1; }

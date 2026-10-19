@@ -44,7 +44,7 @@ pub use labels::label_router;
 pub use notifications::{notification_router, Notifier};
 pub use media::media_router;
 pub use pages::page_router;
-pub use projects::project_router;
+pub use projects::{project_router, trash_router};
 pub use reports::report_router;
 pub use search::search_router;
 pub use tokens::token_router;

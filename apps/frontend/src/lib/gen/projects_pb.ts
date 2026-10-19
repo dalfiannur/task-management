@@ -562,6 +562,9 @@ export const ProjectService: GenService<{
     output: typeof ProjectSchema;
   },
   /**
+   * Owner/admin: move to the trash (see ProjectTrashService). Everything is
+   * kept; the project is hidden from every read until an admin restores it.
+   *
    * @generated from rpc sedjiwa.tasks.project.v1.ProjectService.DeleteProject
    */
   deleteProject: {

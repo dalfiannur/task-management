@@ -75,9 +75,15 @@ async fn list_recent_activity(
 ) -> Result<ConnectResponse<pb::ListActivityResponse>, ConnectError> {
     let auth = require_auth(user)?;
     let ConnectRequest(r) = req;
-    // Admin sees all; otherwise scope to the caller's member projects.
+    // Admin sees every live project; otherwise the caller's member projects.
     let projects = if auth.is_admin() {
-        None
+        Some(
+            crate::projects::record::live_project_ids(&store)
+                .await
+                .map_err(internal)?
+                .into_iter()
+                .collect(),
+        )
     } else {
         let ids: HashSet<String> = member_project_ids(&store, &auth.id)
             .await

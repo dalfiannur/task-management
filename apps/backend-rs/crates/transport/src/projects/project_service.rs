@@ -21,7 +21,7 @@ use crate::dashboard::context::Tally;
 use crate::work::record::load_all_modules;
 use crate::work::task_record::load_all_tasks;
 use crate::notifications::{emit, NotifRefs, Notifier};
-use crate::search::{deindex_project, index, project_doc, task_doc};
+use crate::search::{index, project_doc, task_doc};
 use crate::templates::record::{copy_project, earliest_task_date, NewCopy};
 use domain::template::day_shift;
 use domain::activity::{ActivityAction, EntityType};
@@ -383,10 +383,11 @@ async fn delete_project(
     let pid = parse_pid(&r.id)?;
     let p = require_project(&store, pid).await?;
     require_owner_or_admin(&auth, &p)?;
-    project_record::delete_project(&store, pid)
+    // To the trash: hidden everywhere, restorable by an admin, removed for
+    // good only by an admin's purge (ProjectTrashService).
+    project_record::trash_project(&store, pid, &auth.id, &crate::timelog::record::now_iso())
         .await
         .map_err(internal)?;
-    deindex_project(&store, &pid.to_string()).await;
     Ok(ConnectResponse::new(pb::DeleteProjectResponse { ok: true }))
 }
 

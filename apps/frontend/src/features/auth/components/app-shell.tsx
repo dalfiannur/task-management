@@ -19,6 +19,7 @@ import {
   Plus,
   Search,
   ShieldCheck,
+  Trash2,
   X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -99,6 +100,7 @@ const MAIN_NAV: NavItem[] = [
 // server refuses the RPCs regardless.
 const ADMIN_NAV: NavItem[] = [
   { to: "/admin/users", label: "Users", icon: ShieldCheck },
+  { to: "/admin/trash", label: "Trash", icon: Trash2 },
 ];
 
 // Access tokens lives in the user menu, not the nav, but still needs a

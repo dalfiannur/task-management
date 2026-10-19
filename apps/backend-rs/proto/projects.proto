@@ -11,6 +11,8 @@ service ProjectService {
   // Owner/admin authority actions surfaced by the detail shell.
   rpc SetProjectStatus(SetProjectStatusRequest) returns (Project);
   rpc TransferProjectOwnership(TransferProjectOwnershipRequest) returns (Project);
+  // Owner/admin: move to the trash (see ProjectTrashService). Everything is
+  // kept; the project is hidden from every read until an admin restores it.
   rpc DeleteProject(DeleteProjectRequest) returns (DeleteProjectResponse);
   // Owner/admin: mark or unmark the project as a template.
   rpc SetProjectTemplate(SetProjectTemplateRequest) returns (Project);

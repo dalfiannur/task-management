@@ -600,16 +600,21 @@ async fn deleting_a_task_or_project_leaves_no_time_entries_behind() {
     let running = ok(&router, &format!("{TIME}/GetRunningTimer"), &to, json!({})).await;
     assert!(running["entry"].is_null(), "the subtask's timer is gone with the module: {running}");
 
-    // Same for a whole project, and its time leaves the reports.
+    // A whole project goes to the trash: its time is unreachable but kept for a
+    // restore; the purge that removes it is covered in trash_flow.
     let t2 = task(&router, &to, &m, "Also doomed").await;
     ok(&router, &format!("{TIME}/LogTime"), &to, json!({ "taskId": t2, "minutes": 20 })).await;
     ok(&router, &format!("{PROJECT}/DeleteProject"), &to, json!({ "id": pid })).await;
+    fails(&router, &format!("{TIME}/ListTimeEntries"), &to, json!({ "projectId": pid }), "not_found").await;
+    fails(&router, &format!("{TIME}/LogTime"), &to, json!({ "taskId": t2, "minutes": 5 }), "not_found").await;
+    let mine = ok(&router, &format!("{TIME}/ListTimeEntries"), &to, json!({ "userId": owner })).await;
+    assert!(mine["entries"].as_array().is_none_or(|e| e.iter().all(|x| x["projectId"] != pid.as_str())), "nor in the user's list: {mine}");
     let left: i64 = sqlx::query_scalar("SELECT count(*) FROM cmp_timeentry WHERE project_id = $1")
         .bind(&pid)
         .fetch_one(store.pool())
         .await
         .unwrap();
-    assert_eq!(left, 0, "a deleted project leaves no time entries behind");
+    assert_eq!(left, 1, "a trashed project's time entries are kept for a restore");
 }
 
 
