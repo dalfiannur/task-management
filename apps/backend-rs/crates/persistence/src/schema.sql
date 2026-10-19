@@ -524,3 +524,7 @@ tag AS (
 )
 INSERT INTO cmp_userprofile (pid, display_name, avatar_url, email)
 SELECT pid, 'Automation', '', '' FROM tag;
+
+-- The workspace time zone (IANA name). NULL, or no settings row, means
+-- Asia/Jakarta. Every server-side "today" is the day in this zone.
+ALTER TABLE cmp_workspacesettings ADD COLUMN IF NOT EXISTS timezone TEXT;

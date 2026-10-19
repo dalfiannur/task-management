@@ -107,7 +107,7 @@ export type StartTimerRequest = Message<"sedjiwa.tasks.time.v1.StartTimerRequest
   taskId: string;
 
   /**
-   * The author's local date; defaults to today (UTC).
+   * The day the time counts for; defaults to today in the workspace time zone.
    *
    * @generated from field: optional string date = 2;
    */
@@ -203,7 +203,7 @@ export type LogTimeRequest = Message<"sedjiwa.tasks.time.v1.LogTimeRequest"> & {
   minutes: number;
 
   /**
-   * yyyy-MM-dd; defaults to today (UTC)
+   * yyyy-MM-dd; defaults to today in the workspace time zone
    *
    * @generated from field: optional string date = 3;
    */

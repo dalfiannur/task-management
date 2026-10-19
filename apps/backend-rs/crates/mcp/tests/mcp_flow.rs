@@ -2187,3 +2187,20 @@ async fn my_tasks_leaves_template_projects_out() {
     assert!(text.contains(&ids[1]), "the real project's task is listed: {out}");
     assert!(!text.contains(&ids[0]), "the template's task is not: {out}");
 }
+
+#[tokio::test]
+async fn log_time_defaults_to_the_workspace_day() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    let (_p, module_id) = seed_project_and_module(&store, &user).await;
+    let (_, t) = tools_call(&router, &token, "create_task", json!({ "module_id": module_id, "title": "clock" })).await;
+    // The default zone, Asia/Jakarta, is UTC+7 all year.
+    let jakarta = |_: ()| (time::OffsetDateTime::now_utc() + time::Duration::hours(7)).date().to_string();
+    let before = jakarta(());
+    let (err, e) = tools_call(&router, &token, "log_time", json!({ "task_id": t["id"], "minutes": 15 })).await;
+    let after = jakarta(());
+    assert!(!err, "log_time: {e}");
+    let d = e["date"].as_str().unwrap_or_default();
+    assert!(d == before || d == after, "log_time without a date uses the workspace day ({before}), got {d}");
+}

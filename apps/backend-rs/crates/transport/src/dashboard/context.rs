@@ -126,14 +126,3 @@ impl Tally {
     }
 }
 
-/// Today as ISO `yyyy-MM-dd` (UTC).
-pub(crate) fn today() -> String {
-    time::OffsetDateTime::now_utc().date().to_string()
-}
-
-/// `today + days` as ISO `yyyy-MM-dd`.
-pub(crate) fn date_plus(days: u32) -> String {
-    (time::OffsetDateTime::now_utc() + time::Duration::days(days as i64))
-        .date()
-        .to_string()
-}

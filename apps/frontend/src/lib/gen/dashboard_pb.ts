@@ -312,7 +312,7 @@ export type ProjectOverview = Message<"sedjiwa.tasks.dashboard.v1.ProjectOvervie
   doneTasks: number;
 
   /**
-   * due_date < today (UTC) && status != done
+   * due_date < today (workspace time zone) && status != done
    *
    * @generated from field: uint32 overdue_tasks = 4;
    */

@@ -172,8 +172,9 @@ pub(crate) async fn open_tasks(store: &Store, projects: &[String]) -> anyhow::Re
 
 // ── Writes ───────────────────────────────────────────────────────────────────
 
-/// Set the global days, creating the settings entity on first write.
-pub(crate) async fn set_global_days(store: &Store, mask: i32) -> anyhow::Result<()> {
+/// Set the global days and, when given, the time zone (`Some("")` resets it
+/// to the default), creating the settings entity on first write.
+pub(crate) async fn set_global(store: &Store, mask: i32, timezone: Option<&str>) -> anyhow::Result<()> {
     let mut tx = store.pool().begin().await?;
     sqlx::query("SELECT pg_advisory_xact_lock(hashtext('cmp_workspacesettings'))")
         .execute(&mut *tx)
@@ -184,17 +185,25 @@ pub(crate) async fn set_global_days(store: &Store, mask: i32) -> anyhow::Result<
     match pid {
         Some(pid) => {
             entity::touch(&mut tx, pid).await?;
-            sqlx::query("UPDATE cmp_workspacesettings SET working_days = $2 WHERE pid = $1")
+            sqlx::query(
+                "UPDATE cmp_workspacesettings SET working_days = $2, \
+                 timezone = CASE WHEN $3::text IS NULL THEN timezone ELSE NULLIF($3, '') END \
+                 WHERE pid = $1",
+            )
                 .bind(pid)
                 .bind(mask)
+                .bind(timezone)
                 .execute(&mut *tx)
                 .await?;
         }
         None => {
             let pid = entity::new_pid(&mut tx).await?;
-            sqlx::query("INSERT INTO cmp_workspacesettings (pid, working_days) VALUES ($1, $2)")
+            sqlx::query(
+                "INSERT INTO cmp_workspacesettings (pid, working_days, timezone) VALUES ($1, $2, NULLIF($3, ''))",
+            )
                 .bind(pid)
                 .bind(mask)
+                .bind(timezone)
                 .execute(&mut *tx)
                 .await?;
         }

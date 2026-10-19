@@ -39,7 +39,7 @@ message TimeEntry {
 
 message StartTimerRequest {
   string task_id = 1;
-  // The author's local date; defaults to today (UTC).
+  // The day the time counts for; defaults to today in the workspace time zone.
   optional string date = 2;
   optional string note = 3;
 }
@@ -51,7 +51,7 @@ message GetRunningTimerResponse { optional TimeEntry entry = 1; }
 message LogTimeRequest {
   string task_id = 1;
   int32 minutes = 2;     // 1 … 1440
-  optional string date = 3; // yyyy-MM-dd; defaults to today (UTC)
+  optional string date = 3; // yyyy-MM-dd; defaults to today in the workspace time zone
   optional string note = 4;
 }
 

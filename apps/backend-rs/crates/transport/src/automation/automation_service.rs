@@ -11,7 +11,6 @@ use domain::automation::{name_ok, shape_error, Action, Conditions, Mode, NotifyT
 use domain::task::TaskPriority;
 use domain::workload::parse_date;
 use persistence::Store;
-use time::OffsetDateTime;
 
 use super::engine::run_scheduled;
 use super::record::{
@@ -371,7 +370,7 @@ async fn run_scheduled_automations(
         Some(s) => parse_date(s)
             .filter(|_| s.len() == 10)
             .ok_or_else(|| ConnectError::new_invalid_argument("today must be yyyy-MM-dd"))?,
-        None => OffsetDateTime::now_utc().date(),
+        None => crate::clock::workspace_today(&store).await.map_err(internal)?,
     };
     let n = notifier.map(|Extension(n)| n);
     let runs = run_scheduled(&store, n.as_ref(), today).await.map_err(internal)?;

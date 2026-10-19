@@ -395,7 +395,7 @@ pub const LOG_TIME: ToolMeta = ToolMeta {
             "properties": {
                 "task_id": { "type": "string" },
                 "minutes": { "type": "integer", "minimum": 1, "maximum": 1440, "description": "Minutes spent (e.g. 90 for 1h 30m)." },
-                "date": { "type": "string", "description": "Day the work counts for, yyyy-MM-dd. Defaults to today (UTC)." },
+                "date": { "type": "string", "description": "Day the work counts for, yyyy-MM-dd. Defaults to today in the workspace time zone." },
                 "note": { "type": "string", "description": "What was done, briefly." }
             },
             "required": ["task_id", "minutes"]

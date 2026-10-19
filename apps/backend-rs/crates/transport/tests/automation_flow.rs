@@ -543,8 +543,9 @@ async fn actions_change_the_task_as_the_rules_author() {
     assert_eq!(strs(&got, "labelIds"), vec![p.l1.clone()], "label one added, label two removed");
     assert_eq!(strs(&got, "assigneeIds"), vec![member.clone()], "an empty assign means the task's creator");
     assert_eq!(got["moduleId"], p.m2.as_str(), "moved to the other module");
-    let due = (time::OffsetDateTime::now_utc().date() + time::Duration::days(3)).to_string();
-    assert_eq!(got["dueDate"], due.as_str(), "due = today (UTC) + 3");
+    // The workspace day: tests leave the zone at its default, Asia/Jakarta (UTC+7, no DST).
+    let due = ((time::OffsetDateTime::now_utc() + time::Duration::hours(7)).date() + time::Duration::days(3)).to_string();
+    assert_eq!(got["dueDate"], due.as_str(), "due = today in the workspace zone + 3");
     assert!(got["startDate"].is_null(), "a start after the new due date is cleared: {got}");
 
     let all = runs(&router, &tm, &p.id).await;

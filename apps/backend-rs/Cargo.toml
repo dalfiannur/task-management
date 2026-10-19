@@ -30,5 +30,6 @@ rust-s3 = "0.35"
 async-trait = "0.1"
 uuid = { version = "1", features = ["v4"] }
 time = { version = "0.3", features = ["formatting", "parsing", "macros"] }
+time-tz = { version = "2", features = ["db"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }

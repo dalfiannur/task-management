@@ -37,6 +37,8 @@ export function mapCalendar(c: PbCalendar): WorkCalendar {
     weeklyMinutes: c.weeklyMinutes,
     effectiveWeeklyMinutes: c.effectiveWeeklyMinutes,
     canEdit: c.canEdit,
+    timezone: c.timezone,
+    supportedTimezones: [...c.supportedTimezones],
   };
 }
 
