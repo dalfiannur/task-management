@@ -531,3 +531,19 @@ pub(crate) async fn strip_blocked_by(
     tx.commit().await?;
     Ok(())
 }
+
+/// What deleting `ids` would also take with it: subtasks that are not in
+/// `ids` themselves, and the minutes logged on all of them. Reads only.
+pub(crate) async fn delete_footprint(store: &Store, ids: &[String]) -> anyhow::Result<(i64, i64)> {
+    Ok(sqlx::query_as(
+        "WITH sub AS (SELECT pid::text AS id FROM cmp_taskparent \
+                      WHERE parent_id = ANY($1) AND pid::text <> ALL($1)), \
+              gone AS (SELECT id FROM sub UNION SELECT unnest($1::text[])) \
+         SELECT (SELECT count(*) FROM sub), \
+                (SELECT COALESCE(SUM(minutes), 0)::int8 FROM cmp_timeentry \
+                 WHERE task_id IN (SELECT id FROM gone))",
+    )
+    .bind(ids)
+    .fetch_one(store.pool())
+    .await?)
+}

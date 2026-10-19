@@ -35,7 +35,7 @@ fn priority_label(v: i32) -> &'static str {
 /// unspecified as "no priority" and would silently create the task anyway.
 /// Validating at this boundary makes the same typo fail the same way through
 /// both tools, rather than relying on one core fn's incidental behavior.
-fn priority_arg(args: &Value) -> Result<Option<i32>, ToolError> {
+pub(crate) fn priority_arg(args: &Value) -> Result<Option<i32>, ToolError> {
     match opt_str(args, "priority") {
         None => Ok(None),
         Some(s) => domain::task::TaskPriority::parse(&s)
@@ -73,12 +73,12 @@ const STATUS_HELP: &str = "a category (todo, in_progress, done, cancelled) or th
 /// `create_task_core` reads an unrecognized status as "unspecified" and
 /// silently defaults it to Todo, so a typo like "in-progress" would create
 /// the task in the wrong state instead of failing.
-enum StatusTarget {
+pub(crate) enum StatusTarget {
     Category(i32),
     Status(String),
 }
 
-async fn status_target(ctx: &Ctx, project_id: &str, s: &str) -> Result<StatusTarget, ToolError> {
+pub(crate) async fn status_target(ctx: &Ctx, project_id: &str, s: &str) -> Result<StatusTarget, ToolError> {
     if let Some(c) = domain::task::TaskStatus::parse(s) {
         return Ok(StatusTarget::Category(c.to_proto()));
     }

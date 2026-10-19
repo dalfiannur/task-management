@@ -2,6 +2,6 @@
 //! Member-gated; personal unless shared.
 
 mod record;
-mod view_service;
+pub(crate) mod view_service;
 
 pub use view_service::view_router;

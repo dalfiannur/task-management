@@ -451,8 +451,20 @@ async fn tools_list_returns_the_registry() {
     .await;
     assert_eq!(st, StatusCode::OK, "{body:?}");
     let tools = body["result"]["tools"].as_array().unwrap();
-    assert_eq!(tools.len(), 17);
+    assert_eq!(tools.len(), 31);
     let names: Vec<&str> = tools.iter().map(|t| t["name"].as_str().unwrap()).collect();
+    for n in [
+        "list_statuses", "get_workload", "list_time_entries", "list_saved_views",
+        "list_task_templates", "create_task_from_template", "bulk_update_tasks",
+        "bulk_delete_tasks", "list_automations", "list_automation_runs",
+        "create_automation", "update_automation", "delete_automation", "set_automation_mode",
+    ] {
+        assert!(names.contains(&n), "5a tool `{n}` is advertised");
+    }
+    let mut unique = names.clone();
+    unique.sort();
+    unique.dedup();
+    assert_eq!(unique.len(), names.len(), "no tool name is listed twice");
     assert!(names.contains(&"create_task"));
     assert!(names.contains(&"log_time"));
     assert!(names.contains(&"create_project_from_template"));
@@ -2231,4 +2243,537 @@ async fn log_time_through_mcp_lands_in_the_activity_log() {
     assert_eq!(rows[0]["action"], "CREATED");
     assert_eq!(rows[0]["actorId"], user.as_str());
     assert_eq!(rows[0]["entityId"], e["id"]);
+}
+
+// ---------------------------------------------------------------------------
+// 5a: planning reads, templates, bulk edits and automations through MCP.
+// ---------------------------------------------------------------------------
+
+/// The JSON-RPC error code of a `tools/call`, or `None` when it answered with
+/// a result (business refusals included).
+async fn protocol_error(router: &Router, token: &str, name: &str, arguments: Value) -> Option<i64> {
+    let (_, body) = rpc(
+        router,
+        Some(token),
+        json!({ "jsonrpc": "2.0", "id": 77, "method": "tools/call",
+                "params": { "name": name, "arguments": arguments } }),
+    )
+    .await;
+    body["error"]["code"].as_i64()
+}
+
+/// Call a Connect RPC as `user`, for seeding things the MCP tools under test
+/// only read (templates, views, estimates).
+async fn connect_as(store: &Arc<persistence::Store>, user: &str, path: &str, body: Value) -> Value {
+    let me = auth::verify_jwt(&auth::sign_jwt("mcp-test", user, &[], 9_999_999_999).unwrap(), "mcp-test").unwrap();
+    let app = Router::new()
+        .merge(transport::template_router(store.clone()))
+        .merge(transport::view_router(store.clone()))
+        .merge(transport::task_router(store.clone()))
+        .layer(axum::Extension(me));
+    let req = Request::builder()
+        .method("POST")
+        .uri(path)
+        .header(CONTENT_TYPE, "application/json")
+        .body(Body::from(body.to_string()))
+        .unwrap();
+    let resp = app.oneshot(req).await.unwrap();
+    let st = resp.status();
+    let v: Value = serde_json::from_slice(&to_bytes(resp.into_body(), usize::MAX).await.unwrap()).unwrap_or(Value::Null);
+    assert_eq!(st, StatusCode::OK, "{path}: {v}");
+    v
+}
+
+async fn add_member(store: &persistence::Store, project_id: &str, user: &str) {
+    store
+        .create((domain::project::ProjectMembership { project_id: project_id.to_string(), user_id: user.to_string() },))
+        .await
+        .unwrap();
+}
+
+async fn new_task(router: &Router, token: &str, args: Value) -> String {
+    let (err, t) = tools_call(router, token, "create_task", args.clone()).await;
+    assert!(!err, "create_task {args}: {t}");
+    t["id"].as_str().unwrap().to_string()
+}
+
+#[tokio::test]
+async fn list_statuses_returns_board_order_with_categories_and_is_member_gated() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    let (project_id, _m) = seed_project_and_module(&store, &user).await;
+
+    let (err, v) = tools_call(&router, &token, "list_statuses", json!({ "project_id": project_id })).await;
+    assert!(!err, "list_statuses: {v}");
+    let rows = v["statuses"].as_array().unwrap();
+    assert!(rows.len() >= 4, "a new project has its default statuses: {v}");
+    let cats: Vec<&str> = rows.iter().map(|r| r["category"].as_str().unwrap()).collect();
+    for c in ["todo", "in_progress", "done", "cancelled"] {
+        assert!(cats.contains(&c), "category `{c}` is spelled the way task tools accept it: {cats:?}");
+    }
+    assert_eq!(cats[0], "todo", "board order starts with the todo column");
+    for r in rows {
+        assert!(r["id"].as_str().is_some_and(|s| !s.is_empty()) && r["name"].as_str().is_some_and(|s| !s.is_empty()), "{r}");
+    }
+
+    let outsider = issue_token(&store, &seed_active_user(&store).await).await;
+    assert!(tools_call_refused(&router, &outsider, "list_statuses", json!({ "project_id": project_id })).await, "non-member refused");
+    assert!(tools_call_refused(&router, &token, "list_statuses", json!({ "project_id": "999999999999" })).await, "unknown project refused");
+    assert_eq!(protocol_error(&router, &token, "list_statuses", json!({})).await, Some(-32602), "project_id is required");
+}
+
+#[tokio::test]
+async fn list_saved_views_shows_mine_and_shared_but_not_others_personal_views() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    let (project_id, _m) = seed_project_and_module(&store, &user).await;
+    let other = seed_active_user(&store).await;
+    add_member(&store, &project_id, &other).await;
+
+    const V: &str = "/sedjiwa.tasks.view.v1.SavedViewService/CreateSavedView";
+    let mine = connect_as(&store, &user, V, json!({ "projectId": project_id, "name": "Mine", "query": "status=todo", "layout": "BOARD" })).await;
+    let shared = connect_as(&store, &other, V, json!({ "projectId": project_id, "name": "Team", "query": "priority=high", "shared": true })).await;
+    let hidden = connect_as(&store, &other, V, json!({ "projectId": project_id, "name": "Private", "query": "x=1" })).await;
+
+    let (err, v) = tools_call(&router, &token, "list_saved_views", json!({ "project_id": project_id })).await;
+    assert!(!err, "list_saved_views: {v}");
+    let views = v["views"].as_array().unwrap();
+    let by_id = |id: &Value| views.iter().find(|x| x["id"] == *id).cloned();
+    let m = by_id(&mine["id"]).expect("my own view is listed");
+    assert_eq!(m["layout"], "board");
+    assert_eq!(m["query"], "status=todo", "the filter query travels verbatim");
+    assert_eq!(m["shared"], false);
+    assert_eq!(m["owner_id"], user.as_str());
+    let s = by_id(&shared["id"]).expect("a shared view is listed");
+    assert_eq!(s["layout"], "list", "unspecified layout reads as list");
+    assert_eq!(s["shared"], true);
+    assert!(by_id(&hidden["id"]).is_none(), "another member's personal view does not leak");
+
+    let outsider = issue_token(&store, &seed_active_user(&store).await).await;
+    assert!(tools_call_refused(&router, &outsider, "list_saved_views", json!({ "project_id": project_id })).await, "non-member refused");
+    assert_eq!(protocol_error(&router, &token, "list_saved_views", json!({})).await, Some(-32602));
+}
+
+#[tokio::test]
+async fn list_time_entries_filters_sums_caps_and_does_not_leak() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    let (project_id, module_id) = seed_project_and_module(&store, &user).await;
+    let a = new_task(&router, &token, json!({ "module_id": module_id, "title": "A" })).await;
+    let b = new_task(&router, &token, json!({ "module_id": module_id, "title": "B" })).await;
+    for (t, m, d) in [(&a, 30, "2026-10-01"), (&a, 45, "2026-10-03"), (&b, 60, "2026-10-05")] {
+        let (err, e) = tools_call(&router, &token, "log_time", json!({ "task_id": t, "minutes": m, "date": d })).await;
+        assert!(!err, "log_time: {e}");
+    }
+
+    let (err, v) = tools_call(&router, &token, "list_time_entries", json!({ "project_id": project_id })).await;
+    assert!(!err, "{v}");
+    assert_eq!(v["count"], 3);
+    assert_eq!(v["total_minutes"], 135);
+    assert_eq!(v["truncated"], false);
+    let dates: Vec<&str> = v["entries"].as_array().unwrap().iter().map(|e| e["date"].as_str().unwrap()).collect();
+    assert_eq!(dates, ["2026-10-05", "2026-10-03", "2026-10-01"], "newest first");
+    let first = &v["entries"][0];
+    assert_eq!(first["task_id"], b.as_str());
+    assert_eq!(first["task_title"], "B");
+    assert_eq!(first["project_id"], project_id.as_str());
+    assert_eq!(first["user_id"], user.as_str());
+
+    let (_, v) = tools_call(&router, &token, "list_time_entries", json!({ "task_id": a })).await;
+    assert_eq!((v["count"].as_i64(), v["total_minutes"].as_i64()), (Some(2), Some(75)), "by task: {v}");
+    let (_, v) = tools_call(&router, &token, "list_time_entries",
+        json!({ "project_id": project_id, "from": "2026-10-02", "to": "2026-10-05" })).await;
+    assert_eq!(v["total_minutes"], 105, "from/to are inclusive: {v}");
+    let (_, v) = tools_call(&router, &token, "list_time_entries", json!({ "user_id": user })).await;
+    assert_eq!(v["count"], 3, "by person across my projects: {v}");
+    let (_, v) = tools_call(&router, &token, "list_time_entries", json!({ "project_id": project_id, "limit": 1 })).await;
+    assert_eq!(v["count"], 1);
+    assert_eq!(v["truncated"], true, "a cut list says so");
+    assert_eq!(v["total_minutes"], 60, "the sum covers the entries returned, as described");
+
+    // Malformed → protocol error; well-formed but wrong → business refusal.
+    for args in [json!({}), json!({ "project_id": project_id, "limit": 0 }), json!({ "project_id": project_id, "limit": 201 })] {
+        assert_eq!(protocol_error(&router, &token, "list_time_entries", args.clone()).await, Some(-32602), "{args}");
+    }
+    assert!(tools_call_refused(&router, &token, "list_time_entries", json!({ "project_id": project_id, "from": "2026-13-01" })).await, "bad date refused");
+
+    // An outsider sees nothing of the project, neither by id nor through the person.
+    let outsider = issue_token(&store, &seed_active_user(&store).await).await;
+    assert!(tools_call_refused(&router, &outsider, "list_time_entries", json!({ "project_id": project_id })).await, "non-member, by project");
+    assert!(tools_call_refused(&router, &outsider, "list_time_entries", json!({ "task_id": a })).await, "non-member, by task");
+    let (err, v) = tools_call(&router, &outsider, "list_time_entries", json!({ "user_id": user })).await;
+    assert!(!err, "{v}");
+    assert_eq!(v["count"], 0, "by person, an outsider gets none of that person's entries in projects they cannot see: {v}");
+}
+
+#[tokio::test]
+async fn get_workload_reports_weeks_and_one_persons_tasks() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    let (project_id, module_id) = seed_project_and_module(&store, &user).await;
+    let t = new_task(&router, &token, json!({ "module_id": module_id, "title": "estimated", "assignee_ids": [user] })).await;
+    connect_as(&store, &user, "/sedjiwa.tasks.work.v1.TaskService/UpdateTask",
+        json!({ "id": t, "estimateMinutes": 240 })).await;
+
+    let (err, v) = tools_call(&router, &token, "get_workload", json!({ "project_id": project_id, "weeks": 3 })).await;
+    assert!(!err, "get_workload: {v}");
+    assert_eq!(v["week_starts"].as_array().unwrap().len(), 3, "weeks is honoured");
+    assert_eq!(v["projects"][0]["id"], project_id.as_str());
+    let me = v["members"].as_array().unwrap().iter().find(|m| m["user_id"] == user.as_str()).cloned().expect("I am in my project's workload");
+    assert_eq!(me["weeks"].as_array().unwrap().len(), 3);
+    assert_eq!(me["unscheduled_minutes"], 240, "an undated estimated task is unscheduled load: {me}");
+    assert!(me.get("tasks").is_none(), "task lists only come with user_id");
+
+    let (err, v) = tools_call(&router, &token, "get_workload", json!({ "project_id": project_id, "user_id": user })).await;
+    assert!(!err, "{v}");
+    assert_eq!(v["members"].as_array().unwrap().len(), 1, "user_id narrows to one person");
+    assert_eq!(v["week_starts"].as_array().unwrap().len(), 6, "default is 6 weeks");
+    let tasks = v["members"][0]["tasks"].as_array().unwrap();
+    assert_eq!(tasks.len(), 1, "{v}");
+    assert_eq!(tasks[0]["task_id"], t.as_str());
+    assert_eq!(tasks[0]["bucket"], "unscheduled");
+    assert_eq!(tasks[0]["remaining_minutes"], 240);
+
+    assert!(tools_call_refused(&router, &token, "get_workload", json!({ "project_id": project_id, "user_id": "999999999999" })).await,
+        "a person with no workload here is a readable refusal, not an empty success");
+    for w in [json!(0), json!(13), json!("3"), json!(2.5)] {
+        assert_eq!(protocol_error(&router, &token, "get_workload", json!({ "weeks": w })).await, Some(-32602), "weeks {w}");
+    }
+    let outsider = issue_token(&store, &seed_active_user(&store).await).await;
+    assert!(tools_call_refused(&router, &outsider, "get_workload", json!({ "project_id": project_id })).await, "non-member refused");
+    let (err, v) = tools_call(&router, &outsider, "get_workload", json!({})).await;
+    assert!(!err, "{v}");
+    assert!(v["projects"].as_array().unwrap().iter().all(|p| p["id"] != project_id.as_str()), "the all-projects view leaves out projects I am not in");
+}
+
+#[tokio::test]
+async fn task_templates_list_and_create_with_subtasks() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    let (project_id, module_id) = seed_project_and_module(&store, &user).await;
+    let other_module = seed_module(&store, &project_id, "Sprint").await;
+    let src = new_task(&router, &token, json!({ "module_id": module_id, "title": "Release", "priority": "high" })).await;
+    new_task(&router, &token, json!({ "module_id": module_id, "title": "Tag", "parent_id": src })).await;
+    new_task(&router, &token, json!({ "module_id": module_id, "title": "Notes", "parent_id": src })).await;
+    let tpl = connect_as(&store, &user, "/sedjiwa.tasks.templates.v1.TemplateService/SaveTaskTemplate",
+        json!({ "taskId": src, "name": "Release checklist" })).await;
+    let tpl_id = tpl["id"].as_str().unwrap().to_string();
+
+    let (err, v) = tools_call(&router, &token, "list_task_templates", json!({ "project_id": project_id })).await;
+    assert!(!err, "{v}");
+    let t = v["templates"].as_array().unwrap().iter().find(|t| t["id"] == tpl_id.as_str()).cloned().expect("listed");
+    assert_eq!(t["name"], "Release checklist");
+    assert_eq!(t["title"], "Release");
+    assert_eq!(t["priority"], "high");
+    let mut subs: Vec<&str> = t["subtasks"].as_array().unwrap().iter().map(|s| s.as_str().unwrap()).collect();
+    subs.sort();
+    assert_eq!(subs, ["Notes", "Tag"]);
+
+    let (err, made) = tools_call(&router, &token, "create_task_from_template", json!({
+        "template_id": tpl_id, "module_id": other_module, "title": "Release 2.0",
+        "assignee_ids": [user], "due_date": "2026-11-30" })).await;
+    assert!(!err, "create_task_from_template: {made}");
+    assert_eq!(made["title"], "Release 2.0", "title override");
+    assert_eq!(made["module_id"], other_module.as_str());
+    assert_eq!(made["priority"], "high", "priority from the template");
+    assert_eq!(made["due_date"], "2026-11-30");
+    assert_eq!(made["assignee_ids"], json!([user]));
+    let new_id = made["id"].as_str().unwrap().to_string();
+    let (_, listed) = tools_call(&router, &token, "list_tasks", json!({ "module_id": other_module })).await;
+    let kids: Vec<&Value> = listed["tasks"].as_array().unwrap().iter().filter(|x| x["parent_id"] == new_id.as_str()).collect();
+    assert_eq!(kids.len(), 2, "the template's subtasks came along: {listed}");
+
+    let (err, plain) = tools_call(&router, &token, "create_task_from_template", json!({ "template_id": tpl_id, "module_id": module_id })).await;
+    assert!(!err, "{plain}");
+    assert_eq!(plain["title"], "Release", "title defaults to the template's");
+
+    // A module in another project, an outsider, a bad date: refused, nothing made.
+    let (_p2, foreign_module) = seed_project_and_module(&store, &user).await;
+    assert!(tools_call_refused(&router, &token, "create_task_from_template", json!({ "template_id": tpl_id, "module_id": foreign_module })).await, "module of another project");
+    assert!(tools_call_refused(&router, &token, "create_task_from_template", json!({ "template_id": tpl_id, "module_id": module_id, "due_date": "2026-02-30" })).await, "impossible date");
+    assert!(tools_call_refused(&router, &token, "create_task_from_template", json!({ "template_id": "999999999999", "module_id": module_id })).await, "unknown template");
+    let outsider = issue_token(&store, &seed_active_user(&store).await).await;
+    assert!(tools_call_refused(&router, &outsider, "list_task_templates", json!({ "project_id": project_id })).await, "non-member cannot list");
+    assert!(tools_call_refused(&router, &outsider, "create_task_from_template", json!({ "template_id": tpl_id, "module_id": module_id })).await, "non-member cannot use");
+    let (_, after) = tools_call(&router, &token, "list_tasks", json!({ "project_id": project_id, "limit": 200 })).await;
+    let roots = after["tasks"].as_array().unwrap().iter().filter(|x| x["title"].as_str().is_some_and(|t| t.starts_with("Release")) && x["parent_id"].as_str().unwrap_or("").is_empty()).count();
+    assert_eq!(roots, 3, "only the source and the two successful creations exist: {after}");
+    for args in [json!({ "module_id": module_id }), json!({ "template_id": tpl_id })] {
+        assert_eq!(protocol_error(&router, &token, "create_task_from_template", args.clone()).await, Some(-32602), "{args}");
+    }
+}
+
+#[tokio::test]
+async fn bulk_update_tasks_applies_each_field_and_refuses_bad_calls() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    let (project_id, module_id) = seed_project_and_module(&store, &user).await;
+    let sprint = seed_module(&store, &project_id, "Sprint").await;
+    let mate = seed_active_user(&store).await;
+    add_member(&store, &project_id, &mate).await;
+    let ids: Vec<String> = three_tasks(&router, &token, &module_id, &user).await;
+
+    let (err, v) = tools_call(&router, &token, "bulk_update_tasks", json!({
+        "task_ids": ids, "status": "in_progress", "priority": "urgent",
+        "add_assignee_ids": [mate], "remove_assignee_ids": [user], "due_date": "2026-12-01" })).await;
+    assert!(!err, "bulk_update_tasks: {v}");
+    assert_eq!(v["updated_count"], 3);
+    assert_eq!(v["failed"], json!([]));
+    for id in &ids {
+        let (_, t) = tools_call(&router, &token, "get_task", json!({ "task_id": id })).await;
+        assert_eq!(t["status"], "in_progress", "category → its first status: {t}");
+        assert_eq!(t["priority"], "urgent");
+        assert_eq!(t["assignee_ids"], json!([mate]), "added one, removed the other");
+        assert_eq!(t["due_date"], "2026-12-01");
+    }
+
+    // A status by name, a module move, and null clears the due date.
+    let (_, st) = tools_call(&router, &token, "list_statuses", json!({ "project_id": project_id })).await;
+    let done = st["statuses"].as_array().unwrap().iter().find(|s| s["category"] == "done").unwrap()["name"].as_str().unwrap().to_string();
+    let (err, v) = tools_call(&router, &token, "bulk_update_tasks", json!({
+        "task_ids": [ids[0]], "status": done.to_lowercase(), "due_date": null, "module_id": sprint })).await;
+    assert!(!err, "{v}");
+    let (_, t) = tools_call(&router, &token, "get_task", json!({ "task_id": ids[0] })).await;
+    assert_eq!(t["status"], "done", "status by name, case-insensitively: {t}");
+    assert!(t["due_date"].as_str().unwrap_or("").is_empty(), "null cleared the due date: {t}");
+    assert_eq!(t["module_id"], sprint.as_str());
+    assert_eq!(t["priority"], "urgent", "fields not sent are left as-is");
+
+    // Malformed → protocol errors.
+    for args in [
+        json!({ "task_ids": [] }),
+        json!({ "task_ids": "x", "priority": "low" }),
+        json!({ "task_ids": [ids[0]] }),
+        json!({ "task_ids": [ids[0]], "due_date": "" }),
+        json!({ "task_ids": [ids[0]], "due_date": 5 }),
+        json!({ "task_ids": [ids[0]], "priority": "hgih" }),
+        json!({ "task_ids": [ids[0], 7], "priority": "low" }),
+        json!({ "task_ids": [ids[1]], "status": "Nope" }),
+    ] {
+        assert_eq!(protocol_error(&router, &token, "bulk_update_tasks", args.clone()).await, Some(-32602), "{args}");
+    }
+    // Well-formed but against the rules → business refusals, nothing changed.
+    let (_p2, m2) = seed_project_and_module(&store, &user).await;
+    let foreign = new_task(&router, &token, json!({ "module_id": m2, "title": "elsewhere" })).await;
+    let outsider = issue_token(&store, &seed_active_user(&store).await).await;
+    for (tok, args, why) in [
+        (&token, json!({ "task_ids": [ids[1], foreign], "priority": "low" }), "tasks of two projects"),
+        (&token, json!({ "task_ids": [ids[1]], "module_id": m2 }), "module of another project"),
+        (&token, json!({ "task_ids": [ids[1]], "due_date": "2026-02-30" }), "impossible date"),
+        (&token, json!({ "task_ids": ["999999999999"], "priority": "low" }), "unknown id"),
+        (&outsider, json!({ "task_ids": [ids[1]], "priority": "low" }), "non-member"),
+        (&outsider, json!({ "task_ids": [ids[1]], "status": "done" }), "non-member, status path"),
+    ] {
+        assert!(tools_call_refused(&router, tok, "bulk_update_tasks", args.clone()).await, "{why}: {args}");
+    }
+    let (_, t) = tools_call(&router, &token, "get_task", json!({ "task_id": ids[1] })).await;
+    assert_eq!((t["priority"].as_str(), t["module_id"].as_str(), t["status"].as_str()),
+        (Some("urgent"), Some(module_id.as_str()), Some("in_progress")), "refused calls changed nothing: {t}");
+}
+
+/// Three tasks in `module_id`, each assigned to `user`.
+async fn three_tasks(router: &Router, token: &str, module_id: &str, user: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    for n in 1..=3 {
+        out.push(new_task(router, token, json!({ "module_id": module_id, "title": format!("bulk {n}"), "assignee_ids": [user] })).await);
+    }
+    out
+}
+
+#[tokio::test]
+async fn bulk_delete_tasks_previews_then_deletes_only_on_the_matching_count() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    let (_project_id, module_id) = seed_project_and_module(&store, &user).await;
+    let parent = new_task(&router, &token, json!({ "module_id": module_id, "title": "parent" })).await;
+    let sub1 = new_task(&router, &token, json!({ "module_id": module_id, "title": "sub 1", "parent_id": parent })).await;
+    let sub2 = new_task(&router, &token, json!({ "module_id": module_id, "title": "sub 2", "parent_id": parent })).await;
+    let lone = new_task(&router, &token, json!({ "module_id": module_id, "title": "lone" })).await;
+    let keep = new_task(&router, &token, json!({ "module_id": module_id, "title": "keep" })).await;
+    for (t, m) in [(&parent, 30), (&sub1, 20), (&lone, 10), (&keep, 99)] {
+        assert!(!tools_call(&router, &token, "log_time", json!({ "task_id": t, "minutes": m })).await.0);
+    }
+    let exists = |id: String| {
+        let router = router.clone();
+        let token = token.clone();
+        async move { !tools_call(&router, &token, "get_task", json!({ "task_id": id })).await.0 }
+    };
+
+    // Preview: selected parent (+2 subtasks not selected) and lone; sub1 picked
+    // too must not be counted twice, nor a duplicated id.
+    let sel = json!([parent, lone, sub1, lone]);
+    let (err, p) = tools_call(&router, &token, "bulk_delete_tasks", json!({ "task_ids": sel })).await;
+    assert!(!err, "preview: {p}");
+    assert_eq!(p["deleted"], false);
+    assert_eq!(p["preview"]["selected"], 3, "duplicates are not counted twice: {p}");
+    assert_eq!(p["preview"]["subtasks"], 1, "only the unselected subtask is extra: {p}");
+    assert_eq!(p["preview"]["total"], 4);
+    assert_eq!(p["preview"]["logged_minutes"], 60, "time on every task that goes, subtasks included: {p}");
+    assert!(p["next"].as_str().unwrap().contains("confirm_count = 4"), "{p}");
+    assert!(p["preview"]["tasks"].as_array().unwrap().iter().any(|t| t["title"] == "parent"));
+    for id in [&parent, &sub1, &sub2, &lone] {
+        assert!(exists(id.clone()).await, "a preview deletes nothing");
+    }
+
+    // A count that does not match deletes nothing.
+    for c in [3, 5] {
+        assert!(tools_call_refused(&router, &token, "bulk_delete_tasks", json!({ "task_ids": sel, "confirm_count": c })).await, "count {c}");
+    }
+    for c in [json!(0), json!(-1), json!("4"), json!(4.5)] {
+        assert_eq!(protocol_error(&router, &token, "bulk_delete_tasks", json!({ "task_ids": sel, "confirm_count": c })).await, Some(-32602), "confirm_count {c}");
+    }
+    assert_eq!(protocol_error(&router, &token, "bulk_delete_tasks", json!({ "task_ids": [] })).await, Some(-32602));
+    // Outsiders get neither a preview (titles) nor a delete.
+    let outsider = issue_token(&store, &seed_active_user(&store).await).await;
+    let (err, leak) = tools_call(&router, &outsider, "bulk_delete_tasks", json!({ "task_ids": sel })).await;
+    assert!(err, "non-member preview refused");
+    assert!(!leak.to_string().contains("parent"), "no titles leak to a non-member: {leak}");
+    assert!(tools_call_refused(&router, &outsider, "bulk_delete_tasks", json!({ "task_ids": sel, "confirm_count": 4 })).await);
+    for id in [&parent, &sub1, &sub2, &lone] {
+        assert!(exists(id.clone()).await, "refusals deleted nothing");
+    }
+
+    let (err, d) = tools_call(&router, &token, "bulk_delete_tasks", json!({ "task_ids": sel, "confirm_count": 4 })).await;
+    assert!(!err, "confirmed delete: {d}");
+    assert_eq!(d["deleted"], true);
+    assert_eq!(d["failed"], json!([]));
+    for id in [&parent, &sub1, &sub2, &lone] {
+        assert!(!exists(id.clone()).await, "task {id} is gone, subtasks included");
+    }
+    assert!(exists(keep.clone()).await, "an unselected task is untouched");
+    let (_, v) = tools_call(&router, &token, "list_time_entries", json!({ "user_id": user })).await;
+    assert_eq!(v["total_minutes"], 99, "the deleted tasks' time went with them: {v}");
+}
+
+#[tokio::test]
+async fn automations_round_trip_with_status_names_and_owner_only_writes() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let owner = seed_active_user(&store).await;
+    let token = issue_token(&store, &owner).await;
+    let (project_id, module_id) = seed_project_and_module(&store, &owner).await;
+    let member = seed_active_user(&store).await;
+    add_member(&store, &project_id, &member).await;
+    let mtoken = issue_token(&store, &member).await;
+    let outsider = issue_token(&store, &seed_active_user(&store).await).await;
+    let (_, st) = tools_call(&router, &token, "list_statuses", json!({ "project_id": project_id })).await;
+    let first_of = |c: &str| st["statuses"].as_array().unwrap().iter().find(|s| s["category"] == c).unwrap().clone();
+    let (done, doing) = (first_of("done"), first_of("in_progress"));
+
+    let rule = json!({
+        "project_id": project_id, "name": "Close out",
+        "trigger": { "kind": "status_changed", "to": done["name"] },
+        "actions": [{ "kind": "set_status", "status": "in_progress" }, { "kind": "set_priority", "priority": "low" }]
+    });
+    assert!(tools_call_refused(&router, &mtoken, "create_automation", rule.clone()).await, "a plain member cannot create");
+    assert!(tools_call_refused(&router, &outsider, "create_automation", rule.clone()).await, "a non-member cannot create");
+    let (err, a) = tools_call(&router, &token, "create_automation", rule.clone()).await;
+    assert!(!err, "create_automation: {a}");
+    assert_eq!(a["mode"], "observe", "new rules start in observe");
+    assert_eq!(a["trigger"]["to"], done["id"], "a status name is stored as its id");
+    assert_eq!(a["trigger"]["to_name"], done["name"], "and the reply carries the name");
+    assert_eq!(a["actions"][0]["status_id"], doing["id"], "an action may name a category");
+    assert_eq!(a["actions"][0]["status_name"], doing["name"]);
+    assert_eq!(a["updated_by"], owner.as_str());
+    let id = a["id"].as_str().unwrap().to_string();
+
+    let (err, l) = tools_call(&router, &mtoken, "list_automations", json!({ "project_id": project_id })).await;
+    assert!(!err, "a member can read the rules: {l}");
+    assert_eq!(l["automations"].as_array().unwrap().iter().filter(|x| x["id"] == id.as_str()).count(), 1);
+    assert!(tools_call_refused(&router, &outsider, "list_automations", json!({ "project_id": project_id })).await, "non-member cannot read");
+    assert!(tools_call_refused(&router, &outsider, "list_automation_runs", json!({ "project_id": project_id })).await, "non-member cannot read runs");
+
+    // Bad rules are the caller's bug, with the help text to fix them.
+    for (args, why) in [
+        (json!({ "project_id": project_id, "name": "x", "trigger": { "kind": "nope" }, "actions": [{ "kind": "unassign_all" }] }), "unknown trigger"),
+        (json!({ "project_id": project_id, "name": "x", "trigger": { "kind": "task_created" }, "actions": { "kind": "unassign_all" } }), "actions not a list"),
+        (json!({ "project_id": project_id, "name": "x", "trigger": { "kind": "task_created" }, "actions": [{ "kind": "set_status", "status": "Nope" }] }), "unknown status"),
+        (json!({ "project_id": project_id, "name": "x", "trigger": { "kind": "status_changed", "to": "done" }, "actions": [{ "kind": "unassign_all" }] }), "trigger takes an exact status, not a category"),
+        (json!({ "project_id": project_id, "name": "x", "trigger": { "kind": "task_created" }, "actions": [{ "kind": "unassign_all" }], "mode": "maybe" }), "bad mode"),
+        (json!({ "project_id": project_id, "trigger": { "kind": "task_created" }, "actions": [{ "kind": "unassign_all" }] }), "name required"),
+    ] {
+        if done["name"].as_str().is_some_and(|n| n.eq_ignore_ascii_case("done")) && why.starts_with("trigger takes") {
+            continue; // the default status really is called "Done", so the name matches
+        }
+        assert_eq!(protocol_error(&router, &token, "create_automation", args.clone()).await, Some(-32602), "{why}: {args}");
+    }
+    for (args, why) in [
+        (json!({ "project_id": project_id, "name": "   ", "trigger": { "kind": "task_created" }, "actions": [{ "kind": "unassign_all" }] }), "blank name"),
+        (json!({ "project_id": project_id, "name": "x", "trigger": { "kind": "task_created" }, "actions": [] }), "no actions"),
+        (json!({ "project_id": project_id, "name": "x", "trigger": { "kind": "due_in", "days": 99 }, "actions": [{ "kind": "unassign_all" }] }), "due_in out of range"),
+    ] {
+        let refused = tools_call_refused(&router, &token, "create_automation", args.clone()).await
+            || protocol_error(&router, &token, "create_automation", args.clone()).await.is_some();
+        assert!(refused, "{why} is refused: {args}");
+    }
+
+    // Update: only what is sent changes; mode is untouched.
+    let (err, u) = tools_call(&router, &token, "update_automation", json!({ "id": id, "name": "Close out v2" })).await;
+    assert!(!err, "{u}");
+    assert_eq!(u["name"], "Close out v2");
+    assert_eq!(u["trigger"], a["trigger"], "trigger kept");
+    assert_eq!(u["actions"], a["actions"], "actions kept");
+    assert_eq!(u["mode"], "observe", "update does not touch the mode");
+    let (err, u) = tools_call(&router, &token, "update_automation", json!({ "id": id, "actions": [{ "kind": "set_priority", "priority": "high" }] })).await;
+    assert!(!err, "{u}");
+    assert_eq!(u["actions"].as_array().unwrap().len(), 1, "a sent list replaces the whole list");
+    assert_eq!(u["name"], "Close out v2");
+    assert_eq!(protocol_error(&router, &token, "update_automation", json!({ "id": id })).await, Some(-32602), "nothing to change");
+    assert!(tools_call_refused(&router, &mtoken, "update_automation", json!({ "id": id, "name": "hijack" })).await, "member cannot update");
+    assert!(tools_call_refused(&router, &token, "update_automation", json!({ "id": "999999999999", "name": "x" })).await, "unknown id");
+
+    // Mode.
+    assert!(tools_call_refused(&router, &mtoken, "set_automation_mode", json!({ "id": id, "mode": "on" })).await, "member cannot switch it on");
+    assert_eq!(protocol_error(&router, &token, "set_automation_mode", json!({ "id": id, "mode": "maybe" })).await, Some(-32602));
+    assert_eq!(protocol_error(&router, &token, "set_automation_mode", json!({ "id": id })).await, Some(-32602));
+    let (err, m) = tools_call(&router, &token, "set_automation_mode", json!({ "id": id, "mode": "off" })).await;
+    assert!(!err, "{m}");
+    assert_eq!(m["mode"], "off");
+    let (_, l) = tools_call(&router, &token, "list_automations", json!({ "project_id": project_id })).await;
+    let row = l["automations"].as_array().unwrap().iter().find(|x| x["id"] == id.as_str()).cloned().unwrap();
+    assert_eq!((row["mode"].as_str(), row["name"].as_str()), (Some("off"), Some("Close out v2")), "a follow-up read agrees");
+
+    // An `on` rule fires on a task created through MCP, and its run is listed.
+    let (err, live) = tools_call(&router, &token, "create_automation", json!({
+        "project_id": project_id, "name": "Urgent intake", "mode": "on",
+        "trigger": { "kind": "task_created" }, "actions": [{ "kind": "set_priority", "priority": "urgent" }] })).await;
+    assert!(!err, "{live}");
+    assert_eq!(live["mode"], "on");
+    let live_id = live["id"].as_str().unwrap().to_string();
+    let t = new_task(&router, &mtoken, json!({ "module_id": module_id, "title": "incoming" })).await;
+    let (_, task) = tools_call(&router, &token, "get_task", json!({ "task_id": t })).await;
+    assert_eq!(task["priority"], "urgent", "the rule ran on an MCP-created task: {task}");
+    let (err, r) = tools_call(&router, &mtoken, "list_automation_runs", json!({ "project_id": project_id, "automation_id": live_id })).await;
+    assert!(!err, "{r}");
+    let runs = r["runs"].as_array().unwrap();
+    assert_eq!(runs.len(), 1, "{r}");
+    assert_eq!(runs[0]["task_id"], t.as_str());
+    assert_eq!(runs[0]["status"], "ok");
+    assert_eq!(runs[0]["trigger"], "task_created");
+    assert_eq!(runs[0]["automation_name"], "Urgent intake");
+    let (_, r) = tools_call(&router, &token, "list_automation_runs", json!({ "project_id": project_id, "automation_id": id })).await;
+    assert_eq!(r["runs"], json!([]), "automation_id filters to one rule");
+    for l in [json!(0), json!(201), json!("5")] {
+        assert_eq!(protocol_error(&router, &token, "list_automation_runs", json!({ "project_id": project_id, "limit": l })).await, Some(-32602), "limit {l}");
+    }
+    let (_, l) = tools_call(&router, &token, "list_automations", json!({ "project_id": project_id })).await;
+    let row = l["automations"].as_array().unwrap().iter().find(|x| x["id"] == live_id.as_str()).cloned().unwrap();
+    assert_eq!(row["run_count"], 1, "the run is counted on the rule");
+
+    // Delete: owner only, then gone with its history.
+    assert!(tools_call_refused(&router, &mtoken, "delete_automation", json!({ "id": live_id })).await, "member cannot delete");
+    let (err, d) = tools_call(&router, &token, "delete_automation", json!({ "id": live_id })).await;
+    assert!(!err, "{d}");
+    assert_eq!(d, json!({ "deleted": true, "id": live_id }));
+    let (_, l) = tools_call(&router, &token, "list_automations", json!({ "project_id": project_id })).await;
+    assert!(l["automations"].as_array().unwrap().iter().all(|x| x["id"] != live_id.as_str()), "gone from the list");
+    let (_, r) = tools_call(&router, &token, "list_automation_runs", json!({ "project_id": project_id })).await;
+    assert!(r["runs"].as_array().unwrap().iter().all(|x| x["automation_id"] != live_id.as_str()), "its runs went with it: {r}");
+    assert!(tools_call_refused(&router, &token, "delete_automation", json!({ "id": live_id })).await, "deleting twice is refused");
 }

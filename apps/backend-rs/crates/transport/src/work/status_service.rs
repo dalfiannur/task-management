@@ -92,6 +92,18 @@ fn category_survives(statuses: &[StatusRecord], category: TaskStatus, gone: i64)
     statuses.iter().any(|s| s.pid != gone && s.category == category)
 }
 
+pub async fn list_task_statuses_core(
+    store: &Store,
+    auth: &AuthUser,
+    r: pb::ListTaskStatusesRequest,
+) -> Result<pb::ListTaskStatusesResponse, ConnectError> {
+    require_member(&store, &r.project_id, &auth).await?;
+    let statuses = project_statuses(&store, &r.project_id).await?;
+    Ok(pb::ListTaskStatusesResponse {
+        statuses: statuses.iter().map(to_proto).collect(),
+    })
+}
+
 async fn list_task_statuses(
     Extension(store): StoreExt,
     user: Option<Extension<AuthUser>>,
@@ -99,11 +111,7 @@ async fn list_task_statuses(
 ) -> Result<ConnectResponse<pb::ListTaskStatusesResponse>, ConnectError> {
     let auth = require_auth(user)?;
     let ConnectRequest(r) = req;
-    require_member(&store, &r.project_id, &auth).await?;
-    let statuses = project_statuses(&store, &r.project_id).await?;
-    Ok(ConnectResponse::new(pb::ListTaskStatusesResponse {
-        statuses: statuses.iter().map(to_proto).collect(),
-    }))
+    Ok(ConnectResponse::new(list_task_statuses_core(&store, &auth, r).await?))
 }
 
 async fn create_task_status(

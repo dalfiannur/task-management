@@ -213,13 +213,11 @@ async fn log_time(
     Ok(ConnectResponse::new(log_time_core(&store, &auth, r).await?))
 }
 
-async fn list_time_entries(
-    Extension(store): StoreExt,
-    user: Option<Extension<AuthUser>>,
-    req: ConnectRequest<pb::ListTimeEntriesRequest>,
-) -> Result<ConnectResponse<pb::ListTimeEntriesResponse>, ConnectError> {
-    let auth = require_auth(user)?;
-    let ConnectRequest(r) = req;
+pub async fn list_time_entries_core(
+    store: &Store,
+    auth: &AuthUser,
+    r: pb::ListTimeEntriesRequest,
+) -> Result<pb::ListTimeEntriesResponse, ConnectError> {
     let nonempty = |s: Option<String>| s.filter(|v| !v.is_empty());
     let (task_id, project_id, user_id) = (nonempty(r.task_id), nonempty(r.project_id), nonempty(r.user_id));
     for d in [&r.from, &r.to].into_iter().flatten() {
@@ -260,9 +258,19 @@ async fn list_time_entries(
     )
     .await
     .map_err(internal)?;
-    Ok(ConnectResponse::new(pb::ListTimeEntriesResponse {
+    Ok(pb::ListTimeEntriesResponse {
         entries: entries.iter().map(to_proto).collect(),
-    }))
+    })
+}
+
+async fn list_time_entries(
+    Extension(store): StoreExt,
+    user: Option<Extension<AuthUser>>,
+    req: ConnectRequest<pb::ListTimeEntriesRequest>,
+) -> Result<ConnectResponse<pb::ListTimeEntriesResponse>, ConnectError> {
+    let auth = require_auth(user)?;
+    let ConnectRequest(r) = req;
+    Ok(ConnectResponse::new(list_time_entries_core(&store, &auth, r).await?))
 }
 
 async fn update_time_entry(

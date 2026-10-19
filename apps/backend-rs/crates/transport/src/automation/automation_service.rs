@@ -104,6 +104,33 @@ fn action_to(a: &Action) -> pb::Action {
     pb::Action { kind: Some(kind) }
 }
 
+/// A rule's parts as the domain types (serde-tagged JSON for the MCP tools).
+pub fn automation_parts(a: &pb::Automation) -> Result<(Trigger, Conditions, Vec<Action>), ConnectError> {
+    let c = a.conditions.clone().unwrap_or_default();
+    Ok((
+        trigger_from(a.trigger.clone())?,
+        Conditions { priorities: c.priorities, label_ids: c.label_ids, module_ids: c.module_ids },
+        a.actions.iter().cloned().map(action_from).collect::<Result<_, _>>()?,
+    ))
+}
+
+/// The inverse of [`automation_parts`], for building a save request.
+pub fn automation_parts_to_proto(
+    trigger: &Trigger,
+    conditions: &Conditions,
+    actions: &[Action],
+) -> (pb::Trigger, pb::Conditions, Vec<pb::Action>) {
+    (
+        trigger_to(trigger),
+        pb::Conditions {
+            priorities: conditions.priorities.clone(),
+            label_ids: conditions.label_ids.clone(),
+            module_ids: conditions.module_ids.clone(),
+        },
+        actions.iter().map(action_to).collect(),
+    )
+}
+
 fn to_proto(r: &RuleRecord) -> pb::Automation {
     pb::Automation {
         id: r.pid.to_string(),
@@ -244,6 +271,16 @@ fn now() -> String {
 
 // ── handlers ─────────────────────────────────────────────────────────────────
 
+pub async fn list_automations_core(
+    store: &Store,
+    auth: &AuthUser,
+    r: pb::ListAutomationsRequest,
+) -> Result<pb::ListAutomationsResponse, ConnectError> {
+    require_member(&store, &r.project_id, &auth).await?;
+    let rules = rules_for_project(&store, &r.project_id).await.map_err(internal)?;
+    Ok(pb::ListAutomationsResponse { automations: rules.iter().map(to_proto).collect() })
+}
+
 async fn list_automations(
     Extension(store): StoreExt,
     user: Option<Extension<AuthUser>>,
@@ -251,18 +288,26 @@ async fn list_automations(
 ) -> Result<ConnectResponse<pb::ListAutomationsResponse>, ConnectError> {
     let auth = require_auth(user)?;
     let ConnectRequest(r) = req;
-    require_member(&store, &r.project_id, &auth).await?;
-    let rules = rules_for_project(&store, &r.project_id).await.map_err(internal)?;
-    Ok(ConnectResponse::new(pb::ListAutomationsResponse { automations: rules.iter().map(to_proto).collect() }))
+    Ok(ConnectResponse::new(list_automations_core(&store, &auth, r).await?))
 }
 
-async fn create_automation(
-    Extension(store): StoreExt,
-    user: Option<Extension<AuthUser>>,
-    req: ConnectRequest<pb::SaveAutomationRequest>,
-) -> Result<ConnectResponse<pb::Automation>, ConnectError> {
-    let auth = require_auth(user)?;
-    let ConnectRequest(r) = req;
+/// One rule by id, member-gated like the list. Backs no RPC: the MCP tools
+/// read a rule this way before a partial update.
+pub async fn get_automation_core(
+    store: &Store,
+    auth: &AuthUser,
+    id: &str,
+) -> Result<pb::Automation, ConnectError> {
+    let rule = require_rule(store, id).await?;
+    require_member(store, &rule.project_id, auth).await?;
+    Ok(to_proto(&rule))
+}
+
+pub async fn create_automation_core(
+    store: &Store,
+    auth: &AuthUser,
+    r: pb::SaveAutomationRequest,
+) -> Result<pb::Automation, ConnectError> {
     require_member(&store, &r.project_id, &auth).await?;
     require_owner_or_admin(&store, &r.project_id, &auth).await?;
     let mode = Mode::from_proto(r.mode)
@@ -279,16 +324,24 @@ async fn create_automation(
     )
     .await
     .map_err(internal)?;
-    Ok(ConnectResponse::new(to_proto(&require_rule(&store, &pid.to_string()).await?)))
+    Ok(to_proto(&require_rule(&store, &pid.to_string()).await?))
 }
 
-async fn update_automation(
+async fn create_automation(
     Extension(store): StoreExt,
     user: Option<Extension<AuthUser>>,
     req: ConnectRequest<pb::SaveAutomationRequest>,
 ) -> Result<ConnectResponse<pb::Automation>, ConnectError> {
     let auth = require_auth(user)?;
     let ConnectRequest(r) = req;
+    Ok(ConnectResponse::new(create_automation_core(&store, &auth, r).await?))
+}
+
+pub async fn update_automation_core(
+    store: &Store,
+    auth: &AuthUser,
+    r: pb::SaveAutomationRequest,
+) -> Result<pb::Automation, ConnectError> {
     let rule = require_rule(&store, &r.id).await?;
     require_member(&store, &rule.project_id, &auth).await?;
     require_owner_or_admin(&store, &rule.project_id, &auth).await?;
@@ -303,7 +356,29 @@ async fn update_automation(
     )
     .await
     .map_err(internal)?;
-    Ok(ConnectResponse::new(to_proto(&require_rule(&store, &r.id).await?)))
+    Ok(to_proto(&require_rule(&store, &r.id).await?))
+}
+
+async fn update_automation(
+    Extension(store): StoreExt,
+    user: Option<Extension<AuthUser>>,
+    req: ConnectRequest<pb::SaveAutomationRequest>,
+) -> Result<ConnectResponse<pb::Automation>, ConnectError> {
+    let auth = require_auth(user)?;
+    let ConnectRequest(r) = req;
+    Ok(ConnectResponse::new(update_automation_core(&store, &auth, r).await?))
+}
+
+pub async fn delete_automation_core(
+    store: &Store,
+    auth: &AuthUser,
+    r: pb::DeleteAutomationRequest,
+) -> Result<pb::DeleteAutomationResponse, ConnectError> {
+    let rule = require_rule(&store, &r.id).await?;
+    require_member(&store, &rule.project_id, &auth).await?;
+    require_owner_or_admin(&store, &rule.project_id, &auth).await?;
+    rec::delete_rule(&store, rule.pid).await.map_err(internal)?;
+    Ok(pb::DeleteAutomationResponse { ok: true })
 }
 
 async fn delete_automation(
@@ -313,11 +388,21 @@ async fn delete_automation(
 ) -> Result<ConnectResponse<pb::DeleteAutomationResponse>, ConnectError> {
     let auth = require_auth(user)?;
     let ConnectRequest(r) = req;
+    Ok(ConnectResponse::new(delete_automation_core(&store, &auth, r).await?))
+}
+
+pub async fn set_automation_mode_core(
+    store: &Store,
+    auth: &AuthUser,
+    r: pb::SetAutomationModeRequest,
+) -> Result<pb::Automation, ConnectError> {
     let rule = require_rule(&store, &r.id).await?;
     require_member(&store, &rule.project_id, &auth).await?;
     require_owner_or_admin(&store, &rule.project_id, &auth).await?;
-    rec::delete_rule(&store, rule.pid).await.map_err(internal)?;
-    Ok(ConnectResponse::new(pb::DeleteAutomationResponse { ok: true }))
+    let mode = Mode::from_proto(r.mode)
+        .ok_or_else(|| ConnectError::new_invalid_argument("pick a mode: off, observe or on"))?;
+    rec::set_mode(&store, rule.pid, mode, &auth.id, &now()).await.map_err(internal)?;
+    Ok(to_proto(&require_rule(&store, &r.id).await?))
 }
 
 async fn set_automation_mode(
@@ -327,22 +412,14 @@ async fn set_automation_mode(
 ) -> Result<ConnectResponse<pb::Automation>, ConnectError> {
     let auth = require_auth(user)?;
     let ConnectRequest(r) = req;
-    let rule = require_rule(&store, &r.id).await?;
-    require_member(&store, &rule.project_id, &auth).await?;
-    require_owner_or_admin(&store, &rule.project_id, &auth).await?;
-    let mode = Mode::from_proto(r.mode)
-        .ok_or_else(|| ConnectError::new_invalid_argument("pick a mode: off, observe or on"))?;
-    rec::set_mode(&store, rule.pid, mode, &auth.id, &now()).await.map_err(internal)?;
-    Ok(ConnectResponse::new(to_proto(&require_rule(&store, &r.id).await?)))
+    Ok(ConnectResponse::new(set_automation_mode_core(&store, &auth, r).await?))
 }
 
-async fn list_automation_runs(
-    Extension(store): StoreExt,
-    user: Option<Extension<AuthUser>>,
-    req: ConnectRequest<pb::ListAutomationRunsRequest>,
-) -> Result<ConnectResponse<pb::ListAutomationRunsResponse>, ConnectError> {
-    let auth = require_auth(user)?;
-    let ConnectRequest(r) = req;
+pub async fn list_automation_runs_core(
+    store: &Store,
+    auth: &AuthUser,
+    r: pb::ListAutomationRunsRequest,
+) -> Result<pb::ListAutomationRunsResponse, ConnectError> {
     require_member(&store, &r.project_id, &auth).await?;
     let limit = match r.limit {
         0 => 50,
@@ -352,7 +429,17 @@ async fn list_automation_runs(
     let rows = runs(&store, &r.project_id, r.automation_id.as_deref().filter(|s| !s.is_empty()), limit as i64)
         .await
         .map_err(internal)?;
-    Ok(ConnectResponse::new(pb::ListAutomationRunsResponse { runs: rows.iter().map(run_to_proto).collect() }))
+    Ok(pb::ListAutomationRunsResponse { runs: rows.iter().map(run_to_proto).collect() })
+}
+
+async fn list_automation_runs(
+    Extension(store): StoreExt,
+    user: Option<Extension<AuthUser>>,
+    req: ConnectRequest<pb::ListAutomationRunsRequest>,
+) -> Result<ConnectResponse<pb::ListAutomationRunsResponse>, ConnectError> {
+    let auth = require_auth(user)?;
+    let ConnectRequest(r) = req;
+    Ok(ConnectResponse::new(list_automation_runs_core(&store, &auth, r).await?))
 }
 
 async fn run_scheduled_automations(

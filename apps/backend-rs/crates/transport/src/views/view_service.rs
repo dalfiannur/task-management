@@ -68,6 +68,20 @@ fn clean_query(query: &str) -> Result<String, ConnectError> {
     normalize_query(query).ok_or_else(|| ConnectError::new_invalid_argument("query is too long"))
 }
 
+pub async fn list_saved_views_core(
+    store: &Store,
+    auth: &AuthUser,
+    r: pb::ListSavedViewsRequest,
+) -> Result<pb::ListSavedViewsResponse, ConnectError> {
+    require_member(&store, &r.project_id, &auth).await?;
+    let views = views_visible_to(&store, &r.project_id, &auth.id)
+        .await
+        .map_err(internal)?;
+    Ok(pb::ListSavedViewsResponse {
+        views: views.iter().map(to_proto).collect(),
+    })
+}
+
 async fn list_saved_views(
     Extension(store): StoreExt,
     user: Option<Extension<AuthUser>>,
@@ -75,13 +89,7 @@ async fn list_saved_views(
 ) -> Result<ConnectResponse<pb::ListSavedViewsResponse>, ConnectError> {
     let auth = require_auth(user)?;
     let ConnectRequest(r) = req;
-    require_member(&store, &r.project_id, &auth).await?;
-    let views = views_visible_to(&store, &r.project_id, &auth.id)
-        .await
-        .map_err(internal)?;
-    Ok(ConnectResponse::new(pb::ListSavedViewsResponse {
-        views: views.iter().map(to_proto).collect(),
-    }))
+    Ok(ConnectResponse::new(list_saved_views_core(&store, &auth, r).await?))
 }
 
 async fn create_saved_view(

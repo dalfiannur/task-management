@@ -697,15 +697,12 @@ fn edit_ids(current: &[String], add: &[String], remove: &[String]) -> Vec<String
     out
 }
 
-async fn bulk_update_tasks(
-    Extension(store): StoreExt,
-    notifier: Option<Extension<Arc<Notifier>>>,
-    user: Option<Extension<AuthUser>>,
-    req: ConnectRequest<pb::BulkUpdateTasksRequest>,
-) -> Result<ConnectResponse<pb::BulkUpdateTasksResponse>, ConnectError> {
-    let auth = require_auth(user)?;
-    let ConnectRequest(r) = req;
-    let n = notifier.as_ref().map(|Extension(n)| n);
+pub async fn bulk_update_tasks_core(
+    store: &Store,
+    n: Option<&Arc<Notifier>>,
+    auth: &AuthUser,
+    r: pb::BulkUpdateTasksRequest,
+) -> Result<pb::BulkUpdateTasksResponse, ConnectError> {
     let (project_id, tasks) = bulk_targets(&store, &auth, &r.task_ids).await?;
 
     // What can be checked once is checked once, so a bad value fails the
@@ -832,19 +829,63 @@ async fn bulk_update_tasks(
             }
         }
     }
-    Ok(ConnectResponse::new(pb::BulkUpdateTasksResponse {
+    Ok(pb::BulkUpdateTasksResponse {
         tasks: saved,
         failed,
-    }))
+    })
 }
 
-async fn bulk_delete_tasks(
+async fn bulk_update_tasks(
     Extension(store): StoreExt,
+    notifier: Option<Extension<Arc<Notifier>>>,
     user: Option<Extension<AuthUser>>,
-    req: ConnectRequest<pb::BulkDeleteTasksRequest>,
-) -> Result<ConnectResponse<pb::BulkDeleteTasksResponse>, ConnectError> {
+    req: ConnectRequest<pb::BulkUpdateTasksRequest>,
+) -> Result<ConnectResponse<pb::BulkUpdateTasksResponse>, ConnectError> {
     let auth = require_auth(user)?;
     let ConnectRequest(r) = req;
+    Ok(ConnectResponse::new(bulk_update_tasks_core(&store, notifier.as_ref().map(|Extension(n)| n), &auth, r).await?))
+}
+
+/// What [`bulk_delete_tasks_core`] would remove, checked the same way
+/// (every id exists, one project, the caller a member), with nothing removed.
+#[derive(Debug, Clone)]
+pub struct BulkDeletePreview {
+    /// The selected tasks: (id, title).
+    pub tasks: Vec<(String, String)>,
+    /// Subtasks that go with a selected parent but were not selected.
+    pub subtasks: i64,
+    /// Minutes logged on all of them; that time is deleted too.
+    pub logged_minutes: i64,
+}
+
+impl BulkDeletePreview {
+    /// Every task the delete removes.
+    pub fn total(&self) -> i64 {
+        self.tasks.len() as i64 + self.subtasks
+    }
+}
+
+pub async fn bulk_delete_preview_core(
+    store: &Store,
+    auth: &AuthUser,
+    task_ids: &[String],
+) -> Result<BulkDeletePreview, ConnectError> {
+    let (_project, tasks) = bulk_targets(store, auth, task_ids).await?;
+    let ids: Vec<String> = tasks.iter().map(|t| t.pid.to_string()).collect();
+    let (subtasks, logged_minutes) =
+        task_record::delete_footprint(store, &ids).await.map_err(internal)?;
+    Ok(BulkDeletePreview {
+        tasks: tasks.into_iter().map(|t| (t.pid.to_string(), t.title)).collect(),
+        subtasks,
+        logged_minutes,
+    })
+}
+
+pub async fn bulk_delete_tasks_core(
+    store: &Store,
+    auth: &AuthUser,
+    r: pb::BulkDeleteTasksRequest,
+) -> Result<pb::BulkDeleteTasksResponse, ConnectError> {
     let (_project, tasks) = bulk_targets(&store, &auth, &r.task_ids).await?;
     let mut deleted: Vec<String> = Vec::new();
     let mut failed = Vec::new();
@@ -862,10 +903,20 @@ async fn bulk_delete_tasks(
             }),
         }
     }
-    Ok(ConnectResponse::new(pb::BulkDeleteTasksResponse {
+    Ok(pb::BulkDeleteTasksResponse {
         deleted_ids: deleted,
         failed,
-    }))
+    })
+}
+
+async fn bulk_delete_tasks(
+    Extension(store): StoreExt,
+    user: Option<Extension<AuthUser>>,
+    req: ConnectRequest<pb::BulkDeleteTasksRequest>,
+) -> Result<ConnectResponse<pb::BulkDeleteTasksResponse>, ConnectError> {
+    let auth = require_auth(user)?;
+    let ConnectRequest(r) = req;
+    Ok(ConnectResponse::new(bulk_delete_tasks_core(&store, &auth, r).await?))
 }
 
 /// TaskService router; injects the Store as a request extension.

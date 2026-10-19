@@ -30,13 +30,26 @@ pub use crate::work::module_service::{
 // project from its module — reusing it here (rather than re-querying
 // `ModuleProjectRef` locally) keeps that resolution in one place.
 pub use crate::work::task_service::{
-    create_task_core, get_task_core, list_tasks_core, module_project, move_task_core,
-    update_task_core,
+    bulk_delete_preview_core, bulk_delete_tasks_core, bulk_update_tasks_core, create_task_core,
+    get_task_core, list_tasks_core, module_project, move_task_core, update_task_core,
+    BulkDeletePreview,
 };
 // MCP tools take a status by name; the project's workflow resolves it.
-pub use crate::work::status_service::status_by_name;
+pub use crate::work::status_service::{list_task_statuses_core, status_by_name};
 pub use crate::sedjiwa::tasks::work::v1 as work_pb;
-pub use crate::timelog::time_service::log_time_core;
+pub use crate::timelog::time_service::{list_time_entries_core, log_time_core};
+pub use crate::workload::workload_service::workload_core;
+pub use crate::sedjiwa::tasks::workload::v1 as workload_pb;
+pub use crate::views::view_service::list_saved_views_core;
+pub use crate::sedjiwa::tasks::view::v1 as view_pb;
+pub use crate::templates::template_service::{create_task_from_template_core, list_task_templates_core};
+pub use crate::sedjiwa::tasks::templates::v1 as template_pb;
+pub use crate::automation::automation_service::{
+    create_automation_core, delete_automation_core, get_automation_core, list_automation_runs_core,
+    list_automations_core, set_automation_mode_core, update_automation_core, automation_parts,
+    automation_parts_to_proto,
+};
+pub use crate::sedjiwa::tasks::automation::v1 as automation_pb;
 pub use crate::sedjiwa::tasks::time::v1 as time_pb;
 pub use crate::comments::comment_service::{create_comment_core, list_comments_core};
 pub use crate::sedjiwa::tasks::comment::v1 as comment_pb;

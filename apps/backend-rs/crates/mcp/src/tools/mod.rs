@@ -5,10 +5,14 @@
 //! so member-gating, validation, activity recording, notifications, and search
 //! indexing all come along without duplicated rules.
 
+pub mod automations;
+pub mod bulk;
 pub mod comments;
 pub mod discovery;
+pub mod planning;
 pub mod projects;
 pub mod tasks;
+pub mod templates;
 
 use std::sync::Arc;
 
@@ -85,6 +89,20 @@ pub const TOOLS: &[ToolMeta] = &[
     tasks::UPDATE_TASK,
     tasks::MOVE_TASK,
     tasks::LOG_TIME,
+    bulk::BULK_UPDATE_TASKS,
+    bulk::BULK_DELETE_TASKS,
+    templates::LIST_TASK_TEMPLATES,
+    templates::CREATE_TASK_FROM_TEMPLATE,
+    planning::LIST_STATUSES,
+    planning::GET_WORKLOAD,
+    planning::LIST_TIME_ENTRIES,
+    planning::LIST_SAVED_VIEWS,
+    automations::LIST_AUTOMATIONS,
+    automations::LIST_AUTOMATION_RUNS,
+    automations::CREATE_AUTOMATION,
+    automations::UPDATE_AUTOMATION,
+    automations::DELETE_AUTOMATION,
+    automations::SET_AUTOMATION_MODE,
     projects::CREATE_PROJECT_FROM_TEMPLATE,
     projects::LIST_PROJECTS,
     projects::GET_PROJECT,

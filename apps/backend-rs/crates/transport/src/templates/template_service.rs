@@ -52,6 +52,18 @@ async fn require_template(store: &Store, id: &str) -> Result<TemplateRecord, Con
         .ok_or_else(|| ConnectError::new_not_found("template not found"))
 }
 
+pub async fn list_task_templates_core(
+    store: &Store,
+    auth: &AuthUser,
+    r: pb::ListTaskTemplatesRequest,
+) -> Result<pb::ListTaskTemplatesResponse, ConnectError> {
+    require_member(&store, &r.project_id, &auth).await?;
+    let templates = templates_for(&store, &r.project_id).await.map_err(internal)?;
+    Ok(pb::ListTaskTemplatesResponse {
+        templates: templates.iter().map(to_proto).collect(),
+    })
+}
+
 async fn list_task_templates(
     Extension(store): StoreExt,
     user: Option<Extension<AuthUser>>,
@@ -59,11 +71,7 @@ async fn list_task_templates(
 ) -> Result<ConnectResponse<pb::ListTaskTemplatesResponse>, ConnectError> {
     let auth = require_auth(user)?;
     let ConnectRequest(r) = req;
-    require_member(&store, &r.project_id, &auth).await?;
-    let templates = templates_for(&store, &r.project_id).await.map_err(internal)?;
-    Ok(ConnectResponse::new(pb::ListTaskTemplatesResponse {
-        templates: templates.iter().map(to_proto).collect(),
-    }))
+    Ok(ConnectResponse::new(list_task_templates_core(&store, &auth, r).await?))
 }
 
 async fn save_task_template(
@@ -144,15 +152,12 @@ async fn live_labels(store: &Store, project_id: &str, ids: &[String]) -> anyhow:
     Ok(ids.iter().filter(|l| live.contains(*l)).cloned().collect())
 }
 
-async fn create_task_from_template(
-    Extension(store): StoreExt,
-    notifier: Option<Extension<Arc<Notifier>>>,
-    user: Option<Extension<AuthUser>>,
-    req: ConnectRequest<pb::CreateTaskFromTemplateRequest>,
-) -> Result<ConnectResponse<work_pb::Task>, ConnectError> {
-    let auth = require_auth(user)?;
-    let notifier = notifier.map(|Extension(n)| n);
-    let ConnectRequest(r) = req;
+pub async fn create_task_from_template_core(
+    store: &Store,
+    notifier: Option<&Arc<Notifier>>,
+    auth: &AuthUser,
+    r: pb::CreateTaskFromTemplateRequest,
+) -> Result<work_pb::Task, ConnectError> {
     let t = require_template(&store, &r.template_id).await?;
     require_member(&store, &t.project_id, &auth).await?;
     let (_mpid, module_project_id) = module_project(&store, &r.module_id).await?;
@@ -169,7 +174,7 @@ async fn create_task_from_template(
         .unwrap_or_else(|| t.title.clone());
     let parent = create_task_core(
         &store,
-        notifier.as_ref(),
+        notifier,
         &auth,
         work_pb::CreateTaskRequest {
             module_id: r.module_id.clone(),
@@ -190,7 +195,7 @@ async fn create_task_from_template(
         let title = &sub.title;
         create_task_core(
             &store,
-            notifier.as_ref(),
+            notifier,
             &auth,
             work_pb::CreateTaskRequest {
                 module_id: r.module_id.clone(),
@@ -206,7 +211,18 @@ async fn create_task_from_template(
         .await
         .map_err(internal)?
         .ok_or_else(|| ConnectError::new_not_found("task not found"))?;
-    Ok(ConnectResponse::new(crate::work::task_record::to_proto(&fresh)))
+    Ok(crate::work::task_record::to_proto(&fresh))
+}
+
+async fn create_task_from_template(
+    Extension(store): StoreExt,
+    notifier: Option<Extension<Arc<Notifier>>>,
+    user: Option<Extension<AuthUser>>,
+    req: ConnectRequest<pb::CreateTaskFromTemplateRequest>,
+) -> Result<ConnectResponse<work_pb::Task>, ConnectError> {
+    let auth = require_auth(user)?;
+    let ConnectRequest(r) = req;
+    Ok(ConnectResponse::new(create_task_from_template_core(&store, notifier.as_ref().map(|Extension(n)| n), &auth, r).await?))
 }
 
 /// TemplateService router; injects the Store as a request extension.
