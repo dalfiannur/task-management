@@ -110,6 +110,7 @@ fn entity_label(code: i32) -> &'static str {
         Some(EntityType::Ownership) => "Ownership",
         Some(EntityType::Page) => "Page",
         Some(EntityType::Media) => "Media",
+        Some(EntityType::TimeEntry) => "Time entry",
         None => "Other",
     }
 }

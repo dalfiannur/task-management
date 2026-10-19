@@ -524,3 +524,12 @@ tag AS (
 )
 INSERT INTO cmp_userprofile (pid, display_name, avatar_url, email)
 SELECT pid, 'Automation', '', '' FROM tag;
+
+-- The task an activity entry belongs to when the entry is about something
+-- else on that task (a time entry). A task's feed is its own entries plus
+-- these.
+CREATE TABLE IF NOT EXISTS cmp_activitytask (
+    pid BIGINT PRIMARY KEY REFERENCES arke_entities(pid) ON DELETE CASCADE,
+    task_id TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_cmp_activitytask_task_id ON cmp_activitytask USING btree (task_id);

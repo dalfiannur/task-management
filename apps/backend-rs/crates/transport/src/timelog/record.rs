@@ -230,18 +230,19 @@ async fn insert_entry(
     Ok(pid)
 }
 
-/// Start a timer on a task, stopping whatever the user had running.
-pub(crate) async fn start_timer(store: &Store, e: NewEntry<'_>) -> anyhow::Result<i64> {
+/// Start a timer on a task, stopping whatever the user had running. Returns
+/// the new entry and the one it stopped, if any.
+pub(crate) async fn start_timer(store: &Store, e: NewEntry<'_>) -> anyhow::Result<(i64, Option<i64>)> {
     let mut tx = store.pool().begin().await?;
     // Serialise per user: two starts at once must not both pass the stop.
     sqlx::query("SELECT pg_advisory_xact_lock(hashtext('cmp_timeentry:' || $1))")
         .bind(e.user_id)
         .execute(&mut *tx)
         .await?;
-    stop_running(&mut tx, e.user_id, e.now).await?;
+    let stopped = stop_running(&mut tx, e.user_id, e.now).await?;
     let pid = insert_entry(&mut tx, &e, true, 0).await?;
     tx.commit().await?;
-    Ok(pid)
+    Ok((pid, stopped))
 }
 
 pub(crate) async fn stop_timer(store: &Store, user_id: &str, now: &str) -> anyhow::Result<Option<i64>> {

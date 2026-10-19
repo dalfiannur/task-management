@@ -24,6 +24,7 @@ const MODULE: &str = "/sedjiwa.tasks.work.v1.ModuleService";
 const TASK: &str = "/sedjiwa.tasks.work.v1.TaskService";
 const TIME: &str = "/sedjiwa.tasks.time.v1.TimeService";
 const REPORT: &str = "/sedjiwa.tasks.reports.v1.ReportService";
+const ACTIVITY: &str = "/sedjiwa.tasks.activity.v1.ActivityService";
 
 fn uniq() -> String {
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -57,6 +58,7 @@ async fn setup() -> Option<(Router, Arc<Store>)> {
         .merge(transport::status_router(store.clone()))
         .merge(transport::time_router(store.clone()))
         .merge(transport::report_router(store.clone()))
+        .merge(transport::activity_router(store.clone()))
         .layer(from_fn(auth_mw));
     Some((router, store))
 }
@@ -608,3 +610,129 @@ async fn deleting_a_task_or_project_leaves_no_time_entries_behind() {
     assert_eq!(left, 0, "a deleted project leaves no time entries behind");
 }
 
+
+// ── Time entries in the activity log ─────────────────────────────────────────
+
+/// TIME_ENTRY rows in a task's activity, newest first.
+async fn time_rows(router: &Router, tok: &str, task: &str) -> Vec<Value> {
+    let v = ok(router, &format!("{ACTIVITY}/ListEntityActivity"), tok, json!({ "entityType": "TASK", "entityId": task })).await;
+    v["activities"].as_array().cloned().unwrap_or_default().into_iter().filter(|a| a["entityType"] == "TIME_ENTRY").collect()
+}
+
+/// `field → (from, to)` of an activity row.
+fn changes(a: &Value) -> std::collections::HashMap<String, (Value, Value)> {
+    a["changes"].as_array().cloned().unwrap_or_default().into_iter()
+        .map(|c| (s(&c, "field"), (c["from"].clone(), c["to"].clone())))
+        .collect()
+}
+
+#[tokio::test]
+async fn time_changes_are_recorded_in_the_activity_log() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let (owner, member, admin, outsider) = (mk_user(&store).await, mk_user(&store).await, mk_user(&store).await, mk_user(&store).await);
+    let (to, tm, ta) = (token(&owner), token(&member), admin_token(&admin));
+    let pid = project_with(&router, &owner, &[&member]).await;
+    let m = module(&router, &to, &pid).await;
+    let t = task(&router, &to, &m, "Design").await;
+    let t2 = task(&router, &to, &m, "Build").await;
+    let n = num(&get(&router, &to, &t).await, "number");
+
+    // Log: one CREATED row by the member, linked to the task.
+    let e = ok(&router, &format!("{TIME}/LogTime"), &tm, json!({ "taskId": t, "minutes": 90, "date": "2026-10-02", "note": "review" })).await;
+    let rows = time_rows(&router, &tm, &t).await;
+    assert_eq!(rows.len(), 1, "one row per log: {rows:?}");
+    let r = &rows[0];
+    assert_eq!(r["action"], "CREATED");
+    assert_eq!(r["actorId"], member.as_str());
+    assert_eq!(r["entityId"], e["id"], "the row is about the entry");
+    assert_eq!(r["taskId"], t.as_str(), "and linked to its task");
+    assert_eq!(r["projectId"], pid.as_str());
+    assert_eq!(r["summary"], format!("logged 1h 30m on #{n}"), "{r}");
+    let c = changes(r);
+    assert_eq!(c["minutes"].1, json!("1h 30m"), "minutes read as a duration: {r}");
+    assert_eq!(c["date"].1, json!("2026-10-02"));
+    assert_eq!(c["note"].1, json!("review"));
+    assert!(c.values().all(|(from, _)| from.is_null()), "a new entry has no from values: {r}");
+    ok(&router, &format!("{TIME}/LogTime"), &tm, json!({ "taskId": t, "minutes": 5, "date": "2026-10-02" })).await;
+    let plain = time_rows(&router, &tm, &t).await[0].clone();
+    assert!(!changes(&plain).contains_key("note"), "no note, no note change: {plain}");
+
+    // Timers: starting records nothing; an implicit stop and an explicit stop each record one row.
+    ok(&router, &format!("{TIME}/StartTimer"), &tm, json!({ "taskId": t })).await;
+    assert_eq!(time_rows(&router, &tm, &t).await.len(), 2, "starting a timer records nothing");
+    ok(&router, &format!("{TIME}/StartTimer"), &tm, json!({ "taskId": t2 })).await;
+    let rows = time_rows(&router, &tm, &t).await;
+    assert_eq!(rows.len(), 3, "the timer stopped by starting another is recorded on its own task");
+    assert_eq!(rows[0]["action"], "CREATED");
+    assert_eq!(changes(&rows[0])["minutes"].1, json!("1m"));
+    assert!(time_rows(&router, &tm, &t2).await.is_empty(), "the new timer is not recorded yet");
+    ok(&router, &format!("{TIME}/StopTimer"), &tm, json!({})).await;
+    let rows2 = time_rows(&router, &tm, &t2).await;
+    assert_eq!(rows2.len(), 1, "an explicit stop records one row");
+    assert_eq!(rows2[0]["summary"], format!("logged 1m on #{}", num(&get(&router, &to, &t2).await, "number")));
+
+    // An admin's edit: UPDATED, actor = the admin, from/to only for what changed.
+    let upd = format!("{TIME}/UpdateTimeEntry");
+    ok(&router, &upd, &ta, json!({ "id": e["id"], "minutes": 60, "note": "review" })).await;
+    let r = time_rows(&router, &tm, &t).await[0].clone();
+    assert_eq!(r["action"], "UPDATED");
+    assert_eq!(r["actorId"], admin.as_str(), "the editor, not the author");
+    assert_eq!(r["summary"], format!("edited time on #{n}"));
+    let c = changes(&r);
+    assert_eq!(c.len(), 1, "only minutes changed: {r}");
+    assert_eq!(c["minutes"], (json!("1h 30m"), json!("1h")));
+    // A no-op edit writes nothing.
+    let before = time_rows(&router, &tm, &t).await.len();
+    ok(&router, &upd, &tm, json!({ "id": e["id"], "minutes": 60, "date": "2026-10-02", "note": "review" })).await;
+    assert_eq!(time_rows(&router, &tm, &t).await.len(), before, "a no-op edit records nothing");
+    ok(&router, &upd, &tm, json!({ "id": e["id"], "date": "2026-10-03", "note": "" })).await;
+    let c = changes(&time_rows(&router, &tm, &t).await[0]);
+    assert_eq!(c["date"], (json!("2026-10-02"), json!("2026-10-03")));
+    assert!(c.contains_key("note"), "clearing the note is a change: {c:?}");
+    assert!(!c.contains_key("minutes"));
+
+    // Delete: DELETED with the from values.
+    ok(&router, &format!("{TIME}/DeleteTimeEntry"), &tm, json!({ "id": e["id"] })).await;
+    let r = time_rows(&router, &tm, &t).await[0].clone();
+    assert_eq!(r["action"], "DELETED");
+    assert_eq!(r["actorId"], member.as_str());
+    assert_eq!(r["summary"], format!("deleted 1h logged on #{n}"));
+    let c = changes(&r);
+    assert_eq!(c["minutes"].0, json!("1h"));
+    assert_eq!(c["date"].0, json!("2026-10-03"));
+
+    // The project log shows them too.
+    let proj = ok(&router, &format!("{ACTIVITY}/ListProjectActivity"), &to, json!({ "projectId": pid })).await;
+    let in_proj = proj["activities"].as_array().unwrap().iter().filter(|a| a["entityType"] == "TIME_ENTRY").count();
+    assert_eq!(in_proj, 7, "log, log, implicit stop, stop, admin edit, edit, delete: all seven in the project log (the no-op edit wrote none): {proj}");
+
+    // Outsiders see neither the task's nor the entry's activity.
+    fails(&router, &format!("{ACTIVITY}/ListEntityActivity"), &token(&outsider), json!({ "entityType": "TASK", "entityId": t }), "permission_denied").await;
+    fails(&router, &format!("{ACTIVITY}/ListEntityActivity"), &token(&outsider), json!({ "entityType": "TIME_ENTRY", "entityId": e["id"] }), "permission_denied").await;
+
+    // Cascades write no per-entry rows.
+    let doomed = task(&router, &to, &m, "Doomed").await;
+    ok(&router, &format!("{TIME}/LogTime"), &tm, json!({ "taskId": doomed, "minutes": 10 })).await;
+    let count = |router: Router, to: String, pid: String| async move {
+        let v = ok(&router, &format!("{ACTIVITY}/ListProjectActivity"), &to, json!({ "projectId": pid })).await;
+        v["activities"].as_array().unwrap().iter().filter(|a| a["entityType"] == "TIME_ENTRY").count()
+    };
+    let before = count(router.clone(), to.clone(), pid.clone()).await;
+    ok(&router, &format!("{TASK}/DeleteTask"), &to, json!({ "id": doomed })).await;
+    assert_eq!(count(router.clone(), to.clone(), pid.clone()).await, before, "deleting a task adds no time-entry rows");
+
+    // The period report's activity summary counts them.
+    let d = time::OffsetDateTime::now_utc().date();
+    let (from, until) = (d - time::Duration::days(1), d + time::Duration::days(2));
+    let r = ok(&router, &format!("{REPORT}/GetPeriodReport"), &to, json!({
+        "periodStart": format!("{from}T00:00:00Z"), "periodEnd": format!("{until}T00:00:00Z"),
+        "periodStartDate": from.to_string(), "periodEndDate": until.to_string(),
+    })).await;
+    let te: Vec<&Value> = r["activitySummary"].as_array().unwrap().iter().filter(|x| x["entityType"] == "TIME_ENTRY").collect();
+    let created = te.iter().filter(|x| x["action"] == "CREATED").map(|x| num(x, "count")).sum::<i64>();
+    assert!(created >= 5, "the summary counts time-entry rows (this project alone made 5 CREATED): {te:?}");
+    assert!(te.iter().any(|x| x["action"] == "UPDATED") && te.iter().any(|x| x["action"] == "DELETED"));
+}

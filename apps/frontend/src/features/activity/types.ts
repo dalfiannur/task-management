@@ -7,6 +7,7 @@ export type ActivityEntity =
   | "ownership"
   | "page"
   | "media"
+  | "time_entry"
   | "other";
 
 export type ActivityAction = "created" | "updated" | "deleted" | "other";
@@ -27,6 +28,8 @@ export interface Activity {
   summary: string;
   changes: FieldChange[];
   createdAt: string;
+  /** The task a non-task entry belongs to (a time entry's task). */
+  taskId?: string;
   /** Set when an automation rule did it; `automationName` "" once deleted. */
   automationId?: string;
   automationName?: string;

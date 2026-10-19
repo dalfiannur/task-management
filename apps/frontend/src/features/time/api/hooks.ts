@@ -8,6 +8,8 @@ import { createConnectQueryKey, useMutation, useQuery } from "@connectrpc/connec
 import { TimeService, type TimeEntry as PbTimeEntry } from "@/lib/gen/time_pb";
 import { TaskService } from "@/lib/gen/work_pb";
 import { WorkloadService } from "@/lib/gen/workload_pb";
+import { ActivityService } from "@/lib/gen/activity_pb";
+import { formatMinutes } from "@/lib/duration";
 import { queryClient } from "@/lib/query";
 import type { TimeEntry } from "../types";
 
@@ -44,7 +46,17 @@ const refresh = () =>
     queryClient.invalidateQueries({
       queryKey: createConnectQueryKey({ schema: WorkloadService, cardinality: "finite" }),
     }),
+    // Logged time shows up in the task's and the project's activity.
+    queryClient.invalidateQueries({
+      queryKey: createConnectQueryKey({ schema: ActivityService, cardinality: "finite" }),
+    }),
   ]);
+
+/** "Logged 1h 30m on #12". */
+function toastLogged(e: { minutes: number; taskNumber: number } | undefined) {
+  if (!e) return;
+  toast.success(`Logged ${formatMinutes(e.minutes)}${e.taskNumber ? ` on #${e.taskNumber}` : ""}`);
+}
 
 const onError = (err: { message: string }) =>
   toast.error(err.message || "Time tracking failed");
@@ -72,10 +84,22 @@ export function useStartTimer() {
   return useMutation(TimeService.method.startTimer, { onSuccess: refresh, onError });
 }
 export function useStopTimer() {
-  return useMutation(TimeService.method.stopTimer, { onSuccess: refresh, onError });
+  return useMutation(TimeService.method.stopTimer, {
+    onSuccess: (r) => {
+      toastLogged(r.entry);
+      return refresh();
+    },
+    onError,
+  });
 }
 export function useLogTime() {
-  return useMutation(TimeService.method.logTime, { onSuccess: refresh, onError });
+  return useMutation(TimeService.method.logTime, {
+    onSuccess: (e) => {
+      toastLogged(e);
+      return refresh();
+    },
+    onError,
+  });
 }
 export function useDeleteTimeEntry() {
   return useMutation(TimeService.method.deleteTimeEntry, { onSuccess: refresh, onError });
