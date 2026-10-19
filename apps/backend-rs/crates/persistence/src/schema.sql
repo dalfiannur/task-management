@@ -524,3 +524,7 @@ tag AS (
 )
 INSERT INTO cmp_userprofile (pid, display_name, avatar_url, email)
 SELECT pid, 'Automation', '', '' FROM tag;
+
+-- "Tasks assigned to these people" (workload's other-projects load, My
+-- tasks, assignee filters) without scanning every task.
+CREATE INDEX IF NOT EXISTS idx_cmp_taskassignees_user_ids ON cmp_taskassignees USING gin (user_ids);

@@ -36,6 +36,8 @@ export interface WorkloadTask {
 export interface WorkloadWeek {
   capacityMinutes: number;
   plannedMinutes: number;
+  /** The same person's load this week in projects outside this view. */
+  otherMinutes: number;
 }
 
 export interface WorkloadMember {
@@ -52,6 +54,20 @@ export interface WorkloadMember {
   totalMinutes: number;
   calendarConflict: boolean;
   tasks: WorkloadTask[];
+  /** Outside-scope counterparts; not part of `totalMinutes`. */
+  otherOverdueMinutes: number;
+  otherUnscheduledMinutes: number;
+  otherLaterMinutes: number;
+}
+
+/** All of a member's load in other projects, every bucket. */
+export function otherTotal(m: WorkloadMember): number {
+  return (
+    m.weeks.reduce((s, w) => s + w.otherMinutes, 0) +
+    m.otherOverdueMinutes +
+    m.otherUnscheduledMinutes +
+    m.otherLaterMinutes
+  );
 }
 
 export interface Workload {

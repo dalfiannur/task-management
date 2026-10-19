@@ -126,33 +126,60 @@ pub(crate) async fn project_names(
     Ok(out)
 }
 
-/// Open (To Do / In Progress category), estimated, assigned tasks of
-/// `projects`, minus parents whose subtasks carry estimates — those hold the
-/// effort instead. `logged` counts finished time entries only.
 pub(crate) async fn open_tasks(store: &Store, projects: &[String]) -> anyhow::Result<Vec<OpenTask>> {
-    let rows = sqlx::query(
-        "SELECT i.pid, mp.project_id, COALESCE(tn.value, 0) AS number, i.title, \
-                i.start_date, i.due_date, e.minutes AS estimate, \
-                (SELECT COALESCE(SUM(te.minutes), 0)::int8 FROM cmp_timeentry te \
-                 WHERE te.task_id = i.pid::text AND NOT te.running) AS logged, \
-                ARRAY(SELECT jsonb_array_elements_text(a.user_ids)) AS assignees \
-         FROM cmp_taskinfo i \
-         JOIN cmp_taskmoduleref m ON m.pid = i.pid \
-         JOIN cmp_moduleprojectref mp ON mp.pid::text = m.module_id \
-         JOIN cmp_taskestimate e ON e.pid = i.pid AND e.minutes > 0 \
-         JOIN cmp_taskassignees a ON a.pid = i.pid AND jsonb_array_length(a.user_ids) > 0 \
-         LEFT JOIN cmp_tasknumber tn ON tn.pid = i.pid \
-         WHERE mp.project_id = ANY($1) \
-           AND i.status IN ('todo', 'in_progress') \
-           AND NOT EXISTS ( \
-               SELECT 1 FROM cmp_taskparent p \
-               JOIN cmp_taskestimate se ON se.pid = p.pid AND se.minutes > 0 \
-               WHERE p.parent_id = i.pid::text) \
-         ORDER BY i.due_date NULLS LAST, i.pid",
-    )
-    .bind(projects)
+    let rows = sqlx::query(&format!("{OPEN_TASKS} WHERE mp.project_id = ANY($1) AND {OPEN_TASK_RULES} {OPEN_TASK_ORDER}"))
+        .bind(projects)
+        .fetch_all(store.pool())
+        .await?;
+    read_open_tasks(&rows)
+}
+
+/// The same open, estimated tasks, assigned to any of `people`, in projects
+/// NOT in `exclude` — the "other projects" load — and only in projects that
+/// still exist: deleting a project leaves its modules and tasks behind, and
+/// those are nobody's load. Uses the GIN index on `cmp_taskassignees.user_ids`.
+pub(crate) async fn open_tasks_elsewhere(
+    store: &Store,
+    people: &[String],
+    exclude: &[String],
+) -> anyhow::Result<Vec<OpenTask>> {
+    if people.is_empty() {
+        return Ok(Vec::new());
+    }
+    let rows = sqlx::query(&format!(
+        "{OPEN_TASKS} WHERE a.user_ids ?| $1::text[] AND NOT (mp.project_id = ANY($2)) \
+         AND EXISTS (SELECT 1 FROM cmp_projectname pn WHERE pn.pid::text = mp.project_id) \
+         AND {OPEN_TASK_RULES} {OPEN_TASK_ORDER}"
+    ))
+    .bind(people)
+    .bind(exclude)
     .fetch_all(store.pool())
     .await?;
+    read_open_tasks(&rows)
+}
+
+/// Open (To Do / In Progress category), estimated, assigned tasks, minus
+/// parents whose subtasks carry estimates — those hold the effort instead.
+/// `logged` counts finished time entries only.
+const OPEN_TASKS: &str = "SELECT i.pid, mp.project_id, COALESCE(tn.value, 0) AS number, i.title, \
+        i.start_date, i.due_date, e.minutes AS estimate, \
+        (SELECT COALESCE(SUM(te.minutes), 0)::int8 FROM cmp_timeentry te \
+         WHERE te.task_id = i.pid::text AND NOT te.running) AS logged, \
+        ARRAY(SELECT jsonb_array_elements_text(a.user_ids)) AS assignees \
+    FROM cmp_taskinfo i \
+    JOIN cmp_taskmoduleref m ON m.pid = i.pid \
+    JOIN cmp_moduleprojectref mp ON mp.pid::text = m.module_id \
+    JOIN cmp_taskestimate e ON e.pid = i.pid AND e.minutes > 0 \
+    JOIN cmp_taskassignees a ON a.pid = i.pid AND jsonb_array_length(a.user_ids) > 0 \
+    LEFT JOIN cmp_tasknumber tn ON tn.pid = i.pid";
+const OPEN_TASK_RULES: &str = "i.status IN ('todo', 'in_progress') \
+    AND NOT EXISTS ( \
+        SELECT 1 FROM cmp_taskparent p \
+        JOIN cmp_taskestimate se ON se.pid = p.pid AND se.minutes > 0 \
+        WHERE p.parent_id = i.pid::text)";
+const OPEN_TASK_ORDER: &str = "ORDER BY i.due_date NULLS LAST, i.pid";
+
+fn read_open_tasks(rows: &[sqlx::postgres::PgRow]) -> anyhow::Result<Vec<OpenTask>> {
     let mut out = Vec::with_capacity(rows.len());
     for row in rows {
         out.push(OpenTask {

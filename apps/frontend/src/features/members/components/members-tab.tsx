@@ -19,7 +19,7 @@ import { currentUserAtom, isAdminAtom } from "@/features/auth";
 import { useProjectMembers } from "@/features/projects";
 import { useTasks } from "@/features/tasks";
 import { useUserMap } from "@/features/users";
-import { WorkCalendarDialog, useWorkload } from "@/features/workload";
+import { WorkCalendarDialog, otherTotal, useWorkload } from "@/features/workload";
 import { useRemoveMember, useLeaveProject } from "../api/hooks";
 import {
   EMPTY_MEMBER_STATS,
@@ -46,6 +46,8 @@ interface Row {
   stats: MemberStats;
   /** Remaining effort on their estimated open tasks here; see Workload. */
   effortLeft: number;
+  /** The same person's remaining effort in their other projects. */
+  effortOther: number;
 }
 
 export function MembersTab({ projectId }: { projectId: string }) {
@@ -71,6 +73,10 @@ export function MembersTab({ projectId }: { projectId: string }) {
     () => new Map(effort?.members.map((m) => [m.userId, m.totalMinutes]) ?? []),
     [effort],
   );
+  const otherByUser = useMemo(
+    () => new Map(effort?.members.map((m) => [m.userId, otherTotal(m)]) ?? []),
+    [effort],
+  );
 
   // Owner first, then by name.
   const rows: Row[] = useMemo(
@@ -86,13 +92,14 @@ export function MembersTab({ projectId }: { projectId: string }) {
             avatarUrl: u?.avatarUrl,
             stats: workload.byUser[m.userId] ?? EMPTY_MEMBER_STATS,
             effortLeft: effortByUser.get(m.userId) ?? 0,
+            effortOther: otherByUser.get(m.userId) ?? 0,
           };
         })
         .sort((a, b) => {
           if (a.isOwner !== b.isOwner) return a.isOwner ? -1 : 1;
           return a.name.localeCompare(b.name);
         }),
-    [members, userMap, workload, effortByUser],
+    [members, userMap, workload, effortByUser, otherByUser],
   );
 
   const needle = q.trim().toLowerCase();
@@ -362,6 +369,14 @@ function MemberRow({
             )}
           >
             {row.effortLeft ? formatMinutes(row.effortLeft) : "–"}
+            {row.effortOther > 0 && (
+              <span
+                className="block text-xs text-muted-foreground"
+                title="Remaining effort in this person's other projects"
+              >
+                +{formatMinutes(row.effortOther)} other
+              </span>
+            )}
           </span>
           <div className={cn(COLS.progress, "hidden items-center gap-2 md:flex")}>
             {stats.total > 0 ? (

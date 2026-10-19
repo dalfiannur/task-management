@@ -15,9 +15,29 @@ function tone(planned: number, capacity: number) {
   return "ok";
 }
 
-function LoadCell({ planned, capacity }: { planned: number; capacity: number }) {
-  const t = tone(planned, capacity);
-  const pct = capacity > 0 ? Math.min(planned / capacity, 1) * 100 : planned > 0 ? 100 : 0;
+/** Stripes in the text colour, so the "other projects" segment reads as
+ *  neutral and works in both themes. */
+const STRIPES = {
+  backgroundImage: "repeating-linear-gradient(45deg, currentColor 0 2px, transparent 2px 5px)",
+};
+
+function LoadCell({
+  planned,
+  other,
+  capacity,
+}: {
+  planned: number;
+  /** This person's load in projects outside this view. */
+  other: number;
+  capacity: number;
+}) {
+  // Load counts all of the person's work, so someone busy elsewhere does
+  // not look free here.
+  const load = planned + other;
+  const t = tone(load, capacity);
+  const scale = (m: number) => (capacity > 0 ? (m / capacity) * 100 : m > 0 ? 100 : 0);
+  const plannedPct = Math.min(scale(planned), 100);
+  const otherPct = Math.min(scale(other), 100 - plannedPct);
   return (
     <div
       className={cn(
@@ -25,6 +45,7 @@ function LoadCell({ planned, capacity }: { planned: number; capacity: number }) 
         t === "over" && "bg-destructive-subtle",
         t === "full" && "bg-warning-subtle",
       )}
+      title={other ? `Other projects: ${formatMinutes(other)}` : undefined}
     >
       <span
         className={cn(
@@ -35,15 +56,24 @@ function LoadCell({ planned, capacity }: { planned: number; capacity: number }) 
         )}
       >
         {planned ? formatMinutes(planned) : "–"}
+        {other > 0 && (
+          <span className="ml-1 text-xs font-normal text-muted-foreground">
+            +{formatMinutes(other)}
+            <span className="sr-only"> in other projects</span>
+          </span>
+        )}
       </span>
-      <div className="h-1 overflow-hidden rounded-full bg-muted" aria-hidden="true">
+      <div className="flex h-1 overflow-hidden rounded-full bg-muted" aria-hidden="true">
         <div
           className={cn(
-            "h-full rounded-full",
+            "h-full",
             t === "over" ? "bg-destructive" : t === "full" ? "bg-warning" : "bg-primary",
           )}
-          style={{ width: `${pct}%` }}
+          style={{ width: `${plannedPct}%` }}
         />
+        {otherPct > 0 && (
+          <div className="h-full text-muted-foreground/70" style={{ width: `${otherPct}%`, ...STRIPES }} />
+        )}
       </div>
       <span className="text-num text-xs text-muted-foreground">
         of {formatMinutes(capacity)}
@@ -52,16 +82,23 @@ function LoadCell({ planned, capacity }: { planned: number; capacity: number }) 
   );
 }
 
-function Plain({ minutes, alert }: { minutes: number; alert?: boolean }) {
+function Plain({ minutes, other = 0, alert }: { minutes: number; other?: number; alert?: boolean }) {
   return (
-    <span
-      className={cn(
-        "text-num text-sm",
-        !minutes && "text-muted-foreground",
-        alert && minutes > 0 && "font-medium text-destructive",
+    <span className="flex flex-col">
+      <span
+        className={cn(
+          "text-num text-sm",
+          !minutes && "text-muted-foreground",
+          alert && minutes > 0 && "font-medium text-destructive",
+        )}
+      >
+        {minutes ? formatMinutes(minutes) : "–"}
+      </span>
+      {other > 0 && (
+        <span className="text-num text-xs text-muted-foreground">
+          +{formatMinutes(other)} in other projects
+        </span>
       )}
-    >
-      {minutes ? formatMinutes(minutes) : "–"}
     </span>
   );
 }
@@ -206,18 +243,18 @@ export function WorkloadGrid({
                     </div>
                   </th>
                   <td className="px-2 py-2">
-                    <Plain minutes={m.overdueMinutes} alert />
+                    <Plain minutes={m.overdueMinutes} other={m.otherOverdueMinutes} alert />
                   </td>
                   {m.weeks.map((w, i) => (
                     <td key={workload.weekStarts[i]} className="px-1 py-1.5">
-                      <LoadCell planned={w.plannedMinutes} capacity={w.capacityMinutes} />
+                      <LoadCell planned={w.plannedMinutes} other={w.otherMinutes} capacity={w.capacityMinutes} />
                     </td>
                   ))}
                   <td className="px-2 py-2">
-                    <Plain minutes={m.laterMinutes} />
+                    <Plain minutes={m.laterMinutes} other={m.otherLaterMinutes} />
                   </td>
                   <td className="px-2 py-2">
-                    <Plain minutes={m.unscheduledMinutes} />
+                    <Plain minutes={m.unscheduledMinutes} other={m.otherUnscheduledMinutes} />
                   </td>
                   <td className="px-4 py-2 text-right">
                     <span className="text-num text-sm font-medium">
