@@ -12,11 +12,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   Button,
+  buttonVariants,
   Input,
   Label,
   Skeleton,
 } from "sedjiwa-ui";
 import { EmptyState } from "@/components/shared/empty-state";
+import { formatMinutes } from "@/lib/duration";
 import { useUserMap } from "@/features/users";
 import {
   useDeletedProjects,
@@ -24,7 +26,34 @@ import {
   usePurgeProject,
   useRestoreProject,
   type DeletedProject,
+  type ProjectContents,
 } from "../api/hooks";
+
+function bytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  const units = ["KB", "MB", "GB", "TB"];
+  let v = n / 1024;
+  let i = 0;
+  while (v >= 1024 && i < units.length - 1) {
+    v /= 1024;
+    i += 1;
+  }
+  return `${v < 10 ? v.toFixed(1) : Math.round(v)} ${units[i]}`;
+}
+
+/** "48 tasks · 120h logged · 15 files (230 MB) · 3 pages", zeros left out. */
+function describeContents(c: ProjectContents): string {
+  const n = (k: number, one: string, many = `${one}s`) => `${k} ${k === 1 ? one : many}`;
+  const parts: string[] = [];
+  if (c.tasks) parts.push(n(c.tasks, "task"));
+  if (c.timeMinutes) parts.push(`${formatMinutes(c.timeMinutes)} logged`);
+  if (c.mediaFiles) parts.push(`${n(c.mediaFiles, "file")} (${bytes(c.mediaBytes)})`);
+  if (c.pages) parts.push(n(c.pages, "page"));
+  if (c.comments) parts.push(n(c.comments, "comment"));
+  if (c.modules) parts.push(n(c.modules, "module"));
+  if (c.automations) parts.push(n(c.automations, "automation"));
+  return parts.length ? parts.join(" · ") : "Empty";
+}
 
 /** Purge only after typing the project's name: it cannot be undone. */
 function PurgeDialog({
@@ -48,9 +77,14 @@ function PurgeDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>Delete “{project?.name}” for good?</AlertDialogTitle>
           <AlertDialogDescription>
-            Its modules, tasks, comments, pages, files, time entries, automations and
-            activity are removed permanently. This cannot be undone.
+            Removed permanently, with its activity, labels, statuses and views. This
+            cannot be undone.
           </AlertDialogDescription>
+          {project && (
+            <p className="rounded-md bg-destructive-subtle px-3 py-2 text-sm text-destructive-subtle-text">
+              {describeContents(project.contents)}
+            </p>
+          )}
         </AlertDialogHeader>
         <div className="space-y-2">
           <Label htmlFor="purge-confirm">Type the project name to confirm</Label>
@@ -72,7 +106,7 @@ function PurgeDialog({
             onClick={() =>
               project &&
               purge.mutate(
-                { id: project.id },
+                { id: project.id, confirmName: typed },
                 {
                   onSuccess: () => {
                     toast.success(`“${project.name}” deleted for good.`);
@@ -97,7 +131,7 @@ function PurgeDialog({
  * automatically.
  */
 export function TrashPage() {
-  const { projects, leftoverCount, isLoading, isError, error } = useDeletedProjects();
+  const { projects, leftoverCount, leftoverContents, isLoading, isError, error } = useDeletedProjects();
   const restore = useRestoreProject();
   const leftovers = usePurgeLeftovers();
   const userMap = useUserMap();
@@ -131,6 +165,7 @@ export function TrashPage() {
             <li key={p.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{p.name}</p>
+                <p className="text-num text-xs text-foreground/80">{describeContents(p.contents)}</p>
                 <p className="text-xs text-muted-foreground">
                   Deleted {formatDistanceToNowStrict(new Date(p.deletedAt), { addSuffix: true })} by{" "}
                   {userMap[p.deletedBy]?.displayName ?? "someone"} · owner{" "}
@@ -172,6 +207,7 @@ export function TrashPage() {
               tasks or other data behind (deleted before the trash existed). It is not shown
               anywhere but still takes space.
             </p>
+            <p className="text-num mt-1 text-xs text-foreground/80">{describeContents(leftoverContents)}</p>
           </div>
           <Button variant="outline" size="sm" onClick={() => setConfirmLeftovers(true)}>
             <Eraser className="mr-1 h-4 w-4" />
@@ -191,14 +227,16 @@ export function TrashPage() {
               cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <p className="rounded-md bg-destructive-subtle px-3 py-2 text-sm text-destructive-subtle-text">
+            {describeContents(leftoverContents)}
+          </p>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction asChild>
-              <Button
-              variant="destructive"
+            <AlertDialogAction
+              className={buttonVariants({ variant: "destructive" })}
               onClick={() =>
                 leftovers.mutate(
-                  {},
+                  { confirmProjects: leftoverCount },
                   {
                     onSuccess: (r) =>
                       toast.success(
@@ -210,7 +248,6 @@ export function TrashPage() {
               }
             >
               Remove for good
-              </Button>
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

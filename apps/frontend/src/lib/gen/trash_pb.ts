@@ -10,7 +10,61 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file trash.proto.
  */
 export const file_trash: GenFile = /*@__PURE__*/
-  fileDesc("Cgt0cmFzaC5wcm90bxIWc2Vkaml3YS50YXNrcy50cmFzaC52MSJkCg5EZWxldGVkUHJvamVjdBIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEhAKCG93bmVyX2lkGAMgASgJEhIKCmRlbGV0ZWRfYXQYBCABKAkSEgoKZGVsZXRlZF9ieRgFIAEoCSIcChpMaXN0RGVsZXRlZFByb2plY3RzUmVxdWVzdCJvChtMaXN0RGVsZXRlZFByb2plY3RzUmVzcG9uc2USOAoIcHJvamVjdHMYASADKAsyJi5zZWRqaXdhLnRhc2tzLnRyYXNoLnYxLkRlbGV0ZWRQcm9qZWN0EhYKDmxlZnRvdmVyX2NvdW50GAIgASgFIiMKFVJlc3RvcmVQcm9qZWN0UmVxdWVzdBIKCgJpZBgBIAEoCSIkChZSZXN0b3JlUHJvamVjdFJlc3BvbnNlEgoKAm9rGAEgASgIIiEKE1B1cmdlUHJvamVjdFJlcXVlc3QSCgoCaWQYASABKAkiIgoUUHVyZ2VQcm9qZWN0UmVzcG9uc2USCgoCb2sYASABKAgiFwoVUHVyZ2VMZWZ0b3ZlcnNSZXF1ZXN0IioKFlB1cmdlTGVmdG92ZXJzUmVzcG9uc2USEAoIcHJvamVjdHMYASABKAUy4gMKE1Byb2plY3RUcmFzaFNlcnZpY2USfgoTTGlzdERlbGV0ZWRQcm9qZWN0cxIyLnNlZGppd2EudGFza3MudHJhc2gudjEuTGlzdERlbGV0ZWRQcm9qZWN0c1JlcXVlc3QaMy5zZWRqaXdhLnRhc2tzLnRyYXNoLnYxLkxpc3REZWxldGVkUHJvamVjdHNSZXNwb25zZRJvCg5SZXN0b3JlUHJvamVjdBItLnNlZGppd2EudGFza3MudHJhc2gudjEuUmVzdG9yZVByb2plY3RSZXF1ZXN0Gi4uc2Vkaml3YS50YXNrcy50cmFzaC52MS5SZXN0b3JlUHJvamVjdFJlc3BvbnNlEmkKDFB1cmdlUHJvamVjdBIrLnNlZGppd2EudGFza3MudHJhc2gudjEuUHVyZ2VQcm9qZWN0UmVxdWVzdBosLnNlZGppd2EudGFza3MudHJhc2gudjEuUHVyZ2VQcm9qZWN0UmVzcG9uc2USbwoOUHVyZ2VMZWZ0b3ZlcnMSLS5zZWRqaXdhLnRhc2tzLnRyYXNoLnYxLlB1cmdlTGVmdG92ZXJzUmVxdWVzdBouLnNlZGppd2EudGFza3MudHJhc2gudjEuUHVyZ2VMZWZ0b3ZlcnNSZXNwb25zZWIGcHJvdG8z");
+  fileDesc("Cgt0cmFzaC5wcm90bxIWc2Vkaml3YS50YXNrcy50cmFzaC52MSKnAQoPUHJvamVjdENvbnRlbnRzEg0KBXRhc2tzGAEgASgFEg8KB21vZHVsZXMYAiABKAUSDQoFcGFnZXMYAyABKAUSEwoLbWVkaWFfZmlsZXMYBCABKAUSEwoLbWVkaWFfYnl0ZXMYBSABKAMSFAoMdGltZV9taW51dGVzGAYgASgFEhAKCGNvbW1lbnRzGAcgASgFEhMKC2F1dG9tYXRpb25zGAggASgFIp8BCg5EZWxldGVkUHJvamVjdBIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEhAKCG93bmVyX2lkGAMgASgJEhIKCmRlbGV0ZWRfYXQYBCABKAkSEgoKZGVsZXRlZF9ieRgFIAEoCRI5Cghjb250ZW50cxgGIAEoCzInLnNlZGppd2EudGFza3MudHJhc2gudjEuUHJvamVjdENvbnRlbnRzIhwKGkxpc3REZWxldGVkUHJvamVjdHNSZXF1ZXN0IrMBChtMaXN0RGVsZXRlZFByb2plY3RzUmVzcG9uc2USOAoIcHJvamVjdHMYASADKAsyJi5zZWRqaXdhLnRhc2tzLnRyYXNoLnYxLkRlbGV0ZWRQcm9qZWN0EhYKDmxlZnRvdmVyX2NvdW50GAIgASgFEkIKEWxlZnRvdmVyX2NvbnRlbnRzGAMgASgLMicuc2Vkaml3YS50YXNrcy50cmFzaC52MS5Qcm9qZWN0Q29udGVudHMiIwoVUmVzdG9yZVByb2plY3RSZXF1ZXN0EgoKAmlkGAEgASgJIiQKFlJlc3RvcmVQcm9qZWN0UmVzcG9uc2USCgoCb2sYASABKAgiNwoTUHVyZ2VQcm9qZWN0UmVxdWVzdBIKCgJpZBgBIAEoCRIUCgxjb25maXJtX25hbWUYAiABKAkiIgoUUHVyZ2VQcm9qZWN0UmVzcG9uc2USCgoCb2sYASABKAgiMQoVUHVyZ2VMZWZ0b3ZlcnNSZXF1ZXN0EhgKEGNvbmZpcm1fcHJvamVjdHMYASABKAUiKgoWUHVyZ2VMZWZ0b3ZlcnNSZXNwb25zZRIQCghwcm9qZWN0cxgBIAEoBTLiAwoTUHJvamVjdFRyYXNoU2VydmljZRJ+ChNMaXN0RGVsZXRlZFByb2plY3RzEjIuc2Vkaml3YS50YXNrcy50cmFzaC52MS5MaXN0RGVsZXRlZFByb2plY3RzUmVxdWVzdBozLnNlZGppd2EudGFza3MudHJhc2gudjEuTGlzdERlbGV0ZWRQcm9qZWN0c1Jlc3BvbnNlEm8KDlJlc3RvcmVQcm9qZWN0Ei0uc2Vkaml3YS50YXNrcy50cmFzaC52MS5SZXN0b3JlUHJvamVjdFJlcXVlc3QaLi5zZWRqaXdhLnRhc2tzLnRyYXNoLnYxLlJlc3RvcmVQcm9qZWN0UmVzcG9uc2USaQoMUHVyZ2VQcm9qZWN0Eisuc2Vkaml3YS50YXNrcy50cmFzaC52MS5QdXJnZVByb2plY3RSZXF1ZXN0Giwuc2Vkaml3YS50YXNrcy50cmFzaC52MS5QdXJnZVByb2plY3RSZXNwb25zZRJvCg5QdXJnZUxlZnRvdmVycxItLnNlZGppd2EudGFza3MudHJhc2gudjEuUHVyZ2VMZWZ0b3ZlcnNSZXF1ZXN0Gi4uc2Vkaml3YS50YXNrcy50cmFzaC52MS5QdXJnZUxlZnRvdmVyc1Jlc3BvbnNlYgZwcm90bzM");
+
+/**
+ * What a purge removes, counted over the same rows the purge deletes.
+ *
+ * @generated from message sedjiwa.tasks.trash.v1.ProjectContents
+ */
+export type ProjectContents = Message<"sedjiwa.tasks.trash.v1.ProjectContents"> & {
+  /**
+   * @generated from field: int32 tasks = 1;
+   */
+  tasks: number;
+
+  /**
+   * @generated from field: int32 modules = 2;
+   */
+  modules: number;
+
+  /**
+   * @generated from field: int32 pages = 3;
+   */
+  pages: number;
+
+  /**
+   * @generated from field: int32 media_files = 4;
+   */
+  mediaFiles: number;
+
+  /**
+   * @generated from field: int64 media_bytes = 5;
+   */
+  mediaBytes: bigint;
+
+  /**
+   * @generated from field: int32 time_minutes = 6;
+   */
+  timeMinutes: number;
+
+  /**
+   * @generated from field: int32 comments = 7;
+   */
+  comments: number;
+
+  /**
+   * @generated from field: int32 automations = 8;
+   */
+  automations: number;
+};
+
+/**
+ * Describes the message sedjiwa.tasks.trash.v1.ProjectContents.
+ * Use `create(ProjectContentsSchema)` to create a new message.
+ */
+export const ProjectContentsSchema: GenMessage<ProjectContents> = /*@__PURE__*/
+  messageDesc(file_trash, 0);
 
 /**
  * @generated from message sedjiwa.tasks.trash.v1.DeletedProject
@@ -40,6 +94,11 @@ export type DeletedProject = Message<"sedjiwa.tasks.trash.v1.DeletedProject"> & 
    * @generated from field: string deleted_by = 5;
    */
   deletedBy: string;
+
+  /**
+   * @generated from field: sedjiwa.tasks.trash.v1.ProjectContents contents = 6;
+   */
+  contents?: ProjectContents | undefined;
 };
 
 /**
@@ -47,7 +106,7 @@ export type DeletedProject = Message<"sedjiwa.tasks.trash.v1.DeletedProject"> & 
  * Use `create(DeletedProjectSchema)` to create a new message.
  */
 export const DeletedProjectSchema: GenMessage<DeletedProject> = /*@__PURE__*/
-  messageDesc(file_trash, 0);
+  messageDesc(file_trash, 1);
 
 /**
  * @generated from message sedjiwa.tasks.trash.v1.ListDeletedProjectsRequest
@@ -60,7 +119,7 @@ export type ListDeletedProjectsRequest = Message<"sedjiwa.tasks.trash.v1.ListDel
  * Use `create(ListDeletedProjectsRequestSchema)` to create a new message.
  */
 export const ListDeletedProjectsRequestSchema: GenMessage<ListDeletedProjectsRequest> = /*@__PURE__*/
-  messageDesc(file_trash, 1);
+  messageDesc(file_trash, 2);
 
 /**
  * @generated from message sedjiwa.tasks.trash.v1.ListDeletedProjectsResponse
@@ -79,6 +138,13 @@ export type ListDeletedProjectsResponse = Message<"sedjiwa.tasks.trash.v1.ListDe
    * @generated from field: int32 leftover_count = 2;
    */
   leftoverCount: number;
+
+  /**
+   * summed over the leftovers
+   *
+   * @generated from field: sedjiwa.tasks.trash.v1.ProjectContents leftover_contents = 3;
+   */
+  leftoverContents?: ProjectContents | undefined;
 };
 
 /**
@@ -86,7 +152,7 @@ export type ListDeletedProjectsResponse = Message<"sedjiwa.tasks.trash.v1.ListDe
  * Use `create(ListDeletedProjectsResponseSchema)` to create a new message.
  */
 export const ListDeletedProjectsResponseSchema: GenMessage<ListDeletedProjectsResponse> = /*@__PURE__*/
-  messageDesc(file_trash, 2);
+  messageDesc(file_trash, 3);
 
 /**
  * @generated from message sedjiwa.tasks.trash.v1.RestoreProjectRequest
@@ -103,7 +169,7 @@ export type RestoreProjectRequest = Message<"sedjiwa.tasks.trash.v1.RestoreProje
  * Use `create(RestoreProjectRequestSchema)` to create a new message.
  */
 export const RestoreProjectRequestSchema: GenMessage<RestoreProjectRequest> = /*@__PURE__*/
-  messageDesc(file_trash, 3);
+  messageDesc(file_trash, 4);
 
 /**
  * @generated from message sedjiwa.tasks.trash.v1.RestoreProjectResponse
@@ -120,7 +186,7 @@ export type RestoreProjectResponse = Message<"sedjiwa.tasks.trash.v1.RestoreProj
  * Use `create(RestoreProjectResponseSchema)` to create a new message.
  */
 export const RestoreProjectResponseSchema: GenMessage<RestoreProjectResponse> = /*@__PURE__*/
-  messageDesc(file_trash, 4);
+  messageDesc(file_trash, 5);
 
 /**
  * @generated from message sedjiwa.tasks.trash.v1.PurgeProjectRequest
@@ -130,6 +196,15 @@ export type PurgeProjectRequest = Message<"sedjiwa.tasks.trash.v1.PurgeProjectRe
    * @generated from field: string id = 1;
    */
   id: string;
+
+  /**
+   * Must equal the trashed project's current name (trimmed, case-sensitive),
+   * or nothing is deleted (failed_precondition). A guard against stray
+   * calls, not an authorisation.
+   *
+   * @generated from field: string confirm_name = 2;
+   */
+  confirmName: string;
 };
 
 /**
@@ -137,7 +212,7 @@ export type PurgeProjectRequest = Message<"sedjiwa.tasks.trash.v1.PurgeProjectRe
  * Use `create(PurgeProjectRequestSchema)` to create a new message.
  */
 export const PurgeProjectRequestSchema: GenMessage<PurgeProjectRequest> = /*@__PURE__*/
-  messageDesc(file_trash, 5);
+  messageDesc(file_trash, 6);
 
 /**
  * @generated from message sedjiwa.tasks.trash.v1.PurgeProjectResponse
@@ -154,12 +229,19 @@ export type PurgeProjectResponse = Message<"sedjiwa.tasks.trash.v1.PurgeProjectR
  * Use `create(PurgeProjectResponseSchema)` to create a new message.
  */
 export const PurgeProjectResponseSchema: GenMessage<PurgeProjectResponse> = /*@__PURE__*/
-  messageDesc(file_trash, 6);
+  messageDesc(file_trash, 7);
 
 /**
  * @generated from message sedjiwa.tasks.trash.v1.PurgeLeftoversRequest
  */
 export type PurgeLeftoversRequest = Message<"sedjiwa.tasks.trash.v1.PurgeLeftoversRequest"> & {
+  /**
+   * Must equal the current leftover_count, or nothing is deleted
+   * (failed_precondition).
+   *
+   * @generated from field: int32 confirm_projects = 1;
+   */
+  confirmProjects: number;
 };
 
 /**
@@ -167,7 +249,7 @@ export type PurgeLeftoversRequest = Message<"sedjiwa.tasks.trash.v1.PurgeLeftove
  * Use `create(PurgeLeftoversRequestSchema)` to create a new message.
  */
 export const PurgeLeftoversRequestSchema: GenMessage<PurgeLeftoversRequest> = /*@__PURE__*/
-  messageDesc(file_trash, 7);
+  messageDesc(file_trash, 8);
 
 /**
  * @generated from message sedjiwa.tasks.trash.v1.PurgeLeftoversResponse
@@ -184,7 +266,7 @@ export type PurgeLeftoversResponse = Message<"sedjiwa.tasks.trash.v1.PurgeLeftov
  * Use `create(PurgeLeftoversResponseSchema)` to create a new message.
  */
 export const PurgeLeftoversResponseSchema: GenMessage<PurgeLeftoversResponse> = /*@__PURE__*/
-  messageDesc(file_trash, 8);
+  messageDesc(file_trash, 9);
 
 /**
  * The project trash. DeleteProject (ProjectService) moves a project here: it

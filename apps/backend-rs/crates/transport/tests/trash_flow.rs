@@ -298,7 +298,8 @@ async fn only_admins_use_the_trash() {
     // Restore / purge only apply to trashed projects.
     let live = s(&ok(&router, &format!("{PROJECT}/CreateProject"), &to, json!({ "name": format!("L{}", uniq()) })).await, "id");
     fails(&router, &format!("{TRASH}/RestoreProject"), &admin_token(&admin), json!({ "id": live }), "not_found").await;
-    fails(&router, &format!("{TRASH}/PurgeProject"), &admin_token(&admin), json!({ "id": live }), "not_found").await;
+    let live_name = s(&ok(&router, &format!("{PROJECT}/GetProject"), &to, json!({ "id": live })).await, "name");
+    fails(&router, &format!("{TRASH}/PurgeProject"), &admin_token(&admin), json!({ "id": live, "confirmName": live_name }), "not_found").await;
     fails(&router, &format!("{TRASH}/RestoreProject"), &admin_token(&admin), json!({ "id": "999999999999" }), "not_found").await;
     assert!(ok(&router, &format!("{PROJECT}/GetProject"), &to, json!({ "id": live })).await["id"] == live.as_str(), "the live project is untouched");
 }
@@ -452,15 +453,55 @@ async fn purging_removes_everything_of_one_project_and_nothing_else() {
     let (to, ta) = (token(&owner), admin_token(&admin));
     let doomed = rich(&router, &fake, &owner, &member).await;
     let kept = rich(&router, &fake, &owner, &member).await;
+    // A time-based rule that has fired on the overdue task leaves a claim and a run.
+    ok(&router, &format!("{AUTO}/CreateAutomation"), &to, json!({
+        "projectId": doomed.pid, "name": "late", "mode": "AUTOMATION_MODE_ON", "trigger": { "overdue": {} },
+        "actions": [{ "comment": "late" }]
+    })).await;
+    ok(&router, &format!("{AUTO}/RunScheduledAutomations"), &ta, json!({ "today": "2026-01-10" })).await;
     let before = owned_counts(&store, &doomed.pid).await;
-    assert!(before.iter().filter(|(_, n)| *n > 0).count() >= 15, "the fixture really has data everywhere: {before:?}");
+    let empty: Vec<&(String, i64)> = before.iter().filter(|(_, n)| *n == 0).collect();
+    assert!(empty.is_empty(), "the fixture puts rows in every table the purge must clear: missing {empty:?}");
     let kept_before = owned_counts(&store, &kept.pid).await;
 
     // Purge is only from the trash.
-    fails(&router, &format!("{TRASH}/PurgeProject"), &ta, json!({ "id": doomed.pid }), "not_found").await;
+    fails(&router, &format!("{TRASH}/PurgeProject"), &ta, json!({ "id": doomed.pid, "confirmName": doomed.name }), "not_found").await;
     ok(&router, &format!("{PROJECT}/DeleteProject"), &to, json!({ "id": doomed.pid })).await;
     assert_eq!(owned_counts(&store, &doomed.pid).await, before, "trashing keeps every row");
-    ok(&router, &format!("{TRASH}/PurgeProject"), &ta, json!({ "id": doomed.pid })).await;
+
+    // The preview in the trash says exactly what the purge will remove.
+    let l = ok(&router, &format!("{TRASH}/ListDeletedProjects"), &ta, json!({})).await;
+    let row = arr(&l, "projects").into_iter().find(|x| s(x, "id") == doomed.pid).unwrap();
+    let c = &row["contents"];
+    let q = |sql: &'static str| {
+        let (store, pid) = (store.clone(), doomed.pid.clone());
+        async move { sqlx::query_scalar::<_, i64>(sql).bind(pid).fetch_one(store.pool()).await.unwrap() }
+    };
+    let n = |k: &str| c[k].as_i64().or_else(|| c[k].as_str().and_then(|x| x.parse().ok())).unwrap_or(0);
+    assert_eq!(n("tasks"), q("SELECT count(*) FROM cmp_tasknumber WHERE project_id = $1").await, "tasks: {c}");
+    assert_eq!(n("tasks"), 2, "the task and its subtask");
+    assert_eq!(n("modules"), q("SELECT count(*) FROM cmp_moduleprojectref WHERE project_id = $1").await, "modules: {c}");
+    assert_eq!(n("pages"), q("SELECT count(*) FROM cmp_pageinfo WHERE project_id = $1").await, "pages: {c}");
+    assert_eq!(n("mediaFiles"), q("SELECT count(*) FROM cmp_mediafileinfo WHERE project_id = $1").await, "files: {c}");
+    assert_eq!(n("mediaBytes"), 10, "bytes of its one 10-byte file: {c}");
+    assert_eq!(n("timeMinutes"), q("SELECT COALESCE(SUM(minutes), 0)::int8 FROM cmp_timeentry WHERE project_id = $1").await, "time: {c}");
+    assert_eq!(n("timeMinutes"), 30);
+    assert_eq!(n("comments"), q("SELECT count(*) FROM cmp_commentinfo WHERE task_id IN (SELECT pid::text FROM cmp_tasknumber WHERE project_id = $1)").await, "comments: {c}");
+    assert_eq!(n("automations"), q("SELECT count(*) FROM cmp_automation WHERE project_id = $1").await, "automations: {c}");
+    assert_eq!(n("automations"), 2, "the note rule and the overdue rule");
+
+    // Typed confirmation: anything but the exact name refuses and deletes nothing.
+    let purge = format!("{TRASH}/PurgeProject");
+    let upper = doomed.name.to_uppercase();
+    let partial = doomed.name[..doomed.name.len() - 1].to_string();
+    let extra = format!("{} x", doomed.name);
+    for bad in [json!({ "id": doomed.pid }), json!({ "id": doomed.pid, "confirmName": "" }),
+                json!({ "id": doomed.pid, "confirmName": upper }), json!({ "id": doomed.pid, "confirmName": partial }),
+                json!({ "id": doomed.pid, "confirmName": extra }), json!({ "id": doomed.pid, "confirmName": kept.name })] {
+        fails(&router, &purge, &ta, bad.clone(), "failed_precondition").await;
+        assert_eq!(owned_counts(&store, &doomed.pid).await, before, "a refused purge deleted nothing: {bad}");
+    }
+    ok(&router, &purge, &ta, json!({ "id": doomed.pid, "confirmName": format!("  {}  ", doomed.name) })).await;
 
     let after = owned_counts(&store, &doomed.pid).await;
     let leftover: Vec<&(String, i64)> = after.iter().filter(|(_, n)| *n > 0).collect();
@@ -478,7 +519,7 @@ async fn purging_removes_everything_of_one_project_and_nothing_else() {
     assert_eq!(owned_counts(&store, &kept.pid).await, kept_before, "the other project is untouched, row for row");
     let l = ok(&router, &format!("{TRASH}/ListDeletedProjects"), &ta, json!({})).await;
     assert!(arr(&l, "projects").iter().all(|x| s(x, "id") != doomed.pid), "gone from the trash");
-    fails(&router, &format!("{TRASH}/PurgeProject"), &ta, json!({ "id": doomed.pid }), "not_found").await;
+    fails(&router, &format!("{TRASH}/PurgeProject"), &ta, json!({ "id": doomed.pid, "confirmName": doomed.name }), "not_found").await;
     fails(&router, &format!("{TRASH}/RestoreProject"), &ta, json!({ "id": doomed.pid }), "not_found").await;
     // The people are untouched.
     for u in [&owner, &member] {
@@ -514,9 +555,18 @@ async fn leftovers_are_cleaned_without_touching_live_or_trashed_projects() {
     assert!(owned_counts(&store, &old.pid).await.iter().any(|(_, n)| *n > 0), "precondition: leftovers exist");
 
     let l = ok(&router, &format!("{TRASH}/ListDeletedProjects"), &ta, json!({})).await;
-    assert!(l["leftoverCount"].as_i64().unwrap_or(0) >= 1, "leftovers are counted: {l}");
-    let r = ok(&router, &format!("{TRASH}/PurgeLeftovers"), &ta, json!({})).await;
-    assert!(r["projects"].as_i64().unwrap_or(0) >= 1, "{r}");
+    let count = l["leftoverCount"].as_i64().unwrap_or(0);
+    assert!(count >= 1, "leftovers are counted: {l}");
+    let lc = &l["leftoverContents"];
+    assert!(lc["tasks"].as_i64().unwrap_or(0) >= 2 && lc["modules"].as_i64().unwrap_or(0) >= 1, "the leftovers are summarised: {l}");
+    // The count must be confirmed exactly.
+    let leftovers = format!("{TRASH}/PurgeLeftovers");
+    for bad in [json!({}), json!({ "confirmProjects": 0 }), json!({ "confirmProjects": count + 1 }), json!({ "confirmProjects": count - 1 })] {
+        fails(&router, &leftovers, &ta, bad.clone(), "failed_precondition").await;
+        assert!(owned_counts(&store, &old.pid).await.iter().any(|(_, n)| *n > 0), "a refused clean-up deleted nothing: {bad}");
+    }
+    let r = ok(&router, &leftovers, &ta, json!({ "confirmProjects": count })).await;
+    assert_eq!(r["projects"].as_i64().unwrap_or(0), count, "{r}");
 
     let left: Vec<(String, i64)> = owned_counts(&store, &old.pid).await.into_iter().filter(|(_, n)| *n > 0).collect();
     assert!(left.is_empty(), "nothing of the old project remains: {left:?}");
@@ -527,7 +577,10 @@ async fn leftovers_are_cleaned_without_touching_live_or_trashed_projects() {
     assert!(arr(&l, "projects").iter().any(|x| s(x, "id") == trashed.pid), "the trashed project is still in the trash");
     ok(&router, &format!("{TASK}/GetTask"), &token(&member), json!({ "id": live.task })).await;
     // Running it again finds nothing of ours to do.
-    ok(&router, &format!("{TRASH}/PurgeLeftovers"), &ta, json!({})).await;
+    let again = ok(&router, &format!("{TRASH}/ListDeletedProjects"), &ta, json!({})).await["leftoverCount"].as_i64().unwrap_or(0);
+    if again > 0 {
+        ok(&router, &leftovers, &ta, json!({ "confirmProjects": again })).await;
+    }
     assert_eq!(owned_counts(&store, &live.pid).await, live_before);
 }
 
@@ -581,4 +634,69 @@ async fn a_trashed_project_is_read_only_even_for_admins() {
     assert!(leaked.is_empty(), "an admin changed a trashed project through: {leaked:#?}");
     assert_eq!(owned_counts(&store, &r.pid).await, before, "and no row of it changed");
     assert!(!fake.deleted.lock().unwrap().contains(&r.media_key), "its stored file is still there");
+}
+
+// ── Schema guard ─────────────────────────────────────────────────────────────
+
+/// Every `cmp_*` column that ties a row to a project, task, module or rule, and
+/// how a purge deals with it. A new such column fails this test until someone
+/// adds it to `projects/purge.rs` (and to `owned_counts` above) or explains here
+/// why the entity cascade already covers it.
+const PROJECT_KEYED: &[(&str, &str)] = &[
+    // Cleared by purge.rs owned_pids() and asserted empty by `owned_counts` after a purge.
+    ("cmp_activityinfo.project_id", "purged: project rows"),
+    ("cmp_automation.project_id", "purged: project rows"),
+    ("cmp_automationrun.project_id", "purged: project rows"),
+    ("cmp_automationrun.automation_id", "purged with its project rows"),
+    ("cmp_automationrun.task_id", "purged with its project rows"),
+    ("cmp_labelinfo.project_id", "purged: project rows"),
+    ("cmp_mediafileinfo.project_id", "purged: project rows (+ storage object)"),
+    ("cmp_moduleprojectref.project_id", "purged: project rows"),
+    ("cmp_notificationrefs.project_id", "purged: project rows"),
+    ("cmp_notificationrefs.task_id", "purged with its project rows"),
+    ("cmp_pageinfo.project_id", "purged: project rows"),
+    ("cmp_projectmembership.project_id", "purged: project rows"),
+    ("cmp_savedview.project_id", "purged: project rows"),
+    ("cmp_taskmedialinkdata.project_id", "purged: project rows"),
+    ("cmp_taskmedialinkdata.task_id", "purged with its project rows"),
+    ("cmp_tasknumber.project_id", "purged: one row per task"),
+    ("cmp_taskstatusdef.project_id", "purged: project rows"),
+    ("cmp_tasktemplate.project_id", "purged: project rows"),
+    ("cmp_timeentry.project_id", "purged: project rows"),
+    ("cmp_timeentry.task_id", "purged with its project rows"),
+    ("cmp_commentinfo.task_id", "purged: comments of the project's tasks"),
+    ("cmp_activitytask.task_id", "cascade: component of a purged activity row"),
+    ("cmp_automationfired.task_id", "purged: claims of the project's rules"),
+    ("cmp_automationfired.automation_id", "purged: claims of the project's rules"),
+    // Components keyed by their own pid: they go with their entity.
+    ("cmp_taskmoduleref.module_id", "cascade: component of a purged task"),
+    ("cmp_automationsource.automation_id", "cascade: component of a purged activity/comment/notification"),
+];
+
+#[tokio::test]
+async fn the_purge_knows_every_project_keyed_table() {
+    let Some((_router, store, _fake)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let found: Vec<String> = sqlx::query_scalar(
+        "SELECT table_name || '.' || column_name FROM information_schema.columns \
+         WHERE table_schema = current_schema() AND table_name LIKE 'cmp\\_%' \
+           AND column_name IN ('project_id', 'task_id', 'module_id', 'automation_id') \
+         ORDER BY 1",
+    )
+    .fetch_all(store.pool())
+    .await
+    .unwrap();
+    assert!(found.len() >= 20, "the introspection query sees the schema: {found:?}");
+    let known: Vec<&str> = PROJECT_KEYED.iter().map(|(c, _)| *c).collect();
+    let unknown: Vec<&String> = found.iter().filter(|c| !known.contains(&c.as_str())).collect();
+    assert!(
+        unknown.is_empty(),
+        "new project/task/module/rule-keyed columns: {unknown:?}. Decide how a project purge removes \
+         them (crates/transport/src/projects/purge.rs: owned_pids(), contents() and leftover_project_ids), add them to \
+         `owned_counts` in this file, then list them in PROJECT_KEYED with the reason."
+    );
+    let gone: Vec<&&str> = known.iter().filter(|c| !found.iter().any(|f| f == *c)).collect();
+    assert!(gone.is_empty(), "PROJECT_KEYED lists columns that no longer exist: {gone:?}");
 }

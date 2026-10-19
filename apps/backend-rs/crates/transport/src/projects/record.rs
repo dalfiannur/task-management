@@ -31,7 +31,8 @@ pub(crate) struct ProjectRecord {
 const SELECT_PROJECT: &str = "\
     SELECT n.pid, n.value AS name, d.value AS description, s.value AS status, \
            o.value AS owner_id, dt.start_date, dt.end_date, \
-           (tm.pid IS NOT NULL) AS is_template \
+           (tm.pid IS NOT NULL) AS is_template, \
+           del.deleted_at, del.deleted_by \
     FROM cmp_projectname n \
     JOIN cmp_projectownerid o ON o.pid = n.pid \
     JOIN cmp_projectstatuscomponent s ON s.pid = n.pid \
@@ -394,16 +395,16 @@ pub(crate) async fn trashed_projects(store: &Store) -> anyhow::Result<Vec<Trashe
     ))
     .fetch_all(store.pool())
     .await?;
+    // When and by whom come from the same row as the project: a second query
+    // per project would race a concurrent restore or purge (no row → 500).
     let mut out = Vec::with_capacity(rows.len());
     for row in &rows {
         let Some(project) = read_project(row)? else { continue };
-        let (deleted_at, deleted_by): (String, String) = sqlx::query_as(
-            "SELECT deleted_at, deleted_by FROM cmp_projectdeleted WHERE pid = $1",
-        )
-        .bind(project.pid)
-        .fetch_one(store.pool())
-        .await?;
-        out.push(TrashedProject { project, deleted_at, deleted_by });
+        out.push(TrashedProject {
+            project,
+            deleted_at: row.try_get("deleted_at")?,
+            deleted_by: row.try_get("deleted_by")?,
+        });
     }
     Ok(out)
 }

@@ -8,33 +8,84 @@
 
 use persistence::{entity, Store};
 
-/// Every entity pid that belongs to `$1` (a project id as text), the
-/// project's own entity aside.
-const OWNED_PIDS: &str = "\
-    WITH tasks AS ( \
-        SELECT m.pid FROM cmp_taskmoduleref m \
-        JOIN cmp_moduleprojectref mp ON mp.pid::text = m.module_id AND mp.project_id = $1 \
-        UNION SELECT pid FROM cmp_tasknumber WHERE project_id = $1 \
-    ), rules AS ( \
-        SELECT pid FROM cmp_automation WHERE project_id = $1 \
-    ) \
-    SELECT pid FROM tasks \
-    UNION SELECT pid FROM cmp_commentinfo WHERE task_id IN (SELECT pid::text FROM tasks) \
-    UNION SELECT pid FROM cmp_timeentry WHERE project_id = $1 \
-    UNION SELECT pid FROM rules \
-    UNION SELECT pid FROM cmp_automationrun WHERE project_id = $1 \
-    UNION SELECT pid FROM cmp_automationfired WHERE automation_id IN (SELECT pid::text FROM rules) \
-    UNION SELECT pid FROM cmp_tasktemplate WHERE project_id = $1 \
-    UNION SELECT pid FROM cmp_savedview WHERE project_id = $1 \
-    UNION SELECT pid FROM cmp_taskstatusdef WHERE project_id = $1 \
-    UNION SELECT pid FROM cmp_labelinfo WHERE project_id = $1 \
-    UNION SELECT pid FROM cmp_pageinfo WHERE project_id = $1 \
-    UNION SELECT pid FROM cmp_projectmembership WHERE project_id = $1 \
-    UNION SELECT pid FROM cmp_moduleprojectref WHERE project_id = $1 \
-    UNION SELECT pid FROM cmp_taskmedialinkdata WHERE project_id = $1 \
-    UNION SELECT pid FROM cmp_mediafileinfo WHERE project_id = $1 \
-    UNION SELECT pid FROM cmp_activityinfo WHERE project_id = $1 \
-    UNION SELECT pid FROM cmp_notificationrefs WHERE project_id = $1";
+/// The tasks of the projects in `$1` (a `text[]` of project ids): through
+/// their modules, and by task number for any whose module is already gone.
+/// Shared by the purge and its preview so they can never disagree.
+const TASKS_OF: &str = "\
+    SELECT m.pid FROM cmp_taskmoduleref m \
+    JOIN cmp_moduleprojectref mp ON mp.pid::text = m.module_id AND mp.project_id = ANY($1) \
+    UNION SELECT pid FROM cmp_tasknumber WHERE project_id = ANY($1)";
+
+/// Every entity pid that belongs to the projects in `$1`, the projects' own
+/// entities aside.
+fn owned_pids() -> String {
+    format!(
+        "WITH tasks AS ({TASKS_OF}), \
+         rules AS (SELECT pid FROM cmp_automation WHERE project_id = ANY($1)) \
+         SELECT pid FROM tasks \
+         UNION SELECT pid FROM cmp_commentinfo WHERE task_id IN (SELECT pid::text FROM tasks) \
+         UNION SELECT pid FROM cmp_timeentry WHERE project_id = ANY($1) \
+         UNION SELECT pid FROM rules \
+         UNION SELECT pid FROM cmp_automationrun WHERE project_id = ANY($1) \
+         UNION SELECT pid FROM cmp_automationfired WHERE automation_id IN (SELECT pid::text FROM rules) \
+         UNION SELECT pid FROM cmp_tasktemplate WHERE project_id = ANY($1) \
+         UNION SELECT pid FROM cmp_savedview WHERE project_id = ANY($1) \
+         UNION SELECT pid FROM cmp_taskstatusdef WHERE project_id = ANY($1) \
+         UNION SELECT pid FROM cmp_labelinfo WHERE project_id = ANY($1) \
+         UNION SELECT pid FROM cmp_pageinfo WHERE project_id = ANY($1) \
+         UNION SELECT pid FROM cmp_projectmembership WHERE project_id = ANY($1) \
+         UNION SELECT pid FROM cmp_moduleprojectref WHERE project_id = ANY($1) \
+         UNION SELECT pid FROM cmp_taskmedialinkdata WHERE project_id = ANY($1) \
+         UNION SELECT pid FROM cmp_mediafileinfo WHERE project_id = ANY($1) \
+         UNION SELECT pid FROM cmp_activityinfo WHERE project_id = ANY($1) \
+         UNION SELECT pid FROM cmp_notificationrefs WHERE project_id = ANY($1)"
+    )
+}
+
+/// What a purge would remove, in the units people recognise.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub(crate) struct Contents {
+    pub tasks: i64,
+    pub modules: i64,
+    pub pages: i64,
+    pub media_files: i64,
+    pub media_bytes: i64,
+    pub time_minutes: i64,
+    pub comments: i64,
+    pub automations: i64,
+}
+
+/// The contents of the projects in `project_ids`, counted over the same rows
+/// the purge removes.
+pub(crate) async fn contents(store: &Store, project_ids: &[String]) -> anyhow::Result<Contents> {
+    if project_ids.is_empty() {
+        return Ok(Contents::default());
+    }
+    let row: (i64, i64, i64, i64, i64, i64, i64, i64) = sqlx::query_as(&format!(
+        "WITH tasks AS ({TASKS_OF}) SELECT \
+            (SELECT count(*) FROM tasks), \
+            (SELECT count(*) FROM cmp_moduleprojectref WHERE project_id = ANY($1)), \
+            (SELECT count(*) FROM cmp_pageinfo WHERE project_id = ANY($1)), \
+            (SELECT count(*) FROM cmp_mediafileinfo WHERE project_id = ANY($1)), \
+            (SELECT COALESCE(SUM(size), 0)::int8 FROM cmp_mediafileinfo WHERE project_id = ANY($1)), \
+            (SELECT COALESCE(SUM(minutes), 0)::int8 FROM cmp_timeentry WHERE project_id = ANY($1)), \
+            (SELECT count(*) FROM cmp_commentinfo WHERE task_id IN (SELECT pid::text FROM tasks)), \
+            (SELECT count(*) FROM cmp_automation WHERE project_id = ANY($1))"
+    ))
+    .bind(project_ids)
+    .fetch_one(store.pool())
+    .await?;
+    Ok(Contents {
+        tasks: row.0,
+        modules: row.1,
+        pages: row.2,
+        media_files: row.3,
+        media_bytes: row.4,
+        time_minutes: row.5,
+        comments: row.6,
+        automations: row.7,
+    })
+}
 
 /// Delete everything of `project_id` (and the project entity itself, when it
 /// still exists). Returns the storage keys of its media files, for the caller
@@ -46,8 +97,8 @@ pub(crate) async fn purge_project(store: &Store, project_id: &str) -> anyhow::Re
             .bind(project_id)
             .fetch_all(&mut *tx)
             .await?;
-    sqlx::query(&format!("DELETE FROM arke_entities WHERE pid IN ({OWNED_PIDS})"))
-        .bind(project_id)
+    sqlx::query(&format!("DELETE FROM arke_entities WHERE pid IN ({})", owned_pids()))
+        .bind(vec![project_id.to_string()])
         .execute(&mut *tx)
         .await?;
     if let Ok(pid) = project_id.parse::<i64>() {

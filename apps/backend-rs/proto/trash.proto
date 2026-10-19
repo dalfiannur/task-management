@@ -17,25 +17,49 @@ service ProjectTrashService {
   rpc PurgeLeftovers(PurgeLeftoversRequest) returns (PurgeLeftoversResponse);
 }
 
+// What a purge removes, counted over the same rows the purge deletes.
+message ProjectContents {
+  int32 tasks = 1;
+  int32 modules = 2;
+  int32 pages = 3;
+  int32 media_files = 4;
+  int64 media_bytes = 5;
+  int32 time_minutes = 6;
+  int32 comments = 7;
+  int32 automations = 8;
+}
+
 message DeletedProject {
   string id = 1;
   string name = 2;
   string owner_id = 3;
   string deleted_at = 4;
   string deleted_by = 5;
+  ProjectContents contents = 6;
 }
 
 message ListDeletedProjectsRequest {}
 message ListDeletedProjectsResponse {
   repeated DeletedProject projects = 1; // most recently deleted first
   int32 leftover_count = 2;             // projects' worth of leftover data
+  ProjectContents leftover_contents = 3; // summed over the leftovers
 }
 
 message RestoreProjectRequest { string id = 1; }
 message RestoreProjectResponse { bool ok = 1; }
 
-message PurgeProjectRequest { string id = 1; }
+message PurgeProjectRequest {
+  string id = 1;
+  // Must equal the trashed project's current name (trimmed, case-sensitive),
+  // or nothing is deleted (failed_precondition). A guard against stray
+  // calls, not an authorisation.
+  string confirm_name = 2;
+}
 message PurgeProjectResponse { bool ok = 1; }
 
-message PurgeLeftoversRequest {}
+message PurgeLeftoversRequest {
+  // Must equal the current leftover_count, or nothing is deleted
+  // (failed_precondition).
+  int32 confirm_projects = 1;
+}
 message PurgeLeftoversResponse { int32 projects = 1; }

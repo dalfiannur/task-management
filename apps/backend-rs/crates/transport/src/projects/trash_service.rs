@@ -9,7 +9,7 @@ use connectrpc_axum::{ConnectError, ConnectRequest, ConnectResponse};
 use persistence::Store;
 use storage::Storage;
 
-use super::purge::{leftover_project_ids, purge_project};
+use super::purge::{contents, leftover_project_ids, purge_project, Contents};
 use super::record::{load_trashed, restore_project, trashed_projects};
 use super::{internal, parse_pid};
 use crate::search::deindex_project;
@@ -42,35 +42,54 @@ async fn purge_all(store: &Store, storage: &dyn Storage, project_id: &str) -> Re
     Ok(())
 }
 
+fn contents_to_proto(c: &Contents) -> pb::ProjectContents {
+    pb::ProjectContents {
+        tasks: c.tasks as i32,
+        modules: c.modules as i32,
+        pages: c.pages as i32,
+        media_files: c.media_files as i32,
+        media_bytes: c.media_bytes,
+        time_minutes: c.time_minutes as i32,
+        comments: c.comments as i32,
+        automations: c.automations as i32,
+    }
+}
+
 async fn list_deleted_projects(
     Extension(store): S,
     user: Option<Extension<AuthUser>>,
     _req: ConnectRequest<pb::ListDeletedProjectsRequest>,
 ) -> Result<ConnectResponse<pb::ListDeletedProjectsResponse>, ConnectError> {
     require_admin(user)?;
-    let projects = trashed_projects(&store)
-        .await
-        .map_err(internal)?
-        .into_iter()
-        .map(|t| pb::DeletedProject {
-            id: t.project.pid.to_string(),
+    let mut projects = Vec::new();
+    for t in trashed_projects(&store).await.map_err(internal)? {
+        let id = t.project.pid.to_string();
+        let c = contents(&store, std::slice::from_ref(&id)).await.map_err(internal)?;
+        projects.push(pb::DeletedProject {
+            id,
             name: t.project.name,
             owner_id: t.project.owner_id,
             deleted_at: t.deleted_at,
             deleted_by: t.deleted_by,
-        })
-        .collect();
-    let leftover_count = leftover_project_ids(&store).await.map_err(internal)?.len() as i32;
-    Ok(ConnectResponse::new(pb::ListDeletedProjectsResponse { projects, leftover_count }))
+            contents: Some(contents_to_proto(&c)),
+        });
+    }
+    let leftovers = leftover_project_ids(&store).await.map_err(internal)?;
+    let leftover_contents = contents(&store, &leftovers).await.map_err(internal)?;
+    Ok(ConnectResponse::new(pb::ListDeletedProjectsResponse {
+        projects,
+        leftover_count: leftovers.len() as i32,
+        leftover_contents: Some(contents_to_proto(&leftover_contents)),
+    }))
 }
 
-async fn require_trashed(store: &Store, id: &str) -> Result<i64, ConnectError> {
+async fn require_trashed(store: &Store, id: &str) -> Result<(i64, String), ConnectError> {
     let pid = parse_pid(id)?;
-    load_trashed(store, pid)
+    let p = load_trashed(store, pid)
         .await
         .map_err(internal)?
         .ok_or_else(|| ConnectError::new_not_found("no such project in the trash"))?;
-    Ok(pid)
+    Ok((pid, p.name))
 }
 
 async fn restore(
@@ -80,7 +99,7 @@ async fn restore(
 ) -> Result<ConnectResponse<pb::RestoreProjectResponse>, ConnectError> {
     require_admin(user)?;
     let ConnectRequest(r) = req;
-    let pid = require_trashed(&store, &r.id).await?;
+    let (pid, _) = require_trashed(&store, &r.id).await?;
     restore_project(&store, pid).await.map_err(internal)?;
     Ok(ConnectResponse::new(pb::RestoreProjectResponse { ok: true }))
 }
@@ -94,7 +113,12 @@ async fn purge(
     require_admin(user)?;
     let ConnectRequest(r) = req;
     // Only from the trash: a live project is deleted (trashed) first.
-    let pid = require_trashed(&store, &r.id).await?;
+    let (pid, name) = require_trashed(&store, &r.id).await?;
+    if r.confirm_name.trim() != name.trim() {
+        return Err(ConnectError::new_failed_precondition(
+            "type the project's exact name to delete it for good",
+        ));
+    }
     purge_all(&store, storage.as_ref(), &pid.to_string()).await?;
     Ok(ConnectResponse::new(pb::PurgeProjectResponse { ok: true }))
 }
@@ -103,10 +127,18 @@ async fn purge_leftovers(
     Extension(store): S,
     Extension(storage): St,
     user: Option<Extension<AuthUser>>,
-    _req: ConnectRequest<pb::PurgeLeftoversRequest>,
+    req: ConnectRequest<pb::PurgeLeftoversRequest>,
 ) -> Result<ConnectResponse<pb::PurgeLeftoversResponse>, ConnectError> {
     require_admin(user)?;
+    let ConnectRequest(r) = req;
     let ids = leftover_project_ids(&store).await.map_err(internal)?;
+    if r.confirm_projects as usize != ids.len() {
+        return Err(ConnectError::new_failed_precondition(format!(
+            "leftovers of {} project{} are waiting now; refresh and confirm again",
+            ids.len(),
+            if ids.len() == 1 { "" } else { "s" }
+        )));
+    }
     for id in &ids {
         purge_all(&store, storage.as_ref(), id).await?;
     }

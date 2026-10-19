@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useAtomValue } from "jotai";
 import { ChevronDown, Copy, LayoutTemplate, Pin, PinOff, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { Badge, Button, Avatar, AvatarFallback, AvatarImage, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "sedjiwa-ui";
+import { Badge, Button, buttonVariants, Avatar, AvatarFallback, AvatarImage, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "sedjiwa-ui";
 import { getInitials } from "@/lib/utils";
 import { currentUserAtom, isAdminAtom } from "@/features/auth";
 import { useUserMap } from "@/features/users";
@@ -187,10 +187,11 @@ export function ProjectDetailHeader({ project }: { project: Project }) {
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction asChild>
-                    <Button variant="destructive" onClick={onDelete}>
-                      Move to trash
-                    </Button>
+                  <AlertDialogAction
+                    className={buttonVariants({ variant: "destructive" })}
+                    onClick={onDelete}
+                  >
+                    Move to trash
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
