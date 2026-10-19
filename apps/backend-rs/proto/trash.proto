@@ -15,6 +15,10 @@ service ProjectTrashService {
   // Remove, for good, data whose project no longer exists at all (left by
   // deletes made before projects went to the trash).
   rpc PurgeLeftovers(PurgeLeftoversRequest) returns (PurgeLeftoversResponse);
+  // The workspace audit log (RFC-0004): every trash, restore and purge,
+  // newest first. Entries are written with the action itself and are never
+  // changed or removed, purges included.
+  rpc ListAuditEntries(ListAuditEntriesRequest) returns (ListAuditEntriesResponse);
 }
 
 // What a purge removes, counted over the same rows the purge deletes.
@@ -63,3 +67,26 @@ message PurgeLeftoversRequest {
   int32 confirm_projects = 1;
 }
 message PurgeLeftoversResponse { int32 projects = 1; }
+
+
+message AuditEntry {
+  string id = 1;
+  string actor_id = 2;
+  // project_trashed | project_restored | project_purged | leftovers_purged
+  string action = 3;
+  string subject_id = 4;   // the project id; empty for leftovers_purged
+  string subject_name = 5; // the name at the time; empty for leftovers_purged
+  // What a purge removed, counted before it ran. Zero for trash/restore.
+  ProjectContents contents = 6;
+  int32 projects = 7;      // how many projects the entry covers
+  string created_at = 8;
+}
+
+message ListAuditEntriesRequest {
+  int32 page_size = 1;    // default 50, max 100
+  string page_token = 2;  // next_page_token of the previous page; empty = newest
+}
+message ListAuditEntriesResponse {
+  repeated AuditEntry entries = 1;
+  string next_page_token = 2; // empty when there is nothing older
+}

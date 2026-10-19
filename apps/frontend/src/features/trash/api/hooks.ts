@@ -2,7 +2,12 @@
 // restore or purge also refreshes project lists.
 
 import { useMemo } from "react";
-import { createConnectQueryKey, useMutation, useQuery } from "@connectrpc/connect-query";
+import {
+  createConnectQueryKey,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+} from "@connectrpc/connect-query";
 import { ProjectTrashService } from "@/lib/gen/trash_pb";
 import { ProjectService } from "@/lib/gen/projects_pb";
 import { queryClient } from "@/lib/query";
@@ -26,6 +31,25 @@ export interface DeletedProject {
   deletedAt: string;
   deletedBy: string;
   contents: ProjectContents;
+}
+
+export type AuditAction =
+  | "project_trashed"
+  | "project_restored"
+  | "project_purged"
+  | "leftovers_purged";
+
+/** One line of the workspace audit log (RFC-0004). */
+export interface AuditEntry {
+  id: string;
+  actorId: string;
+  /** Unknown actions from a newer server are kept as-is. */
+  action: AuditAction | string;
+  subjectId: string;
+  subjectName: string;
+  contents: ProjectContents;
+  projects: number;
+  createdAt: string;
 }
 
 function mapContents(c?: {
@@ -79,4 +103,36 @@ export function usePurgeProject() {
 
 export function usePurgeLeftovers() {
   return useMutation(ProjectTrashService.method.purgeLeftovers, { onSuccess: refresh });
+}
+
+const AUDIT_PAGE = 50;
+
+/** The audit log, newest first, one page at a time ("Load older"). */
+export function useAuditEntries() {
+  const result = useInfiniteQuery(
+    ProjectTrashService.method.listAuditEntries,
+    { pageSize: AUDIT_PAGE, pageToken: "" },
+    {
+      pageParamKey: "pageToken",
+      getNextPageParam: (last) => last.nextPageToken || undefined,
+      staleTime: 0,
+    },
+  );
+  const entries = useMemo<AuditEntry[]>(
+    () =>
+      (result.data?.pages ?? []).flatMap((page) =>
+        page.entries.map((e) => ({
+          id: e.id,
+          actorId: e.actorId,
+          action: e.action,
+          subjectId: e.subjectId,
+          subjectName: e.subjectName,
+          contents: mapContents(e.contents),
+          projects: e.projects,
+          createdAt: e.createdAt,
+        })),
+      ),
+    [result.data],
+  );
+  return { ...result, entries };
 }

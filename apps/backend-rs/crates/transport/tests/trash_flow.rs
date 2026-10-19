@@ -565,8 +565,25 @@ async fn leftovers_are_cleaned_without_touching_live_or_trashed_projects() {
         fails(&router, &leftovers, &ta, bad.clone(), "failed_precondition").await;
         assert!(owned_counts(&store, &old.pid).await.iter().any(|(_, n)| *n > 0), "a refused clean-up deleted nothing: {bad}");
     }
+    // (Only this test makes leftovers, so the count can't move under it.)
+    let audit_ids = |router: Router, ta: String| async move {
+        let v = ok(&router, &format!("{TRASH}/ListAuditEntries"), &ta, json!({ "pageSize": 100 })).await;
+        arr(&v, "entries").into_iter().filter(|e| e["action"] == "leftovers_purged").map(|e| s(&e, "id")).collect::<Vec<_>>()
+    };
+    let before_audit = audit_ids(router.clone(), ta.to_string()).await;
     let r = ok(&router, &leftovers, &ta, json!({ "confirmProjects": count })).await;
     assert_eq!(r["projects"].as_i64().unwrap_or(0), count, "{r}");
+    // The refusals above wrote nothing; the clean-up wrote exactly one entry.
+    let v = ok(&router, &format!("{TRASH}/ListAuditEntries"), &ta, json!({ "pageSize": 100 })).await;
+    let mine: Vec<Value> = arr(&v, "entries").into_iter()
+        .filter(|e| e["action"] == "leftovers_purged" && !before_audit.contains(&s(e, "id"))).collect();
+    assert_eq!(mine.len(), 1, "one audit entry for the whole clean-up: {mine:?}");
+    let e = &mine[0];
+    assert_eq!(e["actorId"], admin.as_str());
+    assert!(e["subjectId"].is_null() || e["subjectId"] == "", "no single subject: {e}");
+    assert!(e["subjectName"].is_null() || e["subjectName"] == "");
+    assert_eq!(e["projects"].as_i64().unwrap_or(0), count, "it covers every leftover project");
+    assert_eq!(&e["contents"], lc, "with the summed contents the trash showed");
 
     let left: Vec<(String, i64)> = owned_counts(&store, &old.pid).await.into_iter().filter(|(_, n)| *n > 0).collect();
     assert!(left.is_empty(), "nothing of the old project remains: {left:?}");
@@ -699,4 +716,142 @@ async fn the_purge_knows_every_project_keyed_table() {
     );
     let gone: Vec<&&str> = known.iter().filter(|c| !found.iter().any(|f| f == *c)).collect();
     assert!(gone.is_empty(), "PROJECT_KEYED lists columns that no longer exist: {gone:?}");
+}
+
+// ── Audit log ────────────────────────────────────────────────────────────────
+
+/// Every audit entry about `subject` (newest first), across all pages, so
+/// entries other tests write at the same time can't push ours out of view.
+async fn audit_of(router: &Router, ta: &str, subject: &str) -> Vec<Value> {
+    let mut out = Vec::new();
+    let mut page = String::new();
+    loop {
+        let v = ok(router, &format!("{TRASH}/ListAuditEntries"), ta, json!({ "pageSize": 100, "pageToken": page })).await;
+        out.extend(arr(&v, "entries").into_iter().filter(|e| s(e, "subjectId") == subject));
+        page = s(&v, "nextPageToken");
+        if page.is_empty() {
+            return out;
+        }
+    }
+}
+
+fn count_of(c: &Value, k: &str) -> i64 {
+    c[k].as_i64().or_else(|| c[k].as_str().and_then(|x| x.parse().ok())).unwrap_or(0)
+}
+
+#[tokio::test]
+async fn trash_restore_and_purge_each_leave_one_audit_entry_that_outlives_the_project() {
+    let Some((router, store, fake)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let (owner, member, admin) = (mk_user(&store).await, mk_user(&store).await, mk_user(&store).await);
+    let (to, ta) = (token(&owner), admin_token(&admin));
+    let r = rich(&router, &fake, &owner, &member).await;
+    assert!(audit_of(&router, &ta, &r.pid).await.is_empty(), "a live project has no entries");
+
+    // Trash (by the owner): one entry, zero contents.
+    ok(&router, &format!("{PROJECT}/DeleteProject"), &to, json!({ "id": r.pid })).await;
+    fails(&router, &format!("{PROJECT}/DeleteProject"), &to, json!({ "id": r.pid }), "not_found").await;
+    let e = audit_of(&router, &ta, &r.pid).await;
+    assert_eq!(e.len(), 1, "one entry for the trash, none for the repeat: {e:?}");
+    assert_eq!(e[0]["action"], "project_trashed");
+    assert_eq!(e[0]["actorId"], owner.as_str(), "the caller is the actor");
+    assert_eq!(e[0]["subjectName"], r.name.as_str());
+    assert_eq!(e[0]["projects"], 1);
+    assert!(e[0]["createdAt"].is_string());
+    assert!(["tasks", "modules", "pages", "timeMinutes", "comments"].iter().all(|k| count_of(&e[0]["contents"], k) == 0), "trash entries carry no contents: {}", e[0]);
+
+    // Restore: one more entry.
+    ok(&router, &format!("{TRASH}/RestoreProject"), &ta, json!({ "id": r.pid })).await;
+    fails(&router, &format!("{TRASH}/RestoreProject"), &ta, json!({ "id": r.pid }), "not_found").await;
+    let e = audit_of(&router, &ta, &r.pid).await;
+    assert_eq!(e.len(), 2, "{e:?}");
+    assert_eq!(e[0]["action"], "project_restored", "newest first");
+    assert_eq!(e[0]["actorId"], admin.as_str());
+    assert_eq!(e[1]["action"], "project_trashed");
+
+    // Purge: refused attempts write nothing; the real one records what it removed.
+    ok(&router, &format!("{PROJECT}/DeleteProject"), &to, json!({ "id": r.pid })).await;
+    let l = ok(&router, &format!("{TRASH}/ListDeletedProjects"), &ta, json!({})).await;
+    let preview = arr(&l, "projects").into_iter().find(|x| s(x, "id") == r.pid).unwrap()["contents"].clone();
+    fails(&router, &format!("{TRASH}/PurgeProject"), &ta, json!({ "id": r.pid, "confirmName": "nope" }), "failed_precondition").await;
+    fails(&router, &format!("{TRASH}/PurgeProject"), &token(&member), json!({ "id": r.pid, "confirmName": r.name }), "permission_denied").await;
+    assert_eq!(audit_of(&router, &ta, &r.pid).await.len(), 3, "refused purges are not logged");
+    ok(&router, &format!("{TRASH}/PurgeProject"), &ta, json!({ "id": r.pid, "confirmName": r.name })).await;
+    let e = audit_of(&router, &ta, &r.pid).await;
+    assert_eq!(e.len(), 4, "the entries outlive the purged project: {e:?}");
+    assert_eq!(e[0]["action"], "project_purged");
+    assert_eq!(e[0]["actorId"], admin.as_str());
+    assert_eq!(e[0]["subjectName"], r.name.as_str(), "the name at the time is kept");
+    assert_eq!(e[0]["contents"], preview, "it records exactly what the trash showed just before");
+    assert_eq!(count_of(&e[0]["contents"], "tasks"), 2);
+    let kept: i64 = sqlx::query_scalar("SELECT count(*) FROM cmp_auditentry WHERE subject_id = $1")
+        .bind(&r.pid)
+        .fetch_one(store.pool())
+        .await
+        .unwrap();
+    assert_eq!(kept, 4, "the purge never touches the audit rows");
+    let entity: i64 = sqlx::query_scalar("SELECT count(*) FROM arke_entities WHERE pid::text = $1")
+        .bind(&r.pid)
+        .fetch_one(store.pool())
+        .await
+        .unwrap();
+    assert_eq!(entity, 0, "while the project itself is gone");
+}
+
+#[tokio::test]
+async fn the_audit_log_is_admin_only_newest_first_and_paged() {
+    let Some((router, store, _fake)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let (owner, admin) = (mk_user(&store).await, mk_user(&store).await);
+    let (to, ta) = (token(&owner), admin_token(&admin));
+    let list = format!("{TRASH}/ListAuditEntries");
+    let (st, v) = call(&router, &list, None, json!({})).await;
+    assert_eq!(v["code"], "unauthenticated", "{st} {v}");
+    fails(&router, &list, &to, json!({}), "permission_denied").await;
+    fails(&router, &list, &ta, json!({ "pageToken": "abc" }), "invalid_argument").await;
+
+    // 55 trash/restore cycles on one project: 110 entries of ours, newest last written.
+    let p = s(&ok(&router, &format!("{PROJECT}/CreateProject"), &to, json!({ "name": format!("Audit{}", uniq()) })).await, "id");
+    for _ in 0..55 {
+        ok(&router, &format!("{PROJECT}/DeleteProject"), &to, json!({ "id": p })).await;
+        ok(&router, &format!("{TRASH}/RestoreProject"), &ta, json!({ "id": p })).await;
+    }
+    let first = ok(&router, &list, &ta, json!({})).await;
+    assert_eq!(arr(&first, "entries").len(), 50, "page size 0 means 50");
+    assert_eq!(arr(&ok(&router, &list, &ta, json!({ "pageSize": -5 })).await, "entries").len(), 50, "negative means 50");
+    assert_eq!(arr(&ok(&router, &list, &ta, json!({ "pageSize": 500 })).await, "entries").len(), 100, "capped at 100");
+    assert_eq!(arr(&ok(&router, &list, &ta, json!({ "pageSize": 7 })).await, "entries").len(), 7);
+
+    // Walk all pages: ids strictly decreasing, no duplicates, and ours alternate restored/trashed.
+    let mut seen: Vec<i64> = Vec::new();
+    let mut ours: Vec<String> = Vec::new();
+    let mut token_ = String::new();
+    let mut pages = 0;
+    loop {
+        let v = ok(&router, &list, &ta, json!({ "pageSize": 40, "pageToken": token_ })).await;
+        pages += 1;
+        for e in arr(&v, "entries") {
+            seen.push(s(&e, "id").parse().unwrap());
+            if s(&e, "subjectId") == p {
+                ours.push(s(&e, "action"));
+            }
+        }
+        token_ = s(&v, "nextPageToken");
+        if token_.is_empty() {
+            break;
+        }
+        assert!(pages < 1000, "paging terminates");
+    }
+    assert!(seen.windows(2).all(|w| w[0] > w[1]), "newest first, no repeats across pages");
+    assert_eq!(ours.len(), 110, "every one of our entries, exactly once");
+    assert_eq!(ours[0], "project_restored", "the newest is the last restore");
+    assert!(ours.chunks(2).all(|c| c == ["project_restored", "project_trashed"]), "they alternate in order");
+    // The last page's token is empty; asking past the end yields nothing.
+    let oldest = *seen.last().unwrap();
+    let past = ok(&router, &list, &ta, json!({ "pageToken": oldest.to_string() })).await;
+    assert!(arr(&past, "entries").is_empty() && s(&past, "nextPageToken").is_empty(), "{past}");
 }

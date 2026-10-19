@@ -7,6 +7,9 @@
 //! from deletes made before projects went to the trash first.
 
 use persistence::{entity, Store};
+use sqlx::PgConnection;
+
+use super::audit::{record_audit, NewAudit};
 
 /// The tasks of the projects in `$1` (a `text[]` of project ids): through
 /// their modules, and by task number for any whose module is already gone.
@@ -58,6 +61,12 @@ pub(crate) struct Contents {
 /// The contents of the projects in `project_ids`, counted over the same rows
 /// the purge removes.
 pub(crate) async fn contents(store: &Store, project_ids: &[String]) -> anyhow::Result<Contents> {
+    let mut conn = store.pool().acquire().await?;
+    contents_in(&mut conn, project_ids).await
+}
+
+/// [`contents`] inside a transaction (the purge counts what it removes).
+async fn contents_in(conn: &mut PgConnection, project_ids: &[String]) -> anyhow::Result<Contents> {
     if project_ids.is_empty() {
         return Ok(Contents::default());
     }
@@ -73,7 +82,7 @@ pub(crate) async fn contents(store: &Store, project_ids: &[String]) -> anyhow::R
             (SELECT count(*) FROM cmp_automation WHERE project_id = ANY($1))"
     ))
     .bind(project_ids)
-    .fetch_one(store.pool())
+    .fetch_one(conn)
     .await?;
     Ok(Contents {
         tasks: row.0,
@@ -87,30 +96,58 @@ pub(crate) async fn contents(store: &Store, project_ids: &[String]) -> anyhow::R
     })
 }
 
-/// Delete everything of `project_id` (and the project entity itself, when it
-/// still exists). Returns the storage keys of its media files, for the caller
-/// to delete once this has committed.
-pub(crate) async fn purge_project(store: &Store, project_id: &str) -> anyhow::Result<Vec<String>> {
+/// Who purges, and what the audit entry names (RFC-0004).
+pub(crate) struct PurgeAudit<'a> {
+    pub actor_id: &'a str,
+    /// `audit::PROJECT_PURGED` or `audit::LEFTOVERS_PURGED`.
+    pub action: &'a str,
+    pub subject_id: &'a str,
+    pub subject_name: &'a str,
+    pub now: &'a str,
+}
+
+/// Delete everything of `project_ids` (and the project entities themselves,
+/// when they still exist) and record one audit entry with what was removed,
+/// all in one transaction. Returns the storage keys of their media files,
+/// for the caller to delete once this has committed.
+pub(crate) async fn purge_projects(
+    store: &Store,
+    project_ids: &[String],
+    audit: PurgeAudit<'_>,
+) -> anyhow::Result<Vec<String>> {
     let mut tx = store.pool().begin().await?;
+    let removed = contents_in(&mut tx, project_ids).await?;
     let keys: Vec<String> =
-        sqlx::query_scalar("SELECT storage_key FROM cmp_mediafileinfo WHERE project_id = $1")
-            .bind(project_id)
+        sqlx::query_scalar("SELECT storage_key FROM cmp_mediafileinfo WHERE project_id = ANY($1)")
+            .bind(project_ids)
             .fetch_all(&mut *tx)
             .await?;
     sqlx::query(&format!("DELETE FROM arke_entities WHERE pid IN ({})", owned_pids()))
-        .bind(vec![project_id.to_string()])
+        .bind(project_ids)
         .execute(&mut *tx)
         .await?;
-    if let Ok(pid) = project_id.parse::<i64>() {
-        let is_project: bool =
-            sqlx::query_scalar("SELECT EXISTS (SELECT 1 FROM cmp_projectname WHERE pid = $1)")
-                .bind(pid)
-                .fetch_one(&mut *tx)
-                .await?;
-        if is_project {
-            entity::delete(&mut tx, pid).await?;
-        }
+    let pids: Vec<i64> = project_ids.iter().filter_map(|id| id.parse().ok()).collect();
+    let projects: Vec<i64> =
+        sqlx::query_scalar("SELECT pid FROM cmp_projectname WHERE pid = ANY($1)")
+            .bind(&pids)
+            .fetch_all(&mut *tx)
+            .await?;
+    for pid in projects {
+        entity::delete(&mut tx, pid).await?;
     }
+    record_audit(
+        &mut tx,
+        NewAudit {
+            actor_id: audit.actor_id,
+            action: audit.action,
+            subject_id: audit.subject_id,
+            subject_name: audit.subject_name,
+            contents: &removed,
+            projects: project_ids.len() as i64,
+            now: audit.now,
+        },
+    )
+    .await?;
     tx.commit().await?;
     Ok(keys)
 }

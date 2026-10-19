@@ -16,44 +16,22 @@ import {
   Input,
   Label,
   Skeleton,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
 } from "sedjiwa-ui";
 import { EmptyState } from "@/components/shared/empty-state";
-import { formatMinutes } from "@/lib/duration";
 import { useUserMap } from "@/features/users";
+import { AuditHistory } from "./audit-history";
+import { describeContents } from "./describe-contents";
 import {
   useDeletedProjects,
   usePurgeLeftovers,
   usePurgeProject,
   useRestoreProject,
   type DeletedProject,
-  type ProjectContents,
 } from "../api/hooks";
-
-function bytes(n: number): string {
-  if (n < 1024) return `${n} B`;
-  const units = ["KB", "MB", "GB", "TB"];
-  let v = n / 1024;
-  let i = 0;
-  while (v >= 1024 && i < units.length - 1) {
-    v /= 1024;
-    i += 1;
-  }
-  return `${v < 10 ? v.toFixed(1) : Math.round(v)} ${units[i]}`;
-}
-
-/** "48 tasks · 120h logged · 15 files (230 MB) · 3 pages", zeros left out. */
-function describeContents(c: ProjectContents): string {
-  const n = (k: number, one: string, many = `${one}s`) => `${k} ${k === 1 ? one : many}`;
-  const parts: string[] = [];
-  if (c.tasks) parts.push(n(c.tasks, "task"));
-  if (c.timeMinutes) parts.push(`${formatMinutes(c.timeMinutes)} logged`);
-  if (c.mediaFiles) parts.push(`${n(c.mediaFiles, "file")} (${bytes(c.mediaBytes)})`);
-  if (c.pages) parts.push(n(c.pages, "page"));
-  if (c.comments) parts.push(n(c.comments, "comment"));
-  if (c.modules) parts.push(n(c.modules, "module"));
-  if (c.automations) parts.push(n(c.automations, "automation"));
-  return parts.length ? parts.join(" · ") : "Empty";
-}
 
 /** Purge only after typing the project's name: it cannot be undone. */
 function PurgeDialog({
@@ -148,6 +126,15 @@ export function TrashPage() {
         </p>
       </header>
 
+      <Tabs defaultValue="projects" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="projects">Projects</TabsTrigger>
+          <TabsTrigger value="history">History</TabsTrigger>
+        </TabsList>
+        <TabsContent value="history">
+          <AuditHistory />
+        </TabsContent>
+        <TabsContent value="projects" className="space-y-6">
       {isError ? (
         <p className="text-sm text-destructive">{error?.message ?? "Failed to load the trash."}</p>
       ) : isLoading ? (
@@ -215,6 +202,8 @@ export function TrashPage() {
           </Button>
         </section>
       )}
+        </TabsContent>
+      </Tabs>
 
       <PurgeDialog project={purging} onOpenChange={(o) => !o && setPurging(null)} />
       <AlertDialog open={confirmLeftovers} onOpenChange={setConfirmLeftovers}>

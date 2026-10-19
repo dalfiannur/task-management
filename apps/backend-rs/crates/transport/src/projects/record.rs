@@ -10,6 +10,8 @@
 
 use domain::project::ProjectStatus;
 use persistence::{entity, Store};
+
+use super::audit;
 use sqlx::postgres::PgRow;
 use sqlx::{PgConnection, Row};
 
@@ -354,7 +356,7 @@ pub(crate) async fn require_live(
 pub(crate) async fn trash_project(store: &Store, pid: i64, by: &str, now: &str) -> anyhow::Result<()> {
     let mut tx = store.pool().begin().await?;
     if entity::touch(&mut tx, pid).await? {
-        sqlx::query(
+        let trashed = sqlx::query(
             "INSERT INTO cmp_projectdeleted (pid, deleted_at, deleted_by) VALUES ($1, $2, $3) \
              ON CONFLICT (pid) DO NOTHING",
         )
@@ -362,21 +364,58 @@ pub(crate) async fn trash_project(store: &Store, pid: i64, by: &str, now: &str) 
         .bind(now)
         .bind(by)
         .execute(&mut *tx)
-        .await?;
+        .await?
+        .rows_affected();
+        if trashed > 0 {
+            audit_project(&mut tx, audit::PROJECT_TRASHED, pid, by, now).await?;
+        }
     }
     tx.commit().await?;
     Ok(())
 }
 
-pub(crate) async fn restore_project(store: &Store, pid: i64) -> anyhow::Result<()> {
+pub(crate) async fn restore_project(store: &Store, pid: i64, by: &str, now: &str) -> anyhow::Result<()> {
     let mut tx = store.pool().begin().await?;
     if entity::touch(&mut tx, pid).await? {
-        sqlx::query("DELETE FROM cmp_projectdeleted WHERE pid = $1")
+        let restored = sqlx::query("DELETE FROM cmp_projectdeleted WHERE pid = $1")
             .bind(pid)
             .execute(&mut *tx)
-            .await?;
+            .await?
+            .rows_affected();
+        if restored > 0 {
+            audit_project(&mut tx, audit::PROJECT_RESTORED, pid, by, now).await?;
+        }
     }
     tx.commit().await?;
+    Ok(())
+}
+
+/// Audit a trash or restore of `pid` under its current name.
+async fn audit_project(
+    conn: &mut sqlx::PgConnection,
+    action: &str,
+    pid: i64,
+    by: &str,
+    now: &str,
+) -> anyhow::Result<()> {
+    let name: String = sqlx::query_scalar("SELECT value FROM cmp_projectname WHERE pid = $1")
+        .bind(pid)
+        .fetch_optional(&mut *conn)
+        .await?
+        .unwrap_or_default();
+    audit::record_audit(
+        conn,
+        audit::NewAudit {
+            actor_id: by,
+            action,
+            subject_id: &pid.to_string(),
+            subject_name: &name,
+            contents: &super::purge::Contents::default(),
+            projects: 1,
+            now,
+        },
+    )
+    .await?;
     Ok(())
 }
 

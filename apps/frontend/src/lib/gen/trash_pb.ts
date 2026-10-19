@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file trash.proto.
  */
 export const file_trash: GenFile = /*@__PURE__*/
-  fileDesc("Cgt0cmFzaC5wcm90bxIWc2Vkaml3YS50YXNrcy50cmFzaC52MSKnAQoPUHJvamVjdENvbnRlbnRzEg0KBXRhc2tzGAEgASgFEg8KB21vZHVsZXMYAiABKAUSDQoFcGFnZXMYAyABKAUSEwoLbWVkaWFfZmlsZXMYBCABKAUSEwoLbWVkaWFfYnl0ZXMYBSABKAMSFAoMdGltZV9taW51dGVzGAYgASgFEhAKCGNvbW1lbnRzGAcgASgFEhMKC2F1dG9tYXRpb25zGAggASgFIp8BCg5EZWxldGVkUHJvamVjdBIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEhAKCG93bmVyX2lkGAMgASgJEhIKCmRlbGV0ZWRfYXQYBCABKAkSEgoKZGVsZXRlZF9ieRgFIAEoCRI5Cghjb250ZW50cxgGIAEoCzInLnNlZGppd2EudGFza3MudHJhc2gudjEuUHJvamVjdENvbnRlbnRzIhwKGkxpc3REZWxldGVkUHJvamVjdHNSZXF1ZXN0IrMBChtMaXN0RGVsZXRlZFByb2plY3RzUmVzcG9uc2USOAoIcHJvamVjdHMYASADKAsyJi5zZWRqaXdhLnRhc2tzLnRyYXNoLnYxLkRlbGV0ZWRQcm9qZWN0EhYKDmxlZnRvdmVyX2NvdW50GAIgASgFEkIKEWxlZnRvdmVyX2NvbnRlbnRzGAMgASgLMicuc2Vkaml3YS50YXNrcy50cmFzaC52MS5Qcm9qZWN0Q29udGVudHMiIwoVUmVzdG9yZVByb2plY3RSZXF1ZXN0EgoKAmlkGAEgASgJIiQKFlJlc3RvcmVQcm9qZWN0UmVzcG9uc2USCgoCb2sYASABKAgiNwoTUHVyZ2VQcm9qZWN0UmVxdWVzdBIKCgJpZBgBIAEoCRIUCgxjb25maXJtX25hbWUYAiABKAkiIgoUUHVyZ2VQcm9qZWN0UmVzcG9uc2USCgoCb2sYASABKAgiMQoVUHVyZ2VMZWZ0b3ZlcnNSZXF1ZXN0EhgKEGNvbmZpcm1fcHJvamVjdHMYASABKAUiKgoWUHVyZ2VMZWZ0b3ZlcnNSZXNwb25zZRIQCghwcm9qZWN0cxgBIAEoBTLiAwoTUHJvamVjdFRyYXNoU2VydmljZRJ+ChNMaXN0RGVsZXRlZFByb2plY3RzEjIuc2Vkaml3YS50YXNrcy50cmFzaC52MS5MaXN0RGVsZXRlZFByb2plY3RzUmVxdWVzdBozLnNlZGppd2EudGFza3MudHJhc2gudjEuTGlzdERlbGV0ZWRQcm9qZWN0c1Jlc3BvbnNlEm8KDlJlc3RvcmVQcm9qZWN0Ei0uc2Vkaml3YS50YXNrcy50cmFzaC52MS5SZXN0b3JlUHJvamVjdFJlcXVlc3QaLi5zZWRqaXdhLnRhc2tzLnRyYXNoLnYxLlJlc3RvcmVQcm9qZWN0UmVzcG9uc2USaQoMUHVyZ2VQcm9qZWN0Eisuc2Vkaml3YS50YXNrcy50cmFzaC52MS5QdXJnZVByb2plY3RSZXF1ZXN0Giwuc2Vkaml3YS50YXNrcy50cmFzaC52MS5QdXJnZVByb2plY3RSZXNwb25zZRJvCg5QdXJnZUxlZnRvdmVycxItLnNlZGppd2EudGFza3MudHJhc2gudjEuUHVyZ2VMZWZ0b3ZlcnNSZXF1ZXN0Gi4uc2Vkaml3YS50YXNrcy50cmFzaC52MS5QdXJnZUxlZnRvdmVyc1Jlc3BvbnNlYgZwcm90bzM");
+  fileDesc("Cgt0cmFzaC5wcm90bxIWc2Vkaml3YS50YXNrcy50cmFzaC52MSKnAQoPUHJvamVjdENvbnRlbnRzEg0KBXRhc2tzGAEgASgFEg8KB21vZHVsZXMYAiABKAUSDQoFcGFnZXMYAyABKAUSEwoLbWVkaWFfZmlsZXMYBCABKAUSEwoLbWVkaWFfYnl0ZXMYBSABKAMSFAoMdGltZV9taW51dGVzGAYgASgFEhAKCGNvbW1lbnRzGAcgASgFEhMKC2F1dG9tYXRpb25zGAggASgFIp8BCg5EZWxldGVkUHJvamVjdBIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEhAKCG93bmVyX2lkGAMgASgJEhIKCmRlbGV0ZWRfYXQYBCABKAkSEgoKZGVsZXRlZF9ieRgFIAEoCRI5Cghjb250ZW50cxgGIAEoCzInLnNlZGppd2EudGFza3MudHJhc2gudjEuUHJvamVjdENvbnRlbnRzIhwKGkxpc3REZWxldGVkUHJvamVjdHNSZXF1ZXN0IrMBChtMaXN0RGVsZXRlZFByb2plY3RzUmVzcG9uc2USOAoIcHJvamVjdHMYASADKAsyJi5zZWRqaXdhLnRhc2tzLnRyYXNoLnYxLkRlbGV0ZWRQcm9qZWN0EhYKDmxlZnRvdmVyX2NvdW50GAIgASgFEkIKEWxlZnRvdmVyX2NvbnRlbnRzGAMgASgLMicuc2Vkaml3YS50YXNrcy50cmFzaC52MS5Qcm9qZWN0Q29udGVudHMiIwoVUmVzdG9yZVByb2plY3RSZXF1ZXN0EgoKAmlkGAEgASgJIiQKFlJlc3RvcmVQcm9qZWN0UmVzcG9uc2USCgoCb2sYASABKAgiNwoTUHVyZ2VQcm9qZWN0UmVxdWVzdBIKCgJpZBgBIAEoCRIUCgxjb25maXJtX25hbWUYAiABKAkiIgoUUHVyZ2VQcm9qZWN0UmVzcG9uc2USCgoCb2sYASABKAgiMQoVUHVyZ2VMZWZ0b3ZlcnNSZXF1ZXN0EhgKEGNvbmZpcm1fcHJvamVjdHMYASABKAUiKgoWUHVyZ2VMZWZ0b3ZlcnNSZXNwb25zZRIQCghwcm9qZWN0cxgBIAEoBSLFAQoKQXVkaXRFbnRyeRIKCgJpZBgBIAEoCRIQCghhY3Rvcl9pZBgCIAEoCRIOCgZhY3Rpb24YAyABKAkSEgoKc3ViamVjdF9pZBgEIAEoCRIUCgxzdWJqZWN0X25hbWUYBSABKAkSOQoIY29udGVudHMYBiABKAsyJy5zZWRqaXdhLnRhc2tzLnRyYXNoLnYxLlByb2plY3RDb250ZW50cxIQCghwcm9qZWN0cxgHIAEoBRISCgpjcmVhdGVkX2F0GAggASgJIkAKF0xpc3RBdWRpdEVudHJpZXNSZXF1ZXN0EhEKCXBhZ2Vfc2l6ZRgBIAEoBRISCgpwYWdlX3Rva2VuGAIgASgJImgKGExpc3RBdWRpdEVudHJpZXNSZXNwb25zZRIzCgdlbnRyaWVzGAEgAygLMiIuc2Vkaml3YS50YXNrcy50cmFzaC52MS5BdWRpdEVudHJ5EhcKD25leHRfcGFnZV90b2tlbhgCIAEoCTLZBAoTUHJvamVjdFRyYXNoU2VydmljZRJ+ChNMaXN0RGVsZXRlZFByb2plY3RzEjIuc2Vkaml3YS50YXNrcy50cmFzaC52MS5MaXN0RGVsZXRlZFByb2plY3RzUmVxdWVzdBozLnNlZGppd2EudGFza3MudHJhc2gudjEuTGlzdERlbGV0ZWRQcm9qZWN0c1Jlc3BvbnNlEm8KDlJlc3RvcmVQcm9qZWN0Ei0uc2Vkaml3YS50YXNrcy50cmFzaC52MS5SZXN0b3JlUHJvamVjdFJlcXVlc3QaLi5zZWRqaXdhLnRhc2tzLnRyYXNoLnYxLlJlc3RvcmVQcm9qZWN0UmVzcG9uc2USaQoMUHVyZ2VQcm9qZWN0Eisuc2Vkaml3YS50YXNrcy50cmFzaC52MS5QdXJnZVByb2plY3RSZXF1ZXN0Giwuc2Vkaml3YS50YXNrcy50cmFzaC52MS5QdXJnZVByb2plY3RSZXNwb25zZRJvCg5QdXJnZUxlZnRvdmVycxItLnNlZGppd2EudGFza3MudHJhc2gudjEuUHVyZ2VMZWZ0b3ZlcnNSZXF1ZXN0Gi4uc2Vkaml3YS50YXNrcy50cmFzaC52MS5QdXJnZUxlZnRvdmVyc1Jlc3BvbnNlEnUKEExpc3RBdWRpdEVudHJpZXMSLy5zZWRqaXdhLnRhc2tzLnRyYXNoLnYxLkxpc3RBdWRpdEVudHJpZXNSZXF1ZXN0GjAuc2Vkaml3YS50YXNrcy50cmFzaC52MS5MaXN0QXVkaXRFbnRyaWVzUmVzcG9uc2ViBnByb3RvMw");
 
 /**
  * What a purge removes, counted over the same rows the purge deletes.
@@ -269,6 +269,118 @@ export const PurgeLeftoversResponseSchema: GenMessage<PurgeLeftoversResponse> = 
   messageDesc(file_trash, 9);
 
 /**
+ * @generated from message sedjiwa.tasks.trash.v1.AuditEntry
+ */
+export type AuditEntry = Message<"sedjiwa.tasks.trash.v1.AuditEntry"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string actor_id = 2;
+   */
+  actorId: string;
+
+  /**
+   * project_trashed | project_restored | project_purged | leftovers_purged
+   *
+   * @generated from field: string action = 3;
+   */
+  action: string;
+
+  /**
+   * the project id; empty for leftovers_purged
+   *
+   * @generated from field: string subject_id = 4;
+   */
+  subjectId: string;
+
+  /**
+   * the name at the time; empty for leftovers_purged
+   *
+   * @generated from field: string subject_name = 5;
+   */
+  subjectName: string;
+
+  /**
+   * What a purge removed, counted before it ran. Zero for trash/restore.
+   *
+   * @generated from field: sedjiwa.tasks.trash.v1.ProjectContents contents = 6;
+   */
+  contents?: ProjectContents | undefined;
+
+  /**
+   * how many projects the entry covers
+   *
+   * @generated from field: int32 projects = 7;
+   */
+  projects: number;
+
+  /**
+   * @generated from field: string created_at = 8;
+   */
+  createdAt: string;
+};
+
+/**
+ * Describes the message sedjiwa.tasks.trash.v1.AuditEntry.
+ * Use `create(AuditEntrySchema)` to create a new message.
+ */
+export const AuditEntrySchema: GenMessage<AuditEntry> = /*@__PURE__*/
+  messageDesc(file_trash, 10);
+
+/**
+ * @generated from message sedjiwa.tasks.trash.v1.ListAuditEntriesRequest
+ */
+export type ListAuditEntriesRequest = Message<"sedjiwa.tasks.trash.v1.ListAuditEntriesRequest"> & {
+  /**
+   * default 50, max 100
+   *
+   * @generated from field: int32 page_size = 1;
+   */
+  pageSize: number;
+
+  /**
+   * next_page_token of the previous page; empty = newest
+   *
+   * @generated from field: string page_token = 2;
+   */
+  pageToken: string;
+};
+
+/**
+ * Describes the message sedjiwa.tasks.trash.v1.ListAuditEntriesRequest.
+ * Use `create(ListAuditEntriesRequestSchema)` to create a new message.
+ */
+export const ListAuditEntriesRequestSchema: GenMessage<ListAuditEntriesRequest> = /*@__PURE__*/
+  messageDesc(file_trash, 11);
+
+/**
+ * @generated from message sedjiwa.tasks.trash.v1.ListAuditEntriesResponse
+ */
+export type ListAuditEntriesResponse = Message<"sedjiwa.tasks.trash.v1.ListAuditEntriesResponse"> & {
+  /**
+   * @generated from field: repeated sedjiwa.tasks.trash.v1.AuditEntry entries = 1;
+   */
+  entries: AuditEntry[];
+
+  /**
+   * empty when there is nothing older
+   *
+   * @generated from field: string next_page_token = 2;
+   */
+  nextPageToken: string;
+};
+
+/**
+ * Describes the message sedjiwa.tasks.trash.v1.ListAuditEntriesResponse.
+ * Use `create(ListAuditEntriesResponseSchema)` to create a new message.
+ */
+export const ListAuditEntriesResponseSchema: GenMessage<ListAuditEntriesResponse> = /*@__PURE__*/
+  messageDesc(file_trash, 12);
+
+/**
  * The project trash. DeleteProject (ProjectService) moves a project here: it
  * then does not exist for any read — lists, dashboards, reports, search,
  * workload, My tasks, the project's own pages — until an admin restores it.
@@ -315,6 +427,18 @@ export const ProjectTrashService: GenService<{
     methodKind: "unary";
     input: typeof PurgeLeftoversRequestSchema;
     output: typeof PurgeLeftoversResponseSchema;
+  },
+  /**
+   * The workspace audit log (RFC-0004): every trash, restore and purge,
+   * newest first. Entries are written with the action itself and are never
+   * changed or removed, purges included.
+   *
+   * @generated from rpc sedjiwa.tasks.trash.v1.ProjectTrashService.ListAuditEntries
+   */
+  listAuditEntries: {
+    methodKind: "unary";
+    input: typeof ListAuditEntriesRequestSchema;
+    output: typeof ListAuditEntriesResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_trash, 0);

@@ -550,3 +550,18 @@ CREATE TABLE IF NOT EXISTS cmp_projectdeleted (
     deleted_at TEXT NOT NULL,
     deleted_by TEXT NOT NULL
 );
+
+-- Workspace audit log: trash, restore and purge of projects, and leftover
+-- purges. Deliberately has no project_id, so a purge never removes it.
+-- `summary` holds the counts (tasks, modules, pages, media_files,
+-- media_bytes, time_minutes, comments, automations, projects).
+CREATE TABLE IF NOT EXISTS cmp_auditentry (
+    pid BIGINT PRIMARY KEY REFERENCES arke_entities(pid) ON DELETE CASCADE,
+    actor_id TEXT NOT NULL,
+    action TEXT NOT NULL,
+    subject_id TEXT NOT NULL,
+    subject_name TEXT NOT NULL,
+    summary JSONB NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_cmp_auditentry_created ON cmp_auditentry USING btree (created_at DESC);

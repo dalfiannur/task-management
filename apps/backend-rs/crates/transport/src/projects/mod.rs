@@ -1,6 +1,7 @@
 //! Projects: Connect handler for `ProjectService` (delivery-only, per-op Store).
 //! See docs/superpowers/specs/2026-07-29-create-project-flow-design.md.
 
+pub(crate) mod audit;
 pub(crate) mod project_service;
 pub(crate) mod purge;
 pub(crate) mod record;

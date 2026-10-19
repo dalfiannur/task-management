@@ -9,10 +9,12 @@ use connectrpc_axum::{ConnectError, ConnectRequest, ConnectResponse};
 use persistence::Store;
 use storage::Storage;
 
-use super::purge::{contents, leftover_project_ids, purge_project, Contents};
+use super::audit::{list_audit, LEFTOVERS_PURGED, PROJECT_PURGED};
+use super::purge::{contents, leftover_project_ids, purge_projects, Contents, PurgeAudit};
 use super::record::{load_trashed, restore_project, trashed_projects};
 use super::{internal, parse_pid};
 use crate::search::deindex_project;
+use crate::timelog::record::now_iso;
 use crate::sedjiwa::tasks::trash::v1 as pb;
 use crate::sedjiwa::tasks::trash::v1::project_trash_service_connect::ProjectTrashServiceBuilder;
 
@@ -30,15 +32,23 @@ fn require_admin(user: Option<Extension<AuthUser>>) -> Result<AuthUser, ConnectE
     }
 }
 
-/// Purge `project_id`'s data, then its stored files and search docs.
-async fn purge_all(store: &Store, storage: &dyn Storage, project_id: &str) -> Result<(), ConnectError> {
-    let keys = purge_project(store, project_id).await.map_err(internal)?;
+/// Purge the projects' data (with its audit entry), then their stored files
+/// and search docs.
+async fn purge_all(
+    store: &Store,
+    storage: &dyn Storage,
+    project_ids: &[String],
+    audit: PurgeAudit<'_>,
+) -> Result<(), ConnectError> {
+    let keys = purge_projects(store, project_ids, audit).await.map_err(internal)?;
     for k in &keys {
         if let Err(e) = storage.delete(k).await {
             tracing::warn!(error = %e, key = %k, "failed to delete a purged media object");
         }
     }
-    deindex_project(store, project_id).await;
+    for id in project_ids {
+        deindex_project(store, id).await;
+    }
     Ok(())
 }
 
@@ -97,10 +107,10 @@ async fn restore(
     user: Option<Extension<AuthUser>>,
     req: ConnectRequest<pb::RestoreProjectRequest>,
 ) -> Result<ConnectResponse<pb::RestoreProjectResponse>, ConnectError> {
-    require_admin(user)?;
+    let auth = require_admin(user)?;
     let ConnectRequest(r) = req;
     let (pid, _) = require_trashed(&store, &r.id).await?;
-    restore_project(&store, pid).await.map_err(internal)?;
+    restore_project(&store, pid, &auth.id, &now_iso()).await.map_err(internal)?;
     Ok(ConnectResponse::new(pb::RestoreProjectResponse { ok: true }))
 }
 
@@ -110,7 +120,7 @@ async fn purge(
     user: Option<Extension<AuthUser>>,
     req: ConnectRequest<pb::PurgeProjectRequest>,
 ) -> Result<ConnectResponse<pb::PurgeProjectResponse>, ConnectError> {
-    require_admin(user)?;
+    let auth = require_admin(user)?;
     let ConnectRequest(r) = req;
     // Only from the trash: a live project is deleted (trashed) first.
     let (pid, name) = require_trashed(&store, &r.id).await?;
@@ -119,7 +129,15 @@ async fn purge(
             "type the project's exact name to delete it for good",
         ));
     }
-    purge_all(&store, storage.as_ref(), &pid.to_string()).await?;
+    let id = pid.to_string();
+    let audit = PurgeAudit {
+        actor_id: &auth.id,
+        action: PROJECT_PURGED,
+        subject_id: &id,
+        subject_name: &name,
+        now: &now_iso(),
+    };
+    purge_all(&store, storage.as_ref(), std::slice::from_ref(&id), audit).await?;
     Ok(ConnectResponse::new(pb::PurgeProjectResponse { ok: true }))
 }
 
@@ -129,7 +147,7 @@ async fn purge_leftovers(
     user: Option<Extension<AuthUser>>,
     req: ConnectRequest<pb::PurgeLeftoversRequest>,
 ) -> Result<ConnectResponse<pb::PurgeLeftoversResponse>, ConnectError> {
-    require_admin(user)?;
+    let auth = require_admin(user)?;
     let ConnectRequest(r) = req;
     let ids = leftover_project_ids(&store).await.map_err(internal)?;
     if r.confirm_projects as usize != ids.len() {
@@ -139,10 +157,62 @@ async fn purge_leftovers(
             if ids.len() == 1 { "" } else { "s" }
         )));
     }
-    for id in &ids {
-        purge_all(&store, storage.as_ref(), id).await?;
+    if !ids.is_empty() {
+        let audit = PurgeAudit {
+            actor_id: &auth.id,
+            action: LEFTOVERS_PURGED,
+            subject_id: "",
+            subject_name: "",
+            now: &now_iso(),
+        };
+        purge_all(&store, storage.as_ref(), &ids, audit).await?;
     }
     Ok(ConnectResponse::new(pb::PurgeLeftoversResponse { projects: ids.len() as i32 }))
+}
+
+const DEFAULT_PAGE: i64 = 50;
+const MAX_PAGE: i64 = 100;
+
+async fn list_audit_entries(
+    Extension(store): S,
+    user: Option<Extension<AuthUser>>,
+    req: ConnectRequest<pb::ListAuditEntriesRequest>,
+) -> Result<ConnectResponse<pb::ListAuditEntriesResponse>, ConnectError> {
+    require_admin(user)?;
+    let ConnectRequest(r) = req;
+    let size = match r.page_size {
+        n if n <= 0 => DEFAULT_PAGE,
+        n => (n as i64).min(MAX_PAGE),
+    };
+    let before = match r.page_token.trim() {
+        "" => None,
+        t => Some(
+            t.parse::<i64>()
+                .map_err(|_| ConnectError::new_invalid_argument("bad page_token"))?,
+        ),
+    };
+    // One extra row tells whether an older page exists.
+    let mut rows = list_audit(&store, size + 1, before).await.map_err(internal)?;
+    let more = rows.len() as i64 > size;
+    rows.truncate(size as usize);
+    let next_page_token = match (more, rows.last()) {
+        (true, Some(last)) => last.pid.to_string(),
+        _ => String::new(),
+    };
+    let entries = rows
+        .into_iter()
+        .map(|a| pb::AuditEntry {
+            id: a.pid.to_string(),
+            actor_id: a.actor_id,
+            action: a.action,
+            subject_id: a.subject_id,
+            subject_name: a.subject_name,
+            contents: Some(contents_to_proto(&a.contents)),
+            projects: a.projects as i32,
+            created_at: a.created_at,
+        })
+        .collect();
+    Ok(ConnectResponse::new(pb::ListAuditEntriesResponse { entries, next_page_token }))
 }
 
 /// ProjectTrashService router; injects the Store and the media Storage.
@@ -153,6 +223,7 @@ pub fn trash_router(store: Arc<Store>, storage: Arc<dyn Storage>) -> axum::Route
         .restore_project::<_, (S, A, ConnectRequest<pb::RestoreProjectRequest>)>(restore)
         .purge_project::<_, (S, St, A, ConnectRequest<pb::PurgeProjectRequest>)>(purge)
         .purge_leftovers::<_, (S, St, A, ConnectRequest<pb::PurgeLeftoversRequest>)>(purge_leftovers)
+        .list_audit_entries::<_, (S, A, ConnectRequest<pb::ListAuditEntriesRequest>)>(list_audit_entries)
         .build()
         .layer(Extension(store))
         .layer(Extension(storage))
