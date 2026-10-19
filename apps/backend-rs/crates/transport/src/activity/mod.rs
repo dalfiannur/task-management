@@ -7,7 +7,7 @@ pub(crate) mod record;
 mod recorder;
 
 pub use activity_service::activity_router;
-pub(crate) use recorder::record;
+pub(crate) use recorder::{record, record_on_task};
 
 use std::sync::Arc;
 

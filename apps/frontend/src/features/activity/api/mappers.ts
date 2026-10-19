@@ -16,6 +16,8 @@ export function mapEntity(t: EntityType): ActivityEntity {
       return "page";
     case EntityType.MEDIA:
       return "media";
+    case EntityType.TIME_ENTRY:
+      return "time_entry";
     default:
       return "other";
   }
@@ -46,6 +48,7 @@ export function mapActivity(a: PbActivity): Activity {
     changes: a.changes.map((c) => ({ field: c.field, from: c.from, to: c.to })),
     createdAt: a.createdAt,
     automationId: a.automationId,
+    taskId: a.taskId,
     automationName: a.automationName,
   };
 }

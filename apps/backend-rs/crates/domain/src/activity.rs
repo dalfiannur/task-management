@@ -31,6 +31,8 @@ pub enum EntityType {
     Ownership,
     Page,
     Media,
+    /// Time logged on a task; the entry's task is the activity's task link.
+    TimeEntry,
 }
 
 impl EntityType {
@@ -42,6 +44,7 @@ impl EntityType {
             Self::Ownership => "ownership",
             Self::Page => "page",
             Self::Media => "media",
+            Self::TimeEntry => "time_entry",
         }
     }
     pub fn parse(s: &str) -> Option<Self> {
@@ -52,6 +55,7 @@ impl EntityType {
             "ownership" => Some(Self::Ownership),
             "page" => Some(Self::Page),
             "media" => Some(Self::Media),
+            "time_entry" => Some(Self::TimeEntry),
             _ => None,
         }
     }
@@ -63,6 +67,7 @@ impl EntityType {
             Self::Ownership => 4,
             Self::Page => 5,
             Self::Media => 6,
+            Self::TimeEntry => 7,
         }
     }
     pub fn from_proto(code: i32) -> Option<Self> {
@@ -73,6 +78,7 @@ impl EntityType {
             4 => Some(Self::Ownership),
             5 => Some(Self::Page),
             6 => Some(Self::Media),
+            7 => Some(Self::TimeEntry),
             _ => None,
         }
     }

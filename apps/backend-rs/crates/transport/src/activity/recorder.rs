@@ -37,6 +37,41 @@ pub(crate) async fn record(
             summary: &summary,
             changes,
             created_at: &now_iso(),
+            task_id: None,
+        },
+    )
+    .await;
+    if let Err(e) = res {
+        tracing::warn!(error = %e, "failed to record activity");
+    }
+}
+
+/// Record an entry about something on a task (a time entry), linked to that
+/// task so the task's own feed shows it.
+#[allow(clippy::too_many_arguments)]
+pub(crate) async fn record_on_task(
+    store: &Store,
+    project_id: &str,
+    actor_id: &str,
+    entity_type: EntityType,
+    entity_id: &str,
+    task_id: &str,
+    action: ActivityAction,
+    summary: String,
+    changes: Vec<FieldChange>,
+) {
+    let res = create_activity(
+        store,
+        NewActivity {
+            project_id,
+            actor_id,
+            entity_type,
+            entity_id,
+            action,
+            summary: &summary,
+            changes,
+            created_at: &now_iso(),
+            task_id: Some(task_id),
         },
     )
     .await;

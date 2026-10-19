@@ -2204,3 +2204,31 @@ async fn log_time_defaults_to_the_workspace_day() {
     let d = e["date"].as_str().unwrap_or_default();
     assert!(d == before || d == after, "log_time without a date uses the workspace day ({before}), got {d}");
 }
+
+#[tokio::test]
+async fn log_time_through_mcp_lands_in_the_activity_log() {
+    let Some((router, store)) = router_and_store().await else { return skipped() };
+    let user = seed_active_user(&store).await;
+    let token = issue_token(&store, &user).await;
+    let (_p, module_id) = seed_project_and_module(&store, &user).await;
+    let (_, t) = tools_call(&router, &token, "create_task", json!({ "module_id": module_id, "title": "via mcp" })).await;
+    let task_id = t["id"].as_str().unwrap().to_string();
+    let (err, e) = tools_call(&router, &token, "log_time", json!({ "task_id": task_id, "minutes": 45 })).await;
+    assert!(!err, "log_time: {e}");
+    // Read the task's activity through the real ActivityService as the same user.
+    let me = auth::verify_jwt(&auth::sign_jwt("mcp-test", &user, &[], 9_999_999_999).unwrap(), "mcp-test").unwrap();
+    let activity = transport::activity_router(store.clone()).layer(axum::Extension(me));
+    let req = Request::builder()
+        .method("POST")
+        .uri("/sedjiwa.tasks.activity.v1.ActivityService/ListEntityActivity")
+        .header(CONTENT_TYPE, "application/json")
+        .body(Body::from(json!({ "entityType": "TASK", "entityId": task_id }).to_string()))
+        .unwrap();
+    let resp = activity.oneshot(req).await.unwrap();
+    let body: Value = serde_json::from_slice(&to_bytes(resp.into_body(), usize::MAX).await.unwrap()).unwrap();
+    let rows: Vec<&Value> = body["activities"].as_array().unwrap().iter().filter(|a| a["entityType"] == "TIME_ENTRY").collect();
+    assert_eq!(rows.len(), 1, "one row for the MCP log: {body}");
+    assert_eq!(rows[0]["action"], "CREATED");
+    assert_eq!(rows[0]["actorId"], user.as_str());
+    assert_eq!(rows[0]["entityId"], e["id"]);
+}

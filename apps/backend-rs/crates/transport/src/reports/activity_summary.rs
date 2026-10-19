@@ -31,7 +31,8 @@ const fn assert_entity_exhaustive(e: EntityType) -> EntityType {
         | EntityType::Membership
         | EntityType::Ownership
         | EntityType::Page
-        | EntityType::Media => e,
+        | EntityType::Media
+        | EntityType::TimeEntry => e,
     }
 }
 
@@ -41,13 +42,14 @@ const fn assert_action_exhaustive(a: ActivityAction) -> ActivityAction {
     }
 }
 
-const ENTITIES: [EntityType; 6] = [
+const ENTITIES: [EntityType; 7] = [
     assert_entity_exhaustive(EntityType::Task),
     assert_entity_exhaustive(EntityType::Module),
     assert_entity_exhaustive(EntityType::Membership),
     assert_entity_exhaustive(EntityType::Ownership),
     assert_entity_exhaustive(EntityType::Page),
     assert_entity_exhaustive(EntityType::Media),
+    assert_entity_exhaustive(EntityType::TimeEntry),
 ];
 const ACTIONS: [ActivityAction; 3] = [
     assert_action_exhaustive(ActivityAction::Created),

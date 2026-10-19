@@ -11,7 +11,10 @@ use domain::time::{date_ok, entry_minutes_ok, note_ok};
 use persistence::Store;
 
 use super::record::{self as time_record, load_entry, now_iso, running_for, to_proto, EntryFilter, EntryRecord, NewEntry};
+use crate::activity::record_on_task;
 use crate::projects::record::member_project_ids;
+use domain::activity::{ActivityAction, EntityType, FieldChange};
+use domain::task::format_minutes;
 use crate::sedjiwa::tasks::time::v1 as pb;
 use crate::sedjiwa::tasks::time::v1::time_service_connect::TimeServiceBuilder;
 use crate::work::{internal, parse_pid, require_auth, require_member, task_project_id, StoreExt};
@@ -45,6 +48,43 @@ fn clean_note(note: Option<String>) -> Result<String, ConnectError> {
     }
 }
 
+/// "#12", or "a deleted task" once the task is gone.
+fn task_ref(e: &EntryRecord) -> String {
+    if e.task_number > 0 {
+        format!("#{}", e.task_number)
+    } else {
+        "a deleted task".into()
+    }
+}
+
+fn change(field: &str, from: Option<String>, to: Option<String>) -> FieldChange {
+    FieldChange { field: field.into(), from, to }
+}
+
+/// The activity entry for a finished entry: who logged how much, on which
+/// task, for which day.
+async fn record_logged(store: &Store, actor_id: &str, e: &EntryRecord) {
+    let mut changes = vec![
+        change("minutes", None, Some(format_minutes(e.minutes))),
+        change("date", None, Some(e.work_date.clone())),
+    ];
+    if !e.note.is_empty() {
+        changes.push(change("note", None, Some(e.note.clone())));
+    }
+    record_on_task(
+        store,
+        &e.project_id,
+        actor_id,
+        EntityType::TimeEntry,
+        &e.pid.to_string(),
+        &e.task_id,
+        ActivityAction::Created,
+        format!("logged {} on {}", format_minutes(e.minutes), task_ref(e)),
+        changes,
+    )
+    .await;
+}
+
 async fn require_entry(store: &Store, id: &str) -> Result<EntryRecord, ConnectError> {
     load_entry(store, parse_pid(id)?)
         .await
@@ -75,7 +115,7 @@ async fn start_timer(
     let project = task_scope(&store, &r.task_id, &auth).await?;
     let date = work_date(&store, r.date).await?;
     let note = clean_note(r.note)?;
-    let pid = time_record::start_timer(
+    let (pid, stopped) = time_record::start_timer(
         &store,
         NewEntry {
             task_id: &r.task_id,
@@ -88,6 +128,12 @@ async fn start_timer(
     )
     .await
     .map_err(internal)?;
+    // Starting a timer stops the previous one: that one's time is logged now.
+    if let Some(prev) = stopped {
+        if let Ok(Some(p)) = time_record::load_entry(&store, prev).await {
+            record_logged(&store, &auth.id, &p).await;
+        }
+    }
     let e = require_entry(&store, &pid.to_string()).await?;
     Ok(ConnectResponse::new(to_proto(&e)))
 }
@@ -102,7 +148,11 @@ async fn stop_timer(
         .await
         .map_err(internal)?;
     let entry = match stopped {
-        Some(pid) => Some(to_proto(&require_entry(&store, &pid.to_string()).await?)),
+        Some(pid) => {
+            let e = require_entry(&store, &pid.to_string()).await?;
+            record_logged(&store, &auth.id, &e).await;
+            Some(to_proto(&e))
+        }
         None => None,
     };
     Ok(ConnectResponse::new(pb::StopTimerResponse { entry }))
@@ -149,6 +199,7 @@ pub async fn log_time_core(
     .await
     .map_err(internal)?;
     let e = require_entry(store, &pid.to_string()).await?;
+    record_logged(store, &auth.id, &e).await;
     Ok(to_proto(&e))
 }
 
@@ -242,7 +293,35 @@ async fn update_time_entry(
     time_record::update_entry(&store, e.pid, r.minutes, date, note)
         .await
         .map_err(internal)?;
+    let before = e;
     let e = require_entry(&store, &r.id).await?;
+    let mut changes = Vec::new();
+    if before.minutes != e.minutes {
+        changes.push(change("minutes", Some(format_minutes(before.minutes)), Some(format_minutes(e.minutes))));
+    }
+    if before.work_date != e.work_date {
+        changes.push(change("date", Some(before.work_date.clone()), Some(e.work_date.clone())));
+    }
+    if before.note != e.note {
+        let opt = |n: &str| (!n.is_empty()).then(|| n.to_string());
+        changes.push(change("note", opt(&before.note), opt(&e.note)));
+    }
+    if !changes.is_empty() {
+        // The actor is whoever edited it — an admin fixing someone's entry
+        // shows as the admin.
+        record_on_task(
+            &store,
+            &e.project_id,
+            &auth.id,
+            EntityType::TimeEntry,
+            &e.pid.to_string(),
+            &e.task_id,
+            ActivityAction::Updated,
+            format!("edited time on {}", task_ref(&e)),
+            changes,
+        )
+        .await;
+    }
     Ok(ConnectResponse::new(to_proto(&e)))
 }
 
@@ -255,6 +334,21 @@ async fn delete_time_entry(
     let ConnectRequest(r) = req;
     let e = own_entry(&store, &r.id, &auth).await?;
     time_record::delete_entry(&store, e.pid).await.map_err(internal)?;
+    record_on_task(
+        &store,
+        &e.project_id,
+        &auth.id,
+        EntityType::TimeEntry,
+        &e.pid.to_string(),
+        &e.task_id,
+        ActivityAction::Deleted,
+        format!("deleted {} logged on {}", format_minutes(e.minutes), task_ref(&e)),
+        vec![
+            change("minutes", Some(format_minutes(e.minutes)), None),
+            change("date", Some(e.work_date.clone()), None),
+        ],
+    )
+    .await;
     Ok(ConnectResponse::new(pb::DeleteTimeEntryResponse { ok: true }))
 }
 

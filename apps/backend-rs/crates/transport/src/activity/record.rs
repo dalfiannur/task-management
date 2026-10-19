@@ -29,6 +29,8 @@ pub(crate) struct ActivityRecord {
     pub created_at: String,
     pub automation_id: Option<String>,
     pub automation_name: Option<String>,
+    /// The task this entry belongs to when it is not itself a task entry.
+    pub task_id: Option<String>,
 }
 
 const SELECT_ACTIVITY: &str = "\
@@ -37,6 +39,7 @@ const SELECT_ACTIVITY: &str = "\
            (SELECT s.automation_id FROM cmp_automationsource s WHERE s.pid = i.pid) AS automation_id, \
            (SELECT a.name FROM cmp_automationsource s JOIN cmp_automation a ON a.pid::text = s.automation_id \
             WHERE s.pid = i.pid) AS automation_name, \
+           (SELECT t.task_id FROM cmp_activitytask t WHERE t.pid = i.pid) AS task_id, \
            ARRAY(SELECT e.c->>'field' FROM jsonb_array_elements(ch.changes) WITH ORDINALITY AS e(c, n) ORDER BY e.n) AS ch_field, \
            ARRAY(SELECT e.c->>'from' FROM jsonb_array_elements(ch.changes) WITH ORDINALITY AS e(c, n) ORDER BY e.n) AS ch_from, \
            ARRAY(SELECT e.c->>'to' FROM jsonb_array_elements(ch.changes) WITH ORDINALITY AS e(c, n) ORDER BY e.n) AS ch_to \
@@ -79,6 +82,7 @@ fn read_activity(row: &PgRow) -> sqlx::Result<Option<ActivityRecord>> {
         created_at: row.try_get("created_at")?,
         automation_id: row.try_get("automation_id")?,
         automation_name: row.try_get("automation_name")?,
+        task_id: row.try_get("task_id")?,
     }))
 }
 
@@ -111,6 +115,7 @@ pub(crate) fn to_proto(a: &ActivityRecord) -> pb::Activity {
         created_at: a.created_at.clone(),
         automation_id: a.automation_id.clone(),
         automation_name: a.automation_id.as_ref().map(|_| a.automation_name.clone().unwrap_or_default()),
+        task_id: a.task_id.clone(),
     }
 }
 
@@ -141,7 +146,9 @@ pub(crate) async fn activity_for_entity(
     entity_id: &str,
 ) -> anyhow::Result<Vec<ActivityRecord>> {
     let rows = sqlx::query(&format!(
-        "{SELECT_ACTIVITY} WHERE i.entity_type = $1 AND i.entity_id = $2 {NEWEST_FIRST}"
+        "{SELECT_ACTIVITY} WHERE (i.entity_type = $1 AND i.entity_id = $2) \
+           OR ($1 = 'task' AND i.pid IN (SELECT t.pid FROM cmp_activitytask t WHERE t.task_id = $2)) \
+         {NEWEST_FIRST}"
     ))
     .bind(entity_type.as_str())
     .bind(entity_id)
@@ -211,6 +218,8 @@ pub(crate) struct NewActivity<'a> {
     pub summary: &'a str,
     pub changes: Vec<FieldChange>,
     pub created_at: &'a str,
+    /// The task this entry belongs to, when it is not itself a task entry.
+    pub task_id: Option<&'a str>,
 }
 
 /// An entry and its changes row, in one transaction.
@@ -241,6 +250,13 @@ pub(crate) async fn create_activity(store: &Store, a: NewActivity<'_>) -> anyhow
     .execute(&mut *tx)
     .await?;
     crate::automation::record::tag_if_automated(&mut tx, pid).await?;
+    if let Some(task_id) = a.task_id {
+        sqlx::query("INSERT INTO cmp_activitytask (pid, task_id) VALUES ($1, $2)")
+            .bind(pid)
+            .bind(task_id)
+            .execute(&mut *tx)
+            .await?;
+    }
     sqlx::query(
         "INSERT INTO cmp_activitychanges (pid, changes) VALUES ($1, COALESCE( \
              (SELECT jsonb_agg(jsonb_build_object('field', u.f, 'from', u.fr, 'to', u.t) ORDER BY u.n) \

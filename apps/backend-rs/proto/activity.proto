@@ -25,7 +25,9 @@ message Activity {
   string summary = 7;
   repeated FieldChange changes = 8;
   string created_at = 9;
-  // 10 is reserved for the linked task of a time entry.
+  // The task a non-task entry belongs to (a time entry's task), so the task's
+  // own feed can show it.
+  optional string task_id = 10;
   optional string automation_id = 11;   // set when an automation rule wrote it
   optional string automation_name = 12; // "" once that rule is deleted
 }
@@ -37,6 +39,7 @@ enum EntityType {
   OWNERSHIP = 4;
   PAGE = 5;
   MEDIA = 6;
+  TIME_ENTRY = 7; // time logged on a task; see Activity.task_id
 }
 enum ActivityAction {
   ACTIVITY_ACTION_UNSPECIFIED = 0;

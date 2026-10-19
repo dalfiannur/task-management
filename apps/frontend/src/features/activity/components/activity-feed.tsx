@@ -1,6 +1,6 @@
 import { formatDistanceToNow, parseISO } from "date-fns";
 import { AutomationTag } from "@/components/shared/automation-tag";
-import {
+import { Clock,
   Activity as ActivityIcon,
   CheckSquare,
   Crown,
@@ -21,6 +21,7 @@ const ENTITY_ICON: Record<ActivityEntity, LucideIcon> = {
   ownership: Crown,
   page: FileText,
   media: Paperclip,
+  time_entry: Clock,
   other: ActivityIcon,
 };
 
