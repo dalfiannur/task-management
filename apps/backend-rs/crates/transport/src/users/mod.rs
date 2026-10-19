@@ -2,7 +2,7 @@
 //! orchestrating `domain` rules, the per-op `persistence::Store`, and `auth`
 //! (Argon2id + JWT). See docs/superpowers/specs/2026-07-29-users-auth-flow-design.md.
 
-mod auth_service;
+pub(crate) mod auth_service;
 mod directory_service;
 pub(crate) mod record;
 

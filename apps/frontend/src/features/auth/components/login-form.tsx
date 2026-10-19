@@ -1,12 +1,16 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Button, Input, Label, Card, CardContent, CardDescription, CardHeader, CardTitle } from "sedjiwa-ui";
 import { APP_NAME } from "@/lib/app-config";
+import { safeAppPath } from "@/lib/utils";
 import { useLogin } from "../api/hooks";
 
-/** Phone + password sign-in. On success navigates to `redirect` (or /dashboard). */
-export function LoginForm({ redirect }: { redirect?: string }) {
+/**
+ * Phone + password sign-in. On success navigates to `redirect` (or /dashboard).
+ * `extra` renders under the form (other ways to sign in, e.g. SSO).
+ */
+export function LoginForm({ redirect, extra }: { redirect?: string; extra?: ReactNode }) {
   const navigate = useNavigate();
   const login = useLogin();
   const [phone, setPhone] = useState("");
@@ -18,7 +22,9 @@ export function LoginForm({ redirect }: { redirect?: string }) {
       { phone, password },
       {
         onSuccess: () => {
-          if (redirect) window.location.assign(redirect);
+          // Only ever back onto this site.
+          const target = safeAppPath(redirect);
+          if (target) window.location.assign(target);
           else navigate({ to: "/dashboard" });
         },
         onError: (err) => toast.error(err.message || "Sign in failed"),
@@ -64,6 +70,7 @@ export function LoginForm({ redirect }: { redirect?: string }) {
               {login.isPending ? "Signing in…" : "Sign in"}
             </Button>
           </form>
+          {extra}
           <p className="mt-4 text-center text-sm text-muted-foreground">
             No account?{" "}
             <Link to="/register" className="underline">

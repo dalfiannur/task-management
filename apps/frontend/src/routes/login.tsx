@@ -1,6 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { fetchSetupNeeded } from "@/features/auth";
 import { LoginForm } from "@/features/auth/components/login-form";
+import { SsoSignIn } from "@/features/sso";
 
 export const Route = createFileRoute("/login")({
   // A brand-new instance has no account to sign in with, so send people to
@@ -20,5 +21,5 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const { redirect } = Route.useSearch();
-  return <LoginForm redirect={redirect} />;
+  return <LoginForm redirect={redirect} extra={<SsoSignIn redirect={redirect} />} />;
 }

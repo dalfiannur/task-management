@@ -20,6 +20,7 @@ pub fn build_router(
     store: Arc<Store>,
     media_storage: Arc<dyn Storage>,
     notifier: Arc<Notifier>,
+    sso: sso::SsoExt,
 ) -> Router {
     let secret: Arc<str> = Arc::from(cfg.jwt_secret.as_str());
     let jwt = Arc::new(transport::JwtConfig {
@@ -40,7 +41,9 @@ pub fn build_router(
     // Merge all Connect service routers, then apply JWT extraction + the
     // Connect protocol layer over just that part of the API.
     let connect_api = transport::health_router(store.clone())
-        .merge(transport::auth_router(store.clone(), jwt))
+        .merge(transport::auth_router(store.clone(), jwt.clone()))
+        // Optional module: answers `enabled: false` when SSO is not configured.
+        .merge(sso::connect_router(sso.clone(), store.clone(), jwt))
         .merge(transport::user_router(store.clone()))
         .merge(transport::token_router(store.clone()))
         .merge(transport::project_router(store.clone()))
@@ -76,7 +79,9 @@ pub fn build_router(
     // after the Connect stack's layers above, not before: it must not be
     // wrapped in `ConnectLayer` and must not go through the JWT `auth_layer`.
     // CORS still applies to the whole API.
+    // SSO's browser redirects are plain GETs: same reasoning as MCP.
     connect_api
+        .nest("/sso", sso::http_router(sso, store.clone()))
         .nest("/mcp", mcp::mcp_router(store, notifier))
         .layer(cors)
 }
@@ -146,7 +151,7 @@ mod tests {
             port: 0,
             cors_origins: vec!["http://localhost:3001".to_string()],
         };
-        Some(build_router(&cfg, store, media_storage, notifier))
+        Some(build_router(&cfg, store, media_storage, notifier, sso::SsoExt(None)))
     }
 
     /// Pins `/mcp` being outside `ConnectLayer`, not just outside `auth_layer`.

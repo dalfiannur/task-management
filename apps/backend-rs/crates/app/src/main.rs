@@ -19,7 +19,10 @@ async fn main() -> anyhow::Result<()> {
     let media_storage: Arc<dyn storage::Storage> = Arc::new(storage::S3Storage::from_env()?);
     let notifier = Arc::new(transport::Notifier::new());
     spawn_automation_job(store.clone(), notifier.clone());
-    let app = router::build_router(&cfg, store, media_storage, notifier);
+    // Optional: single sign-on through the Sedjiwa Portal, on when SSO_* is set.
+    let sso = sso::SsoExt(sso::Sso::from_env());
+    tracing::info!(enabled = sso.0.is_some(), "single sign-on");
+    let app = router::build_router(&cfg, store, media_storage, notifier, sso);
 
     let listener = tokio::net::TcpListener::bind(("0.0.0.0", cfg.port)).await?;
     tracing::info!(port = cfg.port, "backend-rs listening");

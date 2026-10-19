@@ -1,0 +1,27 @@
+syntax = "proto3";
+package sedjiwa.tasks.sso.v1;
+
+import "users.proto";
+
+// Single sign-on through the Sedjiwa Portal (OIDC). An optional module
+// (crates/sso): the app works without it, and password login stays.
+//
+// The browser flow itself is plain HTTP, not Connect: GET
+// /sso/start?redirect=<path> sends the browser to the portal, and the portal
+// returns it to /sso/callback, which sends it on to the app's /sso/callback
+// page with a one-time `code` (or an `error`). The page redeems the code
+// here for the same LoginResponse a password login returns.
+service SsoService {
+  // Public. Whether SSO is configured on this instance.
+  rpc GetSsoConfig(GetSsoConfigRequest) returns (SsoConfig);
+  // Public. A one-time code (60 s, single use) → a session.
+  rpc RedeemSsoCode(RedeemSsoCodeRequest) returns (sedjiwa.tasks.auth.v1.LoginResponse);
+}
+
+message GetSsoConfigRequest {}
+message SsoConfig {
+  bool enabled = 1;
+  string provider_name = 2; // e.g. "Sedjiwa Portal"
+}
+
+message RedeemSsoCodeRequest { string code = 1; }

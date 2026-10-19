@@ -17,6 +17,7 @@ tracing = { workspace = true }
 anyhow = { workspace = true }
 sqlx = { workspace = true }
 auth = { path = "../auth" }
+rand = { workspace = true }
 persistence = { path = "../persistence" }
 domain = { path = "../domain" }
 storage = { path = "../storage" }

@@ -41,3 +41,19 @@ export function resolveDisplayName(
   if (storedName && !UUID_RE.test(storedName)) return storedName;
   return "Unknown user";
 }
+
+/**
+ * `target` as a path on this site, or null when it would leave it. Resolved
+ * the way the browser will resolve it (so `/\evil`, `/<tab>/evil` and
+ * `//evil` all fail), then reduced to path + query + hash.
+ */
+export function safeAppPath(target: string | undefined | null): string | null {
+  if (!target || !target.startsWith("/")) return null;
+  try {
+    const url = new URL(target, window.location.origin);
+    if (url.origin !== window.location.origin) return null;
+    return url.pathname + url.search + url.hash;
+  } catch {
+    return null;
+  }
+}

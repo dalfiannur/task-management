@@ -48,6 +48,27 @@ podman-compose down -v
 Re-run `./build.sh` after changing backend or frontend source, then
 `podman-compose up -d --build` to redeploy.
 
+## Single sign-on (optional)
+
+Users can sign in or sign up through the Sedjiwa Portal (OIDC) when the
+backend gets all four of these; leave them empty and SSO stays off (password
+login is unaffected either way):
+
+| Variable | Example |
+|---|---|
+| `SSO_ISSUER` | `https://portal.sedjiwa.id` |
+| `SSO_CLIENT_ID` | the client registered in the portal |
+| `SSO_CLIENT_SECRET` | its secret (confidential client) |
+| `SSO_REDIRECT_URI` | `https://pm.sedjiwa.id/api/tasks-rs/sso/callback` |
+| `SSO_PROVIDER_NAME` | button label, default `Sedjiwa Portal` |
+
+Register the client in the portal with exactly that redirect URI and the
+scopes `openid profile phone email`. Accounts: an already-linked portal
+account signs in as its user; otherwise a **verified** portal phone that
+matches one account here links it; a phone nobody here has creates an active,
+non-admin account only when the portal has verified that phone; anything else
+is refused with a reason on the sign-in page.
+
 ## Media / presigned S3 URLs
 
 Media uploads/downloads use presigned S3 URLs, which are **absolute**. So the

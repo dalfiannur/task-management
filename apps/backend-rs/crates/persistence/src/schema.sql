@@ -565,3 +565,13 @@ CREATE TABLE IF NOT EXISTS cmp_auditentry (
     created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_cmp_auditentry_created ON cmp_auditentry USING btree (created_at DESC);
+
+-- SSO module (crates/sso): a user's linked Sedjiwa Portal (OIDC) account.
+-- One per user, and one user per portal account. Gone with the user.
+CREATE TABLE IF NOT EXISTS cmp_ssoidentity (
+    pid BIGINT PRIMARY KEY REFERENCES arke_entities(pid) ON DELETE CASCADE,
+    issuer TEXT NOT NULL,
+    subject TEXT NOT NULL,
+    linked_at TEXT NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_cmp_ssoidentity_issuer_subject ON cmp_ssoidentity USING btree (issuer, subject);

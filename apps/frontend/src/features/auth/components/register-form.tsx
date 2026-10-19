@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Button, Input, Label, Card, CardContent, CardDescription, CardHeader, CardTitle } from "sedjiwa-ui";
 import { useRegister } from "../api/hooks";
 
 /** Self-registration → account lands `pending` until an admin approves it. */
-export function RegisterForm() {
+/** Self-registration. `extra` renders under the form (e.g. SSO). */
+export function RegisterForm({ extra }: { extra?: ReactNode } = {}) {
   const navigate = useNavigate();
   const register = useRegister();
   const [phone, setPhone] = useState("");
@@ -32,7 +33,7 @@ export function RegisterForm() {
         <CardHeader>
           <CardTitle>Create account</CardTitle>
           <CardDescription>
-            New accounts require admin approval before sign-in.
+            Accounts registered with this form need admin approval before sign-in.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -81,6 +82,7 @@ export function RegisterForm() {
               {register.isPending ? "Registering…" : "Register"}
             </Button>
           </form>
+          {extra}
           <p className="mt-4 text-center text-sm text-muted-foreground">
             Already have an account?{" "}
             <Link to="/login" className="underline">

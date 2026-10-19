@@ -62,3 +62,9 @@ pub use crate::sedjiwa::tasks::dashboard::v1 as dashboard_pb;
 // Not core fns: the PAT path resolves its own credential (see the module doc).
 pub use crate::tokens::record::{find_by_hash, record_usage, TokenRecord};
 pub use crate::users::record::auth_user_for;
+// SSO (crates/sso): the same sign-in rules as a password login, and the two
+// account lookups/creations it needs.
+pub use crate::users::auth_service::issue_login;
+pub use crate::users::record::{create_external_user, users_with_phone_digits_ending};
+pub use crate::sedjiwa::tasks::auth::v1 as auth_pb;
+pub use crate::sedjiwa::tasks::sso::v1 as sso_pb;

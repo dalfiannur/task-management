@@ -182,8 +182,24 @@ async fn login(
     let Some(user) = user.filter(|u| verify_password(&r.password, &u.password_hash)) else {
         return Err(ConnectError::new_unauthenticated("invalid phone or password"));
     };
+    Ok(ConnectResponse::new(issue_login(&store, &jwt, user.pid).await?))
+}
+
+/// The one place an account becomes a session, for every way of signing in
+/// (password here, SSO in `crates/sso`): a system identity never signs in, and
+/// only an `Active` account does. Mints the HS256 JWT and stamps
+/// `last_login_at`. Errors as `login` reports them.
+pub async fn issue_login(
+    store: &Store,
+    jwt: &JwtConfig,
+    pid: i64,
+) -> Result<pb::LoginResponse, ConnectError> {
+    let user = load_user(store, pid)
+        .await
+        .map_err(internal)?
+        .ok_or_else(|| ConnectError::new_unauthenticated("invalid phone or password"))?;
     // A system identity never signs in, whatever credentials it might gain.
-    if crate::automation::record::is_system_user(&store, &user.pid.to_string())
+    if crate::automation::record::is_system_user(store, &user.pid.to_string())
         .await
         .map_err(internal)?
     {
@@ -206,18 +222,18 @@ async fn login(
         sign_jwt(&jwt.secret, &user.pid.to_string(), &perms, exp).map_err(internal)?;
 
     // Stamp last_login_at.
-    set_last_login(&store, user.pid, now_iso())
+    set_last_login(store, user.pid, now_iso())
         .await
         .map_err(internal)?;
 
-    let refreshed = load_user(&store, user.pid)
+    let refreshed = load_user(store, user.pid)
         .await
         .map_err(internal)?
         .unwrap_or(user);
-    Ok(ConnectResponse::new(pb::LoginResponse {
+    Ok(pb::LoginResponse {
         token,
         user: Some(to_proto(&refreshed)),
-    }))
+    })
 }
 
 /// Authenticated. The current user's profile.

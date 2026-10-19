@@ -1,0 +1,28 @@
+[package]
+name = "sso"
+edition.workspace = true
+version.workspace = true
+
+# Single sign-on through the Sedjiwa Portal (OIDC). Optional: off unless the
+# SSO_* env vars are set; the core app does not depend on it.
+
+[dependencies]
+axum = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+time = { workspace = true }
+sqlx = { workspace = true }
+connectrpc-axum = { workspace = true }
+jsonwebtoken = { workspace = true }
+sha2 = { workspace = true }
+rand = { workspace = true }
+base64 = "0.22"
+reqwest = { version = "0.12", default-features = false, features = ["json", "native-tls"] }
+persistence = { path = "../persistence" }
+transport = { path = "../transport" }
+
+[dev-dependencies]
+tower = { workspace = true }

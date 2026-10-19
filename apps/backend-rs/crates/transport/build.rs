@@ -23,12 +23,14 @@ fn main() {
             "../../proto/templates.proto",
             "../../proto/automations.proto",
             "../../proto/trash.proto",
+            "../../proto/sso.proto",
         ],
         &["../../proto"],
     )
     .include_file("generated.rs")
     .compile()
     .expect("compile protos");
+    println!("cargo:rerun-if-changed=../../proto/sso.proto");
     println!("cargo:rerun-if-changed=../../proto/health.proto");
     println!("cargo:rerun-if-changed=../../proto/users.proto");
     println!("cargo:rerun-if-changed=../../proto/projects.proto");

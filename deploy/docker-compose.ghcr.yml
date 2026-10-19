@@ -102,6 +102,13 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-sedjiwa_tasks_rs}
       AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:?set AUTH_JWT_SECRET in .env — generate with `openssl rand -hex 32`}
       AUTH_JWT_EXPIRES_IN: ${AUTH_JWT_EXPIRES_IN:-7d}
+      # Optional single sign-on through the Sedjiwa Portal (crates/sso). All four
+      # of ISSUER/CLIENT_ID/CLIENT_SECRET/REDIRECT_URI turn it on; empty = off.
+      SSO_ISSUER: ${SSO_ISSUER:-}
+      SSO_CLIENT_ID: ${SSO_CLIENT_ID:-}
+      SSO_CLIENT_SECRET: ${SSO_CLIENT_SECRET:-}
+      SSO_REDIRECT_URI: ${SSO_REDIRECT_URI:-}
+      SSO_PROVIDER_NAME: ${SSO_PROVIDER_NAME:-Sedjiwa Portal}
       PORT: "3010"
       CORS_ORIGINS: ${PUBLIC_APP_ORIGIN:?set PUBLIC_APP_ORIGIN in .env}
       # Presigned URLs are absolute and are opened by the browser, so the

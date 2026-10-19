@@ -94,6 +94,13 @@ services:
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/sedjiwa_tasks_rs
       AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-99ad3901a407c998aaec41162497c46f592fa03cf8fb6264454e0adc3b5a3714}
       AUTH_JWT_EXPIRES_IN: "7d"
+      # Optional single sign-on through the Sedjiwa Portal (crates/sso). All four
+      # of ISSUER/CLIENT_ID/CLIENT_SECRET/REDIRECT_URI turn it on; empty = off.
+      SSO_ISSUER: ${SSO_ISSUER:-}
+      SSO_CLIENT_ID: ${SSO_CLIENT_ID:-}
+      SSO_CLIENT_SECRET: ${SSO_CLIENT_SECRET:-}
+      SSO_REDIRECT_URI: ${SSO_REDIRECT_URI:-}
+      SSO_PROVIDER_NAME: ${SSO_PROVIDER_NAME:-Sedjiwa Portal}
       PORT: "3010"
       CORS_ORIGINS: http://localhost:3011,http://127.0.0.1:3011,http://${HOST_LAN_IP:-192.168.33.111}:3011
       # Presigned media URLs are absolute, so the backend must sign with a host:port

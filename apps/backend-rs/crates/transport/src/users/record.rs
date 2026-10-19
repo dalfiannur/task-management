@@ -160,6 +160,23 @@ pub(crate) async fn find_by_phone(
     })
 }
 
+/// Every user whose stored phone, read as digits only, ends with `digits`:
+/// `(pid, phone as stored)`. Phones are kept as typed ("0812 3456 789",
+/// "+62 812-…"), so a caller matching one number compares candidates by its
+/// own normal form. One pass over a small table.
+pub async fn users_with_phone_digits_ending(
+    store: &Store,
+    digits: &str,
+) -> anyhow::Result<Vec<(i64, String)>> {
+    Ok(sqlx::query_as(
+        "SELECT pid, value FROM cmp_userphone \
+         WHERE right(regexp_replace(value, '\\D', '', 'g'), length($1)) = $1 ORDER BY pid",
+    )
+    .bind(digits)
+    .fetch_all(store.pool())
+    .await?)
+}
+
 /// Whether any account exists. A COUNT over one table — this runs on every
 /// visit to the login page.
 pub(crate) async fn users_exist(store: &Store) -> anyhow::Result<bool> {
@@ -342,4 +359,45 @@ pub(crate) async fn delete_user(store: &Store, pid: i64) -> anyhow::Result<()> {
     let mut conn = store.pool().acquire().await?;
     entity::delete(&mut conn, pid).await?;
     Ok(())
+}
+
+/// An `Active`, non-admin account for someone who signs in elsewhere (SSO).
+/// Its password is a hash of random bytes nobody knows: it can sign in only
+/// through its linked identity until an admin resets the password.
+pub async fn create_external_user(
+    store: &Store,
+    phone: &str,
+    phone_verified: bool,
+    display_name: &str,
+    email: &str,
+    created_at: String,
+) -> anyhow::Result<i64> {
+    use rand::RngCore;
+    let mut secret = [0u8; 32];
+    rand::thread_rng().fill_bytes(&mut secret);
+    let unusable: String = secret.iter().map(|b| format!("{b:02x}")).collect();
+    let password_hash = auth::hash_password(&unusable)?;
+    let pid = create_user(
+        store,
+        NewUser {
+            phone,
+            verified: phone_verified,
+            password_hash,
+            display_name,
+            status: UserStatus::Active,
+            created_at,
+            admin: false,
+        },
+    )
+    .await?;
+    if !email.is_empty() {
+        write(
+            store,
+            pid,
+            sqlx::query("UPDATE cmp_userprofile SET email = $2 WHERE pid = $1").bind(pid).bind(email),
+        )
+        .await?;
+    }
+    crate::search::index(store, crate::search::user_doc(&pid.to_string(), display_name, phone)).await;
+    Ok(pid)
 }

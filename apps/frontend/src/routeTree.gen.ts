@@ -18,6 +18,7 @@ import { Route as AuthedDashboardRouteImport } from './routes/_authed/dashboard'
 import { Route as AuthedMyTasksRouteImport } from './routes/_authed/my-tasks'
 import { Route as AuthedReportsRouteImport } from './routes/_authed/reports'
 import { Route as AuthedWorkloadRouteImport } from './routes/_authed/workload'
+import { Route as SsoCallbackRouteImport } from './routes/sso.callback'
 import { Route as AuthedAdminTrashRouteImport } from './routes/_authed/admin/trash'
 import { Route as AuthedAdminUsersRouteImport } from './routes/_authed/admin/users'
 import { Route as AuthedProjectsIndexRouteImport } from './routes/_authed/projects/index'
@@ -75,6 +76,11 @@ const AuthedWorkloadRoute = AuthedWorkloadRouteImport.update({
   id: '/workload',
   path: '/workload',
   getParentRoute: () => AuthedRoute,
+} as any)
+const SsoCallbackRoute = SsoCallbackRouteImport.update({
+  id: '/sso/callback',
+  path: '/sso/callback',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthedAdminTrashRoute = AuthedAdminTrashRouteImport.update({
   id: '/admin/trash',
@@ -159,6 +165,7 @@ export interface FileRoutesByFullPath {
   '/my-tasks': typeof AuthedMyTasksRoute
   '/reports': typeof AuthedReportsRoute
   '/workload': typeof AuthedWorkloadRoute
+  '/sso/callback': typeof SsoCallbackRoute
   '/admin/trash': typeof AuthedAdminTrashRoute
   '/admin/users': typeof AuthedAdminUsersRoute
   '/projects/$projectId': typeof AuthedProjectsProjectIdRouteWithChildren
@@ -182,6 +189,7 @@ export interface FileRoutesByTo {
   '/my-tasks': typeof AuthedMyTasksRoute
   '/reports': typeof AuthedReportsRoute
   '/workload': typeof AuthedWorkloadRoute
+  '/sso/callback': typeof SsoCallbackRoute
   '/admin/trash': typeof AuthedAdminTrashRoute
   '/admin/users': typeof AuthedAdminUsersRoute
   '/settings/tokens': typeof AuthedSettingsTokensRoute
@@ -206,6 +214,7 @@ export interface FileRoutesById {
   '/_authed/my-tasks': typeof AuthedMyTasksRoute
   '/_authed/reports': typeof AuthedReportsRoute
   '/_authed/workload': typeof AuthedWorkloadRoute
+  '/sso/callback': typeof SsoCallbackRoute
   '/_authed/admin/trash': typeof AuthedAdminTrashRoute
   '/_authed/admin/users': typeof AuthedAdminUsersRoute
   '/_authed/projects/$projectId': typeof AuthedProjectsProjectIdRouteWithChildren
@@ -231,6 +240,7 @@ export interface FileRouteTypes {
     | '/my-tasks'
     | '/reports'
     | '/workload'
+    | '/sso/callback'
     | '/admin/trash'
     | '/admin/users'
     | '/projects/$projectId'
@@ -254,6 +264,7 @@ export interface FileRouteTypes {
     | '/my-tasks'
     | '/reports'
     | '/workload'
+    | '/sso/callback'
     | '/admin/trash'
     | '/admin/users'
     | '/settings/tokens'
@@ -277,6 +288,7 @@ export interface FileRouteTypes {
     | '/_authed/my-tasks'
     | '/_authed/reports'
     | '/_authed/workload'
+    | '/sso/callback'
     | '/_authed/admin/trash'
     | '/_authed/admin/users'
     | '/_authed/projects/$projectId'
@@ -298,6 +310,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
   SetupRoute: typeof SetupRoute
+  SsoCallbackRoute: typeof SsoCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -364,6 +377,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/workload'
       preLoaderRoute: typeof AuthedWorkloadRouteImport
       parentRoute: typeof AuthedRoute
+    }
+    '/sso/callback': {
+      id: '/sso/callback'
+      path: '/sso/callback'
+      fullPath: '/sso/callback'
+      preLoaderRoute: typeof SsoCallbackRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authed/admin/trash': {
       id: '/_authed/admin/trash'
@@ -521,6 +541,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
   SetupRoute: SetupRoute,
+  SsoCallbackRoute: SsoCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
