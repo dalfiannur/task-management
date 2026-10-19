@@ -625,3 +625,105 @@ async fn the_workspace_time_zone_decides_today() {
     assert_ne!(s(&seen[0].5, "date"), s(&seen[1].5, "date"), "the two zones gave different days");
     assert_eq!(reset["timezone"], "Asia/Jakarta", "\"\" resets to the default");
 }
+
+// ── Other projects ───────────────────────────────────────────────────────────
+
+fn others(m: &Value) -> Vec<i64> {
+    m["weeks"].as_array().unwrap().iter().map(|w| num(w, "otherMinutes")).collect()
+}
+
+#[tokio::test]
+async fn workload_shows_other_projects_as_load_without_revealing_them() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let (a, b, c, admin) = (mk_user(&store).await, mk_user(&store).await, mk_user(&store).await, mk_user(&store).await);
+    let (ta, tb, tadm) = (token(&a), token(&b), admin_token(&admin));
+    // P1: A and B. P2: A only (owned by C). P3: a template A works in.
+    let p1 = project_with(&router, &a, &[&b]).await;
+    let p2 = project_with(&router, &c, &[&a]).await;
+    let p3 = project_with(&router, &c, &[&a]).await;
+    let secret_name = s(&ok(&router, &format!("{PROJECT}/GetProject"), &token(&c), json!({ "id": p2 })).await, "name");
+    let (m1, m2, m3) = (module(&router, &ta, &p1).await, module(&router, &token(&c), &p2).await, module(&router, &token(&c), &p3).await);
+    let tc = token(&c);
+    // today = Wed 2026-10-21; weeks shown: Oct 19 and Oct 26.
+    let mine = est_task(&router, &ta, &m1, json!({ "title": "visible", "assigneeIds": [a], "estimateMinutes": 120, "startDate": "2026-10-21", "dueDate": "2026-10-23" })).await;
+    let secret = est_task(&router, &tc, &m2, json!({ "title": "secret plan", "assigneeIds": [a], "estimateMinutes": 600, "startDate": "2026-10-21", "dueDate": "2026-10-23" })).await;
+    let s_over = est_task(&router, &tc, &m2, json!({ "title": "secret overdue", "assigneeIds": [a], "estimateMinutes": 60, "dueDate": "2026-10-01" })).await;
+    let s_none = est_task(&router, &tc, &m2, json!({ "title": "secret undated", "assigneeIds": [a], "estimateMinutes": 30 })).await;
+    let s_later = est_task(&router, &tc, &m2, json!({ "title": "secret later", "assigneeIds": [a], "estimateMinutes": 50, "startDate": "2026-12-01", "dueDate": "2026-12-01" })).await;
+    est_task(&router, &tc, &m2, json!({ "title": "secret done", "assigneeIds": [a], "estimateMinutes": 999, "dueDate": "2026-10-22", "status": "DONE" })).await;
+    let tpl_task = est_task(&router, &tc, &m3, json!({ "title": "template work", "assigneeIds": [a], "estimateMinutes": 300, "dueDate": "2026-10-23" })).await;
+    ok(&router, &format!("{PROJECT}/SetProjectTemplate"), &tc, json!({ "id": p3, "isTemplate": true })).await;
+
+    // B, unscoped: A's own row shows P1 planned plus P2 as anonymous "other".
+    let w = workload(&router, &tb, None).await;
+    let ra = member(&w, &a);
+    assert_eq!(planned(ra), vec![120, 0], "planned is P1 only");
+    assert_eq!(others(ra), vec![600, 0], "P2's 600 this week is other load (the template's 300 is not)");
+    assert_eq!(num(ra, "otherOverdueMinutes"), 60);
+    assert_eq!(num(ra, "otherUnscheduledMinutes"), 30);
+    assert_eq!(num(ra, "otherLaterMinutes"), 50, "beyond the horizon");
+    assert_eq!(num(ra, "totalMinutes"), 120, "total stays in-scope only");
+    assert_eq!(ra["tasks"].as_array().unwrap().len(), 1);
+    assert_eq!(ra["tasks"][0]["taskId"], mine.as_str(), "only P1's task is listed");
+    // Nothing identifies P2 or its tasks anywhere in the response.
+    let text = w.to_string();
+    for (what, needle) in [("P2 id", format!("\"{p2}\"")), ("P3 id", format!("\"{p3}\"")), ("P2 name", secret_name.clone()),
+        ("secret task id", format!("\"{secret}\"")), ("overdue id", format!("\"{s_over}\"")), ("undated id", format!("\"{s_none}\"")),
+        ("later id", format!("\"{s_later}\"")), ("template task id", format!("\"{tpl_task}\"")), ("a task title", "secret".to_string())] {
+        assert!(!text.contains(&needle), "{what} leaks into B's workload: {text}");
+    }
+    assert!(w["projects"].as_array().unwrap().iter().all(|x| s(x, "id") == p1), "only P1 is a listed project");
+    // B has no other projects, so B has no other load.
+    assert_eq!(others(member(&w, &b)), vec![0, 0]);
+
+    // Admin, unscoped: everything is in scope, so nothing is "other".
+    let w = workload(&router, &tadm, None).await;
+    let ra = member(&w, &a);
+    assert_eq!(others(ra), vec![0, 0], "admin unscoped: no other");
+    assert_eq!(planned(ra), vec![720, 0], "P1 + P2 planned (never the template)");
+    assert_eq!(num(ra, "otherOverdueMinutes") + num(ra, "otherUnscheduledMinutes") + num(ra, "otherLaterMinutes"), 0);
+
+    // Scoped to P1, even as admin: P2 is other.
+    for tok in [&tadm, &tb] {
+        let w = workload(&router, tok, Some(&p1)).await;
+        let ra = member(&w, &a);
+        assert_eq!(planned(ra), vec![120, 0]);
+        assert_eq!(others(ra), vec![600, 0], "project view: everything outside P1 is other");
+        assert_eq!(num(ra, "otherOverdueMinutes"), 60);
+    }
+    // Scoped to P2 (A, a member): P1 becomes the other.
+    let w = workload(&router, &ta, Some(&p2)).await;
+    assert_eq!(others(member(&w, &a)), vec![120, 0], "P1's 120 is other from P2's view");
+
+    // Logged time comes off other load too.
+    ok(&router, &format!("{TIME}/LogTime"), &ta, json!({ "taskId": secret, "minutes": 300, "date": "2026-10-20" })).await;
+    let w = workload(&router, &tb, None).await;
+    assert_eq!(others(member(&w, &a)), vec![300, 0], "600 − 300 logged");
+
+}
+
+#[tokio::test]
+async fn a_deleted_projects_tasks_are_nobodys_other_load() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let (a, b, c) = (mk_user(&store).await, mk_user(&store).await, mk_user(&store).await);
+    let (ta, tb, tc) = (token(&a), token(&b), token(&c));
+    let p1 = project_with(&router, &a, &[&b]).await;
+    let p2 = project_with(&router, &c, &[&a]).await;
+    module(&router, &ta, &p1).await;
+    let m2 = module(&router, &tc, &p2).await;
+    est_task(&router, &tc, &m2, json!({ "title": "gone soon", "assigneeIds": [a], "estimateMinutes": 600, "startDate": "2026-10-21", "dueDate": "2026-10-23" })).await;
+    est_task(&router, &tc, &m2, json!({ "title": "gone undated", "assigneeIds": [a], "estimateMinutes": 30 })).await;
+    let w = workload(&router, &tb, None).await;
+    assert_eq!(others(member(&w, &a)), vec![600, 0], "precondition: P2 counts while it exists");
+    ok(&router, &format!("{PROJECT}/DeleteProject"), &tc, json!({ "id": p2 })).await;
+    let w = workload(&router, &tb, None).await;
+    let ra = member(&w, &a);
+    assert_eq!(others(ra), vec![0, 0], "a deleted project's tasks don't count as other: {ra}");
+    assert_eq!(num(ra, "otherOverdueMinutes") + num(ra, "otherUnscheduledMinutes") + num(ra, "otherLaterMinutes"), 0);
+}

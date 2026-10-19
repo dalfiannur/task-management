@@ -536,3 +536,8 @@ CREATE TABLE IF NOT EXISTS cmp_activitytask (
     task_id TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_cmp_activitytask_task_id ON cmp_activitytask USING btree (task_id);
+
+
+-- "Tasks assigned to these people" (workload's other-projects load, My
+-- tasks, assignee filters) without scanning every task.
+CREATE INDEX IF NOT EXISTS idx_cmp_taskassignees_user_ids ON cmp_taskassignees USING gin (user_ids);

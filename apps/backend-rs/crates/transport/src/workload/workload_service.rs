@@ -216,6 +216,26 @@ fn add_share(acc: &mut Acc, t: &OpenTask, minutes: i32, project_days: i32, h: &H
     });
 }
 
+/// Add one share of an out-of-scope task to `acc`'s `other_*` totals —
+/// placed exactly like an in-scope one, but with no task row and nothing
+/// else about it kept.
+fn add_other(acc: &mut Acc, t: &OpenTask, minutes: i32, project_days: i32, h: &Horizon) {
+    let (mask, _) = allocation_days(acc.days, project_days);
+    let start = t.start_date.as_deref().and_then(parse_date);
+    let due = t.due_date.as_deref().and_then(parse_date);
+    let row = &mut acc.row;
+    match place(minutes, start, due, mask, h) {
+        Placement::Overdue => row.other_overdue_minutes += minutes,
+        Placement::Unscheduled => row.other_unscheduled_minutes += minutes,
+        Placement::Scheduled { weeks, later } => {
+            for (w, m) in row.weeks.iter_mut().zip(weeks) {
+                w.other_minutes += m;
+            }
+            row.other_later_minutes += later;
+        }
+    }
+}
+
 /// The workload over `projects` for their members (and anyone assigned there).
 pub async fn workload_core(
     store: &Store,
@@ -290,6 +310,7 @@ pub async fn workload_core(
             .map(|m| pb::WorkloadWeek {
                 capacity_minutes: week_capacity(weekly, days, *m, h.today),
                 planned_minutes: 0,
+                other_minutes: 0,
             })
             .collect();
         rows.insert(
@@ -323,6 +344,44 @@ pub async fn workload_core(
             }
             if let Some(acc) = rows.get_mut(u) {
                 add_share(acc, t, minutes, project_days, &h, project_name);
+            }
+        }
+    }
+
+    // Other projects: the same people's open work outside `projects` (and
+    // never in templates), counted into the `other_*` totals only. For an
+    // admin's unscoped view everything is already in scope, so it is empty.
+    let mut exclude = projects.clone();
+    exclude.extend(templates.iter().cloned());
+    let in_rows: Vec<String> = rows.keys().cloned().collect();
+    let elsewhere = wl::open_tasks_elsewhere(store, &in_rows, &exclude).await.map_err(internal)?;
+    if !elsewhere.is_empty() {
+        let mut other_projects: Vec<i64> = pids(elsewhere.iter().map(|t| t.project_id.as_str()));
+        other_projects.sort_unstable();
+        other_projects.dedup();
+        // Read for spreading days only; never returned.
+        let other_cals = wl::calendars(store, &other_projects).await.map_err(internal)?;
+        for t in &elsewhere {
+            let left = remaining(t.estimate, t.logged);
+            if left == 0 {
+                continue;
+            }
+            let project_days = t
+                .project_id
+                .parse::<i64>()
+                .ok()
+                .and_then(|p| other_cals.get(&p))
+                .and_then(|c| c.working_days)
+                .unwrap_or(global);
+            let n = t.assignees.len();
+            for (i, u) in t.assignees.iter().enumerate() {
+                let minutes = share(left, n, i);
+                if minutes == 0 {
+                    continue;
+                }
+                if let Some(acc) = rows.get_mut(u) {
+                    add_other(acc, t, minutes, project_days, &h);
+                }
             }
         }
     }

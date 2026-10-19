@@ -86,6 +86,11 @@ message WorkloadProject {
 message WorkloadWeek {
   int32 capacity_minutes = 1; // weekly capacity over the working days left in the week
   int32 planned_minutes = 2;
+  // The same person's planned effort this week in projects outside this
+  // view's scope (projects the caller cannot see, or — with a project_id —
+  // the person's other projects). Totals only; nothing else about that work
+  // is returned.
+  int32 other_minutes = 3;
 }
 
 enum WorkloadBucket {
@@ -121,4 +126,9 @@ message WorkloadMember {
   int32 total_minutes = 10;        // all of the above + the weeks
   bool calendar_conflict = 11;     // any task flagged
   repeated WorkloadTask tasks = 12;
+  // Outside-scope counterparts of overdue/unscheduled/later (see
+  // WorkloadWeek.other_minutes). Not in total_minutes, which stays in-scope.
+  int32 other_overdue_minutes = 13;
+  int32 other_unscheduled_minutes = 14;
+  int32 other_later_minutes = 15;
 }

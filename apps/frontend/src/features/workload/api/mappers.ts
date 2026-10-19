@@ -55,12 +55,16 @@ export function mapWorkload(w: PbWorkload): Workload {
       weeks: m.weeks.map((wk) => ({
         capacityMinutes: wk.capacityMinutes,
         plannedMinutes: wk.plannedMinutes,
+        otherMinutes: wk.otherMinutes,
       })),
       overdueMinutes: m.overdueMinutes,
       unscheduledMinutes: m.unscheduledMinutes,
       laterMinutes: m.laterMinutes,
       totalMinutes: m.totalMinutes,
       calendarConflict: m.calendarConflict,
+      otherOverdueMinutes: m.otherOverdueMinutes,
+      otherUnscheduledMinutes: m.otherUnscheduledMinutes,
+      otherLaterMinutes: m.otherLaterMinutes,
       tasks: m.tasks.map((t) => ({
         taskId: t.taskId,
         projectId: t.projectId,
