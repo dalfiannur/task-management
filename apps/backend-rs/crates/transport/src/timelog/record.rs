@@ -77,10 +77,6 @@ pub(crate) fn now_iso() -> String {
     OffsetDateTime::now_utc().format(&Rfc3339).unwrap_or_default()
 }
 
-pub(crate) fn today() -> String {
-    now_iso().chars().take(10).collect()
-}
-
 // ── Reads ────────────────────────────────────────────────────────────────────
 
 pub(crate) async fn load_entry(store: &Store, pid: i64) -> anyhow::Result<Option<EntryRecord>> {

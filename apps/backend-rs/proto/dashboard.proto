@@ -75,7 +75,7 @@ message ProjectOverview {
   uint32 total_tasks = 1;       // non-cancelled, same rule as DashboardStats
   uint32 in_progress_tasks = 2;
   uint32 done_tasks = 3;
-  uint32 overdue_tasks = 4;     // due_date < today (UTC) && status != done
+  uint32 overdue_tasks = 4;     // due_date < today (workspace time zone) && status != done
   repeated ModuleProgress per_module = 5;  // module order; empty modules included
   repeated string member_ids = 6;          // owner first, then the rest
   uint32 module_count = 7;

@@ -20,7 +20,7 @@ import { formatDays, WEEKDAYS, type CalendarScope, type WorkCalendar } from "../
 
 const DESCRIPTION: Record<CalendarScope, string> = {
   global:
-    "The working days every project and person uses unless they set their own.",
+    "The working days every project and person uses unless they set their own, and the time zone that decides what \"today\" is everywhere.",
   project:
     "Days this project's work is planned on. Effort is spread over the days both the project and the assignee work.",
   user: "Days and hours this person works. Weekly hours set their capacity.",
@@ -83,6 +83,10 @@ function CalendarForm({
     calendar.weeklyMinutes !== undefined ? String(calendar.weeklyMinutes / 60) : "",
   );
   const readOnly = !calendar.canEdit;
+  const [timezone, setTimezone] = useState(calendar.timezone ?? "");
+  // The server's own list: the browser's differs (newer and legacy names).
+  const zones = calendar.supportedTimezones;
+  const zoneBad = isGlobal && timezone.trim() !== "" && !zones.includes(timezone.trim());
 
   const hoursValue = hours.trim() === "" ? undefined : Number(hours.replace(",", "."));
   const hoursBad =
@@ -97,6 +101,7 @@ function CalendarForm({
         workingDays: inherit ? [] : days,
         weeklyMinutes:
           isUser && hoursValue !== undefined ? Math.round(hoursValue * 60) : undefined,
+        timezone: isGlobal ? timezone.trim() : undefined,
       },
       {
         onSuccess: () => {
@@ -113,7 +118,7 @@ function CalendarForm({
       className="space-y-5"
       onSubmit={(e) => {
         e.preventDefault();
-        if (!readOnly && !daysBad && !hoursBad) save();
+        if (!readOnly && !daysBad && !hoursBad && !zoneBad) save();
       }}
     >
       {!isGlobal && (
@@ -147,6 +152,33 @@ function CalendarForm({
         {daysBad && <p className="text-xs text-destructive">Pick at least one day.</p>}
       </div>
 
+      {isGlobal && (
+        <div className="space-y-2">
+          <Label htmlFor="cal-tz">Time zone</Label>
+          <Input.Root aria-invalid={zoneBad || undefined}>
+            <Input.Field
+              id="cal-tz"
+              list="cal-tz-zones"
+              value={timezone}
+              disabled={readOnly}
+              onChange={(e) => setTimezone(e.target.value)}
+              placeholder="Asia/Jakarta"
+              autoComplete="off"
+            />
+          </Input.Root>
+          <datalist id="cal-tz-zones">
+            {zones.map((z) => (
+              <option key={z} value={z} />
+            ))}
+          </datalist>
+          <p className={cn("text-xs", zoneBad ? "text-destructive" : "text-muted-foreground")}>
+            {zoneBad
+              ? "Pick a zone from the list, e.g. Asia/Jakarta."
+              : "Decides what “today” is for time entries, the workload, overdue and automations. Blank uses Asia/Jakarta."}
+          </p>
+        </div>
+      )}
+
       {isUser && (
         <div className="space-y-2">
           <Label htmlFor="cal-hours">Hours per week</Label>
@@ -176,7 +208,7 @@ function CalendarForm({
             <Button type="button" variant="ghost" onClick={onDone}>
               Cancel
             </Button>
-            <Button type="submit" disabled={set.isPending || daysBad || hoursBad}>
+            <Button type="submit" disabled={set.isPending || daysBad || hoursBad || zoneBad}>
               {set.isPending ? "Saving…" : "Save"}
             </Button>
           </>
@@ -215,7 +247,7 @@ export function WorkCalendarDialog({
         ) : (
           // Keyed so reopening after a save re-seeds from the fresh calendar.
           <CalendarForm
-            key={`${calendar.workingDays.join()}-${calendar.weeklyMinutes ?? ""}`}
+            key={`${calendar.workingDays.join()}-${calendar.weeklyMinutes ?? ""}-${calendar.timezone ?? ""}`}
             calendar={calendar}
             onDone={() => onOpenChange(false)}
           />

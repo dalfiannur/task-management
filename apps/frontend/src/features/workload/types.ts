@@ -15,6 +15,10 @@ export interface WorkCalendar {
   weeklyMinutes?: number;
   effectiveWeeklyMinutes: number;
   canEdit: boolean;
+  /** Global only: the workspace IANA time zone ("today" everywhere). */
+  timezone?: string;
+  /** Global only: every zone the server accepts. */
+  supportedTimezones: string[];
 }
 
 export type WorkloadBucket = "scheduled" | "overdue" | "unscheduled";

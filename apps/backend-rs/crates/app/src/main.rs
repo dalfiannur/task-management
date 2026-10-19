@@ -36,7 +36,14 @@ fn spawn_automation_job(store: Arc<Store>, notifier: Arc<transport::Notifier>) {
         tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
         loop {
             tick.tick().await;
-            let today = time::OffsetDateTime::now_utc().date();
+            // The workspace's day, not UTC's: "overdue" flips at local midnight.
+            let today = match transport::workspace_today(&store).await {
+                Ok(d) => d,
+                Err(e) => {
+                    tracing::warn!(error = %e, "workspace clock unavailable, using UTC");
+                    time::OffsetDateTime::now_utc().date()
+                }
+            };
             match transport::run_scheduled_automations(&store, Some(&notifier), today).await {
                 Ok(0) => {}
                 Ok(n) => tracing::info!(runs = n, "time-based automations ran"),

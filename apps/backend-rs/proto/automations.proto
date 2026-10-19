@@ -26,7 +26,7 @@ service AutomationService {
   // Newest first; by project, optionally narrowed to one rule.
   rpc ListAutomationRuns(ListAutomationRunsRequest) returns (ListAutomationRunsResponse);
   // Admin: run the time-based rules now, as the periodic job does, for
-  // `today` (yyyy-MM-dd, default today in UTC).
+  // `today` (yyyy-MM-dd, default today in the workspace time zone).
   rpc RunScheduledAutomations(RunScheduledAutomationsRequest) returns (RunScheduledAutomationsResponse);
 }
 

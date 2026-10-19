@@ -17,7 +17,7 @@ use super::record::{
 };
 use super::{internal, parse_pid};
 use crate::activity::record;
-use crate::dashboard::context::{today, Tally};
+use crate::dashboard::context::Tally;
 use crate::work::record::load_all_modules;
 use crate::work::task_record::load_all_tasks;
 use crate::notifications::{emit, NotifRefs, Notifier};
@@ -238,7 +238,7 @@ async fn task_counts(
         .filter(|m| wanted.contains(&m.project_id))
         .map(|m| (m.pid.to_string(), m.project_id))
         .collect();
-    let today = today();
+    let today = crate::clock::workspace_today_iso(store).await?;
     for t in load_all_tasks(store).await? {
         let Some(pj) = module_to_project.get(&t.module_id) else {
             continue;

@@ -38,6 +38,13 @@ message WorkCalendar {
   optional int32 weekly_minutes = 5;    // USER only; unset = the default
   int32 effective_weekly_minutes = 6;   // USER only (0 otherwise)
   bool can_edit = 7;
+  // GLOBAL only: the workspace IANA time zone. Every server-side "today"
+  // (default entry dates, the workload week, overdue, automations) is the
+  // day in this zone. Asia/Jakarta when never set.
+  optional string timezone = 8;
+  // GLOBAL only: every zone `timezone` accepts, sorted. Pick from this, not
+  // from the browser's list, which differs from the server's tz database.
+  repeated string supported_timezones = 9;
 }
 
 message GetWorkCalendarRequest {
@@ -52,12 +59,15 @@ message SetWorkCalendarRequest {
   string id = 2;
   repeated int32 working_days = 3;
   optional int32 weekly_minutes = 4;
+  // GLOBAL only (admin): an IANA zone such as "Asia/Jakarta". Absent keeps
+  // the current zone; "" resets to the default.
+  optional string timezone = 5;
 }
 
 message GetWorkloadRequest {
   optional string project_id = 1;
-  // The caller's local date (yyyy-MM-dd); default today in UTC. Weeks start
-  // on the Monday of this date's week.
+  // The caller's local date (yyyy-MM-dd); default today in the workspace
+  // time zone. Weeks start on the Monday of this date's week.
   optional string today = 2;
   int32 weeks = 3; // 0 = 6, at most 12
 }

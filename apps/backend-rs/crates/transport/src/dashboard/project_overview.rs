@@ -11,7 +11,7 @@ use axum::Extension;
 use connectrpc_axum::{ConnectError, ConnectRequest, ConnectResponse};
 use domain::task::TaskStatus;
 
-use super::context::{today, Tally};
+use super::context::Tally;
 use super::{internal, require_auth, StoreExt};
 use crate::media::ready_media_count_for_project;
 use crate::pages::page_count_for_project;
@@ -61,7 +61,7 @@ pub(super) async fn get_project_overview(
     } else {
         tasks_for_modules(&store, module_ids).await.map_err(internal)?
     };
-    let today = today();
+    let today = crate::clock::workspace_today_iso(&store).await.map_err(internal)?;
 
     let mut tally = Tally::default();
     let mut per_module_counts: HashMap<String, Progress> = HashMap::new();

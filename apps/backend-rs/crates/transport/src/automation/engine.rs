@@ -86,8 +86,15 @@ fn event_kind(e: &Event) -> &'static str {
     }
 }
 
-fn utc_today() -> Date {
-    OffsetDateTime::now_utc().date()
+/// Today in the workspace zone (UTC only if the settings can't be read).
+async fn workspace_day(store: &Store) -> Date {
+    match crate::clock::workspace_today(store).await {
+        Ok(d) => d,
+        Err(e) => {
+            tracing::warn!(error = %e, "workspace clock unavailable, using UTC");
+            OffsetDateTime::now_utc().date()
+        }
+    }
 }
 
 /// The changes between two states of one task, as automation events.
@@ -144,7 +151,7 @@ async fn after_change_inner(
             return;
         }
     };
-    let today = utc_today();
+    let today = workspace_day(store).await;
     for rule in &rules {
         for e in &events {
             if !rule.trigger.as_ref().is_some_and(|t| fires_on(t, e)) {

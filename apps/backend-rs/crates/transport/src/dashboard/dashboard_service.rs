@@ -9,7 +9,7 @@ use connectrpc_axum::{ConnectError, ConnectRequest, ConnectResponse};
 use domain::task::TaskStatus;
 use persistence::Store;
 
-use super::context::{date_plus, today, Context, Tally};
+use super::context::{Context, Tally};
 use super::project_overview::get_project_overview;
 use super::{internal, require_auth, StoreExt};
 use crate::sedjiwa::tasks::dashboard::v1 as pb;
@@ -32,7 +32,7 @@ async fn get_dashboard_stats(
 ) -> Result<ConnectResponse<pb::DashboardStats>, ConnectError> {
     let auth = require_auth(user)?;
     let ctx = Context::load(&store, &auth).await.map_err(internal)?;
-    let today = today();
+    let today = crate::clock::workspace_today_iso(&store).await.map_err(internal)?;
 
     let mut tally = Tally::default();
     // per-project progress, seeded with every scoped project (so empty ones show 0/0).
@@ -101,7 +101,8 @@ async fn get_upcoming_deadlines(
         r.within_days
     };
     let ctx = Context::load(&store, &auth).await.map_err(internal)?;
-    let (today, cutoff) = (today(), date_plus(within));
+    let today = crate::clock::workspace_today_iso(&store).await.map_err(internal)?;
+    let cutoff = crate::clock::workspace_date_plus(&store, within).await.map_err(internal)?;
 
     // Tasks assigned to me, due within [today, cutoff] — or anything up to
     // cutoff with include_overdue — not done/cancelled. Date order puts

@@ -10,7 +10,7 @@ use connectrpc_axum::{ConnectError, ConnectRequest, ConnectResponse};
 use domain::time::{date_ok, entry_minutes_ok, note_ok};
 use persistence::Store;
 
-use super::record::{self as time_record, load_entry, now_iso, running_for, to_proto, today, EntryFilter, EntryRecord, NewEntry};
+use super::record::{self as time_record, load_entry, now_iso, running_for, to_proto, EntryFilter, EntryRecord, NewEntry};
 use crate::projects::record::member_project_ids;
 use crate::sedjiwa::tasks::time::v1 as pb;
 use crate::sedjiwa::tasks::time::v1::time_service_connect::TimeServiceBuilder;
@@ -26,11 +26,13 @@ async fn task_scope(store: &Store, task_id: &str, auth: &AuthUser) -> Result<Str
     Ok(project)
 }
 
-fn work_date(date: Option<String>) -> Result<String, ConnectError> {
+/// The day an entry counts for: the one given, else today in the workspace
+/// time zone (not UTC: work logged early in the morning belongs to that day).
+async fn work_date(store: &Store, date: Option<String>) -> Result<String, ConnectError> {
     match date.filter(|d| !d.is_empty()) {
         Some(d) if date_ok(&d) => Ok(d),
         Some(_) => Err(ConnectError::new_invalid_argument("date must be yyyy-MM-dd")),
-        None => Ok(today()),
+        None => crate::clock::workspace_today_iso(store).await.map_err(internal),
     }
 }
 
@@ -71,7 +73,7 @@ async fn start_timer(
     let auth = require_auth(user)?;
     let ConnectRequest(r) = req;
     let project = task_scope(&store, &r.task_id, &auth).await?;
-    let date = work_date(r.date)?;
+    let date = work_date(&store, r.date).await?;
     let note = clean_note(r.note)?;
     let pid = time_record::start_timer(
         &store,
@@ -130,7 +132,7 @@ pub async fn log_time_core(
             "minutes must be between 1 and 1440",
         ));
     }
-    let date = work_date(r.date)?;
+    let date = work_date(store, r.date).await?;
     let note = clean_note(r.note)?;
     let pid = time_record::log_time(
         store,

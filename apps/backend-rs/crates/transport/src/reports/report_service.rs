@@ -12,7 +12,7 @@ use super::activity_summary::activity_summary;
 use super::aggregate::{completed_list, overdue_list, per_member, per_project, totals};
 use super::window::{DateWindow, Window};
 use super::{internal, require_auth, StoreExt};
-use crate::dashboard::context::{today, Context};
+use crate::dashboard::context::Context;
 use crate::sedjiwa::tasks::reports::v1 as pb;
 use crate::sedjiwa::tasks::reports::v1::report_service_connect::ReportServiceBuilder;
 use crate::timelog::record::{list_entries, minutes_by_project_user, EntryFilter};
@@ -119,7 +119,7 @@ async fn build_report(
         ),
     };
     let ctx = Context::load(store, auth).await.map_err(internal)?;
-    let today = today();
+    let today = crate::clock::workspace_today_iso(store).await.map_err(internal)?;
     let scoped = ctx.scoped_tasks();
 
     let names: HashMap<String, String> = load_all_users(store)

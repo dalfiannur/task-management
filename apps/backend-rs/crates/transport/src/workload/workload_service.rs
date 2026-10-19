@@ -13,7 +13,6 @@ use domain::workload::{
     DEFAULT_WEEKS,
 };
 use persistence::Store;
-use time::OffsetDateTime;
 
 use super::record::{self as wl, CalendarRow, OpenTask};
 use crate::projects::record::{load_all_projects, load_project, member_project_ids};
@@ -64,6 +63,9 @@ async fn read_calendar(
             out.working_days = iso_from_mask(global);
             out.effective_days = out.working_days.clone();
             out.can_edit = auth.is_admin();
+            out.timezone = Some(crate::clock::workspace_timezone(store).await.map_err(internal)?);
+            out.supported_timezones =
+                domain::clock::supported_timezones().into_iter().map(String::from).collect();
         }
         pb::CalendarScope::Project => {
             let pid = require_project(store, id, auth).await?;
@@ -118,6 +120,16 @@ async fn set_work_calendar(
     if r.weekly_minutes.is_some() && scope != pb::CalendarScope::User {
         return Err(ConnectError::new_invalid_argument("weekly hours are set per user"));
     }
+    if r.timezone.is_some() && scope != pb::CalendarScope::Global {
+        return Err(ConnectError::new_invalid_argument("the time zone is set for the whole workspace"));
+    }
+    if let Some(z) = r.timezone.as_deref().filter(|z| !z.is_empty()) {
+        if !domain::clock::timezone_ok(z) {
+            return Err(ConnectError::new_invalid_argument(
+                "time zone must be an IANA name such as Asia/Jakarta",
+            ));
+        }
+    }
     if r.weekly_minutes.is_some_and(|m| !weekly_minutes_ok(m)) {
         return Err(ConnectError::new_invalid_argument("weekly hours must be 0 … 168"));
     }
@@ -129,7 +141,7 @@ async fn set_work_calendar(
             let mask = days.ok_or_else(|| {
                 ConnectError::new_invalid_argument("the global calendar needs at least one working day")
             })?;
-            wl::set_global_days(&store, mask).await.map_err(internal)?;
+            wl::set_global(&store, mask, r.timezone.as_deref()).await.map_err(internal)?;
         }
         pb::CalendarScope::Project => {
             let pid = require_project(&store, &r.id, &auth).await?;
@@ -214,7 +226,7 @@ pub async fn workload_core(
         Some(s) => parse_date(s)
             .filter(|_| s.len() == 10)
             .ok_or_else(|| ConnectError::new_invalid_argument("today must be yyyy-MM-dd"))?,
-        None => OffsetDateTime::now_utc().date(),
+        None => crate::clock::workspace_today(store).await.map_err(internal)?,
     };
     let weeks = match r.weeks {
         0 => DEFAULT_WEEKS,

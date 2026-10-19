@@ -4,6 +4,7 @@
 
 pub mod activity;
 pub mod automation;
+pub mod clock;
 pub mod comment;
 pub mod label;
 pub mod media;

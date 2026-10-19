@@ -141,8 +141,10 @@ async fn get(router: &Router, tok: &str, id: &str) -> Value {
     ok(router, &format!("{TASK}/GetTask"), tok, json!({ "id": id })).await
 }
 
+/// Today in the workspace zone. Tests leave it at the default, Asia/Jakarta,
+/// which is UTC+7 all year (no DST).
 fn today() -> String {
-    time::OffsetDateTime::now_utc().date().to_string()
+    (time::OffsetDateTime::now_utc() + time::Duration::hours(7)).date().to_string()
 }
 
 #[tokio::test]
@@ -172,7 +174,7 @@ async fn one_timer_runs_per_user_and_stopping_records_minutes() {
 
     // Starting another stops the first, at a minute at least.
     let second = ok(&router, &format!("{TIME}/StartTimer"), &to, json!({ "taskId": b })).await;
-    assert_eq!(second["date"], today(), "date defaults to today");
+    assert_eq!(second["date"], today(), "date defaults to today in the workspace zone (Asia/Jakarta)");
     let list = ok(&router, &format!("{TIME}/ListTimeEntries"), &to, json!({ "taskId": a })).await;
     let e = &list["entries"][0];
     assert!(e["running"].is_null() || e["running"] == false);
@@ -524,7 +526,7 @@ async fn running_timers_stay_out_of_the_period_report() {
     ok(&router, &format!("{TIME}/LogTime"), &to, json!({ "taskId": t, "minutes": 40, "date": today() })).await;
     ok(&router, &format!("{TIME}/StartTimer"), &to, json!({ "taskId": t })).await;
 
-    let d = time::OffsetDateTime::now_utc().date();
+    let d = (time::OffsetDateTime::now_utc() + time::Duration::hours(7)).date(); // the workspace day (Asia/Jakarta)
     let (from, to_d) = (d - time::Duration::days(1), d + time::Duration::days(1));
     let (pf, pt) = (from - time::Duration::days(2), from);
     let body = json!({

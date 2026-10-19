@@ -816,7 +816,7 @@ export const AutomationService: GenService<{
   },
   /**
    * Admin: run the time-based rules now, as the periodic job does, for
-   * `today` (yyyy-MM-dd, default today in UTC).
+   * `today` (yyyy-MM-dd, default today in the workspace time zone).
    *
    * @generated from rpc sedjiwa.tasks.automation.v1.AutomationService.RunScheduledAutomations
    */

@@ -529,3 +529,99 @@ async fn cross_project_workload_scope_follows_membership() {
     let w = workload(&router, &ta, Some(&p1)).await;
     assert_eq!(num(member(&w, &b), "unscheduledMinutes"), 60, "assigned work stays visible");
 }
+
+/// The calendar day at a fixed UTC offset, now.
+fn day_at(offset_hours: i64) -> time::Date {
+    (time::OffsetDateTime::now_utc() + time::Duration::hours(offset_hours)).date()
+}
+
+#[tokio::test]
+async fn the_workspace_time_zone_decides_today() {
+    let Some((router, store)) = setup().await else {
+        eprintln!("skip: DATABASE_URL not set");
+        return;
+    };
+    let (owner, admin) = (mk_user(&store).await, mk_user(&store).await);
+    let (to, ta) = (token(&owner), admin_token(&admin));
+    let get_g = || {
+        let (router, to) = (router.clone(), to.clone());
+        async move { ok(&router, &format!("{WORK}/GetWorkCalendar"), &to, json!({ "scope": "CALENDAR_SCOPE_GLOBAL" })).await }
+    };
+    let set = format!("{WORK}/SetWorkCalendar");
+    let global = |tz: Option<&str>| {
+        let mut b = json!({ "scope": "CALENDAR_SCOPE_GLOBAL", "workingDays": [1, 2, 3, 4, 5] });
+        if let Some(z) = tz {
+            b["timezone"] = json!(z);
+        }
+        b
+    };
+    // Start from the default whatever an earlier, interrupted run left behind.
+    ok(&router, &set, &ta, global(Some(""))).await;
+    assert_eq!(get_g().await["timezone"], "Asia/Jakarta", "unset means Asia/Jakarta");
+
+    // Who may set it, and what.
+    fails(&router, &set, &to, global(Some("UTC")), "permission_denied").await;
+    for bad in ["Asia/Atlantis", "UTC+7", "jakarta", "Asia/Jakarta "] {
+        fails(&router, &set, &ta, global(Some(bad)), "invalid_argument").await;
+    }
+    fails(&router, &set, &ta, json!({ "scope": "CALENDAR_SCOPE_USER", "id": owner, "timezone": "UTC" }), "invalid_argument").await;
+    let pid = project_with(&router, &owner, &[]).await;
+    fails(&router, &set, &to, json!({ "scope": "CALENDAR_SCOPE_PROJECT", "id": pid, "timezone": "UTC" }), "invalid_argument").await;
+    assert_eq!(get_g().await["timezone"], "Asia/Jakarta", "refused changes changed nothing");
+
+    // The server offers exactly the zones it accepts: aliases included, nothing it would refuse.
+    let g = get_g().await;
+    let offered: Vec<String> = g["supportedTimezones"].as_array().cloned().unwrap_or_default()
+        .iter().map(|z| z.as_str().unwrap_or_default().to_string()).collect();
+    let mut sorted = offered.clone();
+    sorted.sort();
+    assert_eq!(offered, sorted, "the list is sorted");
+    for z in ["Asia/Jakarta", "Asia/Makassar", "Asia/Jayapura", "UTC", "Asia/Kolkata", "Asia/Calcutta", "Etc/GMT+12", "Pacific/Kiritimati"] {
+        assert!(offered.contains(&z.to_string()), "{z} is offered");
+    }
+    assert!(!offered.contains(&"America/Ciudad_Juarez".to_string()), "a zone the server can't use is not offered");
+    let pc = ok(&router, &format!("{WORK}/GetWorkCalendar"), &to, json!({ "scope": "CALENDAR_SCOPE_PROJECT", "id": pid })).await;
+    assert!(pc["supportedTimezones"].as_array().is_none_or(|a| a.is_empty()), "only GLOBAL reads carry the list");
+    let mut refused = Vec::new();
+    for z in &offered {
+        let (st, _) = call(&router, &set, Some(&ta), global(Some(z))).await;
+        if st != StatusCode::OK {
+            refused.push(z.clone());
+        }
+    }
+    ok(&router, &set, &ta, global(Some(""))).await;
+    assert!(refused.is_empty(), "every offered zone is accepted; refused: {refused:?}");
+
+    // Two zones 26 hours apart always disagree on the date, so between them the
+    // zone must be what decides "today". Record what we see, put the default
+    // back, and only then assert, so a failure cannot leave the zone changed.
+    let m = module(&router, &to, &pid).await;
+    let t = s(&ok(&router, &format!("{TASK}/CreateTask"), &to, json!({ "moduleId": m, "title": "Clock" })).await, "id");
+    let mut seen = Vec::new();
+    for (zone, offset) in [("Pacific/Kiritimati", 14), ("Etc/GMT+12", -12)] {
+        let saved = ok(&router, &set, &ta, global(Some(zone))).await;
+        let kept = ok(&router, &set, &ta, global(None)).await; // no timezone: keep it
+        let before = day_at(offset);
+        let logged = ok(&router, &format!("{TIME}/LogTime"), &to, json!({ "taskId": t, "minutes": 5 })).await;
+        let timer = ok(&router, &format!("{TIME}/StartTimer"), &to, json!({ "taskId": t })).await;
+        ok(&router, &format!("{TIME}/StopTimer"), &to, json!({})).await;
+        let w = ok(&router, &format!("{WORK}/GetWorkload"), &to, json!({ "projectId": pid, "weeks": 1 })).await;
+        let after = day_at(offset);
+        seen.push((zone, saved, kept, before, after, logged, timer, w));
+    }
+    ok(&router, &set, &ta, global(Some(""))).await;
+    let reset = get_g().await;
+
+    for (zone, saved, kept, before, after, logged, timer, w) in &seen {
+        assert_eq!(saved["timezone"], *zone, "the zone is saved");
+        assert_eq!(kept["timezone"], *zone, "a save without a timezone keeps it");
+        let ok_day = |d: &str| d == before.to_string() || d == after.to_string();
+        assert!(ok_day(&s(logged, "date")), "{zone}: LogTime defaults to the zone's day ({before}), got {}", logged["date"]);
+        assert!(ok_day(&s(timer, "date")), "{zone}: StartTimer defaults to the zone's day ({before}), got {}", timer["date"]);
+        let monday = |d: time::Date| (d - time::Duration::days(d.weekday().number_days_from_monday() as i64)).to_string();
+        let ws = w["weekStarts"][0].as_str().unwrap_or_default();
+        assert!(ws == monday(*before) || ws == monday(*after), "{zone}: the workload week starts on the Monday of the zone's day, got {ws}");
+    }
+    assert_ne!(s(&seen[0].5, "date"), s(&seen[1].5, "date"), "the two zones gave different days");
+    assert_eq!(reset["timezone"], "Asia/Jakarta", "\"\" resets to the default");
+}
