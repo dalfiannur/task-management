@@ -27,11 +27,7 @@ impl Context {
     pub async fn load(store: &Store, auth: &AuthUser) -> anyhow::Result<Self> {
         let templates = template_project_ids(store).await?;
         let all_projects = load_all_projects(store).await?;
-        let visible: Vec<String> = if auth.is_admin() {
-            all_projects.iter().map(|p| p.pid.to_string()).collect()
-        } else {
-            member_project_ids(store, &auth.id).await?
-        };
+        let visible: Vec<String> = member_project_ids(store, &auth.id).await?;
         let scope = Some(visible.into_iter().filter(|p| !templates.contains(p)).collect());
         let mut module_to_project = HashMap::new();
         let mut module_names = HashMap::new();

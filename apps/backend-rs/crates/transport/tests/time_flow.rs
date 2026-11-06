@@ -446,7 +446,7 @@ async fn time_entry_validation_and_unknown_ids() {
 }
 
 #[tokio::test]
-async fn admins_edit_anyones_entries_and_ex_members_lose_access() {
+async fn admins_get_no_special_time_access_and_ex_members_lose_access() {
     let Some((router, store)) = setup().await else {
         eprintln!("skip: DATABASE_URL not set");
         return;
@@ -454,22 +454,25 @@ async fn admins_edit_anyones_entries_and_ex_members_lose_access() {
     let owner = mk_user(&store).await;
     let member = mk_user(&store).await;
     let admin = mk_user(&store).await;
-    let (to, tm, ta) = (token(&owner), token(&member), admin_token(&admin));
-    let pid = project_with(&router, &owner, &[&member]).await;
+    let stranger = mk_user(&store).await;
+    let (to, tm, ta, ts) = (token(&owner), token(&member), admin_token(&admin), admin_token(&stranger));
+    let pid = project_with(&router, &owner, &[&member, &admin]).await;
     let m = module(&router, &to, &pid).await;
     let t = task(&router, &to, &m, "A").await;
     let log = format!("{TIME}/LogTime");
 
-    // An admin who is not a member can log, list, edit and delete.
+    // An admin who was not invited can neither log nor see anyone's entries.
+    fails(&router, &log, &ts, json!({ "taskId": t, "minutes": 10 }), "permission_denied").await;
+    let e = ok(&router, &log, &tm, json!({ "taskId": t, "minutes": 60 })).await;
+    let list = ok(&router, &format!("{TIME}/ListTimeEntries"), &ts, json!({ "userId": member })).await;
+    assert!(list["entries"].as_array().map_or(true, |a| a.is_empty()), "an uninvited admin sees nothing: {list}");
+
+    // An invited admin is an ordinary member: logs their own, cannot touch another's.
     let mine = ok(&router, &log, &ta, json!({ "taskId": t, "minutes": 10 })).await;
     assert_eq!(mine["userId"], admin.as_str(), "the entry belongs to the caller");
-    let e = ok(&router, &log, &tm, json!({ "taskId": t, "minutes": 60 })).await;
-    let list = ok(&router, &format!("{TIME}/ListTimeEntries"), &ta, json!({ "userId": member })).await;
-    assert_eq!(list["entries"].as_array().unwrap().len(), 1, "admin sees a user's entries in any project");
-    let upd = ok(&router, &format!("{TIME}/UpdateTimeEntry"), &ta, json!({ "id": e["id"], "minutes": 50 })).await;
-    assert_eq!(num(&upd, "minutes"), 50, "admin edits another user's entry");
-    assert_eq!(upd["userId"], member.as_str(), "editing does not change the author");
-    ok(&router, &format!("{TIME}/DeleteTimeEntry"), &ta, json!({ "id": e["id"] })).await;
+    fails(&router, &format!("{TIME}/UpdateTimeEntry"), &ta, json!({ "id": e["id"], "minutes": 50 }), "permission_denied").await;
+    fails(&router, &format!("{TIME}/DeleteTimeEntry"), &ta, json!({ "id": e["id"] }), "permission_denied").await;
+    ok(&router, &format!("{TIME}/DeleteTimeEntry"), &tm, json!({ "id": e["id"] })).await;
     assert_eq!(num(&get(&router, &to, &t).await, "loggedMinutes"), 10);
 
     // A member who leaves can no longer log or edit their own entries there.
@@ -639,8 +642,8 @@ async fn time_changes_are_recorded_in_the_activity_log() {
         eprintln!("skip: DATABASE_URL not set");
         return;
     };
-    let (owner, member, admin, outsider) = (mk_user(&store).await, mk_user(&store).await, mk_user(&store).await, mk_user(&store).await);
-    let (to, tm, ta) = (token(&owner), token(&member), admin_token(&admin));
+    let (owner, member, outsider) = (mk_user(&store).await, mk_user(&store).await, mk_user(&store).await);
+    let (to, tm) = (token(&owner), token(&member));
     let pid = project_with(&router, &owner, &[&member]).await;
     let m = module(&router, &to, &pid).await;
     let t = task(&router, &to, &m, "Design").await;
@@ -681,12 +684,12 @@ async fn time_changes_are_recorded_in_the_activity_log() {
     assert_eq!(rows2.len(), 1, "an explicit stop records one row");
     assert_eq!(rows2[0]["summary"], format!("logged 1m on #{}", num(&get(&router, &to, &t2).await, "number")));
 
-    // An admin's edit: UPDATED, actor = the admin, from/to only for what changed.
+    // An edit: UPDATED, actor = the author, from/to only for what changed.
     let upd = format!("{TIME}/UpdateTimeEntry");
-    ok(&router, &upd, &ta, json!({ "id": e["id"], "minutes": 60, "note": "review" })).await;
+    ok(&router, &upd, &tm, json!({ "id": e["id"], "minutes": 60, "note": "review" })).await;
     let r = time_rows(&router, &tm, &t).await[0].clone();
     assert_eq!(r["action"], "UPDATED");
-    assert_eq!(r["actorId"], admin.as_str(), "the editor, not the author");
+    assert_eq!(r["actorId"], member.as_str());
     assert_eq!(r["summary"], format!("edited time on #{n}"));
     let c = changes(&r);
     assert_eq!(c.len(), 1, "only minutes changed: {r}");
@@ -714,7 +717,7 @@ async fn time_changes_are_recorded_in_the_activity_log() {
     // The project log shows them too.
     let proj = ok(&router, &format!("{ACTIVITY}/ListProjectActivity"), &to, json!({ "projectId": pid })).await;
     let in_proj = proj["activities"].as_array().unwrap().iter().filter(|a| a["entityType"] == "TIME_ENTRY").count();
-    assert_eq!(in_proj, 7, "log, log, implicit stop, stop, admin edit, edit, delete: all seven in the project log (the no-op edit wrote none): {proj}");
+    assert_eq!(in_proj, 7, "log, log, implicit stop, stop, edit, edit, delete: all seven in the project log (the no-op edit wrote none): {proj}");
 
     // Outsiders see neither the task's nor the entry's activity.
     fails(&router, &format!("{ACTIVITY}/ListEntityActivity"), &token(&outsider), json!({ "entityType": "TASK", "entityId": t }), "permission_denied").await;

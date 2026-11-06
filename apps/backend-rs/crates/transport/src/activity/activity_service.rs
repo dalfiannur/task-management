@@ -75,23 +75,14 @@ async fn list_recent_activity(
 ) -> Result<ConnectResponse<pb::ListActivityResponse>, ConnectError> {
     let auth = require_auth(user)?;
     let ConnectRequest(r) = req;
-    // Admin sees every live project; otherwise the caller's member projects.
-    let projects = if auth.is_admin() {
-        Some(
-            crate::projects::record::live_project_ids(&store)
-                .await
-                .map_err(internal)?
-                .into_iter()
-                .collect(),
-        )
-    } else {
-        let ids: HashSet<String> = member_project_ids(&store, &auth.id)
+    // The caller's member projects (admins included).
+    let projects: Option<HashSet<String>> = Some(
+        member_project_ids(&store, &auth.id)
             .await
             .map_err(internal)?
             .into_iter()
-            .collect();
-        Some(ids)
-    };
+            .collect(),
+    );
     // Already one page: `activity_recent_page` selects it in SQL and reports the
     // unpaged total separately, so running `paged` over it again would slice a
     // page out of a page and report the page's own length as the total.

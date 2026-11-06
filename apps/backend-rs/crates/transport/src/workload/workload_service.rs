@@ -15,7 +15,7 @@ use domain::workload::{
 use persistence::Store;
 
 use super::record::{self as wl, CalendarRow, OpenTask};
-use crate::projects::record::{load_all_projects, load_project, member_project_ids};
+use crate::projects::record::{load_project, member_project_ids};
 use crate::templates::record::template_project_ids;
 use crate::sedjiwa::tasks::workload::v1 as pb;
 use crate::sedjiwa::tasks::workload::v1::workload_service_connect::WorkloadServiceBuilder;
@@ -259,12 +259,6 @@ pub async fn workload_core(
             require_project(store, id, auth).await?;
             vec![id.to_string()]
         }
-        None if auth.is_admin() => load_all_projects(store)
-            .await
-            .map_err(internal)?
-            .iter()
-            .map(|p| p.pid.to_string())
-            .collect(),
         None => member_project_ids(store, &auth.id).await.map_err(internal)?,
     };
     // Templates are blueprints, not work anyone is doing.

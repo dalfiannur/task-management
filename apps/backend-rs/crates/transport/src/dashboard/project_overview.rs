@@ -46,7 +46,7 @@ pub(super) async fn get_project_overview(
     let mut member_ids = project_member_ids(&store, &project_id)
         .await
         .map_err(internal)?;
-    if !auth.is_admin() && !member_ids.iter().any(|u| u == &auth.id) {
+    if !member_ids.iter().any(|u| u == &auth.id) {
         return Err(ConnectError::new_permission_denied("not a member"));
     }
 

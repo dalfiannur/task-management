@@ -321,12 +321,7 @@ pub(crate) async fn remove_member(
 // `load_project`, `load_all_projects` and `member_project_ids` see live
 // projects only, so every read built on them (dashboards, reports, search,
 // workload, My tasks) drops a trashed project; `require_live` makes the
-// per-request member checks answer `not_found` for it, admins included.
-
-/// Every live project id (trashed ones left out) — the admin's scope.
-pub(crate) async fn live_project_ids(store: &Store) -> anyhow::Result<Vec<String>> {
-    Ok(load_all_projects(store).await?.iter().map(|p| p.pid.to_string()).collect())
-}
+// per-request member checks answer `not_found` for it.
 
 /// Whether `project_id` is in the trash.
 pub(crate) async fn is_trashed(store: &Store, project_id: &str) -> anyhow::Result<bool> {

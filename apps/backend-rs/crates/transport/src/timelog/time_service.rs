@@ -92,11 +92,11 @@ async fn require_entry(store: &Store, id: &str) -> Result<EntryRecord, ConnectEr
         .ok_or_else(|| ConnectError::new_not_found("time entry not found"))
 }
 
-/// The entry, if `auth` is its author or an admin (and still a member).
+/// The entry, if `auth` is its author (and still a member).
 async fn own_entry(store: &Store, id: &str, auth: &AuthUser) -> Result<EntryRecord, ConnectError> {
     let e = require_entry(store, id).await?;
     require_member(store, &e.project_id, auth).await?;
-    if e.user_id == auth.id || auth.is_admin() {
+    if e.user_id == auth.id {
         Ok(e)
     } else {
         Err(ConnectError::new_permission_denied(
@@ -232,12 +232,7 @@ pub async fn list_time_entries_core(
         require_member(&store, p, &auth).await?;
     } else if user_id.is_some() {
         // Someone's entries across projects: where the caller is a member
-        // (an admin: every live project — never a trashed one).
-        projects = Some(if auth.is_admin() {
-            crate::projects::record::live_project_ids(&store).await.map_err(internal)?
-        } else {
-            member_project_ids(&store, &auth.id).await.map_err(internal)?
-        });
+        projects = Some(member_project_ids(&store, &auth.id).await.map_err(internal)?);
     } else {
         return Err(ConnectError::new_invalid_argument(
             "task_id, project_id or user_id is required",

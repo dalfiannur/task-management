@@ -137,13 +137,10 @@ async fn csv_export_is_owner_gated_and_carries_task_rows() {
     assert!(csv.contains(&label_name), "label by name, not silently dropped by gather: {csv}");
     assert_eq!(out["taskCount"].as_i64().unwrap(), 1, "task_count matches the one task created: {out}");
 
-    // Admin: neither the owner nor a member, but permitted by the "*" branch
-    // of require_owner_or_admin — the branch the rest of this test never
-    // exercises since `to` always takes the ownership path.
+    // Admin: neither the owner nor a member, so no more access than a stranger.
     let unaffiliated_admin = mk_user(&store, "Wira").await;
-    let admin_out = ok(&router, &format!("{EXPORT}/ExportTasksCsv"), &admin_token(&unaffiliated_admin), json!({ "projectId": project })).await;
-    assert!(admin_out["csv"].as_str().unwrap().starts_with("id,module,title,"), "admin gets the real CSV: {admin_out}");
-    assert!(admin_out["fileName"].as_str().unwrap().ends_with("-tasks.csv"), "admin gets a real file name: {admin_out}");
+    let (st, _) = call(&router, &format!("{EXPORT}/ExportTasksCsv"), Some(&admin_token(&unaffiliated_admin)), json!({ "projectId": project })).await;
+    assert_eq!(st, StatusCode::FORBIDDEN, "an uninvited admin must not export");
 }
 
 #[tokio::test]

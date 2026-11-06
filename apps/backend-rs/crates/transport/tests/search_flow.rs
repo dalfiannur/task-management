@@ -248,10 +248,10 @@ async fn task_is_indexed_on_create_update_and_delete() {
     let hits = find(&router, &token(&outsider), &t1).await;
     assert!(hits.is_empty(), "non-member sees nothing: {hits:?}");
 
-    // An admin bypasses the membership filter, matching `list_projects`.
+    // An admin gets no bypass either, matching `list_projects`.
     let admin_tok = auth::sign_jwt(SECRET, &outsider, &["*".to_string()], 9_999_999_999).unwrap();
     let hits = find(&router, &admin_tok, &t1).await;
-    assert_eq!(hits.len(), 1, "admin sees every project: {hits:?}");
+    assert!(hits.is_empty(), "uninvited admin sees nothing: {hits:?}");
 
     let t2 = term();
     ok(

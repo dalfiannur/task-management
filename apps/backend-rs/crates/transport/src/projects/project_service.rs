@@ -38,7 +38,7 @@ fn require_auth(user: Option<Extension<AuthUser>>) -> Result<AuthUser, ConnectEr
 }
 
 fn require_owner_or_admin(auth: &AuthUser, project: &ProjectRecord) -> Result<(), ConnectError> {
-    if auth.is_admin() || project.owner_id == auth.id {
+    if project.owner_id == auth.id {
         Ok(())
     } else {
         Err(ConnectError::new_permission_denied("owner or admin required"))
@@ -107,7 +107,7 @@ pub async fn create_project_core(
         }
         Some(src_id) => {
             let src = require_project(store, parse_pid(&src_id)?).await?;
-            if !auth.is_admin() && !is_member(store, &src_id, &auth.id).await.map_err(internal)? {
+            if !is_member(store, &src_id, &auth.id).await.map_err(internal)? {
                 return Err(ConnectError::new_permission_denied("not a member of the source project"));
             }
             let base = match &src.start_date {
@@ -180,10 +180,8 @@ pub async fn list_projects_core(
 ) -> Result<pb::ListProjectsResponse, ConnectError> {
     let all = load_all_projects(store).await.map_err(internal)?;
 
-    // Scope to the caller's memberships (admin: all).
-    let visible: Vec<ProjectRecord> = if auth.is_admin() {
-        all
-    } else {
+    // Scope to the caller's memberships (admins included).
+    let visible: Vec<ProjectRecord> = {
         let mine: HashSet<String> = member_project_ids(store, &auth.id)
             .await
             .map_err(internal)?
@@ -282,8 +280,7 @@ pub async fn get_project_core(
 ) -> Result<pb::Project, ConnectError> {
     let pid = parse_pid(&r.id)?;
     let p = require_project(store, pid).await?;
-    if !auth.is_admin()
-        && !is_member(store, &pid.to_string(), &auth.id)
+    if !is_member(store, &pid.to_string(), &auth.id)
             .await
             .map_err(internal)?
     {
@@ -421,8 +418,7 @@ async fn list_project_members(
     let ConnectRequest(r) = req;
     let pid = parse_pid(&r.project_id)?;
     let p = require_project(&store, pid).await?;
-    if !auth.is_admin()
-        && !is_member(&store, &pid.to_string(), &auth.id)
+    if !is_member(&store, &pid.to_string(), &auth.id)
             .await
             .map_err(internal)?
     {

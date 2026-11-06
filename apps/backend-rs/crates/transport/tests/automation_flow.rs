@@ -248,7 +248,7 @@ async fn automation_rpcs_require_a_token() {
 }
 
 #[tokio::test]
-async fn rules_are_managed_by_owner_or_admin_and_read_by_members() {
+async fn rules_are_managed_by_owner_and_read_by_members() {
     let Some((router, store)) = setup().await else {
         eprintln!("skip: DATABASE_URL not set");
         return;
@@ -290,7 +290,7 @@ async fn rules_are_managed_by_owner_or_admin_and_read_by_members() {
     fails(&router, &format!("{AUTO}/ListAutomationRuns"), &tx, json!({ "projectId": p.id }), "permission_denied").await;
     fails(&router, &format!("{AUTO}/ListAutomationRuns"), &tm, json!({ "projectId": p.id, "limit": -1 }), "invalid_argument").await;
 
-    // Update / enable / delete: owner or admin.
+    // Update / enable / delete: owner only (an uninvited admin is a stranger).
     let upd = format!("{AUTO}/UpdateAutomation");
     let mut changed = body.clone();
     changed["id"] = json!(id);
@@ -300,10 +300,7 @@ async fn rules_are_managed_by_owner_or_admin_and_read_by_members() {
     assert_eq!(r["name"], "Renamed");
     assert_eq!(r["createdBy"], owner.as_str(), "an edit keeps the author");
     assert_eq!(r["updatedBy"], owner.as_str());
-    let r = ok(&router, &upd, &ta, { let mut c = changed.clone(); c["name"] = json!("By admin"); c }).await;
-    assert_eq!(r["name"], "By admin", "a non-member admin can edit");
-    assert_eq!(r["updatedBy"], admin.as_str(), "updated_by follows the last writer");
-    assert_eq!(r["createdBy"], owner.as_str());
+    fails(&router, &upd, &ta, { let mut c = changed.clone(); c["name"] = json!("By admin"); c }, "permission_denied").await;
     // The project in an update body is ignored: a rule cannot be moved.
     let other = proj(&router, &member, &[]).await;
     let mut moved = changed.clone();
@@ -326,7 +323,8 @@ async fn rules_are_managed_by_owner_or_admin_and_read_by_members() {
 
     let del = format!("{AUTO}/DeleteAutomation");
     fails(&router, &del, &tm, json!({ "id": id }), "permission_denied").await;
-    ok(&router, &del, &ta, json!({ "id": id })).await;
+    fails(&router, &del, &ta, json!({ "id": id }), "permission_denied").await;
+    ok(&router, &del, &to, json!({ "id": id })).await;
     fails(&router, &del, &to, json!({ "id": id }), "not_found").await;
     fails(&router, &upd, &to, changed, "not_found").await;
     fails(&router, &en, &to, json!({ "id": "abc", "mode": "AUTOMATION_MODE_ON" }), "not_found").await;
@@ -611,13 +609,13 @@ async fn a_rule_keeps_running_when_its_author_is_suspended() {
         eprintln!("skip: DATABASE_URL not set");
         return;
     };
-    let (owner, admin) = (mk_user(&store).await, mk_user(&store).await);
-    let to = token(&owner);
-    let p = proj(&router, &owner, &[]).await;
-    // An admin (not a member) writes the rule, then is suspended.
-    let r = rule(&router, &admin_token(&admin), &p.id, "by admin", json!({ "taskCreated": {} }), json!([{ "comment": "hi" }]), json!({})).await;
+    let (owner, member) = (mk_user(&store).await, mk_user(&store).await);
+    let to = token(&member);
+    let p = proj(&router, &owner, &[&member]).await;
+    // The owner writes the rule, then is suspended.
+    let r = rule(&router, &token(&owner), &p.id, "by owner", json!({ "taskCreated": {} }), json!([{ "comment": "hi" }]), json!({})).await;
     store
-        .attach(admin.parse().unwrap(), UserStatusComponent { status: "suspended".into(), created_at: "2026-01-01T00:00:00Z".into(), last_login_at: None })
+        .attach(owner.parse().unwrap(), UserStatusComponent { status: "suspended".into(), created_at: "2026-01-01T00:00:00Z".into(), last_login_at: None })
         .await
         .unwrap();
     let t = task(&router, &to, &p.m1, json!({ "title": "x" })).await;

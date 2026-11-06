@@ -448,8 +448,9 @@ async fn calendars_inherit_and_shape_capacity() {
     assert_eq!(cal["effectiveDays"], json!([1, 2, 3, 4, 5]), "inherits Mon–Fri");
     assert_eq!(cal["canEdit"], Value::Null, "a plain member cannot edit");
     assert_eq!(ok(&router, &get_cal, &to, proj.clone()).await["canEdit"], true, "the owner can");
-    // An admin who is not a member can set it.
-    let cal = ok(&router, &set_cal, &ta, json!({ "scope": "CALENDAR_SCOPE_PROJECT", "id": pid, "workingDays": [1, 3, 5] })).await;
+    // An admin who is not a member cannot; the owner can.
+    fails(&router, &set_cal, &ta, json!({ "scope": "CALENDAR_SCOPE_PROJECT", "id": pid, "workingDays": [1, 3, 5] }), "permission_denied").await;
+    let cal = ok(&router, &set_cal, &to, json!({ "scope": "CALENDAR_SCOPE_PROJECT", "id": pid, "workingDays": [1, 3, 5] })).await;
     assert_eq!(cal["workingDays"], json!([1, 3, 5]));
     assert_eq!(ok(&router, &get_cal, &tm, proj.clone()).await["effectiveDays"], json!([1, 3, 5]), "members read the saved days back");
     // The admin may set anyone's own calendar too.
@@ -508,7 +509,7 @@ async fn cross_project_workload_scope_follows_membership() {
     est_task(&router, &ta, &m1, json!({ "assigneeIds": [b], "estimateMinutes": 60 })).await;
     est_task(&router, &token(&c), &m2, json!({ "assigneeIds": [b], "estimateMinutes": 90 })).await;
 
-    let ids = |w: &Value| -> Vec<String> { w["projects"].as_array().unwrap().iter().map(|p| s(p, "id")).collect() };
+    let ids = |w: &Value| -> Vec<String> { w["projects"].as_array().map_or_else(Vec::new, |a| a.iter().map(|p| s(p, "id")).collect()) };
     let wb = workload(&router, &tb, None).await;
     assert!(ids(&wb).contains(&p1) && ids(&wb).contains(&p2), "b's view covers both of b's projects");
     assert_eq!(num(member(&wb, &b), "unscheduledMinutes"), 150, "b's effort summed across projects");
@@ -520,12 +521,10 @@ async fn cross_project_workload_scope_follows_membership() {
     assert!(wa["members"].as_array().unwrap().iter().all(|r| r["userId"] != c.as_str()), "nor that project's people");
     fails(&router, &format!("{WORK}/GetWorkload"), &ta, json!({ "projectId": p2 }), "permission_denied").await;
 
-    // Admin, a member of neither: both projects, and b's full effort.
+    // Admin, a member of neither: sees neither project and cannot filter to one.
     let w = workload(&router, &admin_token(&admin), None).await;
-    assert!(ids(&w).contains(&p1) && ids(&w).contains(&p2), "admin sees every project");
-    assert_eq!(num(member(&w, &b), "unscheduledMinutes"), 150);
-    let w = workload(&router, &admin_token(&admin), Some(&p2)).await;
-    assert_eq!(num(member(&w, &b), "unscheduledMinutes"), 90, "admin may filter to any project");
+    assert!(!ids(&w).contains(&p1) && !ids(&w).contains(&p2), "an uninvited admin sees no project");
+    fails(&router, &format!("{WORK}/GetWorkload"), &admin_token(&admin), json!({ "projectId": p2 }), "permission_denied").await;
 
     // Someone still assigned after leaving the project keeps their row.
     ok(&router, &format!("{PROJECT}/RemoveProjectMember"), &ta, json!({ "projectId": p1, "userId": b })).await;
@@ -641,8 +640,8 @@ async fn workload_shows_other_projects_as_load_without_revealing_them() {
         eprintln!("skip: DATABASE_URL not set");
         return;
     };
-    let (a, b, c, admin) = (mk_user(&store).await, mk_user(&store).await, mk_user(&store).await, mk_user(&store).await);
-    let (ta, tb, tadm) = (token(&a), token(&b), admin_token(&admin));
+    let (a, b, c) = (mk_user(&store).await, mk_user(&store).await, mk_user(&store).await);
+    let (ta, tb) = (token(&a), token(&b));
     // P1: A and B. P2: A only (owned by C). P3: a template A works in.
     let p1 = project_with(&router, &a, &[&b]).await;
     let p2 = project_with(&router, &c, &[&a]).await;
@@ -682,15 +681,15 @@ async fn workload_shows_other_projects_as_load_without_revealing_them() {
     // B has no other projects, so B has no other load.
     assert_eq!(others(member(&w, &b)), vec![0, 0]);
 
-    // Admin, unscoped: everything is in scope, so nothing is "other".
-    let w = workload(&router, &tadm, None).await;
+    // A, unscoped: A is in both P1 and P2, so everything is in scope and nothing is "other".
+    let w = workload(&router, &ta, None).await;
     let ra = member(&w, &a);
-    assert_eq!(others(ra), vec![0, 0], "admin unscoped: no other");
+    assert_eq!(others(ra), vec![0, 0], "unscoped across all of A's projects: no other");
     assert_eq!(planned(ra), vec![720, 0], "P1 + P2 planned (never the template)");
     assert_eq!(num(ra, "otherOverdueMinutes") + num(ra, "otherUnscheduledMinutes") + num(ra, "otherLaterMinutes"), 0);
 
-    // Scoped to P1, even as admin: P2 is other.
-    for tok in [&tadm, &tb] {
+    // Scoped to P1: P2 is other, whoever asks.
+    for tok in [&ta, &tb] {
         let w = workload(&router, tok, Some(&p1)).await;
         let ra = member(&w, &a);
         assert_eq!(planned(ra), vec![120, 0]);

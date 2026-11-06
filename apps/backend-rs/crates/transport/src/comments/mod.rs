@@ -38,9 +38,9 @@ pub(crate) async fn require_member(
     project_id: &str,
     auth: &AuthUser,
 ) -> Result<(), ConnectError> {
-    // A trashed project does not exist for anyone, admins included.
+    // A trashed project does not exist for anyone; admins see only their own.
     crate::projects::record::require_live(store, project_id).await?;
-    if auth.is_admin() || auth.acts_for_project(project_id) {
+    if auth.acts_for_project(project_id) {
         return Ok(());
     }
     if is_member(store, project_id, &auth.id)
@@ -73,7 +73,7 @@ pub(crate) async fn require_author_owner_or_admin(
     auth: &AuthUser,
 ) -> Result<(), ConnectError> {
     crate::projects::record::require_live(store, project_id).await?;
-    if auth.is_admin() || comment.author_id == auth.id {
+    if comment.author_id == auth.id {
         return Ok(());
     }
     if let Ok(pid) = project_id.parse::<i64>() {

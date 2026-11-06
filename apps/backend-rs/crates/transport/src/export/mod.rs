@@ -46,7 +46,7 @@ pub(crate) fn require_owner_or_admin(
     auth: &AuthUser,
     project: &ProjectRecord,
 ) -> Result<(), ConnectError> {
-    if auth.is_admin() || project.owner_id == auth.id {
+    if project.owner_id == auth.id {
         Ok(())
     } else {
         Err(ConnectError::new_permission_denied("owner or admin only"))

@@ -337,6 +337,8 @@ async fn a_trashed_project_is_hidden_everywhere_and_restored_exactly() {
     // A second project of the member's that must stay visible throughout.
     let q = s(&ok(&router, &format!("{PROJECT}/CreateProject"), &to, json!({ "name": format!("Q{}", uniq()) })).await, "id");
     ok(&router, &format!("{PROJECT}/AddProjectMember"), &to, json!({ "projectId": q, "userId": member })).await;
+    // The admin is invited too: an uninvited one sees nothing of the project at all.
+    ok(&router, &format!("{PROJECT}/AddProjectMember"), &to, json!({ "projectId": r.pid, "userId": admin })).await;
     let before_member = visible(&router, &tm, &r).await;
     let before_admin = visible(&router, &ta, &r).await;
     assert_eq!(before_member["tasks"], 2);

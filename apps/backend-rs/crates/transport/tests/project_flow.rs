@@ -246,10 +246,10 @@ async fn list_is_member_scoped_with_filters() {
     .await;
     assert_eq!(list_ids(&body), vec![p1.clone()]);
 
-    // Admin sees B's project too (via search to avoid pagination noise).
+    // An admin who was not invited sees nothing of B's project.
     let adm = admin_token(&format!("adm{}", uniq()));
     let (_, body) = call(&router, "ListProjects", Some(&adm), json!({ "search": name3 })).await;
-    assert!(list_ids(&body).contains(&p3), "admin sees all");
+    assert!(!list_ids(&body).contains(&p3), "admin only sees projects they belong to");
 }
 
 #[tokio::test]
@@ -268,7 +268,7 @@ async fn get_project_member_gated() {
     // Non-member B → denied.
     let (st, _) = call(&router, "GetProject", Some(&user_token(&b)), json!({ "id": id })).await;
     assert_ne!(st, StatusCode::OK, "non-member must be denied");
-    // Admin → ok even if not a member.
+    // Admin → denied too unless invited.
     let (st, _) = call(
         &router,
         "GetProject",
@@ -276,7 +276,7 @@ async fn get_project_member_gated() {
         json!({ "id": id }),
     )
     .await;
-    assert_eq!(st, StatusCode::OK, "admin bypasses membership");
+    assert_ne!(st, StatusCode::OK, "admin is not exempt from membership");
     // Unknown id → not found; unauthenticated → rejected.
     let (st, _) = call(&router, "GetProject", Some(&user_token(&a)), json!({ "id": "99999999" })).await;
     assert_ne!(st, StatusCode::OK);

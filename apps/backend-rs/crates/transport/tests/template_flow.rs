@@ -213,7 +213,7 @@ async fn template_rpcs_require_a_token() {
 }
 
 #[tokio::test]
-async fn marking_a_template_is_owner_or_admin_and_lists_split_by_kind() {
+async fn marking_a_template_is_owner_only_and_lists_split_by_kind() {
     let Some((router, store)) = setup().await else {
         eprintln!("skip: DATABASE_URL not set");
         return;
@@ -241,8 +241,9 @@ async fn marking_a_template_is_owner_or_admin_and_lists_split_by_kind() {
     assert!(!templates.contains(&plain), "templates=true lists templates only");
     assert!(!list_projects(&router, &token(&outsider), true).await.contains(&pid), "membership still scopes templates");
 
-    // An admin who is not a member can unmark it.
-    let p = ok(&router, &set, &admin_token(&admin), json!({ "id": pid, "isTemplate": false })).await;
+    // An admin who is not a member cannot unmark it; the owner can.
+    fails(&router, &set, &admin_token(&admin), json!({ "id": pid, "isTemplate": false }), "permission_denied").await;
+    let p = ok(&router, &set, &to, json!({ "id": pid, "isTemplate": false })).await;
     assert!(p["isTemplate"].is_null() || p["isTemplate"] == false);
     assert!(list_projects(&router, &tm, false).await.contains(&pid), "unmarked, it is a project again");
 }
@@ -485,9 +486,8 @@ async fn copying_needs_access_to_the_source_and_valid_input() {
     }
     fails(&router, &create, &to, json!({ "name": "  ", "fromProjectId": src }), "invalid_argument").await;
 
-    // An admin who is not a member may copy.
-    let p = copy(&router, &admin_token(&admin), &src, json!({})).await;
-    assert_eq!(tasks_of(&router, &admin_token(&admin), &s(&p, "id")).await.len(), 1);
+    // An admin who is not a member may not copy either.
+    fails(&router, &create, &admin_token(&admin), json!({ "name": "steal", "fromProjectId": src }), "permission_denied").await;
 
     // Copying a template gives a normal project; owner_id hands it to someone else.
     ok(&router, &format!("{PROJECT}/SetProjectTemplate"), &to, json!({ "id": src, "isTemplate": true })).await;
@@ -667,7 +667,7 @@ async fn a_task_template_keeps_at_most_fifty_subtasks() {
 }
 
 #[tokio::test]
-async fn task_templates_are_deleted_by_author_owner_or_admin() {
+async fn task_templates_are_deleted_by_author_or_owner() {
     let Some((router, store)) = setup().await else {
         eprintln!("skip: DATABASE_URL not set");
         return;
@@ -689,7 +689,8 @@ async fn task_templates_are_deleted_by_author_owner_or_admin() {
     fails(&router, &del, &to, json!({ "id": "999999999999" }), "not_found").await;
     ok(&router, &del, &ta, json!({ "id": t1 })).await;
     ok(&router, &del, &to, json!({ "id": t2 })).await;
-    ok(&router, &del, &admin_token(&admin), json!({ "id": t3 })).await;
+    fails(&router, &del, &admin_token(&admin), json!({ "id": t3 }), "permission_denied").await;
+    ok(&router, &del, &to, json!({ "id": t3 })).await;
     let l = ok(&router, &format!("{TPL}/ListTaskTemplates"), &to, json!({ "projectId": pid })).await;
     assert!(arr(&l, "templates").is_empty(), "all three are gone: {l}");
     fails(&router, &del, &ta, json!({ "id": t1 }), "not_found").await;
@@ -796,8 +797,8 @@ async fn template_projects_stay_out_of_dashboards_reports_my_tasks_and_search() 
     let (to, tu, ta) = (token(&owner), token(&u), admin_token(&admin));
     let marker = format!("scope{}", uniq());
     // T: a template with 3 overdue tasks for U. P: a real project with 1.
-    let t = project_with(&router, &owner, &[&u]).await;
-    let p = project_with(&router, &owner, &[&u]).await;
+    let t = project_with(&router, &owner, &[&u, &admin]).await;
+    let p = project_with(&router, &owner, &[&u, &admin]).await;
     let (tm, pm) = (module(&router, &to, &t, "M", None).await, module(&router, &to, &p, "M", None).await);
     let mut t_tasks = Vec::new();
     for i in 0..3 {

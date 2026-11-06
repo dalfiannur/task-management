@@ -59,19 +59,10 @@ pub async fn search_core(
     }
 
     // Always an explicit project list, so template projects (and their tasks,
-    // pages, comments) stay out of results for admins too. People carry no
+    // pages, comments) stay out of results. People carry no
     // project and pass regardless.
     let templates = template_project_ids(store).await.map_err(internal)?;
-    let visible: Vec<String> = if auth.is_admin() {
-        load_all_projects(store)
-            .await
-            .map_err(internal)?
-            .iter()
-            .map(|p| p.pid.to_string())
-            .collect()
-    } else {
-        member_project_ids(store, &auth.id).await.map_err(internal)?
-    };
+    let visible: Vec<String> = member_project_ids(store, &auth.id).await.map_err(internal)?;
     let project_ids: Vec<String> = visible.into_iter().filter(|p| !templates.contains(p)).collect();
     let kinds: Vec<String> = r
         .kinds
