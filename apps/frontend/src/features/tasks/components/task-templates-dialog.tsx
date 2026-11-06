@@ -17,7 +17,7 @@ import {
   Skeleton,
 } from "sedjiwa-ui";
 import { formatMinutes } from "@/lib/duration";
-import { currentUserAtom, isAdminAtom } from "@/features/auth";
+import { currentUserAtom } from "@/features/auth";
 import type { Module } from "../types";
 import {
   useCreateTaskFromTemplate,
@@ -47,7 +47,6 @@ export function TaskTemplatesDialog({
   onCreated: (taskId: string) => void;
 }) {
   const me = useAtomValue(currentUserAtom);
-  const isAdmin = useAtomValue(isAdminAtom);
   const { templates, isLoading } = useTaskTemplates(projectId, open);
   const create = useCreateTaskFromTemplate();
   const del = useDeleteTaskTemplate();
@@ -55,7 +54,7 @@ export function TaskTemplatesDialog({
   const target = moduleId || modules[0]?.id || "";
 
   const canDelete = (t: TaskTemplate) =>
-    isAdmin || t.createdBy === me?.id || projectOwnerId === me?.id;
+    t.createdBy === me?.id || projectOwnerId === me?.id;
 
   function use(t: TaskTemplate) {
     create.mutate(

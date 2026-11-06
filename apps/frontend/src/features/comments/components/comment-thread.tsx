@@ -6,7 +6,7 @@ import { Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage, Button } from "sedjiwa-ui";
 import { cn, getInitials } from "@/lib/utils";
-import { currentUserAtom, isAdminAtom } from "@/features/auth";
+import { currentUserAtom } from "@/features/auth";
 import { useProjectMembers } from "@/features/projects";
 import { useUserMap } from "@/features/users";
 import type { Comment } from "../types";
@@ -39,7 +39,6 @@ export function CommentThread({
   highlightCommentId?: string;
 }) {
   const me = useAtomValue(currentUserAtom);
-  const isAdmin = useAtomValue(isAdminAtom);
   const { comments, isLoading } = useComments(taskId);
   const { memberIds, ownerId } = useProjectMembers(projectId);
   const userMap = useUserMap();
@@ -49,7 +48,7 @@ export function CommentThread({
   const [editingId, setEditingId] = useState<string | null>(null);
   const highlightRef = useRef<HTMLLIElement | null>(null);
 
-  const canModerate = isAdmin || ownerId === me?.id;
+  const canModerate = ownerId === me?.id;
 
   // Runs once the matching <li> exists — i.e. after `comments` loads — not
   // on every render, since the ref is only attached post-render.

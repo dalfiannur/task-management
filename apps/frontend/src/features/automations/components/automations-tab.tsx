@@ -25,7 +25,7 @@ import {
 } from "sedjiwa-ui";
 import { EmptyState } from "@/components/shared/empty-state";
 import { cn } from "@/lib/utils";
-import { currentUserAtom, isAdminAtom } from "@/features/auth";
+import { currentUserAtom } from "@/features/auth";
 import { useProject, useProjectMembers } from "@/features/projects";
 import { useUserMap } from "@/features/users";
 import {
@@ -66,9 +66,8 @@ const RUN_LABEL: Record<AutomationRun["status"], string> = {
  *  edit; members read. */
 export function AutomationsTab({ projectId }: { projectId: string }) {
   const me = useAtomValue(currentUserAtom);
-  const isAdmin = useAtomValue(isAdminAtom);
   const { project } = useProject(projectId);
-  const canEdit = isAdmin || (!!project && project.ownerId === me?.id);
+  const canEdit = !!project && project.ownerId === me?.id;
   const vocab = useVocab(projectId);
   const { automations, isLoading } = useAutomations(projectId);
   const { runs } = useAutomationRuns(projectId);

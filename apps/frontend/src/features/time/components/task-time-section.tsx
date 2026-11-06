@@ -5,7 +5,7 @@ import { Button, Input } from "sedjiwa-ui";
 import { useAtomValue } from "jotai";
 import { cn } from "@/lib/utils";
 import { formatMinutes, parseEstimate } from "@/lib/duration";
-import { currentUserAtom, isAdminAtom } from "@/features/auth";
+import { currentUserAtom } from "@/features/auth";
 import { useUserMap } from "@/features/users";
 import {
   localToday,
@@ -33,7 +33,6 @@ export function TaskTimeSection({
   loggedMinutes: number;
 }) {
   const me = useAtomValue(currentUserAtom);
-  const isAdmin = useAtomValue(isAdminAtom);
   const userMap = useUserMap();
   const { entries } = useTaskTimeEntries(taskId);
   const { entry: running } = useRunningTimer();
@@ -140,7 +139,7 @@ export function TaskTimeSection({
       {entries.length > 0 && (
         <ul className="divide-y divide-border rounded-lg border border-border">
           {entries.map((e) => {
-            const mine = e.userId === me?.id || isAdmin;
+            const mine = e.userId === me?.id;
             return (
               <li key={e.id} className="group flex items-center gap-3 px-3 py-2 text-sm">
                 <span className="text-num w-14 shrink-0 font-medium">
